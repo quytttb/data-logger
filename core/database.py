@@ -61,11 +61,22 @@ def _migrate() -> None:
 
         if inspector.has_table("app_config"):
             acols = {c["name"] for c in inspector.get_columns("app_config")}
-            if "ui_locale" not in acols:
-                conn.execute(text(
-                    "ALTER TABLE app_config ADD COLUMN ui_locale VARCHAR(8) DEFAULT 'vi'"
-                ))
-                conn.commit()
+            # Thêm cột mới theo từng phiên bản model (DB cũ / file sqlite trong repo).
+            app_config_adds: list[tuple[str, str]] = [
+                ("ui_locale", "VARCHAR(8) DEFAULT 'vi'"),
+                ("serial_port", "VARCHAR DEFAULT '/dev/ttyUSB0'"),
+                ("serial_baudrate", "INTEGER DEFAULT 9600"),
+                ("serial_bytesize", "INTEGER DEFAULT 8"),
+                ("serial_parity", "VARCHAR DEFAULT 'N'"),
+                ("serial_stopbits", "INTEGER DEFAULT 1"),
+            ]
+            for col_name, col_type in app_config_adds:
+                if col_name not in acols:
+                    conn.execute(
+                        text(f"ALTER TABLE app_config ADD COLUMN {col_name} {col_type}")
+                    )
+                    conn.commit()
+                    acols.add(col_name)
 
 
 def get_session() -> Session:
