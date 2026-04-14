@@ -1,0 +1,35 @@
+2026-04-06 17:12:59,813 | INFO     | datalogger | ============================================================
+2026-04-06 17:12:59,813 | INFO     | datalogger | Data Logger v1.0.0 — Khởi động
+2026-04-06 17:12:59,813 | INFO     | datalogger | ============================================================
+2026-04-06 17:12:59,814 | INFO     | datalogger | Database initialized.
+2026-04-06 17:13:00,073 | INFO     | datalogger | Giao diện đã sẵn sàng.
+2026-04-06 17:13:19,344 | INFO     | datalogger.main | Đang dừng tất cả Workers...
+2026-04-06 17:13:19,344 | INFO     | datalogger.main | Tất cả Workers đã dừng. Thoát ứng dụng.
+2026-04-06 18:42:42,472 | INFO     | datalogger | ============================================================
+2026-04-06 18:42:42,472 | INFO     | datalogger | Data Logger v2.0-HMI — Khởi động
+2026-04-06 18:42:42,472 | INFO     | datalogger | ============================================================
+2026-04-06 18:42:42,473 | INFO     | datalogger | Database initialized.
+2026-04-06 18:43:00,574 | INFO     | datalogger | ============================================================
+2026-04-06 18:43:00,574 | INFO     | datalogger | Data Logger v2.0-HMI — Khởi động
+2026-04-06 18:43:00,574 | INFO     | datalogger | ============================================================
+2026-04-06 18:43:00,577 | INFO     | datalogger | Database initialized.
+2026-04-06 18:43:10,907 | INFO     | datalogger | ============================================================
+2026-04-06 18:43:10,907 | INFO     | datalogger | Data Logger v2.0-HMI — Khởi động
+2026-04-06 18:43:10,907 | INFO     | datalogger | ============================================================
+2026-04-06 18:43:10,909 | INFO     | datalogger | Database initialized.
+2026-04-06 18:43:11,162 | INFO     | datalogger | Giao diện HMI 1024x600 đã sẵn sàng.
+2026-04-06 18:50:40,287 | INFO     | datalogger | ============================================================
+2026-04-06 18:50:40,287 | INFO     | datalogger | Data Logger v2.0-HMI — Khởi động
+2026-04-06 18:50:40,287 | INFO     | datalogger | ============================================================
+2026-04-06 18:50:40,289 | INFO     | datalogger | Database initialized.
+2026-04-06 18:50:40,578 | INFO     | datalogger | Giao diện HMI 1024x600 đã sẵn sàng.
+2026-04-06 18:51:32,497 | INFO     | datalogger | ============================================================
+2026-04-06 18:51:32,497 | INFO     | datalogger | Data Logger v2.0-HMI — Khởi động
+2026-04-06 18:51:32,497 | INFO     | datalogger | ============================================================
+2026-04-06 18:51:32,499 | INFO     | datalogger | Database initialized.
+2026-04-06 18:51:32,768 | INFO     | datalogger | Giao diện HMI 1024x600 đã sẵn sàng.
+2026-04-06 18:51:50,888 | INFO     | datalogger | ============================================================
+2026-04-06 18:51:50,888 | INFO     | datalogger | Data Logger v2.0-HMI — Khởi động
+2026-04-06 18:51:50,888 | INFO     | datalogger | ============================================================
+2026-04-06 18:51:50,890 | INFO     | datalogger | Database initialized.
+2026-04-06 18:51:51,134 | INFO     | datalogger | Giao diện HMI 1024x600 đã sẵn sàng.

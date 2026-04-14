@@ -1,0 +1,14 @@
+[project]
+name = "data-logger"
+version = "1.0.0"
+description = "Ứng dụng Data Logger — Giám sát cảm biến Modbus, lưu trữ SQLite, gửi báo cáo sFTP"
+requires-python = ">=3.12"
+dependencies = [
+    "pyside6>=6.7",
+    "sqlmodel>=0.0.22",
+    "pymodbus[serial]>=3.7",
+    "pyserial>=3.5",
+    "asyncssh>=2.17",
+    "cryptography>=43.0",
+    "bcrypt>=4.0",
+]

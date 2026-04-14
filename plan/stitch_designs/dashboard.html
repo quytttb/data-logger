@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-variant": "#353534",
+                    "on-secondary-container": "#00622e",
+                    "primary-container": "#558dff",
+                    "error": "#ffb4ab",
+                    "surface-container-low": "#1c1b1b",
+                    "tertiary": "#ffb3ae",
+                    "inverse-primary": "#0058ca",
+                    "surface-container-highest": "#353534",
+                    "secondary-fixed": "#62ff96",
+                    "primary-fixed-dim": "#b0c6ff",
+                    "on-tertiary": "#68000c",
+                    "primary-fixed": "#d9e2ff",
+                    "tertiary-fixed": "#ffdad7",
+                    "on-surface-variant": "#c2c6d7",
+                    "surface": "#131313",
+                    "on-secondary-fixed-variant": "#005226",
+                    "tertiary-fixed-dim": "#ffb3ae",
+                    "secondary-fixed-dim": "#00e475",
+                    "on-tertiary-fixed": "#410004",
+                    "on-error-container": "#ffdad6",
+                    "on-tertiary-container": "#5c0009",
+                    "on-secondary-fixed": "#00210b",
+                    "on-surface": "#e5e2e1",
+                    "surface-tint": "#b0c6ff",
+                    "tertiary-container": "#ff5353",
+                    "secondary": "#7dffa2",
+                    "error-container": "#93000a",
+                    "on-primary-fixed": "#001945",
+                    "on-primary-fixed-variant": "#00429b",
+                    "inverse-on-surface": "#313030",
+                    "on-background": "#e5e2e1",
+                    "secondary-container": "#05e777",
+                    "surface-container": "#201f1f",
+                    "primary": "#b0c6ff",
+                    "outline-variant": "#424655",
+                    "on-error": "#690005",
+                    "on-secondary": "#003918",
+                    "on-primary": "#002d6e",
+                    "on-tertiary-fixed-variant": "#930015",
+                    "surface-bright": "#393939",
+                    "background": "#131313",
+                    "surface-container-high": "#2a2a2a",
+                    "surface-container-lowest": "#0e0e0e",
+                    "surface-dim": "#131313",
+                    "inverse-surface": "#e5e2e1",
+                    "on-primary-container": "#002661",
+                    "outline": "#8c90a0"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Inter"],
+                    "body": ["Inter"],
+                    "label": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; background-color: #131313; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .glow-secondary { box-shadow: 0 0 20px rgba(125, 255, 162, 0.1); }
+        .recessed-panel { background: #0e0e0e; border-bottom: 2px solid #42465533; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-surface text-on-surface overflow-hidden h-[600px] w-[1024px]">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 flex justify-between items-center px-6 bg-[#131313] docked full-width h-[64px] shadow-[0_0_20px_rgba(125,255,162,0.1)]">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-[#b0c6ff]" style="font-size: 32px;">sensors</span>
+<h1 class="font-['Inter'] font-bold text-[28px] tracking-tight text-[#b0c6ff]">Data Logger</h1>
+</div>
+<div class="flex items-center gap-6">
+<div class="text-xl font-black text-[#b0c6ff] uppercase tracking-widest">HỆ THỐNG</div>
+<div class="bg-surface-container-high px-4 py-1 rounded text-[#b0c6ff] font-mono font-bold border border-outline-variant/20">
+                12:45:30
+            </div>
+</div>
+</header>
+<!-- NavigationDrawer -->
+<nav class="fixed left-0 top-[64px] h-[calc(100%-64px)] w-[240px] flex flex-col pt-4 bg-[#1c1b1b] border-r border-[#424655]/20">
+<!-- Dashboard (Active) -->
+<a class="flex items-center gap-4 px-4 h-[48px] bg-[#558dff] text-[#131313] rounded-lg mx-2 my-1 font-['Inter'] font-semibold text-[16px] uppercase transition-all duration-100" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+<span>Tổng quan</span>
+</a>
+<!-- History -->
+<a class="flex items-center gap-4 px-4 h-[48px] text-[#b0c6ff] opacity-70 hover:opacity-100 mx-2 my-1 font-['Inter'] font-semibold text-[16px] uppercase hover:bg-[#2a2a2a] transition-all duration-100" href="#">
+<span class="material-symbols-outlined">history</span>
+<span>Lịch sử</span>
+</a>
+<!-- Settings -->
+<a class="flex items-center gap-4 px-4 h-[48px] text-[#b0c6ff] opacity-70 hover:opacity-100 mx-2 my-1 font-['Inter'] font-semibold text-[16px] uppercase hover:bg-[#2a2a2a] transition-all duration-100" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span>Cài đặt</span>
+</a>
+<div class="mt-auto p-4 opacity-30 text-[10px] tracking-widest uppercase">
+            v4.2.0-STABLE
+        </div>
+</nav>
+<!-- Main Content Canvas -->
+<main class="ml-[240px] mt-[64px] p-6 h-[calc(600px-64px)] flex flex-col gap-6">
+<!-- Large Stat Cards Grid -->
+<div class="grid grid-cols-2 gap-6 h-full max-h-[380px]">
+<!-- Card 1: MỨC DẦU -->
+<div class="bg-surface-container-low rounded-lg p-6 flex flex-col justify-between border-l-4 border-primary shadow-lg">
+<div class="flex justify-between items-start">
+<span class="font-bold text-on-surface-variant tracking-wider uppercase text-sm">MỨC DẦU</span>
+<span class="material-symbols-outlined text-primary opacity-50">oil_barrel</span>
+</div>
+<div class="flex items-baseline gap-2">
+<span class="text-[84px] font-black leading-none tracking-tighter text-on-surface">125.4</span>
+<span class="text-2xl font-bold text-primary-container">mg/L</span>
+</div>
+<div class="flex justify-between items-center mt-2 border-t border-outline-variant/10 pt-2">
+<span class="text-[10px] text-outline uppercase font-bold tracking-widest">Cập nhật: 12:45:28</span>
+<div class="flex gap-1">
+<div class="w-1 h-3 bg-primary/20"></div>
+<div class="w-1 h-3 bg-primary/40"></div>
+<div class="w-1 h-3 bg-primary/60"></div>
+<div class="w-1 h-3 bg-primary"></div>
+</div>
+</div>
+</div>
+<!-- Card 2: NHIỆT ĐỘ -->
+<div class="bg-surface-container-low rounded-lg p-6 flex flex-col justify-between border-l-4 border-secondary shadow-lg">
+<div class="flex justify-between items-start">
+<span class="font-bold text-on-surface-variant tracking-wider uppercase text-sm">NHIỆT ĐỘ</span>
+<span class="material-symbols-outlined text-secondary opacity-50">thermostat</span>
+</div>
+<div class="flex items-baseline gap-2">
+<span class="text-[84px] font-black leading-none tracking-tighter text-on-surface">82.1</span>
+<span class="text-2xl font-bold text-secondary">°C</span>
+</div>
+<div class="flex justify-between items-center mt-2 border-t border-outline-variant/10 pt-2">
+<span class="text-[10px] text-outline uppercase font-bold tracking-widest">Cập nhật: 12:45:29</span>
+<div class="flex gap-1">
+<div class="w-1 h-3 bg-secondary/20"></div>
+<div class="w-1 h-3 bg-secondary/40"></div>
+<div class="w-1 h-3 bg-secondary/60"></div>
+<div class="w-1 h-3 bg-secondary"></div>
+</div>
+</div>
+</div>
+<!-- Card 3: ÁP SUẤT -->
+<div class="bg-surface-container-low rounded-lg p-6 flex flex-col justify-between border-l-4 border-primary-container shadow-lg">
+<div class="flex justify-between items-start">
+<span class="font-bold text-on-surface-variant tracking-wider uppercase text-sm">ÁP SUẤT</span>
+<span class="material-symbols-outlined text-primary-container opacity-50">compress</span>
+</div>
+<div class="flex items-baseline gap-2">
+<span class="text-[84px] font-black leading-none tracking-tighter text-on-surface">4.82</span>
+<span class="text-2xl font-bold text-primary-container">BAR</span>
+</div>
+<div class="flex justify-between items-center mt-2 border-t border-outline-variant/10 pt-2">
+<span class="text-[10px] text-outline uppercase font-bold tracking-widest">Cập nhật: 12:45:25</span>
+<div class="flex gap-1">
+<div class="w-1 h-3 bg-primary-container/20"></div>
+<div class="w-1 h-3 bg-primary-container/40"></div>
+<div class="w-1 h-3 bg-primary-container/60"></div>
+<div class="w-1 h-3 bg-primary-container"></div>
+</div>
+</div>
+</div>
+<!-- Card 4: LƯU LƯỢNG -->
+<div class="bg-surface-container-low rounded-lg p-6 flex flex-col justify-between border-l-4 border-outline-variant shadow-lg">
+<div class="flex justify-between items-start">
+<span class="font-bold text-on-surface-variant tracking-wider uppercase text-sm">LƯU LƯỢNG</span>
+<span class="material-symbols-outlined text-outline opacity-50">air</span>
+</div>
+<div class="flex items-baseline gap-2">
+<span class="text-[84px] font-black leading-none tracking-tighter text-on-surface">912</span>
+<span class="text-2xl font-bold text-outline">m3/h</span>
+</div>
+<div class="flex justify-between items-center mt-2 border-t border-outline-variant/10 pt-2">
+<span class="text-[10px] text-outline uppercase font-bold tracking-widest">Cập nhật: 12:45:20</span>
+<div class="flex gap-1">
+<div class="w-1 h-3 bg-outline/20"></div>
+<div class="w-1 h-3 bg-outline/40"></div>
+<div class="w-1 h-3 bg-outline/60"></div>
+<div class="w-1 h-3 bg-outline"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Bottom Action & Status Bar -->
+<div class="mt-auto bg-surface-container-lowest h-[64px] rounded-lg flex items-center justify-between px-6 border-t border-outline-variant/10">
+<div class="flex gap-4">
+<!-- Modbus Badge -->
+<div class="flex items-center gap-3 bg-surface-container-high px-4 py-2 rounded border border-secondary/20 min-w-[140px] h-[48px]">
+<span class="w-3 h-3 rounded-full bg-secondary shadow-[0_0_10px_#7dffa2]"></span>
+<span class="text-sm font-black uppercase text-secondary">Modbus: OK</span>
+</div>
+<!-- FTP Badge -->
+<div class="flex items-center gap-3 bg-surface-container-high px-4 py-2 rounded border border-secondary/20 min-w-[140px] h-[48px]">
+<span class="w-3 h-3 rounded-full bg-secondary shadow-[0_0_10px_#7dffa2]"></span>
+<span class="text-sm font-black uppercase text-secondary">FTP: OK</span>
+</div>
+<!-- Storage Badge -->
+<div class="flex items-center gap-3 bg-surface-container-high px-4 py-2 rounded border border-amber-400/20 min-w-[160px] h-[48px]">
+<div class="flex-1 bg-surface-container-low h-2 rounded-full overflow-hidden">
+<div class="bg-yellow-400 h-full" style="width: 85%"></div>
+</div>
+<span class="text-sm font-black uppercase text-yellow-400">Disk: 85%</span>
+</div>
+</div>
+<div class="flex gap-2">
+<button class="h-[48px] w-[120px] bg-primary text-on-primary font-black uppercase text-xs rounded hover:bg-primary-container transition-colors flex items-center justify-center gap-2"><span class="material-symbols-outlined text-[18px]">sync</span>THỦ CÔNG</button>
+<button class="h-[48px] w-[48px] bg-tertiary-container text-on-tertiary-container rounded flex items-center justify-center hover:opacity-90">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">emergency_home</span>
+</button>
+</div>
+</div>
+</main>
+<!-- Contextual FAB (Hidden as per rule on Details/Dashboard if not primary action, but included here for "Add Sensor" logic as secondary fallback if requested) -->
+<!-- Suppression: Suppressed for strict HMI dashboard view -->
+</body></html>
