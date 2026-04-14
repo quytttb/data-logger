@@ -200,7 +200,7 @@ class DashboardController(QObject):
         session = get_session()
         try:
             sensors = list(
-                session.exec(select(Sensor).where(Sensor.active == True)).all()
+                session.exec(select(Sensor).where(Sensor.active)).all()
             )
             self._model.load_sensors(sensors)
         except Exception as e:
@@ -227,7 +227,7 @@ class DashboardController(QObject):
                 return
 
             sensors = list(
-                session.exec(select(Sensor).where(Sensor.active == True)).all()
+                session.exec(select(Sensor).where(Sensor.active)).all()
             )
             if not sensors:
                 self.messageSent.emit(

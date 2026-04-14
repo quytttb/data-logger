@@ -1,7 +1,12 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
 [project]
 name = "data-logger"
 version = "1.0.0"
 description = "Ứng dụng Data Logger — Giám sát cảm biến Modbus, lưu trữ SQLite, gửi báo cáo sFTP"
+readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "pyside6>=6.7",
@@ -11,4 +16,35 @@ dependencies = [
     "asyncssh>=2.17",
     "cryptography>=43.0",
     "bcrypt>=4.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.8.0",
+    "build>=1.2",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["core", "models", "ui", "workers"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"main.py" = "main.py"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+exclude = [
+    ".git",
+    ".github",
+    ".venv",
+    "plan",
+    "tests",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "W"]
+ignore = [
+    "E501",
+    "W293",
 ]

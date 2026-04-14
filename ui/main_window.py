@@ -3,7 +3,7 @@
 import logging
 from datetime import datetime
 
-from PySide6.QtCore import QThread, Slot, QTimer, Qt
+from PySide6.QtCore import QThread, Slot, QTimer
 from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import (
     QHBoxLayout,
@@ -256,9 +256,12 @@ class MainWindow(QMainWindow):
             self._set_status("FTP FAIL", "#ffd740")
 
     def closeEvent(self, event: QCloseEvent) -> None:
-        if self._modbus_worker: self._modbus_worker.stop()
-        if self._db_worker: self._db_worker.stop()
-        if self._ftp_worker: self._ftp_worker.stop()
+        if self._modbus_worker:
+            self._modbus_worker.stop()
+        if self._db_worker:
+            self._db_worker.stop()
+        if self._ftp_worker:
+            self._ftp_worker.stop()
         for t in [self._thread_modbus, self._thread_db, self._thread_ftp]:
             if t and t.isRunning():
                 t.quit()

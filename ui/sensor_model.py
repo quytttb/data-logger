@@ -4,7 +4,6 @@ Cung cấp model cho QML ListView hiển thị danh sách cảm biến.
 Hỗ trợ add / update / remove qua @Slot gọi từ QML.
 """
 
-import json
 import logging
 from typing import Any
 

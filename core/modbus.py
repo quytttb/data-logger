@@ -5,7 +5,7 @@ Supports both RTU (serial) and TCP connections.
 import logging
 import struct
 from abc import ABC, abstractmethod
-from typing import Any, List, Optional, Union
+from typing import Any, List, Union
 
 from pymodbus.client import ModbusSerialClient, ModbusTcpClient
 
@@ -50,7 +50,6 @@ class ModbusBase(ABC):
 
         # Handle parameter compatibility for pymodbus 3.x vs older versions
         kwargs = {"count": count}
-        import pymodbus
         # 3.0+ uses slave= or device_id= depending on minor version, try inspection
         try:
             import inspect

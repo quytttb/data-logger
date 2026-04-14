@@ -6,9 +6,10 @@ Format file TXT (5 trường mỗi dòng):
 
 import logging
 from datetime import datetime
-logger = logging.getLogger("datalogger.txt_generator")
 
 from core._paths import DATA_DIR
+
+logger = logging.getLogger("datalogger.txt_generator")
 REPORT_DIR = DATA_DIR / "reports"
 REPORT_DIR.mkdir(parents=True, exist_ok=True)
 

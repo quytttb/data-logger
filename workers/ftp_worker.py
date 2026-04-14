@@ -4,7 +4,6 @@ Chạy trên QThread riêng biệt, sử dụng asyncssh để đẩy file
 lên FTP Server Sở TNMT. Tự động retry các file pending/failed.
 """
 
-import asyncio
 import logging
 from datetime import datetime, timedelta
 

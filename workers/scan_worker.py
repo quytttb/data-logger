@@ -31,7 +31,7 @@ class ScanWorker(QThread):
                     value_str = str(value)
                     self.result.emit(addr, value_str)
                     found += 1
-            except Exception as e:
+            except Exception:
                 pass
         self.finished_scan.emit(found)
     def stop(self):
