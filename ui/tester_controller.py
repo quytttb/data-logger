@@ -48,7 +48,7 @@ class TesterController(QObject):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.modbus          = create_modbus_client("RTU")
+        self.modbus = create_modbus_client()
         self._is_connected   = False
         self._is_connecting  = False
         self._is_scanning    = False

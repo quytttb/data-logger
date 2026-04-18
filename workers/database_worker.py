@@ -97,11 +97,13 @@ class DatabaseWorker(QObject):
 
     def _batch_insert(self, batch: list[SensorData]) -> None:
         """Ghi batch bản ghi vào DB trong 1 transaction."""
+        session = None
         try:
             session = get_session()
             session.add_all(batch)
             session.commit()
             session.close()
+            session = None
 
             count = len(batch)
             self.records_saved.emit(count)
@@ -111,9 +113,12 @@ class DatabaseWorker(QObject):
             error_msg = f"Lỗi batch INSERT: {e}"
             logger.error(error_msg, exc_info=True)
             self.db_error.emit(error_msg)
-            # Rollback nếu có lỗi
-            try:
-                session.rollback()
-                session.close()
-            except Exception:
-                pass
+            if session is not None:
+                try:
+                    session.rollback()
+                except Exception:
+                    pass
+                try:
+                    session.close()
+                except Exception:
+                    pass

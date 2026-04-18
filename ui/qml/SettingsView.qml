@@ -34,13 +34,12 @@ Rectangle {
 
     Component.onCompleted: { sensorModel.refresh() }
 
-    // Ngôn ngữ: main.py nối settingsController.uiLocaleChanged → install_locale + retranslate (kể cả khi chỉ đổi ComboBox).
 
     // ── Sensor Add/Edit Dialog ────────────────────────────────────────────
     Popup {
         id: sensorDialog
         anchors.centerIn: parent
-        width: 480; height: 500
+        width: 520; height: 580
         modal: true; focus: true
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
         property int editId: -1
@@ -83,8 +82,119 @@ Rectangle {
                     Text { text: qsTr("Endian:"); color: Theme.textSecondary }
                     ComboBox { id: dDataFmt; model: ["AB", "BA", "ABCD", "CDAB"]; Layout.fillWidth: true }
 
-                    Text { text: qsTr("Coefficients:"); color: Theme.textSecondary }
-                    TextField { id: dCoeff; text: "{}"; Layout.fillWidth: true; color: Theme.textPrimary; background: Rectangle { color: Theme.bgInput; radius: Theme.radiusTiny } }
+                    Text { text: qsTr("Scaling mode:"); color: Theme.textSecondary }
+                    ComboBox {
+                        id: dScalingMode
+                        Layout.fillWidth: true
+                        model: [
+                            qsTr("No scaling (raw value)"),
+                            qsTr("Linear (y = ax + b)"),
+                            qsTr("Two-point mapping"),
+                            qsTr("Advanced (JSON)")
+                        ]
+                    }
+
+                    Item { Layout.columnSpan: 2; Layout.fillWidth: true; implicitHeight: scalingStack.implicitHeight + 4
+                        StackLayout {
+                            id: scalingStack
+                            width: parent.width
+                            currentIndex: dScalingMode.currentIndex
+
+                            Item { }
+
+                            RowLayout {
+                                spacing: 8
+                                Text { text: qsTr("Gain (a):"); color: Theme.textSecondary }
+                                TextField {
+                                    id: dLinearA
+                                    text: "1"
+                                    Layout.fillWidth: true
+                                    color: Theme.textPrimary
+                                    inputMethodHints: Qt.ImhFormattedNumbersOnly
+                                    background: Rectangle { color: Theme.bgInput; radius: Theme.radiusTiny }
+                                }
+                                Text { text: qsTr("Offset (b):"); color: Theme.textSecondary }
+                                TextField {
+                                    id: dLinearB
+                                    text: "0"
+                                    Layout.fillWidth: true
+                                    color: Theme.textPrimary
+                                    inputMethodHints: Qt.ImhFormattedNumbersOnly
+                                    background: Rectangle { color: Theme.bgInput; radius: Theme.radiusTiny }
+                                }
+                            }
+
+                            ColumnLayout {
+                                spacing: 6
+                                width: parent.width
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 8
+                                    Text { text: qsTr("Raw Min:"); color: Theme.textSecondary; Layout.preferredWidth: 88 }
+                                    TextField {
+                                        id: dRawMin
+                                        text: "4000"
+                                        Layout.fillWidth: true
+                                        color: Theme.textPrimary
+                                        inputMethodHints: Qt.ImhFormattedNumbersOnly
+                                        background: Rectangle { color: Theme.bgInput; radius: Theme.radiusTiny }
+                                    }
+                                    Text { text: qsTr("Raw Max:"); color: Theme.textSecondary; Layout.preferredWidth: 88 }
+                                    TextField {
+                                        id: dRawMax
+                                        text: "20000"
+                                        Layout.fillWidth: true
+                                        color: Theme.textPrimary
+                                        inputMethodHints: Qt.ImhFormattedNumbersOnly
+                                        background: Rectangle { color: Theme.bgInput; radius: Theme.radiusTiny }
+                                    }
+                                }
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 8
+                                    Text { text: qsTr("Scale Min:"); color: Theme.textSecondary; Layout.preferredWidth: 88 }
+                                    TextField {
+                                        id: dScaleMin
+                                        text: "4"
+                                        Layout.fillWidth: true
+                                        color: Theme.textPrimary
+                                        inputMethodHints: Qt.ImhFormattedNumbersOnly
+                                        background: Rectangle { color: Theme.bgInput; radius: Theme.radiusTiny }
+                                    }
+                                    Text { text: qsTr("Scale Max:"); color: Theme.textSecondary; Layout.preferredWidth: 88 }
+                                    TextField {
+                                        id: dScaleMax
+                                        text: "20"
+                                        Layout.fillWidth: true
+                                        color: Theme.textPrimary
+                                        inputMethodHints: Qt.ImhFormattedNumbersOnly
+                                        background: Rectangle { color: Theme.bgInput; radius: Theme.radiusTiny }
+                                    }
+                                }
+                            }
+
+                            ColumnLayout {
+                                spacing: 4
+                                width: parent.width
+                                Text {
+                                    text: qsTr("Coefficient JSON (polynomial / custom):")
+                                    wrapMode: Text.WordWrap
+                                    color: Theme.textSecondary
+                                    font.pixelSize: 12
+                                    Layout.fillWidth: true
+                                }
+                                TextField {
+                                    id: dCoeffJson
+                                    text: "{}"
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 72
+                                    color: Theme.textPrimary
+                                    wrapMode: Text.WrapAnywhere
+                                    background: Rectangle { color: Theme.bgInput; radius: Theme.radiusTiny }
+                                }
+                            }
+                        }
+                    }
 
                     Text { text: qsTr("Poll interval (s):"); color: Theme.textSecondary }
                     SpinBox { id: dPollInterval; from: 1; to: 3600; value: 3; Layout.fillWidth: true }
@@ -102,14 +212,24 @@ Rectangle {
                 Button {
                     text: sensorDialog.editId < 0 ? qsTr("Add") : qsTr("Save"); Layout.fillWidth: true
                     onClicked: {
+                        var coeff = settingsController.buildCoefficientJson(
+                            dScalingMode.currentIndex,
+                            dCoeffJson.text,
+                            dScalingMode.currentIndex === 1 ? dLinearA.text : dRawMin.text,
+                            dScalingMode.currentIndex === 1 ? dLinearB.text : dRawMax.text,
+                            dScaleMin.text,
+                            dScaleMax.text
+                        )
+                        if (coeff.length === 0)
+                            return
                         if (sensorDialog.editId < 0) {
                             sensorModel.add_sensor(dName.text, dUnit.text, dSlave.value, dAddr.value,
                                 dRegType.currentText, dDataType.currentText, dDataFmt.currentText,
-                                dCoeff.text, dPollInterval.value, dReportIdx.value, dActive.checked)
+                                coeff, dPollInterval.value, dReportIdx.value, dActive.checked)
                         } else {
                             sensorModel.update_sensor(sensorDialog.editId, dName.text, dUnit.text,
                                 dSlave.value, dAddr.value, dRegType.currentText, dDataType.currentText,
-                                dDataFmt.currentText, dCoeff.text, dPollInterval.value, dReportIdx.value,
+                                dDataFmt.currentText, coeff, dPollInterval.value, dReportIdx.value,
                                 dActive.checked)
                         }
                         sensorDialog.close()
@@ -123,7 +243,11 @@ Rectangle {
         sensorDialog.editId = -1
         dName.text = ""; dUnit.text = ""; dSlave.value = 1; dAddr.value = 0
         dRegType.currentIndex = 0; dDataType.currentIndex = 0; dDataFmt.currentIndex = 0
-        dCoeff.text = "{}"; dPollInterval.value = 3; dReportIdx.value = 0; dActive.checked = true
+        dScalingMode.currentIndex = 0
+        dLinearA.text = "1"; dLinearB.text = "0"
+        dRawMin.text = "4000"; dRawMax.text = "20000"; dScaleMin.text = "4"; dScaleMax.text = "20"
+        dCoeffJson.text = "{}"
+        dPollInterval.value = 3; dReportIdx.value = 0; dActive.checked = true
         sensorDialog.open()
     }
     function openEditSensor(idx) {
@@ -134,7 +258,16 @@ Rectangle {
         dRegType.currentIndex = dRegType.model.indexOf(s.registerType)
         dDataType.currentIndex = dDataType.model.indexOf(s.dataType)
         dDataFmt.currentIndex = dDataFmt.model.indexOf(s.dataFormat)
-        dCoeff.text = s.coefficient; dPollInterval.value = s.pollInterval || 3
+        var ui = settingsController.coefficientUiState(s.coefficient)
+        dScalingMode.currentIndex = Math.min(ui.mode, dScalingMode.count - 1)
+        dLinearA.text = ui.linearA !== undefined ? String(ui.linearA) : "1"
+        dLinearB.text = ui.linearB !== undefined ? String(ui.linearB) : "0"
+        dRawMin.text = ui.rawMin !== undefined ? String(ui.rawMin) : "4000"
+        dRawMax.text = ui.rawMax !== undefined ? String(ui.rawMax) : "20000"
+        dScaleMin.text = ui.scaleMin !== undefined ? String(ui.scaleMin) : "4"
+        dScaleMax.text = ui.scaleMax !== undefined ? String(ui.scaleMax) : "20"
+        dCoeffJson.text = ui.legacyJson !== undefined ? String(ui.legacyJson) : "{}"
+        dPollInterval.value = s.pollInterval || 3
         dReportIdx.value = s.reportIndex; dActive.checked = s.active
         sensorDialog.open()
     }
@@ -224,19 +357,7 @@ Rectangle {
                                 columns: 4; Layout.fillWidth: true
                                 columnSpacing: 12; rowSpacing: 10
 
-                                Text { text: qsTr("UI language:"); color: Theme.textSecondary; Layout.alignment: Qt.AlignRight | Qt.AlignVCenter }
-                                ComboBox {
-                                    id: langCombo
-                                    Layout.columnSpan: 3
-                                    Layout.fillWidth: true
-                                    model: [qsTr("Vietnamese"), qsTr("English")]
-                                    currentIndex: settingsController.uiLocale === "en" ? 1 : 0
-                                    onActivated: function (ix) {
-                                        settingsController.uiLocale = (ix === 1) ? "en" : "vi"
-                                    }
-                                }
-
-                                Text { text: qsTr("Station code:"); color: Theme.textSecondary; Layout.alignment: Qt.AlignRight | Qt.AlignVCenter }
+                                Text { text: "Station code:"; color: Theme.textSecondary; Layout.alignment: Qt.AlignRight | Qt.AlignVCenter }
                                 TextField {
                                     Layout.fillWidth: true; color: Theme.textPrimary
                                     background: Rectangle { color: Theme.bgInput; radius: Theme.radiusTiny }

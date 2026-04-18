@@ -1,15 +1,34 @@
 """
-Modbus Communication Module.
-Supports both RTU (serial) and TCP connections.
+Modbus Communication Module — Modbus RTU (serial) only.
+
+Modbus TCP is not supported in this version; it may be added later if needed.
 """
 import logging
 import struct
 from abc import ABC, abstractmethod
 from typing import Any, List, Union
 
-from pymodbus.client import ModbusSerialClient, ModbusTcpClient
+from pymodbus.client import ModbusSerialClient
 
 logger = logging.getLogger(__name__)
+
+# DB / ModbusWorker dùng "holding" | "input"; Modbus Tester (QML) dùng nhãn đầy đủ.
+_REG_TYPE_ALIASES: dict[str, str] = {
+    "holding": "Holding Register",
+    "hr": "Holding Register",
+    "input": "Input Register",
+    "ir": "Input Register",
+    "coil": "Coil",
+    "discrete input": "Discrete Input",
+    "discrete_input": "Discrete Input",
+    "di": "Discrete Input",
+}
+
+
+def _normalize_register_type(reg_type: str) -> str:
+    """Chuẩn hoá loại thanh ghi về nhãn dùng nội bộ (khớp func_map)."""
+    key = str(reg_type).strip()
+    return _REG_TYPE_ALIASES.get(key.lower(), key)
 
 
 class ModbusBase(ABC):
@@ -37,6 +56,8 @@ class ModbusBase(ABC):
         """Read Modbus data and decode."""
         if not self.is_connected():
             raise ConnectionError("Device not connected")
+
+        reg_type = _normalize_register_type(reg_type)
 
         func_map = {
             "Holding Register": "read_holding_registers",
@@ -79,6 +100,8 @@ class ModbusBase(ABC):
         """Write Modbus data."""
         if not self.is_connected():
             raise ConnectionError("Device not connected")
+
+        reg_type = _normalize_register_type(reg_type)
 
         kwargs = {}
         try:
@@ -189,43 +212,6 @@ class ModbusRTU(ModbusBase):
             return False
 
 
-class ModbusTCP(ModbusBase):
-    """Modbus TCP client."""
-    
-    def connect(
-        self,
-        host: str,
-        port: int = 502,
-        timeout: int = 5
-    ) -> bool:
-        """
-        Connect to a Modbus TCP device.
-        
-        Args:
-            host: IP address or hostname
-            port: TCP port (default: 502)
-            timeout: Connection timeout in seconds (default: 5)
-            
-        Returns:
-            True if connected successfully
-        """
-        if self.client and self.client.connected:
-            self.client.close()
-
-        self.client = ModbusTcpClient(
-            host=host,
-            port=int(port),
-            timeout=timeout
-        )
-        
-        if self.client.connect():
-            logger.info(f"✅ Connected to TCP device at {host}:{port}")
-            return True
-        else:
-            logger.error(f"❌ Failed to connect to {host}:{port}")
-            return False
-
-
 # Backward compatibility alias
 class Modbus(ModbusRTU):
     """
@@ -235,17 +221,10 @@ class Modbus(ModbusRTU):
     pass
 
 
-def create_modbus_client(modbus_type: str = "RTU") -> ModbusBase:
-    """
-    Factory function to create the appropriate Modbus client.
-    
-    Args:
-        modbus_type: "RTU" or "TCP"
-        
-    Returns:
-        ModbusRTU or ModbusTCP instance
-    """
-    if modbus_type.upper() == "TCP":
-        return ModbusTCP()
-    else:
-        return ModbusRTU()
+def create_modbus_client(modbus_type: str = "RTU") -> ModbusRTU:
+    """Return a Modbus RTU (serial) client. TCP is not supported (may be added later)."""
+    if (modbus_type or "RTU").upper() != "RTU":
+        raise ValueError(
+            "Chỉ hỗ trợ Modbus RTU (RS-485/serial). Modbus TCP chưa triển khai — có thể bổ sung sau."
+        )
+    return ModbusRTU()

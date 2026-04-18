@@ -165,7 +165,7 @@ flowchart TD
 ```
 
 ### DFD Mức 2 (Phân rã Process 4.0 - Kết xuất sFTP)
-Phân rã chi tiết quá trình `4.0 Kết xuất và gửi sFTP`. Đây là tiến trình lập lịch chạy ngầm qua Asyncz, chịu trách nhiệm sinh file báo cáo và đẩy lên máy chủ Sở TNMT.
+Phân rã chi tiết quá trình `4.0 Kết xuất và gửi sFTP`. Đây là tiến trình lập lịch chạy ngầm qua vòng lặp định kỳ, chịu trách nhiệm sinh file báo cáo và đẩy lên máy chủ Sở TNMT.
 
 ```mermaid
 flowchart TD
@@ -191,7 +191,7 @@ flowchart TD
 
 ## 2.3 Sơ đồ Hoạt động (Activity Diagram: Vòng lặp Core Kháng lỗi)
 
-Đây là điểm chốt yếu được đúc kết từ repo tham chiếu `Victron_Modbus_TCP`. Tiến trình thu thập dữ liệu là xương sống, phải bao bọc được mọi loại rủi ro nhiễu đường truyền.
+Đây là điểm chốt yếu được đúc kết từ repo tham chiếu `Victron_Modbus_TCP` (tên repo — không ám chỉ bắt buộc dùng TCP trong ứng dụng này). **Code data-logger hiện tại chỉ Modbus RTU** (serial); Modbus TCP có thể bổ sung sau. Tiến trình thu thập dữ liệu là xương sống, phải bao bọc được mọi loại rủi ro nhiễu đường truyền.
 
 ```mermaid
 flowchart LR
@@ -230,75 +230,60 @@ flowchart TD
         InitModbus --> SetupWorker(Khởi tạo & Chạy QThread Worker):::action
     end
     
-    subgraph WorkerThread [Modbus Polling Thread]
+    subgraph WorkerThread [Modbus Polling Thread — workers/modbus_worker.py]
         SetupWorker --> CheckStop{" "}:::decision
         
         CheckStop -- "[Có lệnh Dừng]" --> EndNode(((" ")))
-        CheckStop -- "[Tiếp tục]" --> ReadReg("Gọi read_holding_registers / input_registers"):::action
+        CheckStop -- "[Tiếp tục]" --> ConnCheck{"Client serial<br>đã kết nối?"}:::decision
+        
+        ConnCheck -- "[Không]" --> EmitConn(Phát connection_changed + modbus_error):::action
+        EmitConn --> BackoffConn("Nghỉ exponential backoff<br>1s → 2s → … tối đa 30s"):::action
+        BackoffConn --> TryReconnect("Thử connect ModbusSerialClient lại"):::action
+        TryReconnect --> CheckStop
+        
+        ConnCheck -- "[Có]" --> ReadReg("Gọi read_holding_registers / input_registers"):::action
         
         ReadReg --> CheckPkt{" "}:::decision
         
-        %% Nhánh Lỗi
-        CheckPkt -- "[Lỗi Timeout / CRC]" --> EmitErr(Phát QtSignal 'modbus_error'):::action
-        EmitErr --> CheckRetry{" "}:::decision
+        %% Lỗi từng lần đọc: không lặp ngay trong cùng chu kỳ; chu kỳ sau đọc lại theo poll_interval
+        CheckPkt -- "[Lỗi Timeout / CRC / isError]" --> EmitErr(Phát modbus_error — bỏ mẫu chu kỳ này):::action
+        EmitErr --> Sleep(Nghỉ theo poll_interval / lịch cảm biến):::action
         
-        CheckRetry -- "[Retry ≤ 3 lần]" --> Backoff("Exponential Backoff<br>Tăng thời gian chờ"):::action
-        Backoff --> CheckStop
-        
-        CheckRetry -- "[Retry > 3 lần]" --> SkipCycle(Bỏ qua chu kỳ):::action
-        SkipCycle --> Sleep
-        
-        %% Nhánh Thành công
         CheckPkt -- "[Gói tin Hợp lệ]" --> ConvertSigned(Dịch bit signed/unsigned):::action
         ConvertSigned --> ApplyFormula(Áp hệ số & công thức):::action
-        ApplyFormula --> EmitLive(Phát QtSignal 'data_live' cho GUI):::action
-        EmitLive --> QueueDB(Đẩy vào Queue lưu Database an toàn):::action
-        QueueDB --> Sleep(Nghỉ theo 'poll_interval'):::action
+        ApplyFormula --> EmitLive(Phát QtSignal data_ready cho GUI):::action
+        EmitLive --> QueueDB(Controller xếp hàng ghi Database):::action
+        QueueDB --> Sleep
         
-        %% Vòng lặp khép kín
         Sleep --> CheckStop
     end
 ```
 
+**Khớp triển khai:** không có biến đếm “retry ≤ 3”. **Mất kết nối serial:** thử lại **không giới hạn số lần**, chỉ tăng **thời gian chờ** (nhân đôi, trần 30s) rồi `connect()` lại. **Lỗi một frame đọc:** báo `modbus_error`, không retry tức thì; lần đọc kế tiếp theo **chu kỳ poll** của cảm biến (hành vi tự nhiên “thử lại theo thời gian”, không cần đếm 1–2–3).
+
 ## 2.4 Cấu trúc Máy Trạng thái Giao diện (System State Machine)
 
-Trạng thái toàn cục (State) của thiết bị trên màn hình PySide6 được thiết kế dựa trên màu sắc nhãn dán, nhằm giúp nhân viên cơ sở và người trực màn hình dễ dàng nắm bắt hiện trạng:
-
-```mermaid
-flowchart TD
-    subgraph Legend [Chú thích Ký hiệu]
-        direction LR
-        ST[Tên trạng thái - Màu sắc]
-        TR -- "Sự kiện kích hoạt" --> TR2[Trạng thái đích]
-    end
-```
+Trạng thái toàn cục (State) của thiết bị trên màn hình PySide6 được thiết kế dựa trên các mode (IDLE, OK, ERR) và hiển thị màu sắc tương ứng:
 
 ```mermaid
 stateDiagram-v2
-    [*] --> KhoiTao
-    state "Khởi tạo Hệ thống - VÀNG" as KhoiTao
+    [*] --> DUNG
+    state "Dừng Polling / Sẵn sàng - VÀNG" as DUNG
     state "Hoạt động Tiêu chuẩn - XANH LÁ" as BinhThuong
-    state "Rớt Cảm biến - CAM" as MatCamBien
-    state "Lỗi Đường truyền Sở - ĐỎ" as MatMang
-    state "Đang Hiệu chuẩn - XANH DƯƠNG" as HieuChuan
-
-    KhoiTao --> BinhThuong: Kết nối Modbus + sFTP thành công
-    BinhThuong --> MatCamBien: Timeout Modbus ≥ 3 chu kỳ
-    MatCamBien --> BinhThuong: Modbus phục hồi
-    BinhThuong --> MatMang: sFTP timeout (không gửi được 5 phút)
-    MatMang --> BinhThuong: sFTP kết nối lại thành công
-    MatCamBien --> MatMang: sFTP cũng mất kết nối
-    MatMang --> MatCamBien: sFTP phục hồi nhưng Modbus vẫn lỗi
-    BinhThuong --> HieuChuan: Nhân viên kích hoạt chế độ hiệu chuẩn
-    HieuChuan --> BinhThuong: Hoàn tất hiệu chuẩn
-    [*] --> KhoiTao: Reboot / Power-on
+    state "Lỗi Modbus / Rớt Cảm biến - ĐỎ" as Loi
+    
+    DUNG --> BinhThuong: Bắt đầu Polling & Kết nối thành công
+    BinhThuong --> Loi: Lỗi đọc (Timeout/CRC) / Rớt kết nối
+    Loi --> BinhThuong: Modbus phục hồi
+    BinhThuong --> DUNG: Người dùng ấn Stop
+    Loi --> DUNG: Người dùng ấn Stop
+    [*] --> DUNG: Khởi động hệ thống
 ```
 
 **Giải thích các trạng thái:**
-- **Khởi tạo (VÀNG)**: Ứng dụng lần đầu load lên, cấp quyền file system và thăm dò cấu hình chân ngõ ra tự động thông qua Udev.
-- **Hoạt động Tiêu chuẩn (XANH LÁ)**: Thanh ghi trả dữ liệu chuẩn, DB ghi đúng chu kỳ, và tiến trình Asyncz báo cáo thành công file kỳ 5 phút trước lên sFTP.
-- **Rớt Cảm Biến (CAM)**: Không nhận được data Modbus liên tục 5 giây. Giá trị tại GUI hiển thị `---` hoặc `N/A`, DB tự động đắp mã lỗi hoặc `NULL` tương ứng theo Thông tư môi trường.
-- **Lỗi Đường Truyền Sở (ĐỎ)**: Trạm vẫn đo đạc và lưu xuống SQLite bình thường. Tuy nhiên báo động đỏ nháy vì Thread Asyncssh báo Timeout kết nối sFTP. Hệ thống đẩy toàn bộ báo cáo vào hàng đợi đệm cục bộ chờ phục hồi.
+- **Dừng Polling (VÀNG)**: `STATUS_IDLE`. Ứng dụng ở trạng thái chờ lệnh, không thu thập dữ liệu Modbus.
+- **Hoạt động Tiêu chuẩn (XANH LÁ)**: `STATUS_OK`. Đang polling liên tục và kết nối ổn định. Bảng dữ liệu được update realtime.
+- **Lỗi Modbus (ĐỎ)**: `STATUS_ERR`. Không nhận được data từ cảm biến hoặc mất kết nối serial. Giao diện báo lỗi nhưng luồng worker vẫn tiếp tục retry vòng lặp (backoff).
 
 ## 2.5 Đặc tả Ràng buộc Dữ liệu Lõi (Database Integrity)
 

@@ -29,7 +29,7 @@ Xây dựng trên nền tảng **Vue 3 / Nuxt 3** với TypeScript.
 Là một agent/worker chạy sát phần cứng (Raspberry Pi/Industrial PC), có nhiệm vụ thu thập, tạm lưu và đẩy dữ liệu lên hệ thống Cloud.
 
 ### 2.1. Cấu trúc Core Python (`local/`)
-*   **`main.py` & `modbus.py`:** Vòng lặp chính, đảm nhận việc khởi tạo kết nối Modbus (RTU/TCP) xuống PLC hoặc cảm biến vật lý.
+*   **`main.py` & `modbus.py`:** Vòng lặp chính, đảm nhận việc khởi tạo kết nối **Modbus RTU (serial)** tới PLC hoặc cảm biến vật lý (TCP không dùng trong kiến trúc Data Logger hiện tại).
 *   **`services/`:** 
     *   `data_collector.py`: Quản lý nghiệp vụ tuần tự hóa việc thu thập số liệu theo chu kỳ.
     *   `api_client.py`: Client HTTP để đẩy ngược (POST) số liệu lên `cloud/api/`.

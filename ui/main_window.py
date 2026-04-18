@@ -1,4 +1,9 @@
-"""UI MainWindow — Controller với Tab Bar ngang phía trên (tối ưu 1024x600)."""
+"""UI MainWindow — Qt Widgets (legacy).
+
+.. deprecated::
+    Ứng dụng chính dùng QML (`main.py` + `ui/qml/`). Module này không được entry point
+    import; giữ lại tham khảo hoặc thử nghiệm Widgets. Không dùng cho build wheel/production.
+"""
 
 import logging
 from datetime import datetime

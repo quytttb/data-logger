@@ -13,7 +13,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from core.modbus import ModbusRTU, ModbusTCP, create_modbus_client
+from core.modbus import ModbusBase, ModbusRTU, _normalize_register_type, create_modbus_client
 
 PORT = "/dev/ttyUSB0"
 BAUDRATE = 9600
@@ -38,13 +38,19 @@ print("\n=== M1.1: Modbus RTU Client Wrapper ===")
 client = create_modbus_client("RTU")
 check("create_modbus_client('RTU') returns ModbusRTU", isinstance(client, ModbusRTU))
 
-tcp_client = create_modbus_client("TCP")
-check("create_modbus_client('TCP') returns ModbusTCP", isinstance(tcp_client, ModbusTCP))
+try:
+    create_modbus_client("TCP")
+    check("create_modbus_client('TCP') must raise ValueError (RTU-only)", False)
+except ValueError:
+    check("create_modbus_client('TCP') raises ValueError (RTU-only)", True)
+
+check("_normalize_register_type(holding)", _normalize_register_type("holding") == "Holding Register")
+check("_normalize_register_type(input)", _normalize_register_type("input") == "Input Register")
+check("_normalize_register_type passthrough", _normalize_register_type("Coil") == "Coil")
 
 check("Client not connected initially", not client.is_connected())
 
 # 4 register types defined
-from core.modbus import ModbusBase
 func_map_keys = {"Holding Register", "Input Register", "Coil", "Discrete Input"}
 check("read() supports 4 register types",
       all(k in ModbusBase.read.__code__.co_consts for k in []) or True,

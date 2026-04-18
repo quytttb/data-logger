@@ -2,9 +2,16 @@
 
 FTP password được encrypt bằng Fernet trước khi lưu DB,
 và decrypt khi load lên QML.
+
+Chuyển đổi hệ số cảm biến (scaling): QML gửi mode + số dạng chuỗi,
+Python tạo JSON `coefficient` tương thích `core/formula.apply_formula`.
 """
 
+from __future__ import annotations
+
+import json
 import logging
+import math
 
 from PySide6.QtCore import QObject, Property, Signal, Slot
 from sqlmodel import select
@@ -19,7 +26,6 @@ logger = logging.getLogger(__name__)
 class SettingsController(QObject):
     configLoaded = Signal()
     configSaved = Signal()
-    uiLocaleChanged = Signal()
     messageSent = Signal(str, str)
 
     def __init__(self, parent=None):
@@ -140,19 +146,6 @@ class SettingsController(QObject):
     def serialStopbits(self, v):
         self._cfg.serial_stopbits = v
 
-    @Property(str, notify=uiLocaleChanged)
-    def uiLocale(self):
-        loc = getattr(self._cfg, "ui_locale", None) or "vi"
-        return loc if loc in ("en", "vi") else "vi"
-
-    @uiLocale.setter
-    def uiLocale(self, v: str):
-        v = (v or "vi").lower()
-        v = v if v in ("en", "vi") else "vi"
-        if getattr(self._cfg, "ui_locale", "vi") == v:
-            return
-        self._cfg.ui_locale = v
-        self.uiLocaleChanged.emit()
 
     # ── Slots ──────────────────────────────────────────────────────────────
 
@@ -168,7 +161,6 @@ class SettingsController(QObject):
                 session.refresh(cfg)
             self._cfg = cfg
             self.configLoaded.emit()
-            self.uiLocaleChanged.emit()
             logger.info("AppConfig loaded (id=%s)", cfg.id)
         except Exception as e:
             logger.error("load_config error: %s", e)
@@ -209,15 +201,10 @@ class SettingsController(QObject):
             cfg.serial_bytesize = self._cfg.serial_bytesize
             cfg.serial_parity = self._cfg.serial_parity
             cfg.serial_stopbits = self._cfg.serial_stopbits
-            cfg.ui_locale = getattr(self._cfg, "ui_locale", "vi") or "vi"
-            if cfg.ui_locale not in ("en", "vi"):
-                cfg.ui_locale = "vi"
-
             session.commit()
             session.refresh(cfg)
             self._cfg = cfg
             self.configLoaded.emit()
-            self.uiLocaleChanged.emit()
             self.configSaved.emit()
             self.messageSent.emit(self.tr("Success"), self.tr("Configuration saved."))
             logger.info("AppConfig saved (id=%s)", cfg.id)
@@ -265,3 +252,154 @@ class SettingsController(QObject):
         if self._cfg.ftp_port < 1 or self._cfg.ftp_port > 65535:
             errors.append(self.tr("FTP port must be between 1 and 65535."))
         return errors
+
+    # ── Sensor coefficient (scaling) helpers for QML ───────────────────────
+
+    def _parse_float_token(self, label: str, s: str) -> tuple[float | None, str | None]:
+        t = (s or "").strip().replace(",", ".")
+        if not t:
+            return None, self.tr("{0} is required.").format(label)
+        try:
+            v = float(t)
+        except ValueError:
+            return None, self.tr("{0}: invalid number.").format(label)
+        if not math.isfinite(v):
+            return None, self.tr("{0}: must be a finite number.").format(label)
+        return v, None
+
+    @Slot(str, result="QVariantMap")
+    def coefficientUiState(self, coefficient_json: str) -> dict:
+        """Parse DB `coefficient` JSON → trạng thái UI (mode + chuỗi hiển thị).
+
+        mode: 0 = none, 1 = linear a,b, 2 = two-point (chỉ UI), 3 = JSON thủ công
+        (đa thức / công thức lạ / JSON lỗi).
+        """
+        raw = (coefficient_json or "").strip() or "{}"
+        blank = {
+            "mode": 0,
+            "linearA": "1",
+            "linearB": "0",
+            "rawMin": "4000",
+            "rawMax": "20000",
+            "scaleMin": "4",
+            "scaleMax": "20",
+            "legacyJson": "{}",
+        }
+        try:
+            obj = json.loads(raw)
+        except json.JSONDecodeError:
+            d = dict(blank)
+            d["mode"] = 3
+            d["legacyJson"] = raw
+            return d
+        if not isinstance(obj, dict):
+            d = dict(blank)
+            d["mode"] = 3
+            d["legacyJson"] = raw
+            return d
+        if not obj:
+            d = dict(blank)
+            d["legacyJson"] = "{}"
+            return d
+        if "coeffs" in obj:
+            d = dict(blank)
+            d["mode"] = 3
+            d["legacyJson"] = raw
+            return d
+        if "a" in obj:
+            try:
+                a = float(obj.get("a", 1.0))
+                b = float(obj.get("b", 0.0))
+            except (TypeError, ValueError):
+                d = dict(blank)
+                d["mode"] = 3
+                d["legacyJson"] = raw
+                return d
+            if not math.isfinite(a) or not math.isfinite(b):
+                d = dict(blank)
+                d["mode"] = 3
+                d["legacyJson"] = raw
+                return d
+            return {
+                "mode": 1,
+                "linearA": str(a),
+                "linearB": str(b),
+                "rawMin": blank["rawMin"],
+                "rawMax": blank["rawMax"],
+                "scaleMin": blank["scaleMin"],
+                "scaleMax": blank["scaleMax"],
+                "legacyJson": "{}",
+            }
+        d = dict(blank)
+        d["mode"] = 3
+        d["legacyJson"] = raw
+        return d
+
+    @Slot(int, str, str, str, str, str, result=str)
+    def buildCoefficientJson(
+        self,
+        mode: int,
+        legacy_json: str,
+        s0: str,
+        s1: str,
+        s2: str,
+        s3: str,
+    ) -> str:
+        """Tạo chuỗi JSON coefficient từ chế độ scaling (gọi từ QML).
+
+        Trả về chuỗi JSON hợp lệ; chuỗi rỗng nếu lỗi (đồng thời `messageSent`).
+        """
+        if mode == 0:
+            return "{}"
+        if mode == 1:
+            a, err_a = self._parse_float_token(self.tr("Gain (a)"), s0)
+            b, err_b = self._parse_float_token(self.tr("Offset (b)"), s1)
+            if err_a:
+                self.messageSent.emit(self.tr("Validation error"), err_a)
+                return ""
+            if err_b:
+                self.messageSent.emit(self.tr("Validation error"), err_b)
+                return ""
+            return json.dumps({"a": a, "b": b}, separators=(",", ":"))
+        if mode == 2:
+            r0, e0 = self._parse_float_token(self.tr("Raw Min"), s0)
+            r1, e1 = self._parse_float_token(self.tr("Raw Max"), s1)
+            y0, e2 = self._parse_float_token(self.tr("Scale Min"), s2)
+            y1, e3 = self._parse_float_token(self.tr("Scale Max"), s3)
+            for msg in (e0, e1, e2, e3):
+                if msg:
+                    self.messageSent.emit(self.tr("Validation error"), msg)
+                    return ""
+            assert r0 is not None and r1 is not None and y0 is not None and y1 is not None
+            denom = r1 - r0
+            if denom == 0.0:
+                self.messageSent.emit(
+                    self.tr("Validation error"),
+                    self.tr("Raw Max must differ from Raw Min (division by zero)."),
+                )
+                return ""
+            a = (y1 - y0) / denom
+            b = y0 - a * r0
+            return json.dumps({"a": a, "b": b}, separators=(",", ":"))
+        if mode == 3:
+            t = (legacy_json or "").strip() or "{}"
+            try:
+                obj = json.loads(t)
+            except json.JSONDecodeError as e:
+                self.messageSent.emit(
+                    self.tr("Validation error"),
+                    self.tr("Invalid JSON: {0}").format(e),
+                )
+                return ""
+            if not isinstance(obj, dict):
+                self.messageSent.emit(
+                    self.tr("Validation error"),
+                    self.tr("Coefficient JSON must be an object {{ ... }}."),
+                )
+                return ""
+            return json.dumps(obj, separators=(",", ":"))
+        self.messageSent.emit(
+            self.tr("Validation error"),
+            self.tr("Unknown scaling mode."),
+        )
+        return ""

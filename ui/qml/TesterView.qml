@@ -33,15 +33,15 @@ Item {
         parent: Overlay.overlay
         modal: true
         title: testerRoot.errorDialogTitle
-        width: Math.min(420, Overlay.overlay.width - 40)
-        x: Math.round((Overlay.overlay.width - width) / 2)
-        y: Math.round((Overlay.overlay.height - height) / 2)
+        width: Overlay.overlay ? Math.min(420, Overlay.overlay.width - 40) : 420
+        x: Overlay.overlay ? Math.round((Overlay.overlay.width - width) / 2) : 0
+        y: Overlay.overlay ? Math.round((Overlay.overlay.height - height) / 2) : 0
         standardButtons: Dialog.Ok
 
         contentItem: Label {
             text: testerRoot.errorDialogMessage
             wrapMode: Text.WordWrap
-            width: Math.min(380, Overlay.overlay.width - 64)
+            width: Overlay.overlay ? Math.min(380, Overlay.overlay.width - 64) : 380
             padding: 4
             color: Theme.textPrimary
             font.pixelSize: 14
@@ -55,8 +55,8 @@ Item {
         modal: false
         focus: false
         closePolicy: Popup.CloseOnPressOutside | Popup.CloseOnEscape
-        width: Math.min(440, Overlay.overlay.width - 24)
-        x: Math.round((Overlay.overlay.width - width) / 2)
+        width: Overlay.overlay ? Math.min(440, Overlay.overlay.width - 24) : 440
+        x: Overlay.overlay ? Math.round((Overlay.overlay.width - width) / 2) : 0
         y: 72
         padding: 12
 

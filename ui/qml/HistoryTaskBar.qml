@@ -3,13 +3,16 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import "."
 
-// Thanh công cụ Lịch sử — nằm trong header chung (cùng chiều cao với logo).
+// Thanh công cụ History — nằm trong header chung (cùng chiều cao với logo).
 Item {
     id: root
     implicitHeight: 64
 
-    function todayStr() {
-        return Qt.formatDate(new Date(), "dd/MM/yyyy");
+    function formatDate(d) {
+        var dd = String(d.getDate()).padStart(2, '0');
+        var mm = String(d.getMonth() + 1).padStart(2, '0');
+        var yyyy = d.getFullYear();
+        return dd + "/" + mm + "/" + yyyy;
     }
 
     function doSearch() {
@@ -26,6 +29,18 @@ Item {
         doSearch();
     }
 
+    // ── Date Pickers ─────────────────────────────────────────────────────
+    DatePickerPopup {
+        id: fromPicker
+        selectedDate: new Date()
+        onDatePicked: (d) => { fromField.text = root.formatDate(d) }
+    }
+    DatePickerPopup {
+        id: toPicker
+        selectedDate: new Date()
+        onDatePicked: (d) => { toField.text = root.formatDate(d) }
+    }
+
     RowLayout {
         anchors.left: parent.left
         anchors.right: parent.right
@@ -33,7 +48,7 @@ Item {
         spacing: 8
 
         Label {
-            text: qsTr("From:")
+            text: "From:"
             color: Theme.textSecondary
             font.pixelSize: 13
             font.bold: true
@@ -41,17 +56,24 @@ Item {
         }
         TextField {
             id: fromField
-            text: todayStr()
+            text: root.formatDate(new Date())
+            readOnly: true
             Layout.preferredWidth: 110
             color: Theme.textPrimary
             font.pixelSize: 13
             horizontalAlignment: Text.AlignHCenter
             background: Rectangle { color: Theme.bgInput; radius: Theme.radiusSmall }
             Layout.alignment: Qt.AlignVCenter
+
+            MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: fromPicker.open()
+            }
         }
 
         Label {
-            text: qsTr("To:")
+            text: "To:"
             color: Theme.textSecondary
             font.pixelSize: 13
             font.bold: true
@@ -59,13 +81,20 @@ Item {
         }
         TextField {
             id: toField
-            text: todayStr()
+            text: root.formatDate(new Date())
+            readOnly: true
             Layout.preferredWidth: 110
             color: Theme.textPrimary
             font.pixelSize: 13
             horizontalAlignment: Text.AlignHCenter
             background: Rectangle { color: Theme.bgInput; radius: Theme.radiusSmall }
             Layout.alignment: Qt.AlignVCenter
+
+            MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: toPicker.open()
+            }
         }
 
         ComboBox {
@@ -82,10 +111,29 @@ Item {
             enabled: !historyController.isLoading
             icon.source: "../../assets/icons/search.svg"
             icon.color: "white"
-            icon.width: 18
-            icon.height: 18
+            icon.width: 16
+            icon.height: 16
             background: Rectangle {
                 color: historyController.isLoading ? "#666" : Theme.accent
+                radius: 8
+                opacity: parent.pressed ? 0.7 : 1.0
+            }
+            onClicked: root.doSearch()
+            Layout.alignment: Qt.AlignVCenter
+        }
+
+        Button {
+            Layout.preferredWidth: 44
+            Layout.preferredHeight: 40
+            enabled: !historyController.isLoading
+            icon.source: "../../assets/icons/refresh.svg"
+            icon.color: Theme.textPrimary
+            icon.width: 16
+            icon.height: 16
+            background: Rectangle {
+                color: historyController.isLoading ? "#444" : Theme.bgPanel
+                border.color: Theme.borderDefault
+                border.width: 1
                 radius: 8
                 opacity: parent.pressed ? 0.7 : 1.0
             }
@@ -104,7 +152,7 @@ Item {
         Item { Layout.fillWidth: true }
 
         Label {
-            text: qsTr("%1 rows").arg(historyController.recordCount)
+            text: "%1 rows".arg(historyController.recordCount)
             color: Theme.textSecondary
             font.pixelSize: 13
             font.bold: true
@@ -112,7 +160,7 @@ Item {
         }
 
         Button {
-            text: qsTr("CSV")
+            text: "CSV"
             icon.source: "../../assets/icons/export.svg"
             icon.color: "white"
             icon.width: 16

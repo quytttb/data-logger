@@ -11,26 +11,26 @@ import sys
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QTimer, QUrl
-from PySide6.QtGui import QGuiApplication, QIcon, QPixmap
+from PySide6.QtGui import QIcon, QPixmap
+from PySide6.QtWidgets import QApplication
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuick import QQuickWindow
 
 from core._paths import (
     APP_DESKTOP_ID,
-    I18N_DIR,
     LOG_DIR,
     QML_DIR,
     app_icon_path,
     argv_for_qt,
 )
+from core._version import __version__ as _APP_VERSION
 from core.database import init_db
 from ui.tester_controller import TesterController
 from ui.settings_controller import SettingsController
 from ui.sensor_model import SensorListModel
-from ui.dashboard_controller import DashboardController, DashboardModel
+from ui.monitor_controller import MonitorController, MonitorModel
 from ui.history_controller import HistoryController, HistoryModel
 from ui.report_controller import ReportController
-from ui.i18n_bridge import I18nBridge, install_locale
 
 # === Logging Setup ===
 logging.basicConfig(
@@ -73,10 +73,10 @@ def main():
     if _conf.is_file():
         os.environ.setdefault("QT_QUICK_CONTROLS_CONF", str(_conf))
 
-    app = QGuiApplication(argv_for_qt(sys.argv))
+    app = QApplication(argv_for_qt(sys.argv))
     # applicationName khớp StartupWMClass / WM_CLASS (taskbar Linux); tiêu đề hiển thị vẫn "Data Logger" (QML + display name)
     app.setApplicationName(APP_DESKTOP_ID)
-    app.setApplicationVersion("2.0.0")
+    app.setApplicationVersion(_APP_VERSION)
     disp = getattr(app, "setApplicationDisplayName", None)
     if callable(disp):
         disp("Data Logger")
@@ -96,45 +96,30 @@ def main():
     )
     engine.rootContext().setContextProperty("appIconUrl", app_icon_url)
 
-    # Register Controllers (load config trước để lấy ngôn ngữ)
+    # Register Controllers
     settings_controller = SettingsController()
     settings_controller.load_config()
-    install_locale(app, settings_controller.uiLocale, I18N_DIR)
 
     tester_controller = TesterController()
     sensor_model = SensorListModel()
-    dashboard_model = DashboardModel()
-    dashboard_controller = DashboardController(dashboard_model, tester_controller)
+    monitor_model = MonitorModel()
+    monitor_controller = MonitorController(monitor_model, tester_controller)
     history_model = HistoryModel()
     history_controller = HistoryController(history_model)
     report_controller = ReportController()
 
-    # Khi danh sách sensor thay đổi → cập nhật ComboBox lịch sử + dashboard
+    # Khi danh sách sensor thay đổi → cập nhật ComboBox lịch sử + monitor
     sensor_model.countChanged.connect(history_controller.load_sensors)
-    sensor_model.countChanged.connect(dashboard_controller.refresh_sensors)
+    sensor_model.countChanged.connect(monitor_controller.refresh_sensors)
 
     engine.rootContext().setContextProperty("testerController", tester_controller)
     engine.rootContext().setContextProperty("settingsController", settings_controller)
     engine.rootContext().setContextProperty("sensorModel", sensor_model)
-    engine.rootContext().setContextProperty("dashboardModel", dashboard_model)
-    engine.rootContext().setContextProperty("dashboardController", dashboard_controller)
+    engine.rootContext().setContextProperty("monitorModel", monitor_model)
+    engine.rootContext().setContextProperty("monitorController", monitor_controller)
     engine.rootContext().setContextProperty("historyModel", history_model)
     engine.rootContext().setContextProperty("historyController", history_controller)
     engine.rootContext().setContextProperty("reportController", report_controller)
-
-    i18n_bridge = I18nBridge(app, engine, I18N_DIR)
-    engine.rootContext().setContextProperty("i18nBridge", i18n_bridge)
-
-    def _on_ui_locale_changed() -> None:
-        """Đổi ngôn ngữ ngay khi uiLocale đổi (ComboBox), không chỉ khi Lưu cấu hình."""
-        install_locale(app, settings_controller.uiLocale, I18N_DIR)
-        retranslate = getattr(engine, "retranslate", None)
-        if callable(retranslate):
-            retranslate()
-        history_controller.load_sensors()
-        dashboard_controller.refresh_status_display()
-
-    settings_controller.uiLocaleChanged.connect(_on_ui_locale_changed)
 
     # Load Main.qml
     qml_file = QML_DIR / "Main.qml"
@@ -166,7 +151,7 @@ def main():
 
         QTimer.singleShot(0, _reapply_icons)
 
-    app.aboutToQuit.connect(dashboard_controller.stop_polling_sync)
+    app.aboutToQuit.connect(monitor_controller.stop_polling_sync)
     app.aboutToQuit.connect(report_controller.stop_reporting)
 
     logger.info("QML loaded thành công. App đang chạy.")

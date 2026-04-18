@@ -229,6 +229,14 @@ class FtpWorker(QObject):
         import asyncssh
         from pathlib import Path
 
+        known_hosts_path = Path.home() / ".ssh" / "known_hosts"
+        known_hosts: str | None = str(known_hosts_path) if known_hosts_path.is_file() else None
+        if known_hosts is None:
+            logger.warning(
+                "sFTP: không tìm thấy ~/.ssh/known_hosts — không xác thực host key "
+                "(chấp nhận mọi server). Nên tạo known_hosts trên thiết bị triển khai."
+            )
+
         async def _do_upload():
             try:
                 async with asyncssh.connect(
@@ -236,7 +244,7 @@ class FtpWorker(QObject):
                     port=port,
                     username=username,
                     password=password,
-                    known_hosts=None,
+                    known_hosts=known_hosts,
                     connect_timeout=10,
                 ) as conn:
                     async with conn.start_sftp_client() as sftp:
@@ -248,12 +256,8 @@ class FtpWorker(QObject):
                 logger.error("Upload sFTP thất bại: %s — %s", filepath, e)
                 return False
 
-        # Chạy async trong sync context
         try:
-            loop = asyncio.new_event_loop()
-            result = loop.run_until_complete(_do_upload())
-            loop.close()
-            return result
+            return asyncio.run(_do_upload())
         except Exception as e:
             logger.error("Lỗi event loop sFTP: %s", e)
             return False

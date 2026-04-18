@@ -33,7 +33,7 @@ ApplicationWindow {
         ColumnLayout {
             id: headerChrome
             Layout.fillWidth: true
-            Layout.preferredHeight: 64 + 1 + ((root.currentTab === 0 && testerController.isScanning) ? 10 : 0)
+            Layout.preferredHeight: 64 + 1 + ((root.currentTab === 3 && testerController.isScanning) ? 10 : 0)
             Layout.maximumHeight: Layout.preferredHeight
             spacing: 0
 
@@ -86,10 +86,10 @@ ApplicationWindow {
 
                         Loader {
                             id: modbusTbLoader
-                            Layout.fillWidth: root.currentTab === 0
+                            Layout.fillWidth: root.currentTab === 3
                             Layout.fillHeight: true
-                            active: root.currentTab === 0
-                            visible: root.currentTab === 0
+                            active: root.currentTab === 3
+                            visible: root.currentTab === 3
                             source: "ModbusTesterTaskBar.qml"
                             onLoaded: root.syncModbusTaskBarRef()
                             onVisibleChanged: {
@@ -99,16 +99,16 @@ ApplicationWindow {
                         }
 
                         Loader {
-                            id: dashboardTbLoader
-                            Layout.fillWidth: root.currentTab === 1
+                            id: monitorTbLoader
+                            Layout.fillWidth: root.currentTab === 0
                             Layout.fillHeight: true
-                            active: root.currentTab === 1
-                            visible: root.currentTab === 1
-                            source: "DashboardTaskBar.qml"
+                            active: root.currentTab === 0
+                            visible: root.currentTab === 0
+                            source: "MonitorTaskBar.qml"
                         }
 
                         Label {
-                            visible: root.currentTab === 3
+                            visible: root.currentTab === 2
                             text: qsTr("Settings")
                             font.pixelSize: 15
                             font.bold: true
@@ -117,13 +117,13 @@ ApplicationWindow {
                         }
 
                         Item {
-                            Layout.fillWidth: root.currentTab === 3
+                            Layout.fillWidth: root.currentTab === 2
                         }
 
                         Loader {
-                            Layout.fillWidth: root.currentTab === 2
+                            Layout.fillWidth: root.currentTab === 1
                             Layout.fillHeight: true
-                            active: root.currentTab === 2
+                            active: root.currentTab === 1
                             source: "HistoryTaskBar.qml"
                         }
                     }
@@ -139,7 +139,7 @@ ApplicationWindow {
             // Tiến độ quét: sát cạnh dưới header, chỉ cột phải (sau 200px logo)
             RowLayout {
                 Layout.fillWidth: true
-                Layout.preferredHeight: (root.currentTab === 0 && testerController.isScanning) ? 10 : 0
+                Layout.preferredHeight: (root.currentTab === 3 && testerController.isScanning) ? 10 : 0
                 Layout.maximumHeight: Layout.preferredHeight
                 visible: Layout.preferredHeight > 0
                 spacing: 0
@@ -217,7 +217,7 @@ ApplicationWindow {
                                 }
 
                                 contentItem: Text {
-                                    text: [qsTr("Modbus tester"), qsTr("Dashboard"), qsTr("History"), qsTr("Settings")][navDelegate.index]
+                                    text: [qsTr("Monitor"), qsTr("History"), qsTr("Settings"), qsTr("Modbus tester")][navDelegate.index]
                                     font.pixelSize: 14
                                     font.weight: Font.Bold
                                     color: root.currentTab === navDelegate.tabIdx ? Theme.textPrimary : Theme.textSecondary
@@ -282,11 +282,11 @@ ApplicationWindow {
                             }
 
                             Text {
-                                text: dashboardController.statusText
+                                text: monitorController.statusText
                                 font.pixelSize: 11
                                 font.weight: Font.Bold
                                 color: {
-                                    var m = dashboardController.statusMode;
+                                    var m = monitorController.statusMode;
                                     if (m === 1) return Theme.statusOk;
                                     if (m === 2) return Theme.statusErr;
                                     return Theme.textSecondary;
@@ -332,32 +332,32 @@ ApplicationWindow {
                     id: loaderTester
                     anchors.fill: parent
                     // Load khi lần đầu vào tab, giữ trong RAM khi chuyển tab khác
-                    active: root.currentTab === 0 || loaderTester.item !== null
-                    visible: root.currentTab === 0
+                    active: root.currentTab === 3 || loaderTester.item !== null
+                    visible: root.currentTab === 3
                     source: "TesterView.qml"
                 }
 
                 Loader {
-                    id: loaderDashboard
+                    id: loaderMonitor
                     anchors.fill: parent
-                    active: root.currentTab === 1 || loaderDashboard.item !== null
-                    visible: root.currentTab === 1
-                    source: "DashboardView.qml"
+                    active: root.currentTab === 0 || loaderMonitor.item !== null
+                    visible: root.currentTab === 0
+                    source: "MonitorView.qml"
                 }
 
                 Loader {
                     id: loaderHistory
                     anchors.fill: parent
-                    active: root.currentTab === 2 || loaderHistory.item !== null
-                    visible: root.currentTab === 2
+                    active: root.currentTab === 1 || loaderHistory.item !== null
+                    visible: root.currentTab === 1
                     source: "HistoryView.qml"
                 }
 
                 Loader {
                     id: loaderSettings
                     anchors.fill: parent
-                    active: root.currentTab === 3 || loaderSettings.item !== null
-                    visible: root.currentTab === 3
+                    active: root.currentTab === 2 || loaderSettings.item !== null
+                    visible: root.currentTab === 2
                     source: "SettingsView.qml"
                 }
             }

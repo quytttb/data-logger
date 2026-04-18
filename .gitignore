@@ -5,3 +5,13 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 .ruff_cache/
+
+# Runtime data (generated on device)
+data/
+logs/
+config/
+var/
+
+# i18n compiled (removed — English only)
+i18n/
+data/

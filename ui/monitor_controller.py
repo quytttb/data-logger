@@ -1,7 +1,7 @@
-"""M3 — DashboardController + DashboardModel.
+"""M3 — MonitorController + MonitorModel.
 
-DashboardModel: QAbstractListModel cung cấp dữ liệu realtime cho QML GridView.
-DashboardController: Quản lý QThread cho ModbusWorker + DatabaseWorker,
+MonitorModel: QAbstractListModel cung cấp dữ liệu realtime cho QML GridView.
+MonitorController: Quản lý QThread cho ModbusWorker + DatabaseWorker,
                      nhận data_ready → update model + enqueue DB.
 """
 
@@ -28,9 +28,9 @@ from models.sensor import Sensor
 from workers.database_worker import DatabaseWorker
 from workers.modbus_worker import ModbusWorker
 
-logger = logging.getLogger("datalogger.dashboard")
+logger = logging.getLogger("datalogger.monitor")
 
-# ── DashboardModel ─────────────────────────────────────────────────────────
+# ── MonitorModel ─────────────────────────────────────────────────────────
 
 _DASH_ROLES = {
     Qt.UserRole + 1: b"sensorId",
@@ -53,8 +53,8 @@ _DASH_FIELD = {
 }
 
 
-class DashboardModel(QAbstractListModel):
-    """Model cho DashboardView — mỗi row là 1 sensor card."""
+class MonitorModel(QAbstractListModel):
+    """Model cho MonitorView — mỗi row là 1 sensor card."""
 
     countChanged = Signal()
 
@@ -131,10 +131,10 @@ class DashboardModel(QAbstractListModel):
             )
 
 
-# ── DashboardController ───────────────────────────────────────────────────
+# ── MonitorController ───────────────────────────────────────────────────
 
-class DashboardController(QObject):
-    """Điều khiển polling Modbus + ghi DB + cập nhật Dashboard realtime."""
+class MonitorController(QObject):
+    """Điều khiển polling Modbus + ghi DB + cập nhật Monitor realtime."""
 
     # statusMode values (used in QML instead of string matching)
     STATUS_IDLE = 0   # Not polling / stopped / ready
@@ -147,9 +147,9 @@ class DashboardController(QObject):
     errorCountChanged = Signal()
     messageSent = Signal(str, str)
 
-    def __init__(self, dashboard_model: DashboardModel, tester_controller=None, parent=None):
+    def __init__(self, monitor_model: MonitorModel, tester_controller=None, parent=None):
         super().__init__(parent)
-        self._model = dashboard_model
+        self._model = monitor_model
         self._tester = tester_controller
         self._is_polling = False
         self._is_stopping = False
@@ -194,7 +194,7 @@ class DashboardController(QObject):
 
     @Slot()
     def refresh_sensors(self):
-        """Reload active sensors into the dashboard model (only when not polling)."""
+        """Reload active sensors into the monitor model (only when not polling)."""
         if self._is_polling:
             return
         session = get_session()

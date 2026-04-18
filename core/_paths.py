@@ -29,7 +29,6 @@ DATA_DIR   = Path(os.environ.get("DATALOGGER_DATA_DIR",   str(_BIN_DIR / "data")
 CONFIG_DIR = Path(os.environ.get("DATALOGGER_CONFIG_DIR", str(_BIN_DIR / "config")))
 LOG_DIR    = Path(os.environ.get("DATALOGGER_LOG_DIR",    str(_BIN_DIR / "logs")))
 QML_DIR    = Path(os.environ.get("DATALOGGER_QML_DIR",    str(_BIN_DIR / "ui" / "qml")))
-I18N_DIR   = Path(os.environ.get("DATALOGGER_I18N_DIR",   str(_BIN_DIR / "i18n")))
 
 # Icon: PNG ưu tiên (taskbar/panel Linux thường cần pixmap, SVG hay lỗi); fallback SVG
 APP_ICON_PNG = _BIN_DIR / "assets" / "app-icon.png"

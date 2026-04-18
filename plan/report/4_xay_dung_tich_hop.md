@@ -65,7 +65,7 @@ Mã nguồn: Thư mục `app/ui/qml/` (View) và `app/ui/*_controller.py` (QObje
 
 Thay vì giao diện Tkinter hoặc Qt Widgets, ứng dụng dùng **QML** (`QQmlApplicationEngine`) với các tab chính tách file `.qml`.
 
-1. **`DashboardView.qml`**: Lưới/card realtime; `TableView` hoặc `GridView` QML phối màu; thanh trạng thái & cảnh báo kết nối thiết bị — dữ liệu qua `DashboardController` (property/model).
+1. **`MonitorView.qml`**: Lưới/card realtime; `TableView` hoặc `GridView` QML phối màu; thanh trạng thái & cảnh báo kết nối thiết bị — dữ liệu qua `MonitorController` (property/model).
 2. **`HistoryView.qml`**: Bộ lọc thời gian bằng control QML (DatePicker tùy biến hoặc tổ hợp trường ngày giờ); bảng lịch sử lazy-load; nút xuất CSV gọi `@Slot` trên `HistoryController`.
 3. **`SettingsView.qml`**: Form cấu hình trạm — `TextField`, `ComboBox`, `SpinBox` QML; lưu qua `SettingsController` xuống SQL, không hard-code trong QML.
 
@@ -77,6 +77,6 @@ Mã nguồn: `app/main.py` (khởi tạo `QGuiApplication`, `QQmlApplicationEngi
 
 Thay vì cửa sổ Widget, **`ApplicationController`** (hoặc logic tương đương trong `main.py`) đóng vai "Bộ phận điều phối": đăng ký context property cho QML, khởi chạy Worker trên `QThread`.
 - Khởi động đồng thời các `QThread` Worker và gắn vào điều phối.
-- Nối Signals: đón `data_ready` từ Modbus → cập nhật property/controller → QML binding refresh tab Dashboard; đồng thời đẩy vào Queue cho `DatabaseWorker`.
+- Nối Signals: đón `data_ready` từ Modbus → cập nhật property/controller → QML binding refresh tab Monitor; đồng thời đẩy vào Queue cho `DatabaseWorker`.
 
 File khởi chạy gốc `main.py` nạp `Main.qml`, áp **theme QML** (palette + `QtQuick.Controls` style) cho màn cảm ứng tủ điện, log xoay ngày, và đưa app vào môi trường Production.

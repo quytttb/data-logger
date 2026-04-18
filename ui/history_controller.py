@@ -147,12 +147,14 @@ class HistoryController(QObject):
     recordCountChanged = Signal()
     messageSent = Signal(str, str)
     sensorsChanged = Signal()
+    chartDataChanged = Signal()
 
     def __init__(self, history_model: HistoryModel, parent=None):
         super().__init__(parent)
         self._model = history_model
         self._is_loading = False
         self._record_count = 0
+        self._chart_data: list[dict] = []
         self._worker: SearchWorker | None = None
         self._sensor_names: list[str] = [self.tr("— All —")]
         self._sensor_ids: list[int] = [0]
@@ -164,6 +166,11 @@ class HistoryController(QObject):
     @Property(int, notify=recordCountChanged)
     def recordCount(self):
         return self._record_count
+
+    @Property("QVariantList", notify=chartDataChanged)
+    def chartData(self):
+        """Dữ liệu chart nhóm theo sensor: [{name, points: [{x, y}]}]."""
+        return self._chart_data
 
     @Property("QStringList", notify=sensorsChanged)
     def sensorNames(self):
@@ -265,9 +272,11 @@ class HistoryController(QObject):
     def _on_search_done(self, items: list[dict]) -> None:
         self._model.set_data(items)
         self._record_count = len(items)
+        self._chart_data = self._build_chart_data(items)
         self._is_loading = False
         self.loadingChanged.emit()
         self.recordCountChanged.emit()
+        self.chartDataChanged.emit()
 
         if not items:
             self.messageSent.emit(
@@ -276,6 +285,29 @@ class HistoryController(QObject):
             )
 
         logger.info("Search done: %d records", len(items))
+
+    @staticmethod
+    def _build_chart_data(items: list[dict]) -> list[dict]:
+        """Nhóm dữ liệu theo sensor cho ChartView.
+
+        Returns:
+            [{"name": str, "points": [{"x": float_msec, "y": float}]}]
+        """
+        groups: dict[str, list] = {}
+        # items đang desc (mới nhất trước); đảo lại để chart vẽ trái→phải
+        for item in reversed(items):
+            name = item["sensor_name"]
+            val_str = item.get("value", "---")
+            if val_str == "---":
+                continue
+            try:
+                dt = datetime.strptime(item["recorded_at"], "%d/%m/%Y %H:%M:%S")
+                x = dt.timestamp() * 1000  # msec since epoch cho DateTimeAxis
+                y = float(val_str)
+            except (ValueError, TypeError):
+                continue
+            groups.setdefault(name, []).append({"x": x, "y": y})
+        return [{"name": k, "points": v} for k, v in groups.items()]
 
     def _on_search_error(self, msg: str) -> None:
         self._is_loading = False

@@ -4,12 +4,12 @@ import QtQuick.Layouts
 import "."
 
 Rectangle {
-    id: dashRoot
+    id: monitorRoot
     color: "transparent"
 
     // ── Message Popup ─────────────────────────────────────────────────────
     Popup {
-        id: dashPopup
+        id: monitorPopup
         anchors.centerIn: parent
         width: 340; height: 160
         modal: true; focus: true
@@ -20,15 +20,15 @@ Rectangle {
         }
         ColumnLayout {
             anchors.fill: parent; anchors.margins: 15
-            Text { id: dashPopTitle; font.bold: true; font.pixelSize: 18; color: Theme.textPrimary; Layout.alignment: Qt.AlignHCenter }
-            Text { id: dashPopMsg; wrapMode: Text.WordWrap; color: Theme.accentText; font.pixelSize: 14; Layout.fillWidth: true; Layout.fillHeight: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-            Button { text: qsTr("Close"); Layout.alignment: Qt.AlignHCenter; onClicked: dashPopup.close() }
+            Text { id: monitorPopTitle; font.bold: true; font.pixelSize: 18; color: Theme.textPrimary; Layout.alignment: Qt.AlignHCenter }
+            Text { id: monitorPopMsg; wrapMode: Text.WordWrap; color: Theme.accentText; font.pixelSize: 14; Layout.fillWidth: true; Layout.fillHeight: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+            Button { text: qsTr("Close"); Layout.alignment: Qt.AlignHCenter; onClicked: monitorPopup.close() }
         }
     }
 
     Connections {
-        target: dashboardController
-        function onMessageSent(t, m) { dashPopTitle.text = t; dashPopMsg.text = m; dashPopup.open() }
+        target: monitorController
+        function onMessageSent(t, m) { monitorPopTitle.text = t; monitorPopMsg.text = m; monitorPopup.open() }
     }
 
     ColumnLayout {
@@ -38,7 +38,7 @@ Rectangle {
 
         // Điều khiển + trạng thái nằm trên header (DashboardTaskBar.qml trong Main).
 
-        // ── Sensor Cards Grid ─────────────────────────────────────────────
+        // ── Sensor Cards Grid (centered) ─────────────────────────────
         GridView {
             id: sensorGrid
             Layout.fillWidth: true
@@ -47,7 +47,11 @@ Rectangle {
             cellHeight: 150
             clip: true
             boundsBehavior: Flickable.StopAtBounds
-            model: dashboardModel
+            model: monitorModel
+
+            // Center the grid: compute how many columns fit, then pad
+            readonly property int columns: Math.max(1, Math.floor(width / cellWidth))
+            leftMargin: Math.max(0, Math.floor((width - columns * cellWidth) / 2))
 
             delegate: Item {
                 width: sensorGrid.cellWidth

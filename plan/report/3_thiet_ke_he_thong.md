@@ -48,8 +48,8 @@ flowchart LR
 
 1. **MVC (Model-View-Controller)** cho tầng Giao diện:
    - **Model**: Các class SQLModel (`Sensor`, `SensorData`, `AppConfig`, `ReportLog`)
-   - **View**: Các màn hình **QML** (`DashboardView.qml`, `HistoryView.qml`, `SettingsView.qml`, …) — tách biệt khỏi Python
-   - **Controller**: Các lớp `QObject` (ví dụ `ApplicationController` điều phối Worker; `DashboardController`, `HistoryController`, `SettingsController` expose `@Slot` / `@Property` cho QML) — nhận Signal từ Worker, cập nhật trạng thái/property để QML binding
+   - **View**: Các màn hình **QML** (`MonitorView.qml`, `HistoryView.qml`, `SettingsView.qml`, …) — tách biệt khỏi Python
+   - **Controller**: Các lớp `QObject` (`MonitorController`, `HistoryController`, `SettingsController`, `TesterController`) expose `@Slot` / `@Property` cho QML. Module `main.py` đóng vai trò điều phối, khởi tạo các Controller và kết nối Signal từ Worker để cập nhật trạng thái/property cho QML binding.
 
 2. **Worker Pattern** cho tầng Background:
    - Mỗi tác vụ nền (Modbus Polling, Database Write, FTP Upload) được đóng gói thành một `QObject` Worker chạy trên `QThread` riêng biệt
@@ -58,8 +58,8 @@ flowchart LR
 ```mermaid
 flowchart TD
     subgraph MainThread ["Main Thread (GUI)"]
-        MW["ApplicationController<br>(QObject + QQmlEngine)"]
-        DW["DashboardView.qml"]
+        MW["main.py<br>(Điều phối Controllers)"]
+        DW["MonitorView.qml"]
         HW["HistoryView.qml"]
         SD["SettingsView.qml"]
         MW --> DW & HW & SD
@@ -84,12 +84,11 @@ flowchart TD
 
     subgraph Storage ["Tầng Lưu trữ"]
         DB[("SQLite<br>WAL Mode")]
-        TOML["config.toml"]
     end
 
     DBW --> DB
     FTPW --> DB
-    MW -- "Đọc/Ghi cấu hình" --> TOML
+    MW -- "Đọc/Ghi cấu hình" --> DB
 ```
 
 > [!NOTE]
@@ -118,7 +117,7 @@ app/
 ├── ui/
 │   ├── qml/                 # Giao diện QML (View)
 │   │   ├── Main.qml
-│   │   ├── DashboardView.qml
+│   │   ├── MonitorView.qml
 │   │   ├── HistoryView.qml
 │   │   ├── SettingsView.qml
 │   │   └── TesterView.qml
@@ -128,8 +127,6 @@ app/
 │   ├── database.py          # Engine SQLite, PRAGMA, Session
 │   ├── formula.py           # Công thức chuyển đổi giá trị
 │   └── txt_generator.py     # Sinh file TXT Phụ lục 15
-├── config/
-│   └── settings.toml        # File cấu hình TOML
 └── pyproject.toml           # Quản lý bởi uv
 ```
 
@@ -219,7 +216,7 @@ classDiagram
     }
 
     class FtpWorker {
-        -AsynczScheduler _scheduler
+        -bool _is_running
         -Session _session
         +signal ftp_status(str)
         +run() void
@@ -233,21 +230,13 @@ classDiagram
     %% NHÓM 3: QML BRIDGE (QObject Controllers)
     %% ═══════════════════════════════════
 
-    class ApplicationController {
-        -ModbusWorker _modbus_worker
-        -DatabaseWorker _db_worker
-        -FtpWorker _ftp_worker
-        -QThread _thread_modbus
-        -QThread _thread_db
-        -QThread _thread_ftp
-        +setup_workers() void
-        +on_data_ready(dict) void
-        +on_modbus_error(str) void
-        +on_ftp_status(str) void
-        +shutdown() void
+    class MainPy {
+        +Khởi tạo Controllers
+        +Kết nối Signals/Slots
+        +QQmlApplicationEngine
     }
 
-    class DashboardController {
+    class MonitorController {
         +signal valuesChanged()
         +update_values(dict) void
         +set_status(str, str) void
@@ -263,12 +252,9 @@ classDiagram
         +save_config() void
     }
 
-    ApplicationController o-- DashboardController
-    ApplicationController o-- HistoryController
-    ApplicationController o-- SettingsController
-    ApplicationController o-- ModbusWorker
-    ApplicationController o-- DatabaseWorker
-    ApplicationController o-- FtpWorker
+    MainPy o-- MonitorController
+    MainPy o-- HistoryController
+    MainPy o-- SettingsController
 ```
 
 **Ánh xạ Class → DFD Process:**
@@ -276,7 +262,7 @@ classDiagram
 | DFD Process (Bước 2) | Class triển khai |
 |---|---|
 | 1.0 Thu thập dữ liệu Modbus | `ModbusWorker` |
-| 2.0 Hiển thị GUI & Quản lý Cấu hình | `ApplicationController`, `DashboardController`, `HistoryController`, `SettingsController` + QML `DashboardView` / `HistoryView` / `SettingsView` |
+| 2.0 Hiển thị GUI & Quản lý Cấu hình | `main.py`, `MonitorController`, `HistoryController`, `SettingsController` + QML `MonitorView` / `HistoryView` / `SettingsView` |
 | 3.0 Quản lý lưu trữ Database | `DatabaseWorker` |
 | 4.0 Lập lịch & Gửi File TXT | `FtpWorker` |
 
@@ -540,14 +526,14 @@ def get_session() -> Session:
 
 ### 3.4.1 Luồng Polling Modbus → Cập nhật GUI
 
-Mô tả chuỗi sự kiện từ khi Worker đọc dữ liệu Modbus đến khi hiển thị lên Dashboard và lưu vào Database:
+Mô tả chuỗi sự kiện từ khi Worker đọc dữ liệu Modbus đến khi hiển thị lên Monitor và lưu vào Database:
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant MW as ModbusWorker<br>(QThread 1)
-    participant Main as ApplicationController<br>(Main Thread)
-    participant Dash as DashboardController<br>+ DashboardView.qml
+    participant Main as main.py / Signals
+    participant Dash as MonitorController<br>+ MonitorView.qml
     participant DBW as DatabaseWorker<br>(QThread 2)
     participant DB as SQLite
 
@@ -575,19 +561,19 @@ sequenceDiagram
 
 ### 3.4.2 Luồng Xuất Báo cáo & Gửi sFTP
 
-Mô tả chuỗi sự kiện khi bộ lập lịch Asyncz kích hoạt tiến trình sinh file TXT và đẩy lên FTP Server Sở TNMT:
+Mô tả chuỗi sự kiện khi vòng lặp thời gian kích hoạt tiến trình sinh file TXT và đẩy lên FTP Server Sở TNMT:
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Sched as Asyncz Scheduler
+    participant Timer as Vòng lặp while
     participant FTP as FtpWorker<br>(QThread 3)
     participant DB as SQLite
     participant Gen as TxtGenerator
     participant SFTP as FTP Server<br>(Sở TNMT)
-    participant Main as ApplicationController
+    participant Main as main.py / Signals
 
-    Sched->>FTP: trigger mỗi 5 phút
+    Timer->>FTP: trigger mỗi 5 phút
     FTP->>DB: SELECT sensor_data WHERE recorded_at BETWEEN ...
     DB-->>FTP: Tập bản ghi (list[SensorData])
 
@@ -625,11 +611,11 @@ Giao diện nguyên mẫu được thiết kế bằng HTML + CSS tĩnh đặt t
 
 ### Đặc tả các Màn hình chính
 
-#### Tab 1: Dashboard (Trang chủ)
+#### Tab 1: Monitor (Trang chủ)
 | Thành phần | Mô tả |
 |---|---|
 | **Thanh trạng thái** | Hiển thị tên trạm, mã trạm, trạng thái kết nối (đèn xanh/cam/đỏ) |
-| **Bảng Realtime** | `TableView` / lưới card QML hiển thị tất cả cảm biến: Tên, Giá trị, Đơn vị, Thời gian cập nhật (dữ liệu từ `DashboardController` / model) |
+| **Bảng Realtime** | `TableView` / lưới card QML hiển thị tất cả cảm biến: Tên, Giá trị, Đơn vị, Thời gian cập nhật (dữ liệu từ `MonitorController` / model) |
 | **Đèn cảnh báo** | Thay đổi màu theo State Machine ở Bước 2 (Xanh lá / Cam / Đỏ / Xanh dương) |
 
 #### Tab 2: Lịch sử (History)
@@ -669,13 +655,10 @@ Giao diện nguyên mẫu được thiết kế bằng HTML + CSS tĩnh đặt t
 
 ```python
 import logging
-from logging.handlers import TimedRotatingFileHandler
 
 logger = logging.getLogger("datalogger")
-handler = TimedRotatingFileHandler(
+handler = logging.FileHandler(
     "logs/app.log",
-    when="midnight",    # Xoay file mỗi ngày
-    backupCount=30,     # Giữ 30 ngày log
     encoding="utf-8"
 )
 handler.setFormatter(logging.Formatter(

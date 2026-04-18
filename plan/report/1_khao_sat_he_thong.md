@@ -14,7 +14,7 @@ Dưới đây là các cấu trúc lõi có giá trị nhất được bóc tác
     *   **Vòng lặp Data-logging ngầm:** Quản lý cơ chế vòng lặp Background chạy độc lập siêu tốt để không gây Memory Leak.
 
 ### 2. [optio50/Victron_Modbus_TCP](https://github.com/optio50/Victron_Modbus_TCP)
-*   **Đặc điểm:** Ứng dụng quản trị truy vấn Modbus cho inverter biến tần Victron.
+*   **Đặc điểm:** Ứng dụng quản trị truy vấn Modbus cho inverter biến tần Victron (repo tham chiếu tên TCP; **Data Logger chỉ triển khai Modbus RTU** — pattern vòng lặp kháng lỗi áp dụng cho RTU).
 *   **Mã nguồn lõi ứng dụng (Code-insights):**
     *   **Cơ chế Keep-Alive & Quản lý mất gói tin:** Đào sâu vào `MODBUS_Example.py`, vòng lặp vô biên `while True:` được gói bởi thủ thuật bắt lỗi Modbus cực khôn khéo. Khi đọc cổng Serial bị lỗi/nhiễu từ trường, hệ thống trả về `AttributeError`. Code ngay lập tức nhảy tới block `except` và dùng lệnh `continue` bắt đầu một vòng lặp tiếp theo, giúp App không bao giờ bị Crash. Thiết kế này bắt buộc phải tích hợp vào worker của Pi.
     *   **Tính toán số âm ngầm:** Bóc tách được logic chuyển đổi bit số nguyên: `if value > 32767: value -= 65536`. Thuật toán chuyển đổi unsigned thành signed 16-bit này sẽ cài thẳng vào bộ công cụ Formula Engine của chúng ta.
@@ -33,7 +33,7 @@ Dưới đây là các cấu trúc lõi có giá trị nhất được bóc tác
 Từ những đặc tính xuất sắc thu nhặt từ bóc tách codebase, mô hình ứng dụng **Data Logger** (Data Logger Architecture) được chốt hạ các yêu cầu:
 
 ### Yêu cầu chức năng (Functional Requirements - FRs)
-- **Đa chuẩn:** Hỗ trợ đọc giao tiếp Modbus RTU (Serial) qua `udev rules` và Modbus TCP qua Ethernet một cách linh hoạt nhờ cơ chế file Config-Driven.
+- **Modbus RTU:** Hỗ trợ đọc Modbus RTU (Serial / USB-RS485 trên Pi). **Modbus TCP** không nằm trong phạm vi phiên bản hiện tại (có thể bổ sung sau). Cấu hình thanh ghi qua SQLite + UI (tương đương mục tiêu “config-driven” của các repo tham chiếu).
 - **Trực quan:** Hiển thị số liệu Real-time tại Tab trang chủ và hỗ trợ vẽ Chart Đồ thị mượt mà trên framework PySide6.
 - **Tuân thủ TNMT:** Cỗ máy tạo Báo cáo trích xuất DB và ghi thành file `.txt` đáp ứng format nghiêm ngặt Phụ lục Thông tư 10/2021 TTT-BTNMT.
 - **Upload sFTP ngầm:** Tiến trình lập lịch qua `Asyncz` giúp đẩy ngầm file tới chi Cục môi trường.

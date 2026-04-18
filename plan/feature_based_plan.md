@@ -1,7 +1,7 @@
 # Plan Phát triển theo Module Tính năng (Feature-Based Development)
 
 *Ngày tạo: 07/04/2026*
-*Cập nhật: 08/04/2026 — M0 ✓, M1 ✓, M2 ✓. Tiếp theo: M3 Thu thập & Dashboard*
+*Cập nhật: 08/04/2026 — M0 ✓, M1 ✓, M2 ✓. Tiếp theo: M3 Thu thập & Monitor*
 
 > **Triết lý:** Hoàn thiện **dọc** từng tính năng (Model → Worker → UI → Test) trước khi chuyển sang tính năng tiếp theo. Mỗi Module khi "Done" nghĩa là đã chạy được end-to-end, có kiểm thử, và không cần quay lại sửa.
 
@@ -14,7 +14,7 @@
 | M0 | Nền tảng (Foundation) | DB Engine, PRAGMA, Models, Crypto, Entry Point | — |
 | M1 | Modbus Tester | Công cụ độc lập dò & kiểm tra register Modbus RTU tại hiện trường | M0 |
 | M2 | Cấu hình Trạm & Cảm biến | Settings QML View (Trạm, FTP, Serial) + CRUD bảng Sensor dựa trên kết quả test | M0, M1 |
-| M3 | Thu thập Modbus & Dashboard | ModbusWorker + DatabaseWorker + Dashboard QML realtime | M0, M2 |
+| M3 | Thu thập Modbus & Monitor | ModbusWorker + DatabaseWorker + Monitor QML realtime | M0, M2 |
 | M4 | Lịch sử & Xuất CSV | History QML truy vấn DB + Export file | M0, M3 |
 | M5 | Báo cáo TXT & Gửi sFTP | TxtGenerator + FtpWorker + ReportLog + UI trạng thái | M0, M2, M3 |
 
@@ -52,7 +52,7 @@
 
 ### Changes
 - Refactor `main.py`: chuyển từ `QApplication` + `QWidgets` sang `QGuiApplication` + `QQmlApplicationEngine` theo plan mới.
-- Tạo `ui/qml/Main.qml`: shell giao diện "Precision Brutalism" với sidebar 3 tab (Dashboard, Lịch sử, Cài đặt), đồng hồ realtime, status bar — placeholder cho các module tiếp theo.
+- Tạo `ui/qml/Main.qml`: shell giao diện "Precision Brutalism" với sidebar 3 tab (Monitor, Lịch sử, Cài đặt), đồng hồ realtime, status bar — placeholder cho các module tiếp theo.
 - Tạo `tests/test_m0_foundation.py`: test script kiểm tra M0.1 (PRAGMA WAL/synchronous/temp_store/cache_size), M0.2 (4 bảng INSERT/SELECT), M0.3 (Fernet encrypt/decrypt), M0.4 (formula linear/polynomial).
 - Cài `uv` trên RPi, sync project và cài dependencies thành công.
 
@@ -99,7 +99,7 @@
 - Tạo class `app/ui/tester_controller.py`: `TesterController(QObject)` với `@Slot` (`connect_serial`, `read_single`, `start_scan`, `stop_scan`) và `@Property` (`isConnected`, `isScanning`). Tích hợp `ScanWorker` QThread cho scan background.
 - Tạo `app/workers/scan_worker.py`: `ScanWorker(QThread)` — quét dải register nền, phát Signal `progress`/`result`/`finished_scan`, hỗ trợ `stop()` an toàn.
 - Sửa đổi `app/main.py`: Initialize và đăng ký `testerController` vào QML context (`rootContext().setContextProperty`).
-- Sửa `app/core/modbus.py`: Thư viện lõi đọc/ghi RTU/TCP bằng PyModbus. Sửa bug `write()` (dùng `val` trước khi gán). Thêm `pyserial` dependency.
+- Sửa `app/core/modbus.py`: Thư viện lõi đọc/ghi **Modbus RTU** bằng PyModbus (TCP không triển khai; có thể bổ sung sau). Sửa bug `write()` (dùng `val` trước khi gán). Thêm `pyserial` dependency.
 - Fix DeprecationWarning: chuyển toàn bộ `session.query()` → `session.exec(select(...))` chuẩn SQLModel ở 5 file (`settings_controller`, `sensor_model`, `settings_widget`, `history_widget`, `main_window`, `ftp_worker`, test).
 
 ### Verification
@@ -161,9 +161,9 @@
 
 ---
 
-## M3 — Thu thập Modbus & Dashboard Realtime
+## M3 — Thu thập Modbus & Monitor Realtime
 
-**Mục tiêu:** Hệ thống tự động kết nối bằng cấu hình Serial từ M2, đọc liên tục các cảm biến active, lưu vào DB và hiển thị Dashboard.
+**Mục tiêu:** Hệ thống tự động kết nối bằng cấu hình Serial từ M2, đọc liên tục các cảm biến active, lưu vào DB và hiển thị Monitor.
 
 ### Checklist
 
@@ -174,9 +174,9 @@
 - [x] **M3.2** Xử lý dữ liệu
   - Ép kiểu int16/uint16/float32, endianness (ABCD/CDAB/BADC/DCBA). `apply_formula()` chuyển đổi y = ax + b.
 - [x] **M3.3** `workers/database_worker.py` — Batch INSERT
-  - Nhận data queue, gom >=10 dòng hoặc timeout 5s để insert `sensor_data` vào DB (đã có từ M0, wired qua DashboardController).
-- [x] **M3.4** `ui/DashboardView.qml` — Realtime Cards
-  - `GridView` QML hiển thị sensor cards (name, value, unit, status dot, last update). `DashboardModel(QAbstractListModel)` cung cấp 7 roles.
+  - Nhận data queue, gom >=10 dòng hoặc timeout 5s để insert `sensor_data` vào DB (đã có từ M0, wired qua MonitorController).
+- [x] **M3.4** `ui/MonitorView.qml` — Realtime Cards
+  - `GridView` QML hiển thị sensor cards (name, value, unit, status dot, last update). `MonitorModel(QAbstractListModel)` cung cấp 7 roles.
   - Nút BẮT ĐẦU / DỪNG THU THẬP, thanh trạng thái kết nối, bộ đếm ERR.
 - [x] **M3.5** Kháng lỗi & Shutdown
   - Mất kết nối → status "ERR", backoff retry (1s → 2s → 4s → ... → max 30s), tự reconnect.
@@ -187,9 +187,9 @@
 - [x] Rút cáp/cắm lại app tự hồi phục. Đóng GUI không treo thread.
 
 ### Summary
-- Hoàn thành M2.3 + M3 — Thu thập Modbus & Dashboard Realtime.
+- Hoàn thành M2.3 + M3 — Thu thập Modbus & Monitor Realtime.
 - M2.3: Thêm 5 trường serial vào AppConfig + SettingsController + SettingsView.qml. Nút "LƯU VÀO CẤU HÌNH" trên TesterView copy thông số kết nối test → cấu hình hệ thống.
-- M3: DashboardController quản lý 2 QThread (ModbusWorker polling + DatabaseWorker batch insert). DashboardModel(QAbstractListModel) cung cấp realtime data cho GridView QML. Reconnect tự động với exponential backoff.
+- M3: MonitorController quản lý 2 QThread (ModbusWorker polling + DatabaseWorker batch insert). MonitorModel(QAbstractListModel) cung cấp realtime data cho GridView QML. Reconnect tự động với exponential backoff.
 
 ### Changes
 - Sửa `app/models/app_config.py`: Thêm 5 trường serial (serial_port, serial_baudrate, serial_bytesize, serial_parity, serial_stopbits).
@@ -197,17 +197,17 @@
 - Sửa `app/ui/qml/SettingsView.qml`: Thêm section "CẤU HÌNH SERIAL" (Port, Baudrate, Data bits, Parity, Stop bits).
 - Sửa `app/ui/qml/TesterView.qml`: Thêm nút "LƯU VÀO CẤU HÌNH" (visible khi connected) ghi serial params → settingsController → save_config().
 - Viết lại `app/workers/modbus_worker.py`: Constructor nhận full serial params + poll_interval. Thay `time.sleep(0.1)` bằng `max(0.1, poll_interval - cycle_duration)`. Thêm reconnect backoff (1s/2s/4s/.../30s). Auto-detect `slave`/`device_id` keyword. Thêm `connection_changed(bool)` signal.
-- Tạo mới `app/ui/dashboard_controller.py`: `DashboardModel(QAbstractListModel)` 7 roles (sensorId, name, unit, value, rawValue, status, lastUpdate). `DashboardController(QObject)` quản lý start/stop polling, tạo QThread cho ModbusWorker + DatabaseWorker, nhận `data_ready` → update model + enqueue DB.
-- Tạo mới `app/ui/qml/DashboardView.qml`: Top bar (start/stop, status dot, error count) + GridView sensor cards (name, value lớn, unit, status dot, last update time). Dark theme "Precision Brutalism".
-- Sửa `app/main.py`: Đăng ký `dashboardController` + `dashboardModel` vào QML context. `app.aboutToQuit` → `stop_polling()`.
-- Sửa `app/ui/qml/Main.qml`: Thay placeholder "DASHBOARD" bằng `DashboardView {}`. Bind sidebar statusLabel vào `dashboardController.statusText`.
+- Tạo mới `app/ui/monitor_controller.py`: `MonitorModel(QAbstractListModel)` 7 roles (sensorId, name, unit, value, rawValue, status, lastUpdate). `MonitorController(QObject)` quản lý start/stop polling, tạo QThread cho ModbusWorker + DatabaseWorker, nhận `data_ready` → update model + enqueue DB.
+- Tạo mới `app/ui/qml/MonitorView.qml`: Top bar (start/stop, status dot, error count) + GridView sensor cards (name, value lớn, unit, status dot, last update time). Dark theme "Precision Brutalism".
+- Sửa `app/main.py`: Đăng ký `monitorController` + `monitorModel` vào QML context. `app.aboutToQuit` → `stop_polling()`.
+- Sửa `app/ui/qml/Main.qml`: Thay placeholder "DASHBOARD" bằng `MonitorView {}`. Bind sidebar statusLabel vào `monitorController.statusText`.
 
 ### Verification
-- Script test `tests/test_m3_dashboard.py` chạy trên RPi qua SSH: **38/38 PASSED, 0 DeprecationWarning, 0 lỗi**.
+- Script test `tests/test_m3_monitor.py` chạy trên RPi qua SSH: **38/38 PASSED, 0 DeprecationWarning, 0 lỗi**.
 - M2.3: AppConfig 5 serial fields persist đúng default và update. SettingsController serialPort/serialBaudrate/... type str/int đúng. Validation reject baudrate=12345, parity="X".
 - M3.1: ModbusWorker kết nối cổng /dev/ttyUSB0, polling sensor active, data_ready signal nhận được trên main thread.
 - M3.3: DatabaseWorker batch insert sensor_data — verify records tăng sau 6s polling.
-- M3.4: DashboardModel load_sensors → rowCount đúng, update_value → value/status/lastUpdate cập nhật, set_all_status ERR/--- broadcast toàn bộ.
+- M3.4: MonitorModel load_sensors → rowCount đúng, update_value → value/status/lastUpdate cập nhật, set_all_status ERR/--- broadcast toàn bộ.
 - M3.5: Backoff constants (1.0/2.0/30.0) đúng. connection_changed signal có sẵn. stop_polling dừng sạch thread + trạng thái "DỪNG".
 
 ---
@@ -307,7 +307,7 @@ M1 (Modbus Tester)       ░░░░░░███████░░░░░�
   ↓
 M2 (Cấu hình)            ░░░░░░░░░░░░░██████░░░░░  ~1.0 ngày
   ↓
-M3 (Modbus + Dashboard)  ░░░░░░░░░░░░░░░░░░░████████  ~2.0 ngày
+M3 (Modbus + Monitor)  ░░░░░░░░░░░░░░░░░░░████████  ~2.0 ngày
   ↓
 M4 (Lịch sử + CSV)       ░░░░░░░░░░░░░░░░░░░░░░░░██  ~0.5 ngày
   ↓

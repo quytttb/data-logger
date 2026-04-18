@@ -1,7 +1,8 @@
 # Data Logger
 
-Ứng dụng giám sát cảm biến công nghiệp chạy trên **Raspberry Pi 4**.  
-Đọc dữ liệu qua **Modbus RTU**, lưu trữ **SQLite**, hiển thị giao diện cảm ứng **PySide6/QML**, xuất báo cáo **CSV/TXT** và gửi tự động qua **sFTP**.
+Ứng dụng giám sát cảm biến công nghiệp **chỉ triển khai và chạy trên Raspberry Pi 4** (GUI cảm ứng, Modbus, SQLite).  
+Máy dev dùng để chỉnh sửa source và **deploy** lên Pi — không dùng làm môi trường chạy app.  
+Đọc dữ liệu qua **Modbus RTU**, lưu trữ **SQLite**, hiển thị **PySide6/QML**, xuất **CSV/TXT** và gửi tự động qua **sFTP**.
 
 ---
 
@@ -21,13 +22,15 @@
 
 - **Phần cứng**: Raspberry Pi 4 (ARM64), màn hình cảm ứng 7", cổng USB-RS485
 - **OS**: Raspberry Pi OS 64-bit (Bookworm trở lên)
-- **Python**: 3.12+
+- **Python**: 3.12+ (trên Pi, trong `.venv` do `deploy.sh` tạo)
+
+**Môi trường chạy:** ứng dụng chỉ chạy trên Pi sau khi deploy (`deploy.sh --quick`, binary Nuitka, hoặc systemd). Không hỗ trợ chạy production trên máy dev.
 
 ---
 
 ## Cài đặt & Deploy
 
-### Yêu cầu trên máy dev
+### Máy phát triển (chỉ công cụ deploy)
 
 ```bash
 sudo apt install sshpass rsync
@@ -36,7 +39,7 @@ sudo apt install sshpass rsync
 ### Deploy lần đầu lên Pi (fresh install)
 
 ```bash
-# Cú pháp: PI_HOST=<IP> bash data-logger/deploy.sh --quick
+# Chạy từ thư mục gốc của clone (nơi có deploy.sh). Nếu clone nằm trong thư mục cha tên data-logger: PI_HOST=<IP> bash data-logger/deploy.sh --quick
 PI_HOST=192.168.31.185 bash deploy.sh --quick
 ```
 
@@ -44,7 +47,7 @@ Script tự động làm tất cả:
 1. Tạo thư mục trên Pi
 2. Sync toàn bộ source code qua rsync
 3. Tạo Python virtualenv (`.venv`)
-4. Cài dependencies: PySide6, SQLModel, pymodbus, asyncssh, cryptography
+4. Cài dependencies: PySide6, SQLModel, pymodbus, pyserial, asyncssh, cryptography
 5. Tạo thư mục `var/` cho dữ liệu persistent
 6. Cài shortcut menu **Data Logger** (icon `assets/app-icon.svg`) vào *System Tools*
 7. Khởi động app
@@ -108,6 +111,7 @@ data-logger/
 │   └── app-icon.svg         # Logo / icon desktop & cửa sổ (4M Technologies)
 │
 ├── core/                    # Business logic
+│   ├── _version.py          # __version__ (Hatch + QGuiApplication)
 │   ├── _paths.py            # Path resolution (Python & Nuitka compiled)
 │   ├── database.py          # SQLite engine (WAL mode)
 │   ├── modbus.py            # Modbus RTU driver
@@ -147,6 +151,8 @@ data-logger/
 
 ### Dữ liệu trên RPi (không bị ghi đè khi deploy)
 
+`deploy.sh` và file `scripts/datalogger.service` đặt biến môi trường `DATALOGGER_*` trỏ tới `var/` — mọi DB, cấu hình và log runtime nằm dưới đây.
+
 ```
 /home/pi/data-logger/
 ├── data-logger/             # Source code (rsync từ dev)
@@ -175,9 +181,10 @@ ssh pi@192.168.31.185 'journalctl -u datalogger -f'
 
 | Thành phần | Công nghệ |
 |---|---|
+| Phiên bản | Một nguồn: [`core/_version.py`](core/_version.py) (`__version__`) — đồng bộ wheel (Hatch) và `QGuiApplication.setApplicationVersion` trong `main.py` |
 | GUI | PySide6 6.x + QML (Qt Quick Controls 2) |
 | Database | SQLite (WAL mode) qua SQLModel + SQLAlchemy |
-| Modbus | pymodbus 3.x (RTU over RS-485/USB) |
+| Modbus | pymodbus 3.x — **chỉ Modbus RTU** (RS-485/USB). Modbus TCP **không** hỗ trợ trong phiên bản hiện tại (có thể bổ sung sau). Trong DB / Dashboard dùng tên ngắn `holding` / `input`; Modbus Tester (QML) dùng nhãn đầy đủ (*Holding Register*, …). `core.modbus.ModbusBase.read` / `write` chuẩn hoá alias nội bộ. |
 | SSH/FTP | asyncssh |
 | Mã hóa | cryptography (Fernet AES-128) |
 | Multi-threading | QThread + Signal/Slot |
