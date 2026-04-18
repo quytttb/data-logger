@@ -49,7 +49,7 @@ Rectangle {
                 verticalAlignment: Text.AlignVCenter
             }
             Button {
-                text: qsTr("Close")
+                text: "Close"
                 Layout.alignment: Qt.AlignHCenter
                 onClicked: histPopup.close()
             }
@@ -121,15 +121,19 @@ Rectangle {
         // ── View toggle: List / Chart ─────────────────────────────────────
         TabBar {
             id: viewTabBar
-            Layout.fillWidth: true
+            Layout.alignment: Qt.AlignLeft
             currentIndex: viewStack.currentIndex
 
             TabButton { 
-                text: qsTr("List") 
+                text: "List"
+                icon.source: "../../assets/icons/list.svg"
+                width: implicitWidth + 60
                 onClicked: viewStack.currentIndex = 0
             }
             TabButton { 
-                text: qsTr("Chart") 
+                text: "Chart"
+                icon.source: "../../assets/icons/chart.svg"
+                width: implicitWidth + 60
                 onClicked: {
                     viewStack.currentIndex = 1;
                     histRoot.refreshChart();
@@ -160,11 +164,11 @@ Rectangle {
                         anchors.leftMargin: 12
                         anchors.rightMargin: 12
                         spacing: 8
-                        Label { text: qsTr("Time");      color: Theme.accent; font.bold: true; font.pixelSize: 13; Layout.preferredWidth: 160 }
-                        Label { text: qsTr("Sensor");    color: Theme.accent; font.bold: true; font.pixelSize: 13; Layout.preferredWidth: 150 }
-                        Label { text: qsTr("Unit");      color: Theme.accent; font.bold: true; font.pixelSize: 13; Layout.preferredWidth: 80 }
-                        Label { text: qsTr("Value");     color: Theme.accent; font.bold: true; font.pixelSize: 13; Layout.preferredWidth: 120 }
-                        Label { text: qsTr("Raw value"); color: Theme.accent; font.bold: true; font.pixelSize: 13; Layout.fillWidth: true }
+                        Label { text: "Time";      color: Theme.accent; font.bold: true; font.pixelSize: 13; Layout.preferredWidth: 160 }
+                        Label { text: "Sensor";    color: Theme.accent; font.bold: true; font.pixelSize: 13; Layout.preferredWidth: 150 }
+                        Label { text: "Unit";      color: Theme.accent; font.bold: true; font.pixelSize: 13; Layout.preferredWidth: 80 }
+                        Label { text: "Value";     color: Theme.accent; font.bold: true; font.pixelSize: 13; Layout.preferredWidth: 120 }
+                        Label { text: "Raw value"; color: Theme.accent; font.bold: true; font.pixelSize: 13; Layout.fillWidth: true }
                     }
                 }
 
@@ -200,7 +204,7 @@ Rectangle {
                     Label {
                         anchors.centerIn: parent
                         visible: historyList.count === 0 && !historyController.isLoading
-                        text: qsTr("No data.\nAdjust the time range or sensor, then search.")
+                        text: "No data.\nAdjust the time range or sensor, then search."
                         color: Theme.textSecondary
                         font.pixelSize: 16
                         horizontalAlignment: Text.AlignHCenter
@@ -248,7 +252,7 @@ Rectangle {
                 Label {
                     anchors.centerIn: parent
                     visible: historyController.recordCount === 0 && !historyController.isLoading
-                    text: qsTr("No data.\nSearch first to display the chart.")
+                    text: "No data.\nSearch first to display the chart."
                     color: Theme.textSecondary
                     font.pixelSize: 16
                     horizontalAlignment: Text.AlignHCenter

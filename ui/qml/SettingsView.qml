@@ -19,7 +19,7 @@ Rectangle {
             anchors.fill: parent; anchors.margins: 15
             Text { id: popTitle; font.bold: true; font.pixelSize: 18; color: Theme.textPrimary; Layout.alignment: Qt.AlignHCenter }
             Text { id: popMsg; wrapMode: Text.WordWrap; color: Theme.accentText; font.pixelSize: 14; Layout.fillWidth: true; Layout.fillHeight: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-            Button { text: qsTr("Close"); Layout.alignment: Qt.AlignHCenter; onClicked: settingsPopup.close() }
+            Button { text: "Close"; Layout.alignment: Qt.AlignHCenter; onClicked: settingsPopup.close() }
         }
     }
 
@@ -48,7 +48,7 @@ Rectangle {
         ColumnLayout {
             anchors.fill: parent; anchors.margins: 18; spacing: 8
             Text {
-                text: sensorDialog.editId < 0 ? qsTr("Add sensor") : qsTr("Edit sensor")
+                text: sensorDialog.editId < 0 ? "Add sensor" : "Edit sensor"
                 color: Theme.accentText; font.pixelSize: 18; font.bold: true
                 Layout.alignment: Qt.AlignHCenter
             }
@@ -61,36 +61,36 @@ Rectangle {
                 GridLayout {
                     id: dialogGrid; columns: 2; width: parent.width; columnSpacing: 10; rowSpacing: 8
 
-                    Text { text: qsTr("Name:"); color: Theme.textSecondary }
+                    Text { text: "Name:"; color: Theme.textSecondary }
                     TextField { id: dName; Layout.fillWidth: true; color: Theme.textPrimary; background: Rectangle { color: Theme.bgInput; radius: Theme.radiusTiny } }
 
-                    Text { text: qsTr("Unit:"); color: Theme.textSecondary }
+                    Text { text: "Unit:"; color: Theme.textSecondary }
                     TextField { id: dUnit; Layout.fillWidth: true; color: Theme.textPrimary; background: Rectangle { color: Theme.bgInput; radius: Theme.radiusTiny } }
 
-                    Text { text: qsTr("Slave ID:"); color: Theme.textSecondary }
+                    Text { text: "Slave ID:"; color: Theme.textSecondary }
                     SpinBox { id: dSlave; from: 1; to: 247; value: 1; Layout.fillWidth: true }
 
-                    Text { text: qsTr("Address:"); color: Theme.textSecondary }
+                    Text { text: "Address:"; color: Theme.textSecondary }
                     SpinBox { id: dAddr; from: 0; to: 65535; value: 0; Layout.fillWidth: true; editable: true }
 
-                    Text { text: qsTr("Register type:"); color: Theme.textSecondary }
+                    Text { text: "Register type:"; color: Theme.textSecondary }
                     ComboBox { id: dRegType; model: ["holding", "input"]; Layout.fillWidth: true }
 
-                    Text { text: qsTr("Data type:"); color: Theme.textSecondary }
+                    Text { text: "Data type:"; color: Theme.textSecondary }
                     ComboBox { id: dDataType; model: ["int16", "uint16", "float32"]; Layout.fillWidth: true }
 
-                    Text { text: qsTr("Endian:"); color: Theme.textSecondary }
+                    Text { text: "Endian:"; color: Theme.textSecondary }
                     ComboBox { id: dDataFmt; model: ["AB", "BA", "ABCD", "CDAB"]; Layout.fillWidth: true }
 
-                    Text { text: qsTr("Scaling mode:"); color: Theme.textSecondary }
+                    Text { text: "Scaling mode:"; color: Theme.textSecondary }
                     ComboBox {
                         id: dScalingMode
                         Layout.fillWidth: true
                         model: [
-                            qsTr("No scaling (raw value)"),
-                            qsTr("Linear (y = ax + b)"),
-                            qsTr("Two-point mapping"),
-                            qsTr("Advanced (JSON)")
+                            "No scaling (raw value)",
+                            "Linear (y = ax + b)",
+                            "Two-point mapping",
+                            "Advanced (JSON)"
                         ]
                     }
 
@@ -104,7 +104,7 @@ Rectangle {
 
                             RowLayout {
                                 spacing: 8
-                                Text { text: qsTr("Gain (a):"); color: Theme.textSecondary }
+                                Text { text: "Gain (a):"; color: Theme.textSecondary }
                                 TextField {
                                     id: dLinearA
                                     text: "1"
@@ -113,7 +113,7 @@ Rectangle {
                                     inputMethodHints: Qt.ImhFormattedNumbersOnly
                                     background: Rectangle { color: Theme.bgInput; radius: Theme.radiusTiny }
                                 }
-                                Text { text: qsTr("Offset (b):"); color: Theme.textSecondary }
+                                Text { text: "Offset (b):"; color: Theme.textSecondary }
                                 TextField {
                                     id: dLinearB
                                     text: "0"
@@ -130,7 +130,7 @@ Rectangle {
                                 RowLayout {
                                     Layout.fillWidth: true
                                     spacing: 8
-                                    Text { text: qsTr("Raw Min:"); color: Theme.textSecondary; Layout.preferredWidth: 88 }
+                                    Text { text: "Raw Min:"; color: Theme.textSecondary; Layout.preferredWidth: 88 }
                                     TextField {
                                         id: dRawMin
                                         text: "4000"
@@ -139,7 +139,7 @@ Rectangle {
                                         inputMethodHints: Qt.ImhFormattedNumbersOnly
                                         background: Rectangle { color: Theme.bgInput; radius: Theme.radiusTiny }
                                     }
-                                    Text { text: qsTr("Raw Max:"); color: Theme.textSecondary; Layout.preferredWidth: 88 }
+                                    Text { text: "Raw Max:"; color: Theme.textSecondary; Layout.preferredWidth: 88 }
                                     TextField {
                                         id: dRawMax
                                         text: "20000"
@@ -152,7 +152,7 @@ Rectangle {
                                 RowLayout {
                                     Layout.fillWidth: true
                                     spacing: 8
-                                    Text { text: qsTr("Scale Min:"); color: Theme.textSecondary; Layout.preferredWidth: 88 }
+                                    Text { text: "Scale Min:"; color: Theme.textSecondary; Layout.preferredWidth: 88 }
                                     TextField {
                                         id: dScaleMin
                                         text: "4"
@@ -161,7 +161,7 @@ Rectangle {
                                         inputMethodHints: Qt.ImhFormattedNumbersOnly
                                         background: Rectangle { color: Theme.bgInput; radius: Theme.radiusTiny }
                                     }
-                                    Text { text: qsTr("Scale Max:"); color: Theme.textSecondary; Layout.preferredWidth: 88 }
+                                    Text { text: "Scale Max:"; color: Theme.textSecondary; Layout.preferredWidth: 88 }
                                     TextField {
                                         id: dScaleMax
                                         text: "20"
@@ -177,7 +177,7 @@ Rectangle {
                                 spacing: 4
                                 width: parent.width
                                 Text {
-                                    text: qsTr("Coefficient JSON (polynomial / custom):")
+                                    text: "Coefficient JSON (polynomial / custom):"
                                     wrapMode: Text.WordWrap
                                     color: Theme.textSecondary
                                     font.pixelSize: 12
@@ -196,21 +196,21 @@ Rectangle {
                         }
                     }
 
-                    Text { text: qsTr("Poll interval (s):"); color: Theme.textSecondary }
+                    Text { text: "Poll interval (s):"; color: Theme.textSecondary }
                     SpinBox { id: dPollInterval; from: 1; to: 3600; value: 3; Layout.fillWidth: true }
 
-                    Text { text: qsTr("Report column:"); color: Theme.textSecondary }
+                    Text { text: "Report column:"; color: Theme.textSecondary }
                     SpinBox { id: dReportIdx; from: 0; to: 99; value: 0; Layout.fillWidth: true }
 
-                    Text { text: qsTr("Active:"); color: Theme.textSecondary }
+                    Text { text: "Active:"; color: Theme.textSecondary }
                     Switch { id: dActive; checked: true }
                 }
             }
 
             RowLayout { Layout.fillWidth: true; spacing: 10
-                Button { text: qsTr("Cancel"); Layout.fillWidth: true; onClicked: sensorDialog.close() }
+                Button { text: "Cancel"; Layout.fillWidth: true; onClicked: sensorDialog.close() }
                 Button {
-                    text: sensorDialog.editId < 0 ? qsTr("Add") : qsTr("Save"); Layout.fillWidth: true
+                    text: sensorDialog.editId < 0 ? "Add" : "Save"; Layout.fillWidth: true
                     onClicked: {
                         var coeff = settingsController.buildCoefficientJson(
                             dScalingMode.currentIndex,
@@ -284,14 +284,14 @@ Rectangle {
         background: Rectangle { color: Theme.bgSeparator; radius: 8; border.color: Theme.borderErr; border.width: 2 }
         ColumnLayout {
             anchors.fill: parent; anchors.margins: 15
-            Text { text: qsTr("Confirm delete"); font.bold: true; font.pixelSize: 18; color: Theme.statusErr; Layout.alignment: Qt.AlignHCenter }
-            Text { text: qsTr("Delete sensor \"%1\"?").arg(deleteConfirm.targetName); wrapMode: Text.WordWrap; color: Theme.textPrimary; font.pixelSize: 14; Layout.fillWidth: true; horizontalAlignment: Text.AlignHCenter }
+            Text { text: "Confirm delete"; font.bold: true; font.pixelSize: 18; color: Theme.statusErr; Layout.alignment: Qt.AlignHCenter }
+            Text { text: ("Delete sensor \"%1\"?").arg(deleteConfirm.targetName); wrapMode: Text.WordWrap; color: Theme.textPrimary; font.pixelSize: 14; Layout.fillWidth: true; horizontalAlignment: Text.AlignHCenter }
             RowLayout { Layout.fillWidth: true; spacing: 10
-                Button { text: qsTr("Cancel"); Layout.fillWidth: true; onClicked: deleteConfirm.close() }
+                Button { text: "Cancel"; Layout.fillWidth: true; onClicked: deleteConfirm.close() }
                 Button {
-                    text: qsTr("Delete"); Layout.fillWidth: true
+                    text: "Delete"; Layout.fillWidth: true
                     background: Rectangle { color: Theme.btnStop; radius: 6; opacity: parent.pressed ? 0.7 : 1.0 }
-                    contentItem: Text { text: qsTr("Delete"); color: "white"; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                    contentItem: Text { text: "Delete"; color: "white"; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
                     onClicked: { sensorModel.remove_sensor(deleteConfirm.targetId); deleteConfirm.close() }
                 }
             }
@@ -306,19 +306,18 @@ Rectangle {
 
         TabBar {
             id: settingsTabBar
-            Layout.fillWidth: true
-            Layout.preferredHeight: 48
+            Layout.alignment: Qt.AlignLeft
             currentIndex: 0
 
             TabButton {
-                text: qsTr("Report & SFTP")
-                font.pixelSize: 13; font.bold: true
-                width: implicitWidth
+                text: "Report"
+                icon.source: "../../assets/icons/report.svg"
+                width: implicitWidth + 60
             }
             TabButton {
-                text: qsTr("Sensors")
-                font.pixelSize: 13; font.bold: true
-                width: implicitWidth
+                text: "Sensors"
+                icon.source: "../../assets/icons/sensors.svg"
+                width: implicitWidth + 60
             }
         }
 
@@ -351,7 +350,7 @@ Rectangle {
                             anchors.fill: parent; anchors.margins: 15
                             spacing: 14
 
-                            Text { text: qsTr("Report & SFTP"); color: Theme.accentText; font.pixelSize: 18; font.bold: true }
+                            Text { text: "Report"; color: Theme.accentText; font.pixelSize: 18; font.bold: true }
 
                             GridLayout {
                                 columns: 4; Layout.fillWidth: true
@@ -365,7 +364,7 @@ Rectangle {
                                     onTextChanged: settingsController.stationCode = text
                                 }
 
-                                Text { text: qsTr("Station name:"); color: Theme.textSecondary; Layout.alignment: Qt.AlignRight | Qt.AlignVCenter }
+                                Text { text: "Station name:"; color: Theme.textSecondary; Layout.alignment: Qt.AlignRight | Qt.AlignVCenter }
                                 TextField {
                                     Layout.fillWidth: true; color: Theme.textPrimary
                                     background: Rectangle { color: Theme.bgInput; radius: Theme.radiusTiny }
@@ -373,7 +372,7 @@ Rectangle {
                                     onTextChanged: settingsController.stationName = text
                                 }
 
-                                Text { text: qsTr("SFTP host:"); color: Theme.textSecondary; Layout.alignment: Qt.AlignRight | Qt.AlignVCenter }
+                                Text { text: "SFTP host:"; color: Theme.textSecondary; Layout.alignment: Qt.AlignRight | Qt.AlignVCenter }
                                 TextField {
                                     Layout.fillWidth: true; color: Theme.textPrimary
                                     background: Rectangle { color: Theme.bgInput; radius: Theme.radiusTiny }
@@ -381,7 +380,7 @@ Rectangle {
                                     onTextChanged: settingsController.ftpAddress = text
                                 }
 
-                                Text { text: qsTr("Port:"); color: Theme.textSecondary; Layout.alignment: Qt.AlignRight | Qt.AlignVCenter }
+                                Text { text: "Port:"; color: Theme.textSecondary; Layout.alignment: Qt.AlignRight | Qt.AlignVCenter }
                                 SpinBox {
                                     from: 1; to: 65535; value: settingsController.ftpPort
                                     onValueChanged: settingsController.ftpPort = value
@@ -405,7 +404,7 @@ Rectangle {
                                     onTextChanged: settingsController.ftpPassword = text
                                 }
 
-                                Text { text: qsTr("Remote folder:"); color: Theme.textSecondary; Layout.alignment: Qt.AlignRight | Qt.AlignVCenter }
+                                Text { text: "Remote folder:"; color: Theme.textSecondary; Layout.alignment: Qt.AlignRight | Qt.AlignVCenter }
                                 TextField {
                                     Layout.columnSpan: 3; Layout.fillWidth: true; color: Theme.textPrimary
                                     background: Rectangle { color: Theme.bgInput; radius: Theme.radiusTiny }
@@ -415,7 +414,7 @@ Rectangle {
                             }
 
                             Button {
-                                text: qsTr("Save configuration")
+                                text: "Save configuration"
                                 Layout.fillWidth: true; Layout.preferredHeight: 48
                                 font.pixelSize: 16; font.bold: true
                                 onClicked: settingsController.save_config()
@@ -434,12 +433,12 @@ Rectangle {
                 RowLayout {
                     Layout.fillWidth: true
                     Text {
-                        text: qsTr("Sensor list")
+                        text: "Sensor list"
                         color: Theme.accentText; font.pixelSize: 18; font.bold: true
                         Layout.fillWidth: true
                     }
                     Button {
-                        text: qsTr("+ Add"); font.bold: true
+                        text: "+ Add"; font.bold: true
                         Layout.preferredHeight: 40
                         onClicked: settingsRoot.openAddSensor()
                     }
@@ -450,11 +449,11 @@ Rectangle {
                     color: Theme.bgSeparator; radius: Theme.radiusTiny
                     RowLayout {
                         anchors.fill: parent; anchors.leftMargin: 8; anchors.rightMargin: 8; spacing: 5
-                        Text { text: qsTr("Name");    color: Theme.accent; font.bold: true; font.pixelSize: 13; Layout.preferredWidth: 110 }
-                        Text { text: qsTr("Slave");  color: Theme.accent; font.bold: true; font.pixelSize: 13; Layout.preferredWidth: 50 }
-                        Text { text: qsTr("Addr");   color: Theme.accent; font.bold: true; font.pixelSize: 13; Layout.preferredWidth: 50 }
-                        Text { text: qsTr("Type");   color: Theme.accent; font.bold: true; font.pixelSize: 13; Layout.preferredWidth: 60 }
-                        Text { text: qsTr("Interval"); color: Theme.accent; font.bold: true; font.pixelSize: 13; Layout.preferredWidth: 55 }
+                        Text { text: "Name";    color: Theme.accent; font.bold: true; font.pixelSize: 13; Layout.preferredWidth: 110 }
+                        Text { text: "Slave";  color: Theme.accent; font.bold: true; font.pixelSize: 13; Layout.preferredWidth: 50 }
+                        Text { text: "Addr";   color: Theme.accent; font.bold: true; font.pixelSize: 13; Layout.preferredWidth: 50 }
+                        Text { text: "Type";   color: Theme.accent; font.bold: true; font.pixelSize: 13; Layout.preferredWidth: 60 }
+                        Text { text: "Interval"; color: Theme.accent; font.bold: true; font.pixelSize: 13; Layout.preferredWidth: 55 }
                         Item { Layout.fillWidth: true }
                     }
                 }
@@ -515,7 +514,7 @@ Rectangle {
                     Text {
                         anchors.centerIn: parent
                         visible: sensorListView.count === 0
-                        text: qsTr("No sensors yet.\nPress [+ Add] or use the Modbus tester page\nto add sensors.")
+                        text: "No sensors yet.\nPress [+ Add] or use the Modbus tester page\nto add sensors."
                         color: Theme.textSecondary; font.pixelSize: 16
                         horizontalAlignment: Text.AlignHCenter
                     }

@@ -131,6 +131,9 @@ def main():
         logger.error("Không thể load Main.qml — thoát.")
         sys.exit(1)
 
+    # Load sensor list from DB → triggers countChanged → updates Monitor + History
+    sensor_model.refresh()
+
     # ApplicationWindow (QML) không kế thừa icon từ QGuiApplication trên nhiều WM Linux
     if _app_icon and not _app_icon.isNull():
         for obj in roots:

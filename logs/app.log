@@ -33,3 +33,276 @@
 2026-04-06 18:51:50,888 | INFO     | datalogger | ============================================================
 2026-04-06 18:51:50,890 | INFO     | datalogger | Database initialized.
 2026-04-06 18:51:51,134 | INFO     | datalogger | Giao diện HMI 1024x600 đã sẵn sàng.
+2026-04-18 17:24:24,952 | INFO     | datalogger | ============================================================
+2026-04-18 17:24:24,953 | INFO     | datalogger | Data Logger — Khởi động
+2026-04-18 17:24:24,953 | INFO     | datalogger | ============================================================
+2026-04-18 17:24:24,956 | INFO     | datalogger | Database initialized.
+2026-04-18 17:24:25,040 | INFO     | ui.settings_controller | AppConfig loaded (id=1)
+2026-04-18 17:24:25,045 | INFO     | datalogger | Loading QML: /home/haiquy/Documents/data-logger/ui/qml/Main.qml
+2026-04-18 17:24:25,187 | INFO     | datalogger | QML loaded thành công. App đang chạy.
+2026-04-18 17:24:30,913 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 17:24:58,610 | INFO     | ui.sensor_model | SensorListModel refreshed: 1 sensors
+2026-04-18 17:25:12,119 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 17:27:16,796 | INFO     | datalogger | ============================================================
+2026-04-18 17:27:16,796 | INFO     | datalogger | Data Logger — Khởi động
+2026-04-18 17:27:16,796 | INFO     | datalogger | ============================================================
+2026-04-18 17:27:16,799 | INFO     | datalogger | Database initialized.
+2026-04-18 17:27:16,888 | INFO     | ui.settings_controller | AppConfig loaded (id=1)
+2026-04-18 17:27:16,897 | INFO     | datalogger | Loading QML: /home/haiquy/Documents/data-logger/ui/qml/Main.qml
+2026-04-18 17:27:17,038 | INFO     | datalogger | QML loaded thành công. App đang chạy.
+2026-04-18 17:27:39,744 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 17:27:54,362 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 17:28:06,261 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 17:32:38,804 | INFO     | datalogger | ============================================================
+2026-04-18 17:32:38,804 | INFO     | datalogger | Data Logger — Khởi động
+2026-04-18 17:32:38,804 | INFO     | datalogger | ============================================================
+2026-04-18 17:32:38,808 | INFO     | datalogger | Database initialized.
+2026-04-18 17:32:38,882 | INFO     | ui.settings_controller | AppConfig loaded (id=1)
+2026-04-18 17:32:38,888 | INFO     | datalogger | Loading QML: /home/haiquy/Documents/data-logger/ui/qml/Main.qml
+2026-04-18 17:32:39,029 | INFO     | datalogger | QML loaded thành công. App đang chạy.
+2026-04-18 17:33:10,645 | INFO     | datalogger.modbus | Cập nhật danh sách cảm biến: 1 sensors
+2026-04-18 17:33:10,646 | ERROR    | pymodbus.logging | [Errno 2] could not open port /dev/ttyUSB0: [Errno 2] No such file or directory: '/dev/ttyUSB0'
+2026-04-18 17:33:10,647 | INFO     | datalogger.database | DatabaseWorker đã khởi động.
+2026-04-18 17:33:10,648 | INFO     | datalogger.monitor | Polling started: 1 sensors, interval=3s
+2026-04-18 17:33:10,650 | WARNING  | datalogger.monitor | Modbus error #1: Không thể kết nối cổng /dev/ttyUSB0
+2026-04-18 17:33:10,651 | WARNING  | datalogger.monitor | Modbus worker exited unexpectedly — stopping all workers.
+2026-04-18 17:33:15,647 | INFO     | datalogger.database | DatabaseWorker đã dừng.
+2026-04-18 17:33:15,656 | INFO     | datalogger.monitor | Polling stopped.
+2026-04-18 17:33:18,510 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 17:33:20,213 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 17:33:28,714 | INFO     | ui.sensor_model | SensorListModel refreshed: 1 sensors
+2026-04-18 17:33:34,455 | INFO     | ui.sensor_model | SensorListModel refreshed: 0 sensors
+2026-04-18 17:36:28,522 | INFO     | datalogger | ============================================================
+2026-04-18 17:36:28,522 | INFO     | datalogger | Data Logger — Khởi động
+2026-04-18 17:36:28,522 | INFO     | datalogger | ============================================================
+2026-04-18 17:36:28,525 | INFO     | datalogger | Database initialized.
+2026-04-18 17:36:28,598 | INFO     | ui.settings_controller | AppConfig loaded (id=1)
+2026-04-18 17:36:28,605 | INFO     | datalogger | Loading QML: /home/haiquy/Documents/data-logger/ui/qml/Main.qml
+2026-04-18 17:36:28,765 | INFO     | datalogger | QML loaded thành công. App đang chạy.
+2026-04-18 17:38:46,389 | INFO     | datalogger | ============================================================
+2026-04-18 17:38:46,389 | INFO     | datalogger | Data Logger — Khởi động
+2026-04-18 17:38:46,389 | INFO     | datalogger | ============================================================
+2026-04-18 17:38:46,393 | INFO     | datalogger | Database initialized.
+2026-04-18 17:38:46,455 | INFO     | ui.settings_controller | AppConfig loaded (id=1)
+2026-04-18 17:38:46,460 | INFO     | datalogger | Loading QML: /home/haiquy/Documents/data-logger/ui/qml/Main.qml
+2026-04-18 17:38:46,594 | INFO     | datalogger | QML loaded thành công. App đang chạy.
+2026-04-18 17:39:21,800 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 17:39:31,867 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 17:39:32,646 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 17:39:33,321 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 17:39:58,726 | INFO     | ui.sensor_model | SensorListModel refreshed: 0 sensors
+2026-04-18 17:40:13,335 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 17:42:53,849 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 17:45:01,450 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 17:45:08,605 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 17:45:12,422 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 17:45:19,755 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 17:47:04,969 | INFO     | datalogger | ============================================================
+2026-04-18 17:47:04,970 | INFO     | datalogger | Data Logger — Khởi động
+2026-04-18 17:47:04,970 | INFO     | datalogger | ============================================================
+2026-04-18 17:47:04,973 | INFO     | datalogger | Database initialized.
+2026-04-18 17:47:05,046 | INFO     | ui.settings_controller | AppConfig loaded (id=1)
+2026-04-18 17:47:05,053 | INFO     | datalogger | Loading QML: /home/haiquy/Documents/data-logger/ui/qml/Main.qml
+2026-04-18 17:47:05,182 | INFO     | datalogger | QML loaded thành công. App đang chạy.
+2026-04-18 17:47:07,682 | INFO     | ui.sensor_model | SensorListModel refreshed: 0 sensors
+2026-04-18 17:49:32,531 | INFO     | datalogger | ============================================================
+2026-04-18 17:49:32,532 | INFO     | datalogger | Data Logger — Khởi động
+2026-04-18 17:49:32,532 | INFO     | datalogger | ============================================================
+2026-04-18 17:49:32,535 | INFO     | datalogger | Database initialized.
+2026-04-18 17:49:32,613 | INFO     | ui.settings_controller | AppConfig loaded (id=1)
+2026-04-18 17:49:32,621 | INFO     | datalogger | Loading QML: /home/haiquy/Documents/data-logger/ui/qml/Main.qml
+2026-04-18 17:49:32,828 | INFO     | datalogger | QML loaded thành công. App đang chạy.
+2026-04-18 17:49:45,285 | INFO     | datalogger | ============================================================
+2026-04-18 17:49:45,286 | INFO     | datalogger | Data Logger — Khởi động
+2026-04-18 17:49:45,286 | INFO     | datalogger | ============================================================
+2026-04-18 17:49:45,289 | INFO     | datalogger | Database initialized.
+2026-04-18 17:49:45,371 | INFO     | ui.settings_controller | AppConfig loaded (id=1)
+2026-04-18 17:49:45,379 | INFO     | datalogger | Loading QML: /home/haiquy/Documents/data-logger/ui/qml/Main.qml
+2026-04-18 17:49:45,529 | INFO     | datalogger | QML loaded thành công. App đang chạy.
+2026-04-18 17:49:50,603 | INFO     | ui.sensor_model | SensorListModel refreshed: 0 sensors
+2026-04-18 17:51:08,989 | INFO     | datalogger | ============================================================
+2026-04-18 17:51:08,989 | INFO     | datalogger | Data Logger — Khởi động
+2026-04-18 17:51:08,989 | INFO     | datalogger | ============================================================
+2026-04-18 17:51:08,993 | INFO     | datalogger | Database initialized.
+2026-04-18 17:51:09,057 | INFO     | ui.settings_controller | AppConfig loaded (id=1)
+2026-04-18 17:51:09,062 | INFO     | datalogger | Loading QML: /home/haiquy/Documents/data-logger/ui/qml/Main.qml
+2026-04-18 17:51:09,181 | INFO     | datalogger | QML loaded thành công. App đang chạy.
+2026-04-18 17:51:31,842 | INFO     | ui.sensor_model | SensorListModel refreshed: 0 sensors
+2026-04-18 17:52:22,171 | INFO     | datalogger | ============================================================
+2026-04-18 17:52:22,171 | INFO     | datalogger | Data Logger — Khởi động
+2026-04-18 17:52:22,172 | INFO     | datalogger | ============================================================
+2026-04-18 17:52:22,175 | INFO     | datalogger | Database initialized.
+2026-04-18 17:52:22,269 | INFO     | ui.settings_controller | AppConfig loaded (id=1)
+2026-04-18 17:52:22,278 | INFO     | datalogger | Loading QML: /home/haiquy/Documents/data-logger/ui/qml/Main.qml
+2026-04-18 17:52:22,404 | INFO     | datalogger | QML loaded thành công. App đang chạy.
+2026-04-18 17:52:27,812 | INFO     | ui.sensor_model | SensorListModel refreshed: 0 sensors
+2026-04-18 17:52:51,883 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 17:55:46,695 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 17:55:47,751 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 17:56:42,916 | INFO     | datalogger | ============================================================
+2026-04-18 17:56:42,916 | INFO     | datalogger | Data Logger — Khởi động
+2026-04-18 17:56:42,916 | INFO     | datalogger | ============================================================
+2026-04-18 17:56:42,920 | INFO     | datalogger | Database initialized.
+2026-04-18 17:56:42,985 | INFO     | ui.settings_controller | AppConfig loaded (id=1)
+2026-04-18 17:56:42,991 | INFO     | datalogger | Loading QML: /home/haiquy/Documents/data-logger/ui/qml/Main.qml
+2026-04-18 17:56:43,132 | INFO     | datalogger | QML loaded thành công. App đang chạy.
+2026-04-18 17:57:49,487 | INFO     | ui.sensor_model | SensorListModel refreshed: 0 sensors
+2026-04-18 17:57:52,984 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 17:58:09,314 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 17:58:20,206 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 17:58:22,388 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 17:58:56,138 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 17:58:57,522 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 17:58:58,212 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 18:10:49,869 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 18:10:53,332 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 18:10:56,845 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 18:11:22,319 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 18:11:23,939 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 18:11:25,786 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 18:11:27,773 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 18:13:17,296 | INFO     | datalogger | ============================================================
+2026-04-18 18:13:17,296 | INFO     | datalogger | Data Logger — Khởi động
+2026-04-18 18:13:17,296 | INFO     | datalogger | ============================================================
+2026-04-18 18:13:17,297 | INFO     | datalogger | Database initialized.
+2026-04-18 18:13:17,334 | INFO     | ui.settings_controller | AppConfig loaded (id=1)
+2026-04-18 18:13:17,337 | INFO     | datalogger | Loading QML: /home/haiquy/Documents/data-logger/ui/qml/Main.qml
+2026-04-18 18:13:17,428 | INFO     | datalogger | QML loaded thành công. App đang chạy.
+2026-04-18 18:13:36,820 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 18:13:38,028 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 18:18:02,928 | INFO     | datalogger | ============================================================
+2026-04-18 18:18:02,928 | INFO     | datalogger | Data Logger — Khởi động
+2026-04-18 18:18:02,928 | INFO     | datalogger | ============================================================
+2026-04-18 18:18:02,930 | INFO     | datalogger | Database initialized.
+2026-04-18 18:18:02,964 | INFO     | ui.settings_controller | AppConfig loaded (id=1)
+2026-04-18 18:18:02,967 | INFO     | datalogger | Loading QML: /home/haiquy/Documents/data-logger/ui/qml/Main.qml
+2026-04-18 18:18:03,028 | INFO     | datalogger | QML loaded thành công. App đang chạy.
+2026-04-18 18:18:11,247 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 18:18:12,277 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 18:19:57,300 | INFO     | datalogger | ============================================================
+2026-04-18 18:19:57,300 | INFO     | datalogger | Data Logger — Khởi động
+2026-04-18 18:19:57,300 | INFO     | datalogger | ============================================================
+2026-04-18 18:19:57,302 | INFO     | datalogger | Database initialized.
+2026-04-18 18:19:57,339 | INFO     | ui.settings_controller | AppConfig loaded (id=1)
+2026-04-18 18:19:57,342 | INFO     | datalogger | Loading QML: /home/haiquy/Documents/data-logger/ui/qml/Main.qml
+2026-04-18 18:19:57,410 | INFO     | datalogger | QML loaded thành công. App đang chạy.
+2026-04-18 18:20:00,023 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 18:20:21,979 | INFO     | ui.sensor_model | SensorListModel refreshed: 0 sensors
+2026-04-18 18:20:22,716 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 18:20:37,739 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 18:20:46,507 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 18:20:50,963 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 18:21:58,731 | INFO     | datalogger | ============================================================
+2026-04-18 18:21:58,732 | INFO     | datalogger | Data Logger — Khởi động
+2026-04-18 18:21:58,732 | INFO     | datalogger | ============================================================
+2026-04-18 18:21:58,733 | INFO     | datalogger | Database initialized.
+2026-04-18 18:21:58,773 | INFO     | ui.settings_controller | AppConfig loaded (id=1)
+2026-04-18 18:21:58,776 | INFO     | datalogger | Loading QML: /home/haiquy/Documents/data-logger/ui/qml/Main.qml
+2026-04-18 18:21:58,846 | INFO     | datalogger | QML loaded thành công. App đang chạy.
+2026-04-18 18:22:06,508 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 18:22:07,520 | INFO     | ui.sensor_model | SensorListModel refreshed: 0 sensors
+2026-04-18 18:22:14,750 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 18:23:13,712 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 18:27:46,320 | INFO     | datalogger | ============================================================
+2026-04-18 18:27:46,320 | INFO     | datalogger | Data Logger — Khởi động
+2026-04-18 18:27:46,320 | INFO     | datalogger | ============================================================
+2026-04-18 18:27:46,321 | INFO     | datalogger | Database initialized.
+2026-04-18 18:27:46,355 | INFO     | ui.settings_controller | AppConfig loaded (id=1)
+2026-04-18 18:27:46,358 | INFO     | datalogger | Loading QML: /home/haiquy/Documents/data-logger/ui/qml/Main.qml
+2026-04-18 18:27:46,427 | INFO     | datalogger | QML loaded thành công. App đang chạy.
+2026-04-18 18:27:48,414 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 18:27:49,135 | INFO     | ui.sensor_model | SensorListModel refreshed: 0 sensors
+2026-04-18 18:27:52,372 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 18:29:17,413 | INFO     | datalogger | ============================================================
+2026-04-18 18:29:17,413 | INFO     | datalogger | Data Logger — Khởi động
+2026-04-18 18:29:17,413 | INFO     | datalogger | ============================================================
+2026-04-18 18:29:17,415 | INFO     | datalogger | Database initialized.
+2026-04-18 18:29:17,452 | INFO     | ui.settings_controller | AppConfig loaded (id=1)
+2026-04-18 18:29:17,456 | INFO     | datalogger | Loading QML: /home/haiquy/Documents/data-logger/ui/qml/Main.qml
+2026-04-18 18:29:17,531 | INFO     | datalogger | QML loaded thành công. App đang chạy.
+2026-04-18 18:35:08,461 | INFO     | datalogger | ============================================================
+2026-04-18 18:35:08,461 | INFO     | datalogger | Data Logger — Khởi động
+2026-04-18 18:35:08,461 | INFO     | datalogger | ============================================================
+2026-04-18 18:35:08,463 | INFO     | datalogger | Database initialized.
+2026-04-18 18:35:08,500 | INFO     | ui.settings_controller | AppConfig loaded (id=1)
+2026-04-18 18:35:08,503 | INFO     | datalogger | Loading QML: /home/haiquy/Documents/data-logger/ui/qml/Main.qml
+2026-04-18 18:35:08,584 | INFO     | datalogger | QML loaded thành công. App đang chạy.
+2026-04-18 18:35:10,241 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 18:35:13,811 | INFO     | ui.sensor_model | SensorListModel refreshed: 0 sensors
+2026-04-18 18:36:47,390 | INFO     | datalogger | ============================================================
+2026-04-18 18:36:47,391 | INFO     | datalogger | Data Logger — Khởi động
+2026-04-18 18:36:47,391 | INFO     | datalogger | ============================================================
+2026-04-18 18:36:47,393 | INFO     | datalogger | Database initialized.
+2026-04-18 18:36:47,430 | INFO     | ui.settings_controller | AppConfig loaded (id=1)
+2026-04-18 18:36:47,433 | INFO     | datalogger | Loading QML: /home/haiquy/Documents/data-logger/ui/qml/Main.qml
+2026-04-18 18:36:47,510 | INFO     | datalogger | QML loaded thành công. App đang chạy.
+2026-04-18 18:36:56,857 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 18:36:57,713 | INFO     | ui.sensor_model | SensorListModel refreshed: 0 sensors
+2026-04-18 18:37:01,430 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 18:39:39,125 | INFO     | datalogger | ============================================================
+2026-04-18 18:39:39,125 | INFO     | datalogger | Data Logger — Khởi động
+2026-04-18 18:39:39,125 | INFO     | datalogger | ============================================================
+2026-04-18 18:39:39,127 | INFO     | datalogger | Database initialized.
+2026-04-18 18:39:39,161 | INFO     | ui.settings_controller | AppConfig loaded (id=1)
+2026-04-18 18:39:39,163 | INFO     | datalogger | Loading QML: /home/haiquy/Documents/data-logger/ui/qml/Main.qml
+2026-04-18 18:39:39,240 | INFO     | datalogger | QML loaded thành công. App đang chạy.
+2026-04-18 18:39:45,694 | INFO     | ui.sensor_model | SensorListModel refreshed: 0 sensors
+2026-04-18 18:39:46,526 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 18:39:49,717 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 18:39:58,455 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 18:40:33,009 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 18:40:36,382 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 19:08:41,595 | INFO     | datalogger | ============================================================
+2026-04-18 19:08:41,595 | INFO     | datalogger | Data Logger — Khởi động
+2026-04-18 19:08:41,595 | INFO     | datalogger | ============================================================
+2026-04-18 19:08:41,597 | INFO     | datalogger | Database initialized.
+2026-04-18 19:08:41,633 | INFO     | ui.settings_controller | AppConfig loaded (id=1)
+2026-04-18 19:08:41,636 | INFO     | datalogger | Loading QML: /home/haiquy/Documents/data-logger/ui/qml/Main.qml
+2026-04-18 19:08:41,711 | INFO     | datalogger | QML loaded thành công. App đang chạy.
+2026-04-18 19:08:43,079 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 19:08:43,718 | INFO     | ui.sensor_model | SensorListModel refreshed: 0 sensors
+2026-04-18 19:13:50,640 | INFO     | datalogger | ============================================================
+2026-04-18 19:13:50,640 | INFO     | datalogger | Data Logger — Khởi động
+2026-04-18 19:13:50,640 | INFO     | datalogger | ============================================================
+2026-04-18 19:13:50,642 | INFO     | datalogger | Database initialized.
+2026-04-18 19:13:50,668 | INFO     | ui.settings_controller | AppConfig loaded (id=1)
+2026-04-18 19:13:50,671 | INFO     | datalogger | Loading QML: /home/haiquy/Documents/data-logger/ui/qml/Main.qml
+2026-04-18 19:13:50,751 | INFO     | datalogger | QML loaded thành công. App đang chạy.
+2026-04-18 19:14:25,362 | INFO     | datalogger | ============================================================
+2026-04-18 19:14:25,362 | INFO     | datalogger | Data Logger — Khởi động
+2026-04-18 19:14:25,362 | INFO     | datalogger | ============================================================
+2026-04-18 19:14:25,364 | INFO     | datalogger | Database initialized.
+2026-04-18 19:14:25,389 | INFO     | ui.settings_controller | AppConfig loaded (id=1)
+2026-04-18 19:14:25,392 | INFO     | datalogger | Loading QML: /home/haiquy/Documents/data-logger/ui/qml/Main.qml
+2026-04-18 19:14:25,444 | INFO     | datalogger | QML loaded thành công. App đang chạy.
+2026-04-18 19:15:39,212 | INFO     | datalogger | ============================================================
+2026-04-18 19:15:39,212 | INFO     | datalogger | Data Logger — Khởi động
+2026-04-18 19:15:39,212 | INFO     | datalogger | ============================================================
+2026-04-18 19:15:39,214 | INFO     | datalogger | Database initialized.
+2026-04-18 19:15:39,239 | INFO     | ui.settings_controller | AppConfig loaded (id=1)
+2026-04-18 19:15:39,241 | INFO     | datalogger | Loading QML: /home/haiquy/Documents/data-logger/ui/qml/Main.qml
+2026-04-18 19:15:39,308 | INFO     | datalogger | QML loaded thành công. App đang chạy.
+2026-04-18 19:16:11,205 | INFO     | datalogger | ============================================================
+2026-04-18 19:16:11,205 | INFO     | datalogger | Data Logger — Khởi động
+2026-04-18 19:16:11,205 | INFO     | datalogger | ============================================================
+2026-04-18 19:16:11,207 | INFO     | datalogger | Database initialized.
+2026-04-18 19:16:11,243 | INFO     | ui.settings_controller | AppConfig loaded (id=1)
+2026-04-18 19:16:11,245 | INFO     | datalogger | Loading QML: /home/haiquy/Documents/data-logger/ui/qml/Main.qml
+2026-04-18 19:16:11,322 | INFO     | datalogger | QML loaded thành công. App đang chạy.
+2026-04-18 19:16:13,843 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 19:16:16,979 | INFO     | ui.sensor_model | SensorListModel refreshed: 0 sensors
+2026-04-18 19:16:23,862 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 19:16:33,117 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 19:16:34,849 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 19:16:38,218 | ERROR    | pymodbus.logging | [Errno 13] could not open port /dev/ttyS0: [Errno 13] Permission denied: '/dev/ttyS0'
+2026-04-18 19:16:38,218 | ERROR    | core.modbus | ❌ Failed to connect to /dev/ttyS0
+2026-04-18 19:16:55,140 | INFO     | ui.settings_controller | AppConfig saved (id=1)
+2026-04-18 19:17:18,536 | INFO     | datalogger.history | Search done: 0 records
+2026-04-18 20:52:32,810 | INFO     | datalogger | ============================================================
+2026-04-18 20:52:32,810 | INFO     | datalogger | Data Logger — Khởi động
+2026-04-18 20:52:32,810 | INFO     | datalogger | ============================================================
+2026-04-18 20:52:32,815 | INFO     | datalogger | Database initialized.
+2026-04-18 20:52:32,922 | INFO     | ui.settings_controller | AppConfig loaded (id=1)
+2026-04-18 20:52:32,931 | INFO     | datalogger | Loading QML: /home/haiquy/Documents/data-logger/ui/qml/Main.qml
+2026-04-18 20:52:33,160 | INFO     | ui.sensor_model | SensorListModel refreshed: 0 sensors
+2026-04-18 20:52:33,162 | INFO     | datalogger | QML loaded thành công. App đang chạy.

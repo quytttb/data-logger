@@ -22,7 +22,7 @@ Rectangle {
             anchors.fill: parent; anchors.margins: 15
             Text { id: monitorPopTitle; font.bold: true; font.pixelSize: 18; color: Theme.textPrimary; Layout.alignment: Qt.AlignHCenter }
             Text { id: monitorPopMsg; wrapMode: Text.WordWrap; color: Theme.accentText; font.pixelSize: 14; Layout.fillWidth: true; Layout.fillHeight: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-            Button { text: qsTr("Close"); Layout.alignment: Qt.AlignHCenter; onClicked: monitorPopup.close() }
+            Button { text: "Close"; Layout.alignment: Qt.AlignHCenter; onClicked: monitorPopup.close() }
         }
     }
 
@@ -135,12 +135,14 @@ Rectangle {
         }
 
         Text {
-            Layout.alignment: Qt.AlignHCenter
+            Layout.alignment: Qt.AlignHCenter | Qt.AlignVCenter
+            Layout.fillHeight: true
             visible: sensorGrid.count === 0
-            text: qsTr("No active sensors.\nOpen Settings to add sensors, then press Start acquisition.")
+            text: "No active sensors.\nOpen Settings to add sensors, then press Start monitoring."
             color: Theme.textSecondary
             font.pixelSize: 16
             horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
         }
     }
 }

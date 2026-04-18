@@ -16,15 +16,15 @@ Item {
 
         Button {
             Layout.preferredWidth: 200
-            Layout.preferredHeight: 40
-            enabled: !monitorController.isStopping
-            text: monitorController.isStopping ? qsTr("Stopping…")
-                : monitorController.isPolling ? qsTr("Stop acquisition") : qsTr("Start acquisition")
+            Layout.preferredHeight: 44
+            enabled: !monitorController.isStopping && (monitorController.isPolling || monitorController.hasActiveSensors)
+            text: monitorController.isStopping ? "Stopping…"
+                : monitorController.isPolling ? "Stop monitoring" : "Start monitoring"
             font.pixelSize: 14
             font.bold: true
             background: Rectangle {
                 radius: 8
-                color: monitorController.isStopping ? "#666"
+                color: !parent.enabled ? "#666666"
                      : monitorController.isPolling ? Theme.btnStop : Theme.btnStart
                 opacity: parent.pressed ? 0.75 : 1.0
             }
@@ -88,8 +88,8 @@ Item {
                 id: errLabel
                 anchors.centerIn: parent
                 text: monitorController.errorCount > 0
-                    ? qsTr("Modbus read errors: %1").arg(monitorController.errorCount)
-                    : qsTr("No read errors")
+                    ? "Modbus read errors: %1".arg(monitorController.errorCount)
+                    : "No read errors"
                 color: monitorController.errorCount > 0 ? Theme.statusErr : Theme.textSecondary
                 font.pixelSize: 12
                 font.bold: true

@@ -27,7 +27,7 @@ Item {
             rowSpacing: 10
 
             Label {
-                text: qsTr("Register type:")
+                text: "Register type:"
                 color: Theme.textSecondary
                 Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
             }
@@ -39,7 +39,7 @@ Item {
             }
 
             Label {
-                text: qsTr("Data type:")
+                text: "Data type:"
                 color: Theme.textSecondary
                 Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
             }
@@ -51,7 +51,7 @@ Item {
             }
 
             Label {
-                text: qsTr("Start address:")
+                text: "Start address:"
                 color: Theme.textSecondary
                 Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
             }
@@ -65,7 +65,7 @@ Item {
             }
 
             Label {
-                text: qsTr("End address:")
+                text: "End address:"
                 color: Theme.textSecondary
                 Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
             }
@@ -79,7 +79,7 @@ Item {
             }
 
             Label {
-                text: qsTr("Registers per read:")
+                text: "Registers per read:"
                 color: Theme.textSecondary
                 Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
             }
@@ -90,7 +90,7 @@ Item {
                 value: 8
                 Layout.fillWidth: true
                 ToolTip.visible: hovered
-                ToolTip.text: qsTr("Number of consecutive registers read at each address (1–125).")
+                ToolTip.text: "Number of consecutive registers read at each address (1–125)."
             }
         }
     }

@@ -107,14 +107,14 @@ Item {
 
         Button {
             Layout.preferredWidth: 44
-            Layout.preferredHeight: 40
-            enabled: !historyController.isLoading
+            Layout.preferredHeight: 44
+            enabled: !historyController.isLoading && sensorModel.rowCount() > 0
             icon.source: "../../assets/icons/search.svg"
             icon.color: "white"
             icon.width: 16
             icon.height: 16
             background: Rectangle {
-                color: historyController.isLoading ? "#666" : Theme.accent
+                color: !parent.enabled ? "#666666" : Theme.accent
                 radius: 8
                 opacity: parent.pressed ? 0.7 : 1.0
             }
@@ -123,15 +123,16 @@ Item {
         }
 
         Button {
+            id: refreshBtn
             Layout.preferredWidth: 44
-            Layout.preferredHeight: 40
-            enabled: !historyController.isLoading
+            Layout.preferredHeight: 44
+            enabled: !historyController.isLoading && sensorModel.rowCount() > 0
             icon.source: "../../assets/icons/refresh.svg"
             icon.color: Theme.textPrimary
             icon.width: 16
             icon.height: 16
             background: Rectangle {
-                color: historyController.isLoading ? "#444" : Theme.bgPanel
+                color: !parent.enabled ? "#444444" : Theme.bgPanel
                 border.color: Theme.borderDefault
                 border.width: 1
                 radius: 8
@@ -139,14 +140,15 @@ Item {
             }
             onClicked: root.doSearch()
             Layout.alignment: Qt.AlignVCenter
-        }
 
-        BusyIndicator {
-            visible: historyController.isLoading
-            running: historyController.isLoading
-            Layout.preferredWidth: 24
-            Layout.preferredHeight: 24
-            Layout.alignment: Qt.AlignVCenter
+            RotationAnimator {
+                target: refreshBtn.contentItem
+                from: 0
+                to: 360
+                duration: 1000
+                loops: Animation.Infinite
+                running: historyController.isLoading
+            }
         }
 
         Item { Layout.fillWidth: true }
@@ -165,7 +167,7 @@ Item {
             icon.color: "white"
             icon.width: 16
             icon.height: 16
-            Layout.preferredHeight: 38
+            Layout.preferredHeight: 44
             enabled: historyController.recordCount > 0
             font.pixelSize: 13
             font.bold: true

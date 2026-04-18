@@ -116,7 +116,7 @@ Item {
             anchors.margins: 18
             spacing: 10
             Text {
-                text: qsTr("Save new sensor")
+                text: "Save new sensor"
                 color: Theme.accentText
                 font.pixelSize: 18
                 font.bold: true
@@ -137,7 +137,7 @@ Item {
                     columnSpacing: 10
                     rowSpacing: 8
 
-                    Label { text: qsTr("Name:"); color: Theme.textSecondary }
+                    Label { text: "Name:"; color: Theme.textSecondary }
                     TextField {
                         id: sensorNameInput
                         Layout.fillWidth: true
@@ -145,7 +145,7 @@ Item {
                         background: Rectangle { color: Theme.bgInput; radius: Theme.radiusTiny }
                     }
 
-                    Label { text: qsTr("Unit:"); color: Theme.textSecondary }
+                    Label { text: "Unit:"; color: Theme.textSecondary }
                     TextField {
                         id: sensorUnitInput
                         Layout.fillWidth: true
@@ -153,7 +153,7 @@ Item {
                         background: Rectangle { color: Theme.bgInput; radius: Theme.radiusTiny }
                     }
 
-                    Label { text: qsTr("Coefficients (JSON):"); color: Theme.textSecondary }
+                    Label { text: "Coefficients (JSON):"; color: Theme.textSecondary }
                     TextField {
                         id: sensorCoeffInput
                         Layout.fillWidth: true
@@ -162,21 +162,21 @@ Item {
                         background: Rectangle { color: Theme.bgInput; radius: Theme.radiusTiny }
                     }
 
-                    Label { text: qsTr("Poll interval (s):"); color: Theme.textSecondary }
+                    Label { text: "Poll interval (s):"; color: Theme.textSecondary }
                     SpinBox { id: sensorPollInterval; from: 1; to: 3600; value: 3; Layout.fillWidth: true }
 
-                    Label { text: qsTr("Report column:"); color: Theme.textSecondary }
+                    Label { text: "Report column:"; color: Theme.textSecondary }
                     SpinBox { id: sensorReportIdx; from: 0; to: 99; value: 0; Layout.fillWidth: true }
 
                     Rectangle { Layout.columnSpan: 2; Layout.fillWidth: true; height: 1; color: Theme.borderDefault }
 
-                    Label { text: qsTr("Slave ID:"); color: "#666" }
+                    Label { text: "Slave ID:"; color: "#666" }
                     Text { id: infoSlaveId; color: Theme.textSecondary; font.pixelSize: 14 }
-                    Label { text: qsTr("Start address:"); color: "#666" }
+                    Label { text: "Start address:"; color: "#666" }
                     Text { id: infoAddr; color: Theme.textSecondary; font.pixelSize: 14 }
-                    Label { text: qsTr("Register type:"); color: "#666" }
+                    Label { text: "Register type:"; color: "#666" }
                     Text { id: infoRegType; color: Theme.textSecondary; font.pixelSize: 14 }
-                    Label { text: qsTr("Data type:"); color: "#666" }
+                    Label { text: "Data type:"; color: "#666" }
                     Text { id: infoDataType; color: Theme.textSecondary; font.pixelSize: 14 }
                 }
             }
@@ -185,13 +185,13 @@ Item {
                 Layout.fillWidth: true
                 spacing: 10
                 Button {
-                    text: qsTr("Cancel")
                     Layout.fillWidth: true
+                    Layout.preferredHeight: 44
                     onClicked: saveSensorDialog.close()
                 }
                 Button {
-                    text: qsTr("Save sensor")
                     Layout.fillWidth: true
+                    Layout.preferredHeight: 44
                     onClicked: {
                         if (!connLoader.item || !opsLoader.item)
                             return
@@ -233,7 +233,7 @@ Item {
         Qt.callLater(function () {
             pendingScanLoad = false
             if (!connLoader.item || !opsLoader.item) {
-                showError(qsTr("Error"), qsTr("Could not load configuration tabs."))
+                showError("Error", "Could not load configuration tabs.")
                 return
             }
             fillSaveDialogFields()
@@ -259,16 +259,16 @@ Item {
 
     function performScan() {
         if (!connLoader.item || !opsLoader.item) {
-            showError(qsTr("Error"), qsTr("Configuration is still loading. Try again."))
+            showError("Error", "Configuration is still loading. Try again.")
             return
         }
         if (!testerController.isConnected) {
-            showError(qsTr("Error"), qsTr("Not connected to Modbus."))
+            showError("Error", "Not connected to Modbus.")
             return
         }
         var o = opsLoader.item
         if (o.scanStartSpin.value > o.scanEndSpin.value) {
-            showError(qsTr("Error"), qsTr("Start address must be less than or equal to end address."))
+            showError("Error", "Start address must be less than or equal to end address.")
             return
         }
         scanModel.clear()
@@ -354,8 +354,14 @@ Item {
                     Layout.fillWidth: true
                     currentIndex: 0
 
-                    TabButton { text: qsTr("Connection") }
-                    TabButton { text: qsTr("Operations") }
+                    TabButton { 
+                        text: "Connection"
+                        icon.source: "../../assets/icons/connection.svg"
+                    }
+                    TabButton { 
+                        text: "Operations"
+                        icon.source: "../../assets/icons/operations.svg"
+                    }
 
                     onCurrentIndexChanged: {
                         if (currentIndex === 1)
@@ -401,7 +407,7 @@ Item {
                 spacing: 8
 
                 Label {
-                    text: qsTr("Scan results")
+                    text: "Scan results"
                     font.pixelSize: 14
                     font.bold: true
                     color: Theme.accentText
@@ -424,14 +430,14 @@ Item {
                             Layout.fillWidth: true
                             Layout.preferredHeight: 28
                             Label {
-                                text: qsTr("Address")
+                                text: "Address"
                                 color: Theme.accent
                                 font.bold: true
                                 font.pixelSize: 13
                                 Layout.preferredWidth: 100
                             }
                             Label {
-                                text: qsTr("Value")
+                                text: "Value"
                                 color: Theme.accent
                                 font.bold: true
                                 font.pixelSize: 13

@@ -96,12 +96,6 @@ step_sync() {
     success "Sync hoàn tất"
 }
 
-# ─── Biên dịch Qt Linguist trên Pi (.ts → .qm) ─────────────
-step_i18n_qm() {
-    info "Biên dịch i18n trên Pi (cài qt6-l10n-tools nếu cần + lrelease)…"
-    ssh_run "cd '${PI_APP_DIR}' && if ! command -v lrelease-qt6 >/dev/null 2>&1 && ! command -v lrelease >/dev/null 2>&1; then sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq qt6-l10n-tools 2>/dev/null || sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq qttools5-dev-tools 2>/dev/null || true; fi && if command -v lrelease-qt6 >/dev/null 2>&1; then lrelease-qt6 i18n/data_logger_vi.ts -qm i18n/data_logger_vi.qm && echo '[i18n] lrelease-qt6 OK'; elif command -v lrelease >/dev/null 2>&1; then lrelease i18n/data_logger_vi.ts -qm i18n/data_logger_vi.qm && echo '[i18n] lrelease OK'; else echo '[i18n] bỏ qua (cài tay: sudo apt install qt6-l10n-tools)'; fi" \
-        || warn "lrelease trên Pi thất bại — chạy trên Pi: sudo apt install qt6-l10n-tools && bash scripts/compile-i18n.sh"
-}
 
 # ─── Bước 2: Chuẩn bị hệ thống & venv ──────────────────────
 # Truyền PI_APP_DIR qua biến môi trường (tránh nhầm user khi dùng ls /home/*/)
@@ -376,7 +370,6 @@ case "$MODE" in
         ;;
     full)
         step_sync
-        step_i18n_qm
         step_setup_venv
         step_init_var
         step_install_desktop
@@ -386,7 +379,6 @@ case "$MODE" in
         ;;
     quick)
         step_sync
-        step_i18n_qm
         step_setup_venv
         step_init_var
         step_install_desktop
@@ -394,7 +386,6 @@ case "$MODE" in
         ;;
     build)
         step_sync
-        step_i18n_qm
         step_setup_venv
         step_init_var
         step_install_desktop
@@ -402,7 +393,6 @@ case "$MODE" in
         ;;
     install)
         step_sync
-        step_i18n_qm
         step_setup_venv
         step_init_var
         step_install_desktop

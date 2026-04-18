@@ -145,6 +145,7 @@ class MonitorController(QObject):
     stoppingChanged = Signal()
     statusChanged = Signal()
     errorCountChanged = Signal()
+    activeSensorsChanged = Signal()
     messageSent = Signal(str, str)
 
     def __init__(self, monitor_model: MonitorModel, tester_controller=None, parent=None):
@@ -185,6 +186,10 @@ class MonitorController(QObject):
         """0=idle, 1=ok/collecting, 2=error/disconnected — dùng trong QML thay vì so sánh string."""
         return self._status_mode
 
+    @Property(bool, notify=activeSensorsChanged)
+    def hasActiveSensors(self):
+        return self._model.rowCount() > 0
+
     # ── Slots ──────────────────────────────────────────────────────────────
 
     @Slot()
@@ -203,6 +208,7 @@ class MonitorController(QObject):
                 session.exec(select(Sensor).where(Sensor.active)).all()
             )
             self._model.load_sensors(sensors)
+            self.activeSensorsChanged.emit()
         except Exception as e:
             logger.error("refresh_sensors error: %s", e)
         finally:

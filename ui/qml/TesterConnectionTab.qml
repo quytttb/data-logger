@@ -28,7 +28,7 @@ Item {
             rowSpacing: 10
 
             Label {
-                text: qsTr("Port:")
+                text: "Port:"
                 color: Theme.textSecondary
                 Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
             }
@@ -49,12 +49,12 @@ Item {
                     icon.height: 18
                     onClicked: testerController.refresh_ports()
                     ToolTip.visible: hovered
-                    ToolTip.text: qsTr("Refresh port list")
+                    ToolTip.text: "Refresh port list"
                 }
             }
 
             Label {
-                text: qsTr("Baud rate:")
+                text: "Baud rate:"
                 color: Theme.textSecondary
                 Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
             }
@@ -66,7 +66,7 @@ Item {
             }
 
             Label {
-                text: qsTr("Parity:")
+                text: "Parity:"
                 color: Theme.textSecondary
                 Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
             }
@@ -78,7 +78,7 @@ Item {
             }
 
             Label {
-                text: qsTr("Data bits:")
+                text: "Data bits:"
                 color: Theme.textSecondary
                 Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
             }
@@ -91,7 +91,7 @@ Item {
             }
 
             Label {
-                text: qsTr("Stop bits:")
+                text: "Stop bits:"
                 color: Theme.textSecondary
                 Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
             }
@@ -103,7 +103,7 @@ Item {
             }
 
             Label {
-                text: qsTr("Slave ID:")
+                text: "Slave ID:"
                 color: Theme.textSecondary
                 Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
             }

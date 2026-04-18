@@ -278,12 +278,6 @@ class HistoryController(QObject):
         self.recordCountChanged.emit()
         self.chartDataChanged.emit()
 
-        if not items:
-            self.messageSent.emit(
-                self.tr("Notice"),
-                self.tr("No records found in the selected range."),
-            )
-
         logger.info("Search done: %d records", len(items))
 
     @staticmethod

@@ -3,7 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import "."
 
-// Thanh header Modbus: gọi API trên TesterView (truyền từ Main.loaderTester.item).
+// Thanh header Modbus: gọi API trên TesterView (Main.syncModbusTaskBarRef gán từ MainTabContent.loaderTester).
 Item {
     id: root
     implicitHeight: 64
@@ -37,10 +37,10 @@ Item {
                 }
 
                 Button {
-                    Layout.preferredHeight: 36
+                    Layout.preferredHeight: 44
                     enabled: testerView && !testerController.isConnecting
-                    text: testerController.isConnecting ? qsTr("Connecting…")
-                        : testerController.isConnected ? qsTr("Disconnect") : qsTr("Connect")
+                    text: testerController.isConnecting ? "Connecting…"
+                        : testerController.isConnected ? "Disconnect" : "Connect"
                     font.pixelSize: 12
                     font.bold: true
                     background: Rectangle {
@@ -65,9 +65,9 @@ Item {
                 }
 
                 Button {
-                    Layout.preferredHeight: 36
+                    Layout.preferredHeight: 44
                     visible: testerController.isConnected
-                    text: qsTr("Save new sensor")
+                    text: "Save new sensor"
                     font.pixelSize: 11
                     font.bold: true
                     background: Rectangle {
@@ -113,8 +113,8 @@ Item {
 
                 Button {
                     id: clearBtn
-                    text: qsTr("Clear table")
-                    Layout.preferredHeight: 36
+                    text: "Clear table"
+                    Layout.preferredHeight: 44
                     font.pixelSize: 11
                     font.bold: true
                     enabled: testerView && !testerController.isScanning
@@ -141,12 +141,12 @@ Item {
 
                 Button {
                     id: scanHeaderBtn
-                    Layout.preferredHeight: 36
+                    Layout.preferredHeight: 44
                     font.pixelSize: 12
                     font.bold: true
                     enabled: testerView && !testerController.isStopping
-                    text: testerController.isStopping ? qsTr("Stopping…")
-                        : testerController.isScanning ? qsTr("Stop scan") : qsTr("Scan range")
+                    text: testerController.isStopping ? "Stopping…"
+                        : testerController.isScanning ? "Stop scan" : "Scan range"
                     background: Rectangle {
                         radius: 6
                         color: testerController.isStopping ? "#666"
