@@ -160,7 +160,7 @@ except Exception as e:
 # ─── M1.2 & M1.3: TesterController ────────────────────────────────────────────
 print("\n=== M1.2/M1.3: TesterController QObject ===")
 try:
-    from ui.tester_controller import TesterController
+    from ui.controllers.tester_controller import TesterController
     tc = TesterController()
     check("TesterController instantiates", tc is not None)
     check("Has isConnected property", hasattr(tc, 'isConnected'))

@@ -40,7 +40,7 @@ sudo apt install sshpass rsync
 
 ```bash
 # Chạy từ thư mục gốc của clone (nơi có deploy.sh). Nếu clone nằm trong thư mục cha tên data-logger: PI_HOST=<IP> bash data-logger/deploy.sh --quick
-PI_HOST=192.168.31.185 bash deploy.sh --quick
+PI_HOST=192.168.31.185 bash deploy.sh
 ```
 
 Script tự động làm tất cả:
@@ -126,18 +126,12 @@ data-logger/
 │   └── report_log.py        # Lịch sử gửi báo cáo
 │
 ├── ui/                      # Giao diện PySide6
-│   ├── qml/                 # QML views
-│   │   ├── Main.qml         # App window + TabBar
-│   │   ├── TesterView.qml   # Tab Modbus Tester
-│   │   ├── SettingsView.qml # Tab Cài đặt
-│   │   ├── DashboardView.qml# Tab Dashboard
-│   │   └── HistoryView.qml  # Tab Lịch sử & CSV
-│   ├── tester_controller.py
-│   ├── settings_controller.py
-│   ├── dashboard_controller.py
-│   ├── history_controller.py
-│   ├── report_controller.py
-│   └── sensor_model.py      # QAbstractListModel cho QML
+│   ├── qml/                 # QML (entry Main.qml + Theme)
+│   │   ├── views/           # Màn hình tab (Monitor, History, Settings, Tester, …)
+│   │   ├── shell/           # Header, sidebar, taskbars
+│   │   └── components/      # MessagePopup, AppTextField, DatePickerPopup, …
+│   ├── controllers/         # QObject bridge cho QML (Monitor, History, Settings, …)
+│   └── models/              # QAbstractListModel (sensor list, …)
 │
 ├── workers/                 # QThread background workers
 │   ├── modbus_worker.py     # Polling Modbus định kỳ

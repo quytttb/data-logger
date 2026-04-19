@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Window
 import "."
+import "./shell"
 
 ApplicationWindow {
     id: root
@@ -15,7 +16,7 @@ ApplicationWindow {
     // Kích thước fallback khi thoát fullscreen (F11 / Alt+F4 vẫn đóng được tùy WM)
     width: 1024
     height: 600
-    title: qsTr("Data Logger")
+    title: "Data Logger"
     color: Theme.bgDeep
     // Toàn màn hình khi mở: che taskbar + không thanh tiêu đề (decoration)
     visibility: Window.FullScreen
@@ -24,6 +25,13 @@ ApplicationWindow {
     property int currentTab: 0
     property int scanProgCur: 0
     property int scanProgTot: 0
+
+    onCurrentTabChanged: {
+        historyController.setHistoryTabActive(currentTab === 1)
+    }
+    Component.onCompleted: {
+        historyController.setHistoryTabActive(currentTab === 1)
+    }
 
     ColumnLayout {
         anchors.fill: parent

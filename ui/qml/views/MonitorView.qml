@@ -1,34 +1,21 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import "."
+import ".."
+import "../components"
 
 Rectangle {
     id: monitorRoot
     color: "transparent"
 
-    // ── Message Popup ─────────────────────────────────────────────────────
-    Popup {
+    MessagePopup {
         id: monitorPopup
-        anchors.centerIn: parent
-        width: 340; height: 160
-        modal: true; focus: true
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-        background: Rectangle {
-            color: Theme.bgSeparator; radius: 8
-            border.color: Theme.accent; border.width: 2
-        }
-        ColumnLayout {
-            anchors.fill: parent; anchors.margins: 15
-            Text { id: monitorPopTitle; font.bold: true; font.pixelSize: 18; color: Theme.textPrimary; Layout.alignment: Qt.AlignHCenter }
-            Text { id: monitorPopMsg; wrapMode: Text.WordWrap; color: Theme.accentText; font.pixelSize: 14; Layout.fillWidth: true; Layout.fillHeight: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-            Button { text: "Close"; Layout.alignment: Qt.AlignHCenter; onClicked: monitorPopup.close() }
-        }
+        parent: monitorRoot
     }
 
     Connections {
         target: monitorController
-        function onMessageSent(t, m) { monitorPopTitle.text = t; monitorPopMsg.text = m; monitorPopup.open() }
+        function onMessageSent(t, m) { monitorPopup.showMessage(t, m) }
     }
 
     ColumnLayout {
@@ -94,6 +81,17 @@ Rectangle {
                                 elide: Text.ElideRight
                                 Layout.fillWidth: true
                             }
+
+                            Text {
+                                text: model.unit
+                                color: Theme.textOnColoredBtn
+                                font.pixelSize: 13; font.bold: true
+                                horizontalAlignment: Text.AlignRight
+                                wrapMode: Text.NoWrap
+                                maximumLineCount: 1
+                                elide: Text.ElideRight
+                                Layout.maximumWidth: 120
+                            }
                         }
 
                         Item {
@@ -113,19 +111,15 @@ Rectangle {
                         RowLayout {
                             Layout.fillWidth: true
                             Text {
-                                text: model.unit
-                                color: Theme.textSecondary
-                                font.pixelSize: 13; font.bold: true
+                                text: (model.rawValue && model.rawValue !== "---") ? "RAW " + model.rawValue : ""
+                                color: Theme.textOnColoredBtn
+                                font.pixelSize: 10
+                                font.family: "Monospace"
                             }
                             Item { Layout.fillWidth: true }
                             Text {
-                                text: (model.rawValue && model.rawValue !== "---") ? "RAW " + model.rawValue : ""
-                                color: "#555"
-                                font.pixelSize: 10; font.family: "Monospace"
-                            }
-                            Text {
                                 text: model.lastUpdate || ""
-                                color: "#666"
+                                color: Theme.textOnColoredBtn
                                 font.pixelSize: 11
                             }
                         }

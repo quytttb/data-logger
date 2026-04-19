@@ -96,7 +96,7 @@ session.close()
 # ═══════════════════════════════════════════════════════════════
 section("2. SettingsController serial properties")
 
-from ui.settings_controller import SettingsController
+from ui.controllers.settings_controller import SettingsController
 
 sc = SettingsController()
 sc.load_config()
@@ -120,14 +120,14 @@ check("Validation rejects bad parity", has_parity_err, f"errors: {errors}")
 sc.serialParity = "N"
 
 # ═══════════════════════════════════════════════════════════════
-#  3. DashboardModel
+#  3. MonitorModel
 # ═══════════════════════════════════════════════════════════════
-section("3. DashboardModel")
+section("3. MonitorModel")
 
-from ui.dashboard_controller import DashboardModel, DashboardController
+from ui.controllers.monitor_controller import MonitorModel, MonitorController
 
-dm = DashboardModel()
-check("DashboardModel initial empty", dm.rowCount() == 0)
+dm = MonitorModel()
+check("MonitorModel initial empty", dm.rowCount() == 0)
 
 session = get_session()
 sensors = list(session.exec(select(Sensor).where(Sensor.active == True)).all())
@@ -166,14 +166,14 @@ dm.set_all_status("---")
 check("set_all_status ---", dm.data(idx, status_role) == "---")
 
 # ═══════════════════════════════════════════════════════════════
-#  4. DashboardController — start/stop lifecycle
+#  4. MonitorController — start/stop lifecycle
 # ═══════════════════════════════════════════════════════════════
-section("4. DashboardController lifecycle")
+section("4. MonitorController lifecycle")
 
-dm2 = DashboardModel()
-dc = DashboardController(dm2)
+dm2 = MonitorModel()
+dc = MonitorController(dm2)
 check("isPolling initial False", dc.isPolling == False)
-check("statusText initial", dc.statusText == "SẴN SÀNG")
+check("statusText initial", dc.statusText == "Ready")
 
 # Ensure config and sensors exist
 session = get_session()
@@ -186,8 +186,8 @@ session.close()
 
 dc.start_polling()
 check("isPolling after start", dc.isPolling == True, f"got: {dc.isPolling}")
-check("statusText after start", "THU THẬP" in dc.statusText, f"got: {dc.statusText}")
-check("DashboardModel has sensors", dm2.rowCount() > 0, f"count: {dm2.rowCount()}")
+check("statusText after start", "Monitoring" in dc.statusText, f"got: {dc.statusText}")
+check("MonitorModel has sensors", dm2.rowCount() > 0, f"count: {dm2.rowCount()}")
 
 # Process events to receive cross-thread signals
 for _ in range(40):
@@ -203,7 +203,7 @@ for _ in range(10):
     _qapp.processEvents()
     time.sleep(0.1)
 check("isPolling after stop", dc.isPolling == False)
-check("statusText after stop", "DỪNG" in dc.statusText, f"got: {dc.statusText}")
+check("statusText after stop", "Stopped" in dc.statusText, f"got: {dc.statusText}")
 
 # ═══════════════════════════════════════════════════════════════
 #  5. ModbusWorker — reconnect backoff
@@ -246,8 +246,8 @@ else:
 # ═══════════════════════════════════════════════════════════════
 section("7. Integration: poll → DB write → stop")
 
-dm3 = DashboardModel()
-dc2 = DashboardController(dm3)
+dm3 = MonitorModel()
+dc2 = MonitorController(dm3)
 
 session = get_session()
 count_before = len(session.exec(select(SensorData)).all())

@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import "."
+import ".."
 
 // Thanh header Monitor: start/stop + trạng thái (statusText từ Python tr()).
 Item {
@@ -23,15 +23,15 @@ Item {
             font.pixelSize: 14
             font.bold: true
             background: Rectangle {
-                radius: 8
-                color: !parent.enabled ? "#666666"
+                radius: Theme.radiusMedium
+                color: !parent.enabled ? Theme.btnBgDisabled
                      : monitorController.isPolling ? Theme.btnStop : Theme.btnStart
                 opacity: parent.pressed ? 0.75 : 1.0
             }
             contentItem: Text {
                 text: parent.text
                 font: parent.font
-                color: "white"
+                color: Theme.textOnColoredBtn
                 horizontalAlignment: Text.AlignHCenter
                 verticalAlignment: Text.AlignVCenter
                 elide: Text.ElideRight
@@ -80,7 +80,7 @@ Item {
             Layout.preferredWidth: errLabel.implicitWidth + 24
             Layout.preferredHeight: 32
             radius: Theme.radiusSmall
-            color: monitorController.errorCount > 0 ? "#3a2020" : Theme.bgSeparator
+            color: monitorController.errorCount > 0 ? Theme.bgErrorTint : Theme.bgSeparator
             visible: monitorController.isPolling
             Layout.alignment: Qt.AlignVCenter
 

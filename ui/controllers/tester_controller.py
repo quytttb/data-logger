@@ -105,14 +105,14 @@ class TesterController(QObject):
         self.connectionChanged.emit(self._is_connected)
         if success:
             self.messageReceived.emit(
-                self.tr("Success"),
-                self.tr("Connected to port {0}.").format(port),
+                "Success",
+                "Connected to port {0}.".format(port),
                 False,
             )
         else:
             self.messageReceived.emit(
-                self.tr("Error"),
-                self.tr("Could not connect to {0}.\nCheck the port and device.").format(port),
+                "Error",
+                "Could not connect to {0}.\nCheck the port and device.".format(port),
                 True,
             )
 
@@ -120,7 +120,7 @@ class TesterController(QObject):
         self._is_connected = False
         self._set_connecting(False)
         self.connectionChanged.emit(False)
-        self.messageReceived.emit(self.tr("Connection error"), msg, True)
+        self.messageReceived.emit("Connection error", msg, True)
 
     @Slot(str, int, int, str, int)
     def connect_serial(self, port: str, baudrate: int, bytesize: int, parity: str, stopbits: int):
@@ -140,7 +140,7 @@ class TesterController(QObject):
         self.modbus.disconnect()
         self._is_connected = False
         self.connectionChanged.emit(False)
-        self.messageReceived.emit(self.tr("Notice"), self.tr("Disconnected."), False)
+        self.messageReceived.emit("Notice", "Disconnected.", False)
 
     @Slot(str, int, int, int, str, result=str)
     def read_single(self, reg_type: str, addr: int, count: int, slave: int, data_type: str) -> str:
@@ -172,7 +172,7 @@ class TesterController(QObject):
     def start_scan(self, start_addr: int, end_addr: int, count: int,
                    reg_type: str, data_type: str, slave: int):
         if not self._is_connected:
-            self.messageReceived.emit(self.tr("Error"), self.tr("Not connected to Modbus."), True)
+            self.messageReceived.emit("Error", "Not connected to Modbus.", True)
             return
         if self._is_scanning:
             return
@@ -200,13 +200,13 @@ class TesterController(QObject):
             self._is_stopping = False
             self.scanningChanged.emit(False)
             self.stoppingChanged.emit()
-            self.messageReceived.emit(self.tr("Notice"), self.tr("Scan stopped."), False)
+            self.messageReceived.emit("Notice", "Scan stopped.", False)
 
     def _on_scan_finished(self, found: int):
         self._is_scanning = False
         self.scanningChanged.emit(False)
         self.messageReceived.emit(
-            self.tr("Scan complete"),
-            self.tr("Scan finished. Found {0} register(s) with values.").format(found),
+            "Scan complete",
+            "Scan finished. Found {0} register(s) with values.".format(found),
             False,
         )

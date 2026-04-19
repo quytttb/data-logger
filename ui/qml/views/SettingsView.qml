@@ -1,35 +1,26 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import "."
+import ".."
+import "../components"
 
 Rectangle {
     id: settingsRoot
     color: "transparent"
 
-    // ── Message Popup ─────────────────────────────────────────────────────
-    Popup {
+    MessagePopup {
         id: settingsPopup
-        anchors.centerIn: parent
-        width: 340; height: 160
-        modal: true; focus: true
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-        background: Rectangle { color: Theme.bgSeparator; radius: 8; border.color: Theme.accent; border.width: 2 }
-        ColumnLayout {
-            anchors.fill: parent; anchors.margins: 15
-            Text { id: popTitle; font.bold: true; font.pixelSize: 18; color: Theme.textPrimary; Layout.alignment: Qt.AlignHCenter }
-            Text { id: popMsg; wrapMode: Text.WordWrap; color: Theme.accentText; font.pixelSize: 14; Layout.fillWidth: true; Layout.fillHeight: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-            Button { text: "Close"; Layout.alignment: Qt.AlignHCenter; onClicked: settingsPopup.close() }
-        }
+        parent: settingsRoot
+        compact: true
     }
 
     Connections {
         target: settingsController
-        function onMessageSent(t, m) { popTitle.text = t; popMsg.text = m; settingsPopup.open() }
+        function onMessageSent(t, m) { settingsPopup.showMessage(t, m) }
     }
     Connections {
         target: sensorModel
-        function onMessageSent(t, m) { popTitle.text = t; popMsg.text = m; settingsPopup.open() }
+        function onMessageSent(t, m) { settingsPopup.showMessage(t, m) }
     }
 
     Component.onCompleted: { sensorModel.refresh() }
@@ -43,7 +34,12 @@ Rectangle {
         modal: true; focus: true
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
         property int editId: -1
-        background: Rectangle { color: Theme.bgPanel; radius: Theme.radiusCard; border.color: Theme.accent; border.width: 2 }
+        background: Rectangle {
+            color: Theme.bgPanel
+            radius: Theme.radiusCard
+            border.color: Theme.accent
+            border.width: 1
+        }
 
         ColumnLayout {
             anchors.fill: parent; anchors.margins: 18; spacing: 8
@@ -62,10 +58,10 @@ Rectangle {
                     id: dialogGrid; columns: 2; width: parent.width; columnSpacing: 10; rowSpacing: 8
 
                     Text { text: "Name:"; color: Theme.textSecondary }
-                    TextField { id: dName; Layout.fillWidth: true; color: Theme.textPrimary; background: Rectangle { color: Theme.bgInput; radius: Theme.radiusTiny } }
+                    AppTextField { id: dName; Layout.fillWidth: true }
 
                     Text { text: "Unit:"; color: Theme.textSecondary }
-                    TextField { id: dUnit; Layout.fillWidth: true; color: Theme.textPrimary; background: Rectangle { color: Theme.bgInput; radius: Theme.radiusTiny } }
+                    AppTextField { id: dUnit; Layout.fillWidth: true }
 
                     Text { text: "Slave ID:"; color: Theme.textSecondary }
                     SpinBox { id: dSlave; from: 1; to: 247; value: 1; Layout.fillWidth: true }
@@ -105,22 +101,18 @@ Rectangle {
                             RowLayout {
                                 spacing: 8
                                 Text { text: "Gain (a):"; color: Theme.textSecondary }
-                                TextField {
+                                AppTextField {
                                     id: dLinearA
                                     text: "1"
                                     Layout.fillWidth: true
-                                    color: Theme.textPrimary
                                     inputMethodHints: Qt.ImhFormattedNumbersOnly
-                                    background: Rectangle { color: Theme.bgInput; radius: Theme.radiusTiny }
                                 }
                                 Text { text: "Offset (b):"; color: Theme.textSecondary }
-                                TextField {
+                                AppTextField {
                                     id: dLinearB
                                     text: "0"
                                     Layout.fillWidth: true
-                                    color: Theme.textPrimary
                                     inputMethodHints: Qt.ImhFormattedNumbersOnly
-                                    background: Rectangle { color: Theme.bgInput; radius: Theme.radiusTiny }
                                 }
                             }
 
@@ -131,44 +123,36 @@ Rectangle {
                                     Layout.fillWidth: true
                                     spacing: 8
                                     Text { text: "Raw Min:"; color: Theme.textSecondary; Layout.preferredWidth: 88 }
-                                    TextField {
+                                    AppTextField {
                                         id: dRawMin
                                         text: "4000"
                                         Layout.fillWidth: true
-                                        color: Theme.textPrimary
                                         inputMethodHints: Qt.ImhFormattedNumbersOnly
-                                        background: Rectangle { color: Theme.bgInput; radius: Theme.radiusTiny }
                                     }
                                     Text { text: "Raw Max:"; color: Theme.textSecondary; Layout.preferredWidth: 88 }
-                                    TextField {
+                                    AppTextField {
                                         id: dRawMax
                                         text: "20000"
                                         Layout.fillWidth: true
-                                        color: Theme.textPrimary
                                         inputMethodHints: Qt.ImhFormattedNumbersOnly
-                                        background: Rectangle { color: Theme.bgInput; radius: Theme.radiusTiny }
                                     }
                                 }
                                 RowLayout {
                                     Layout.fillWidth: true
                                     spacing: 8
                                     Text { text: "Scale Min:"; color: Theme.textSecondary; Layout.preferredWidth: 88 }
-                                    TextField {
+                                    AppTextField {
                                         id: dScaleMin
                                         text: "4"
                                         Layout.fillWidth: true
-                                        color: Theme.textPrimary
                                         inputMethodHints: Qt.ImhFormattedNumbersOnly
-                                        background: Rectangle { color: Theme.bgInput; radius: Theme.radiusTiny }
                                     }
                                     Text { text: "Scale Max:"; color: Theme.textSecondary; Layout.preferredWidth: 88 }
-                                    TextField {
+                                    AppTextField {
                                         id: dScaleMax
                                         text: "20"
                                         Layout.fillWidth: true
-                                        color: Theme.textPrimary
                                         inputMethodHints: Qt.ImhFormattedNumbersOnly
-                                        background: Rectangle { color: Theme.bgInput; radius: Theme.radiusTiny }
                                     }
                                 }
                             }
@@ -183,14 +167,12 @@ Rectangle {
                                     font.pixelSize: 12
                                     Layout.fillWidth: true
                                 }
-                                TextField {
+                                AppTextField {
                                     id: dCoeffJson
                                     text: "{}"
                                     Layout.fillWidth: true
                                     Layout.preferredHeight: 72
-                                    color: Theme.textPrimary
                                     wrapMode: Text.WrapAnywhere
-                                    background: Rectangle { color: Theme.bgInput; radius: Theme.radiusTiny }
                                 }
                             }
                         }
@@ -281,7 +263,12 @@ Rectangle {
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
         property int targetId: -1
         property string targetName: ""
-        background: Rectangle { color: Theme.bgSeparator; radius: 8; border.color: Theme.borderErr; border.width: 2 }
+        background: Rectangle {
+            color: Theme.bgPanel
+            radius: Theme.radiusCard
+            border.color: Theme.borderErr
+            border.width: 1
+        }
         ColumnLayout {
             anchors.fill: parent; anchors.margins: 15
             Text { text: "Confirm delete"; font.bold: true; font.pixelSize: 18; color: Theme.statusErr; Layout.alignment: Qt.AlignHCenter }
@@ -290,8 +277,18 @@ Rectangle {
                 Button { text: "Cancel"; Layout.fillWidth: true; onClicked: deleteConfirm.close() }
                 Button {
                     text: "Delete"; Layout.fillWidth: true
-                    background: Rectangle { color: Theme.btnStop; radius: 6; opacity: parent.pressed ? 0.7 : 1.0 }
-                    contentItem: Text { text: "Delete"; color: "white"; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                    background: Rectangle {
+                        color: Theme.btnStop
+                        radius: Theme.radiusSmall
+                        opacity: parent.pressed ? 0.7 : 1.0
+                    }
+                    contentItem: Text {
+                        text: "Delete"
+                        color: Theme.textOnColoredBtn
+                        font.bold: true
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
                     onClicked: { sensorModel.remove_sensor(deleteConfirm.targetId); deleteConfirm.close() }
                 }
             }
@@ -311,12 +308,12 @@ Rectangle {
 
             TabButton {
                 text: "Report"
-                icon.source: "../../assets/icons/report.svg"
+                icon.source: "../../../assets/icons/report.svg"
                 width: implicitWidth + 60
             }
             TabButton {
                 text: "Sensors"
-                icon.source: "../../assets/icons/sensors.svg"
+                icon.source: "../../../assets/icons/sensors.svg"
                 width: implicitWidth + 60
             }
         }
@@ -357,25 +354,22 @@ Rectangle {
                                 columnSpacing: 12; rowSpacing: 10
 
                                 Text { text: "Station code:"; color: Theme.textSecondary; Layout.alignment: Qt.AlignRight | Qt.AlignVCenter }
-                                TextField {
-                                    Layout.fillWidth: true; color: Theme.textPrimary
-                                    background: Rectangle { color: Theme.bgInput; radius: Theme.radiusTiny }
+                                AppTextField {
+                                    Layout.fillWidth: true
                                     text: settingsController.stationCode
                                     onTextChanged: settingsController.stationCode = text
                                 }
 
                                 Text { text: "Station name:"; color: Theme.textSecondary; Layout.alignment: Qt.AlignRight | Qt.AlignVCenter }
-                                TextField {
-                                    Layout.fillWidth: true; color: Theme.textPrimary
-                                    background: Rectangle { color: Theme.bgInput; radius: Theme.radiusTiny }
+                                AppTextField {
+                                    Layout.fillWidth: true
                                     text: settingsController.stationName
                                     onTextChanged: settingsController.stationName = text
                                 }
 
                                 Text { text: "SFTP host:"; color: Theme.textSecondary; Layout.alignment: Qt.AlignRight | Qt.AlignVCenter }
-                                TextField {
-                                    Layout.fillWidth: true; color: Theme.textPrimary
-                                    background: Rectangle { color: Theme.bgInput; radius: Theme.radiusTiny }
+                                AppTextField {
+                                    Layout.fillWidth: true
                                     text: settingsController.ftpAddress
                                     onTextChanged: settingsController.ftpAddress = text
                                 }
@@ -388,26 +382,23 @@ Rectangle {
                                 }
 
                                 Text { text: "Username:"; color: Theme.textSecondary; Layout.alignment: Qt.AlignRight | Qt.AlignVCenter }
-                                TextField {
-                                    Layout.fillWidth: true; color: Theme.textPrimary
-                                    background: Rectangle { color: Theme.bgInput; radius: Theme.radiusTiny }
+                                AppTextField {
+                                    Layout.fillWidth: true
                                     text: settingsController.ftpUsername
                                     onTextChanged: settingsController.ftpUsername = text
                                 }
 
                                 Text { text: "Password:"; color: Theme.textSecondary; Layout.alignment: Qt.AlignRight | Qt.AlignVCenter }
-                                TextField {
-                                    Layout.fillWidth: true; color: Theme.textPrimary
+                                AppTextField {
+                                    Layout.fillWidth: true
                                     echoMode: TextInput.Password
-                                    background: Rectangle { color: Theme.bgInput; radius: Theme.radiusTiny }
                                     text: settingsController.ftpPassword
                                     onTextChanged: settingsController.ftpPassword = text
                                 }
 
                                 Text { text: "Remote folder:"; color: Theme.textSecondary; Layout.alignment: Qt.AlignRight | Qt.AlignVCenter }
-                                TextField {
-                                    Layout.columnSpan: 3; Layout.fillWidth: true; color: Theme.textPrimary
-                                    background: Rectangle { color: Theme.bgInput; radius: Theme.radiusTiny }
+                                AppTextField {
+                                    Layout.columnSpan: 3; Layout.fillWidth: true
                                     text: settingsController.ftpRemotePath
                                     onTextChanged: settingsController.ftpRemotePath = text
                                 }
@@ -482,7 +473,13 @@ Rectangle {
 
                         RowLayout {
                             anchors.fill: parent; anchors.leftMargin: 8; anchors.rightMargin: 8; spacing: 5
-                            Text { text: name;            color: active ? Theme.textPrimary : "#666"; font.pixelSize: 14; Layout.preferredWidth: 110; elide: Text.ElideRight }
+                            Text {
+                                text: name
+                                color: active ? Theme.textPrimary : Theme.textDim
+                                font.pixelSize: 14
+                                Layout.preferredWidth: 110
+                                elide: Text.ElideRight
+                            }
                             Text { text: slaveId;         color: Theme.textSecondary; font.pixelSize: 14; Layout.preferredWidth: 50 }
                             Text { text: registerAddress; color: Theme.textSecondary; font.pixelSize: 14; Layout.preferredWidth: 50 }
                             Text { text: dataType;        color: Theme.textSecondary; font.pixelSize: 14; Layout.preferredWidth: 60 }
@@ -490,7 +487,7 @@ Rectangle {
                             Item { Layout.fillWidth: true }
                             Button {
                                 Layout.preferredWidth: 50; Layout.preferredHeight: 40
-                                icon.source: "../../assets/icons/edit.svg"
+                                icon.source: "../../../assets/icons/edit.svg"
                                 icon.color: Theme.accentText
                                 icon.width: 22; icon.height: 22
                                 background: Rectangle { color: Theme.bgSeparator; radius: Theme.radiusTiny; border.color: Theme.borderDefault; border.width: 1 }
@@ -498,10 +495,15 @@ Rectangle {
                             }
                             Button {
                                 Layout.preferredWidth: 50; Layout.preferredHeight: 40
-                                icon.source: "../../assets/icons/delete.svg"
+                                icon.source: "../../../assets/icons/delete.svg"
                                 icon.color: Theme.statusErr
                                 icon.width: 22; icon.height: 22
-                                background: Rectangle { color: "#3a2020"; radius: Theme.radiusTiny; border.color: Theme.borderErr; border.width: 1 }
+                                background: Rectangle {
+                                    color: Theme.bgErrorTint
+                                    radius: Theme.radiusTiny
+                                    border.color: Theme.borderErr
+                                    border.width: 1
+                                }
                                 onClicked: {
                                     deleteConfirm.targetId = sensorId
                                     deleteConfirm.targetName = name

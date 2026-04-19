@@ -2,67 +2,25 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtCharts
-import "."
+import ".."
+import "../components"
 
 Rectangle {
     id: histRoot
     color: "transparent"
 
-    readonly property var chartColors: [
-        "#558dff", "#7dffa2", "#ff6666", "#d4a62d",
-        "#b0c6ff", "#ff9933", "#cc66ff", "#66cccc"
-    ]
+    readonly property var chartColors: Theme.chartSeriesColors
+    // Hai điểm liên tiếp cách nhau hơn ngưỡng (ms) → tách LineSeries để không vẽ đường nối qua lúc không đo
+    readonly property int chartGapBreakMs: 3 * 60 * 1000
 
-    // ── Message Popup ─────────────────────────────────────────────────────
-    Popup {
+    MessagePopup {
         id: histPopup
-        anchors.centerIn: parent
-        width: 360
-        height: 160
-        modal: true
-        focus: true
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-        background: Rectangle {
-            color: Theme.bgSeparator
-            radius: 8
-            border.color: Theme.accent
-            border.width: 2
-        }
-        ColumnLayout {
-            anchors.fill: parent
-            anchors.margins: 15
-            Text {
-                id: histPopTitle
-                font.bold: true
-                font.pixelSize: 18
-                color: Theme.textPrimary
-                Layout.alignment: Qt.AlignHCenter
-            }
-            Text {
-                id: histPopMsg
-                wrapMode: Text.WordWrap
-                color: Theme.accentText
-                font.pixelSize: 14
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
-            }
-            Button {
-                text: "Close"
-                Layout.alignment: Qt.AlignHCenter
-                onClicked: histPopup.close()
-            }
-        }
+        parent: histRoot
     }
 
     Connections {
         target: historyController
-        function onMessageSent(t, m) {
-            histPopTitle.text = t;
-            histPopMsg.text = m;
-            histPopup.open();
-        }
+        function onMessageSent(t, m) { histPopup.showMessage(t, m) }
     }
 
     // ── Chart data refresh ────────────────────────────────────────────────
@@ -84,20 +42,40 @@ Rectangle {
         var yMin = Number.MAX_VALUE, yMax = -Number.MAX_VALUE;
 
         for (var i = 0; i < data.length; i++) {
-            var series = chartView.createSeries(
-                ChartView.SeriesTypeLine, data[i].name, axisX, axisY
-            );
-            series.color = chartColors[i % chartColors.length];
-            series.width = 2;
-            series.pointsVisible = (data[i].points.length <= 60);
-
             var points = data[i].points;
-            for (var j = 0; j < points.length; j++) {
-                series.append(points[j].x, points[j].y);
-                xMin = Math.min(xMin, points[j].x);
-                xMax = Math.max(xMax, points[j].x);
-                yMin = Math.min(yMin, points[j].y);
-                yMax = Math.max(yMax, points[j].y);
+            if (!points || points.length === 0)
+                continue;
+
+            var segStart = 0;
+            var segIndex = 0;
+            for (var j = 1; j <= points.length; j++) {
+                var atEnd = (j === points.length);
+                var bigGap = false;
+                if (!atEnd)
+                    bigGap = (points[j].x - points[j - 1].x > histRoot.chartGapBreakMs);
+                if (!atEnd && !bigGap)
+                    continue;
+
+                var segLen = j - segStart;
+                if (segLen > 0) {
+                    var legendName = (segIndex === 0) ? data[i].name : "";
+                    var series = chartView.createSeries(
+                        ChartView.SeriesTypeLine, legendName, axisX, axisY
+                    );
+                    series.color = chartColors[i % chartColors.length];
+                    series.width = 2;
+                    series.pointsVisible = (points.length <= 60);
+
+                    for (var k = segStart; k < j; k++) {
+                        series.append(points[k].x, points[k].y);
+                        xMin = Math.min(xMin, points[k].x);
+                        xMax = Math.max(xMax, points[k].x);
+                        yMin = Math.min(yMin, points[k].y);
+                        yMax = Math.max(yMax, points[k].y);
+                    }
+                    segIndex++;
+                }
+                segStart = j;
             }
         }
 
@@ -108,8 +86,11 @@ Rectangle {
         if (yMin <= yMax) {
             var margin = (yMax - yMin) * 0.1;
             if (margin === 0) margin = 1;
-            axisY.min = yMin - margin;
-            axisY.max = yMax + margin;
+            var lo = yMin - margin;
+            var hi = yMax + margin;
+            // Bao gồm 0 trong khoảng trục để luôn có thể thấy mốc 0 khi dữ liệu cho phép
+            axisY.min = Math.min(lo, 0);
+            axisY.max = Math.max(hi, 0);
         }
     }
 
@@ -126,13 +107,13 @@ Rectangle {
 
             TabButton { 
                 text: "List"
-                icon.source: "../../assets/icons/list.svg"
+                icon.source: "../../../assets/icons/list.svg"
                 width: implicitWidth + 60
                 onClicked: viewStack.currentIndex = 0
             }
             TabButton { 
                 text: "Chart"
-                icon.source: "../../assets/icons/chart.svg"
+                icon.source: "../../../assets/icons/chart.svg"
                 width: implicitWidth + 60
                 onClicked: {
                     viewStack.currentIndex = 1;
@@ -241,6 +222,8 @@ Rectangle {
 
                     ValueAxis {
                         id: axisY
+                        tickCount: 7
+                        labelFormat: "%.1f"
                         labelsColor: Theme.textSecondary
                         gridLineColor: Theme.bgSeparator
                         color: Theme.bgSeparator

@@ -91,7 +91,7 @@ check("Seeded 25 SensorData records", seed_count == 25)
 # ═══════════════════════════════════════════════════════════════
 section("1. HistoryModel")
 
-from ui.history_controller import HistoryModel, HistoryController, MAX_RECORDS
+from ui.controllers.history_controller import HistoryModel, HistoryController, MAX_RECORDS
 
 hm = HistoryModel()
 check("Initial rowCount == 0", hm.rowCount() == 0)

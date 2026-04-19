@@ -43,7 +43,7 @@ def check(name, condition, detail=""):
 # ─── M2.1: SettingsController ────────────────────────────────────────────────
 print("\n=== M2.1: SettingsController — Load/Save AppConfig ===")
 
-from ui.settings_controller import SettingsController
+from ui.controllers.settings_controller import SettingsController
 
 sc = SettingsController()
 check("SettingsController instantiates", sc is not None)
@@ -106,7 +106,7 @@ check("poll_interval < 1 triggers error", any("polling" in e for e in errors2))
 # ─── M2.2: SensorListModel CRUD ──────────────────────────────────────────────
 print("\n=== M2.2: SensorListModel — CRUD ===")
 
-from ui.sensor_model import SensorListModel
+from ui.models.sensor_list_model import SensorListModel
 
 sm = SensorListModel()
 sm.refresh()

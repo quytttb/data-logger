@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import "."
+import ".."
 
 // Reusable date picker popup using MonthGrid.
 // Usage:
@@ -25,7 +25,7 @@ Popup {
         color: Theme.bgPanel
         radius: Theme.radiusCard
         border.color: Theme.accent
-        border.width: 2
+        border.width: 1
     }
 
     ColumnLayout {
@@ -132,8 +132,8 @@ Popup {
                     text: model.day
                     font.pixelSize: 14
                     font.bold: isToday
-                    color: !isCurrentMonth ? "#555"
-                         : isSelected ? "#ffffff"
+                    color: !isCurrentMonth ? Theme.textFaint
+                         : isSelected ? Theme.textOnColoredBtn
                          : isToday ? Theme.accent
                          : Theme.textPrimary
                 }

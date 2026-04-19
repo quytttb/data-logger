@@ -91,7 +91,7 @@
 | Đã kiểm tra | Finding | Mức độ |
 |-------------|---------|--------|
 | [i18n/data_logger_vi.ts](../../i18n/data_logger_vi.ts) | File có dạng **XML không hợp lệ** (ví dụ `< message >`, `< /source>`, khoảng trắng trong thẻ). `lrelease` chuẩn có thể **từ chối** hoặc bỏ qua message. | **Blocking** (chất lượng i18n / build) |
-| Khớp chuỗi | [Main.qml](../../ui/qml/Main.qml): `qsTr("FTP (%1 pending)")` trong `.ts` có biến thể khác (`FTP(% 1 pending)` trong nội dung đã xem) — dịch có thể không khớp context. | Warning |
+| Chuỗi QML | `ui/qml/`: chuỗi literal trực tiếp trong code (không lớp dịch QML). | OK |
 | [ui/i18n_bridge.py](../../ui/i18n_bridge.py) | `install_locale` + `retranslate`; thiếu `.qm` → log warning, UI vẫn chạy. | OK |
 
 ### Phần 9 — Deploy & service

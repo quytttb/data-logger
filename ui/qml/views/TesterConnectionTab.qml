@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import "."
+import ".."
 
 Item {
     id: root
@@ -43,7 +43,7 @@ Item {
                     Component.onCompleted: { if (count > 0) currentIndex = 0 }
                 }
                 ToolButton {
-                    icon.source: "../../assets/icons/refresh.svg"
+                    icon.source: "../../../assets/icons/refresh.svg"
                     icon.color: Theme.accentText
                     icon.width: 18
                     icon.height: 18

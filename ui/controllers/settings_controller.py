@@ -165,8 +165,8 @@ class SettingsController(QObject):
         except Exception as e:
             logger.error("load_config error: %s", e)
             self.messageSent.emit(
-                self.tr("Error"),
-                self.tr("Could not load configuration: {0}").format(e),
+                "Error",
+                "Could not load configuration: {0}".format(e),
             )
         finally:
             session.close()
@@ -176,7 +176,7 @@ class SettingsController(QObject):
         errors = self._validate()
         if errors:
             self.messageSent.emit(
-                self.tr("Validation error"),
+                "Validation error",
                 "\n".join(errors),
             )
             return
@@ -206,14 +206,14 @@ class SettingsController(QObject):
             self._cfg = cfg
             self.configLoaded.emit()
             self.configSaved.emit()
-            self.messageSent.emit(self.tr("Success"), self.tr("Configuration saved."))
+            self.messageSent.emit("Success", "Configuration saved.")
             logger.info("AppConfig saved (id=%s)", cfg.id)
         except Exception as e:
             session.rollback()
             logger.error("save_config error: %s", e)
             self.messageSent.emit(
-                self.tr("Error"),
-                self.tr("Failed to save configuration: {0}").format(e),
+                "Error",
+                "Failed to save configuration: {0}".format(e),
             )
         finally:
             session.close()
@@ -248,9 +248,9 @@ class SettingsController(QObject):
     def _validate(self) -> list[str]:
         errors: list[str] = []
         if self._cfg.poll_interval < 1:
-            errors.append(self.tr("Poll interval must be at least 1 second."))
+            errors.append("Poll interval must be at least 1 second.")
         if self._cfg.ftp_port < 1 or self._cfg.ftp_port > 65535:
-            errors.append(self.tr("FTP port must be between 1 and 65535."))
+            errors.append("FTP port must be between 1 and 65535.")
         return errors
 
     # ── Sensor coefficient (scaling) helpers for QML ───────────────────────
@@ -258,13 +258,13 @@ class SettingsController(QObject):
     def _parse_float_token(self, label: str, s: str) -> tuple[float | None, str | None]:
         t = (s or "").strip().replace(",", ".")
         if not t:
-            return None, self.tr("{0} is required.").format(label)
+            return None, "{0} is required.".format(label)
         try:
             v = float(t)
         except ValueError:
-            return None, self.tr("{0}: invalid number.").format(label)
+            return None, "{0}: invalid number.".format(label)
         if not math.isfinite(v):
-            return None, self.tr("{0}: must be a finite number.").format(label)
+            return None, "{0}: must be a finite number.".format(label)
         return v, None
 
     @Slot(str, result="QVariantMap")
@@ -352,30 +352,30 @@ class SettingsController(QObject):
         if mode == 0:
             return "{}"
         if mode == 1:
-            a, err_a = self._parse_float_token(self.tr("Gain (a)"), s0)
-            b, err_b = self._parse_float_token(self.tr("Offset (b)"), s1)
+            a, err_a = self._parse_float_token("Gain (a)", s0)
+            b, err_b = self._parse_float_token("Offset (b)", s1)
             if err_a:
-                self.messageSent.emit(self.tr("Validation error"), err_a)
+                self.messageSent.emit("Validation error", err_a)
                 return ""
             if err_b:
-                self.messageSent.emit(self.tr("Validation error"), err_b)
+                self.messageSent.emit("Validation error", err_b)
                 return ""
             return json.dumps({"a": a, "b": b}, separators=(",", ":"))
         if mode == 2:
-            r0, e0 = self._parse_float_token(self.tr("Raw Min"), s0)
-            r1, e1 = self._parse_float_token(self.tr("Raw Max"), s1)
-            y0, e2 = self._parse_float_token(self.tr("Scale Min"), s2)
-            y1, e3 = self._parse_float_token(self.tr("Scale Max"), s3)
+            r0, e0 = self._parse_float_token("Raw Min", s0)
+            r1, e1 = self._parse_float_token("Raw Max", s1)
+            y0, e2 = self._parse_float_token("Scale Min", s2)
+            y1, e3 = self._parse_float_token("Scale Max", s3)
             for msg in (e0, e1, e2, e3):
                 if msg:
-                    self.messageSent.emit(self.tr("Validation error"), msg)
+                    self.messageSent.emit("Validation error", msg)
                     return ""
             assert r0 is not None and r1 is not None and y0 is not None and y1 is not None
             denom = r1 - r0
             if denom == 0.0:
                 self.messageSent.emit(
-                    self.tr("Validation error"),
-                    self.tr("Raw Max must differ from Raw Min (division by zero)."),
+                    "Validation error",
+                    "Raw Max must differ from Raw Min (division by zero).",
                 )
                 return ""
             a = (y1 - y0) / denom
@@ -387,19 +387,19 @@ class SettingsController(QObject):
                 obj = json.loads(t)
             except json.JSONDecodeError as e:
                 self.messageSent.emit(
-                    self.tr("Validation error"),
-                    self.tr("Invalid JSON: {0}").format(e),
+                    "Validation error",
+                    "Invalid JSON: {0}".format(e),
                 )
                 return ""
             if not isinstance(obj, dict):
                 self.messageSent.emit(
-                    self.tr("Validation error"),
-                    self.tr("Coefficient JSON must be an object {{ ... }}."),
+                    "Validation error",
+                    "Coefficient JSON must be an object {{ ... }}.",
                 )
                 return ""
             return json.dumps(obj, separators=(",", ":"))
         self.messageSent.emit(
-            self.tr("Validation error"),
-            self.tr("Unknown scaling mode."),
+            "Validation error",
+            "Unknown scaling mode.",
         )
         return ""

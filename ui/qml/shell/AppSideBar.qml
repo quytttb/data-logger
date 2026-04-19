@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import "."
+import ".."
 
 Rectangle {
     id: sideBarRoot
@@ -47,7 +47,7 @@ Rectangle {
                     font.pixelSize: 14
                     font.weight: Font.Bold
                     palette.buttonText: sideBarRoot.currentTab === navDelegate.tabIdx ? Theme.textPrimary : Theme.textSecondary
-                    icon.source: ["../../assets/icons/monitor.svg", "../../assets/icons/history.svg", "../../assets/icons/settings.svg", "../../assets/icons/tester.svg"][navDelegate.index]
+                    icon.source: ["../../../assets/icons/monitor.svg", "../../../assets/icons/history.svg", "../../../assets/icons/settings.svg", "../../../assets/icons/tester.svg"][navDelegate.index]
                     icon.color: sideBarRoot.currentTab === navDelegate.tabIdx ? Theme.textPrimary : Theme.textSecondary
                     icon.width: 18
                     icon.height: 18

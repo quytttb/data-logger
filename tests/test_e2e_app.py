@@ -105,12 +105,12 @@ logging.basicConfig(
     handlers=[logging.StreamHandler(sys.stdout)],
 )
 
-from ui.tester_controller import TesterController
-from ui.settings_controller import SettingsController
-from ui.sensor_model import SensorListModel
-from ui.dashboard_controller import DashboardController, DashboardModel
-from ui.history_controller import HistoryController, HistoryModel
-from ui.report_controller import ReportController
+from ui.controllers.tester_controller import TesterController
+from ui.controllers.settings_controller import SettingsController
+from ui.models.sensor_list_model import SensorListModel
+from ui.controllers.monitor_controller import MonitorController, MonitorModel
+from ui.controllers.history_controller import HistoryController, HistoryModel
+from ui.controllers.report_controller import ReportController
 
 app = QGuiApplication(argv_for_qt(sys.argv))
 app.setApplicationName(APP_DESKTOP_ID)
@@ -133,17 +133,18 @@ engine.rootContext().setContextProperty("appIconUrl", app_icon_url)
 tester_ctrl = TesterController()
 settings_ctrl = SettingsController()
 sensor_model = SensorListModel()
-dashboard_model = DashboardModel()
-dashboard_ctrl = DashboardController(dashboard_model)
+monitor_model = MonitorModel()
+monitor_ctrl = MonitorController(monitor_model)
 history_model = HistoryModel()
 history_ctrl = HistoryController(history_model)
+history_ctrl.attach_monitor(monitor_ctrl)
 report_ctrl = ReportController()
 
 engine.rootContext().setContextProperty("testerController", tester_ctrl)
 engine.rootContext().setContextProperty("settingsController", settings_ctrl)
 engine.rootContext().setContextProperty("sensorModel", sensor_model)
-engine.rootContext().setContextProperty("dashboardModel", dashboard_model)
-engine.rootContext().setContextProperty("dashboardController", dashboard_ctrl)
+engine.rootContext().setContextProperty("monitorModel", monitor_model)
+engine.rootContext().setContextProperty("monitorController", monitor_ctrl)
 engine.rootContext().setContextProperty("historyModel", history_model)
 engine.rootContext().setContextProperty("historyController", history_ctrl)
 engine.rootContext().setContextProperty("reportController", report_ctrl)
@@ -155,7 +156,7 @@ if not engine.rootObjects():
     print("[FATAL] Cannot load Main.qml")
     sys.exit(1)
 
-app.aboutToQuit.connect(dashboard_ctrl.stop_polling)
+app.aboutToQuit.connect(monitor_ctrl.stop_polling)
 app.aboutToQuit.connect(report_ctrl.stop_reporting)
 
 # ═══════════════════════════════════════════════════════════════
@@ -385,43 +386,43 @@ def step3_csv_export():
               "Thời gian" in lines[0] and "Cảm biến" in lines[0])
 
     close_all_popups()
-    QTimer.singleShot(500, step4_dashboard_start)
+    QTimer.singleShot(500, step4_monitor_start)
 
 
-def step4_dashboard_start():
+def step4_monitor_start():
     print(f"\n{'='*60}\n  Step 4 — Dashboard Start Polling\n{'='*60}")
     close_all_popups()
     switch_tab(1)
-    dashboard_ctrl.start_polling()
+    monitor_ctrl.start_polling()
     check("isPolling after start",
-          dashboard_ctrl.isPolling == True)
-    check("dashboardModel rows == 2",
-          dashboard_model.rowCount() == 2,
-          f"got: {dashboard_model.rowCount()}")
+          monitor_ctrl.isPolling == True)
+    check("monitorModel rows == 2",
+          monitor_model.rowCount() == 2,
+          f"got: {monitor_model.rowCount()}")
     check("statusText contains THU THẬP",
-          "THU THẬP" in dashboard_ctrl.statusText,
-          f"got: {dashboard_ctrl.statusText}")
+          "Monitoring" in monitor_ctrl.statusText,
+          f"got: {monitor_ctrl.statusText}")
 
     QTimer.singleShot(5000, _step4_screenshot)
 
 
 def _step4_screenshot():
     close_all_popups()
-    screenshot("04_dashboard_polling.png")
-    QTimer.singleShot(500, step5_dashboard_stop)
+    screenshot("04_monitor_polling.png")
+    QTimer.singleShot(500, step5_monitor_stop)
 
 
-def step5_dashboard_stop():
+def step5_monitor_stop():
     print(f"\n{'='*60}\n  Step 5 — Dashboard Stop Polling\n{'='*60}")
     close_all_popups()
-    dashboard_ctrl.stop_polling()
+    monitor_ctrl.stop_polling()
     check("isPolling after stop",
-          dashboard_ctrl.isPolling == False)
+          monitor_ctrl.isPolling == False)
     check("statusText contains DỪNG",
-          "DỪNG" in dashboard_ctrl.statusText,
-          f"got: {dashboard_ctrl.statusText}")
+          "Stopped" in monitor_ctrl.statusText,
+          f"got: {monitor_ctrl.statusText}")
     close_all_popups()
-    screenshot("05_dashboard_stopped.png")
+    screenshot("05_monitor_stopped.png")
 
     QTimer.singleShot(500, step6_tester_tab)
 

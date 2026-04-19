@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import "."
+import ".."
 
 // Thanh header Modbus: gọi API trên TesterView (Main.syncModbusTaskBarRef gán từ MainTabContent.loaderTester).
 Item {
@@ -44,15 +44,15 @@ Item {
                     font.pixelSize: 12
                     font.bold: true
                     background: Rectangle {
-                        radius: 6
-                        color: testerController.isConnecting ? "#666"
+                        radius: Theme.radiusSmall
+                        color: testerController.isConnecting ? Theme.btnBgDisabled
                              : testerController.isConnected ? Theme.btnStop : Theme.accent
                         opacity: parent.pressed ? 0.75 : 1.0
                     }
                     contentItem: Text {
                         text: parent.text
                         font: parent.font
-                        color: "white"
+                        color: Theme.textOnColoredBtn
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                         elide: Text.ElideRight
@@ -71,14 +71,14 @@ Item {
                     font.pixelSize: 11
                     font.bold: true
                     background: Rectangle {
-                        radius: 6
+                        radius: Theme.radiusSmall
                         color: Theme.btnStart
                         opacity: parent.pressed ? 0.75 : 1.0
                     }
                     contentItem: Text {
                         text: parent.text
                         font: parent.font
-                        color: "white"
+                        color: Theme.textOnColoredBtn
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                         elide: Text.ElideRight
@@ -119,7 +119,7 @@ Item {
                     font.bold: true
                     enabled: testerView && !testerController.isScanning
                     background: Rectangle {
-                        radius: 6
+                        radius: Theme.radiusSmall
                         color: Theme.btnClear
                         opacity: parent.pressed ? 0.8 : 1.0
                     }
@@ -148,15 +148,15 @@ Item {
                     text: testerController.isStopping ? "Stopping…"
                         : testerController.isScanning ? "Stop scan" : "Scan range"
                     background: Rectangle {
-                        radius: 6
-                        color: testerController.isStopping ? "#666"
+                        radius: Theme.radiusSmall
+                        color: testerController.isStopping ? Theme.btnBgDisabled
                              : testerController.isScanning ? Theme.btnStop : Theme.accent
                         opacity: parent.pressed ? 0.75 : 1.0
                     }
                     contentItem: Text {
                         text: scanHeaderBtn.text
                         font: scanHeaderBtn.font
-                        color: "white"
+                        color: Theme.textOnColoredBtn
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                         elide: Text.ElideNone

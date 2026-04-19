@@ -25,12 +25,12 @@ from core._paths import (
 )
 from core._version import __version__ as _APP_VERSION
 from core.database import init_db
-from ui.tester_controller import TesterController
-from ui.settings_controller import SettingsController
-from ui.sensor_model import SensorListModel
-from ui.monitor_controller import MonitorController, MonitorModel
-from ui.history_controller import HistoryController, HistoryModel
-from ui.report_controller import ReportController
+from ui.controllers.tester_controller import TesterController
+from ui.controllers.settings_controller import SettingsController
+from ui.models.sensor_list_model import SensorListModel
+from ui.controllers.monitor_controller import MonitorController, MonitorModel
+from ui.controllers.history_controller import HistoryController, HistoryModel
+from ui.controllers.report_controller import ReportController
 
 # === Logging Setup ===
 logging.basicConfig(
@@ -106,6 +106,7 @@ def main():
     monitor_controller = MonitorController(monitor_model, tester_controller)
     history_model = HistoryModel()
     history_controller = HistoryController(history_model)
+    history_controller.attach_monitor(monitor_controller)
     report_controller = ReportController()
 
     # Khi danh sách sensor thay đổi → cập nhật ComboBox lịch sử + monitor

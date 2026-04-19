@@ -17,7 +17,7 @@ Item {
         anchors.fill: parent
         active: tabContentRoot.currentTab === 3 || loaderTester.item !== null
         visible: tabContentRoot.currentTab === 3
-        source: "TesterView.qml"
+        source: "views/TesterView.qml"
     }
 
     Loader {
@@ -25,15 +25,15 @@ Item {
         anchors.fill: parent
         active: tabContentRoot.currentTab === 0 || loaderMonitor.item !== null
         visible: tabContentRoot.currentTab === 0
-        source: "MonitorView.qml"
+        source: "views/MonitorView.qml"
     }
 
     Loader {
         id: loaderHistory
         anchors.fill: parent
-        active: tabContentRoot.currentTab === 1 || loaderHistory.item !== null
+        active: tabContentRoot.currentTab === 1
         visible: tabContentRoot.currentTab === 1
-        source: "HistoryView.qml"
+        source: "views/HistoryView.qml"
     }
 
     Loader {
@@ -41,6 +41,6 @@ Item {
         anchors.fill: parent
         active: tabContentRoot.currentTab === 2 || loaderSettings.item !== null
         visible: tabContentRoot.currentTab === 2
-        source: "SettingsView.qml"
+        source: "views/SettingsView.qml"
     }
 }

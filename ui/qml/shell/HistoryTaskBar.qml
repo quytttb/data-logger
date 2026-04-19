@@ -1,7 +1,8 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import "."
+import ".."
+import "../components"
 
 // Thanh công cụ History — nằm trong header chung (cùng chiều cao với logo).
 Item {
@@ -54,15 +55,14 @@ Item {
             font.bold: true
             Layout.alignment: Qt.AlignVCenter
         }
-        TextField {
+        AppTextField {
             id: fromField
+            useSmallRadius: true
             text: root.formatDate(new Date())
             readOnly: true
             Layout.preferredWidth: 110
-            color: Theme.textPrimary
             font.pixelSize: 13
             horizontalAlignment: Text.AlignHCenter
-            background: Rectangle { color: Theme.bgInput; radius: Theme.radiusSmall }
             Layout.alignment: Qt.AlignVCenter
 
             MouseArea {
@@ -79,15 +79,14 @@ Item {
             font.bold: true
             Layout.alignment: Qt.AlignVCenter
         }
-        TextField {
+        AppTextField {
             id: toField
+            useSmallRadius: true
             text: root.formatDate(new Date())
             readOnly: true
             Layout.preferredWidth: 110
-            color: Theme.textPrimary
             font.pixelSize: 13
             horizontalAlignment: Text.AlignHCenter
-            background: Rectangle { color: Theme.bgInput; radius: Theme.radiusSmall }
             Layout.alignment: Qt.AlignVCenter
 
             MouseArea {
@@ -109,13 +108,13 @@ Item {
             Layout.preferredWidth: 44
             Layout.preferredHeight: 44
             enabled: !historyController.isLoading && sensorModel.rowCount() > 0
-            icon.source: "../../assets/icons/search.svg"
-            icon.color: "white"
+            icon.source: "../../../assets/icons/search.svg"
+            icon.color: Theme.textOnColoredBtn
             icon.width: 16
             icon.height: 16
             background: Rectangle {
-                color: !parent.enabled ? "#666666" : Theme.accent
-                radius: 8
+                color: !parent.enabled ? Theme.btnBgDisabled : Theme.accent
+                radius: Theme.radiusMedium
                 opacity: parent.pressed ? 0.7 : 1.0
             }
             onClicked: root.doSearch()
@@ -127,15 +126,15 @@ Item {
             Layout.preferredWidth: 44
             Layout.preferredHeight: 44
             enabled: !historyController.isLoading && sensorModel.rowCount() > 0
-            icon.source: "../../assets/icons/refresh.svg"
+            icon.source: "../../../assets/icons/refresh.svg"
             icon.color: Theme.textPrimary
             icon.width: 16
             icon.height: 16
             background: Rectangle {
-                color: !parent.enabled ? "#444444" : Theme.bgPanel
+                color: !parent.enabled ? Theme.btnBgMuted : Theme.bgPanel
                 border.color: Theme.borderDefault
                 border.width: 1
-                radius: 8
+                radius: Theme.radiusMedium
                 opacity: parent.pressed ? 0.7 : 1.0
             }
             onClicked: root.doSearch()
@@ -158,23 +157,6 @@ Item {
             color: Theme.textSecondary
             font.pixelSize: 13
             font.bold: true
-            Layout.alignment: Qt.AlignVCenter
-        }
-
-        Button {
-            text: "CSV"
-            icon.source: "../../assets/icons/export.svg"
-            icon.color: "white"
-            icon.width: 16
-            icon.height: 16
-            Layout.preferredHeight: 44
-            enabled: historyController.recordCount > 0
-            font.pixelSize: 13
-            font.bold: true
-            onClicked: {
-                var fname = "history_" + fromField.text.replace(/\//g, "") + "_" + toField.text.replace(/\//g, "") + ".csv";
-                historyController.export_csv("/home/pi/data-logger/var/data/" + fname);
-            }
             Layout.alignment: Qt.AlignVCenter
         }
     }

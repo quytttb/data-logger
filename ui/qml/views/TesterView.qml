@@ -1,7 +1,8 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import "."
+import ".."
+import "../components"
 
 Item {
     id: testerRoot
@@ -62,9 +63,9 @@ Item {
 
         background: Rectangle {
             color: Theme.bgPanel
-            radius: 8
+            radius: Theme.radiusCard
             border.color: Theme.statusOk
-            border.width: 2
+            border.width: 1
         }
 
         contentItem: ColumnLayout {
@@ -108,7 +109,7 @@ Item {
             color: Theme.bgPanel
             radius: Theme.radiusCard
             border.color: Theme.accent
-            border.width: 2
+            border.width: 1
         }
 
         ColumnLayout {
@@ -138,28 +139,22 @@ Item {
                     rowSpacing: 8
 
                     Label { text: "Name:"; color: Theme.textSecondary }
-                    TextField {
+                    AppTextField {
                         id: sensorNameInput
                         Layout.fillWidth: true
-                        color: Theme.textPrimary
-                        background: Rectangle { color: Theme.bgInput; radius: Theme.radiusTiny }
                     }
 
                     Label { text: "Unit:"; color: Theme.textSecondary }
-                    TextField {
+                    AppTextField {
                         id: sensorUnitInput
                         Layout.fillWidth: true
-                        color: Theme.textPrimary
-                        background: Rectangle { color: Theme.bgInput; radius: Theme.radiusTiny }
                     }
 
                     Label { text: "Coefficients (JSON):"; color: Theme.textSecondary }
-                    TextField {
+                    AppTextField {
                         id: sensorCoeffInput
                         Layout.fillWidth: true
                         text: "{}"
-                        color: Theme.textPrimary
-                        background: Rectangle { color: Theme.bgInput; radius: Theme.radiusTiny }
                     }
 
                     Label { text: "Poll interval (s):"; color: Theme.textSecondary }
@@ -170,13 +165,13 @@ Item {
 
                     Rectangle { Layout.columnSpan: 2; Layout.fillWidth: true; height: 1; color: Theme.borderDefault }
 
-                    Label { text: "Slave ID:"; color: "#666" }
+                    Label { text: "Slave ID:"; color: Theme.textSecondary }
                     Text { id: infoSlaveId; color: Theme.textSecondary; font.pixelSize: 14 }
-                    Label { text: "Start address:"; color: "#666" }
+                    Label { text: "Start address:"; color: Theme.textSecondary }
                     Text { id: infoAddr; color: Theme.textSecondary; font.pixelSize: 14 }
-                    Label { text: "Register type:"; color: "#666" }
+                    Label { text: "Register type:"; color: Theme.textSecondary }
                     Text { id: infoRegType; color: Theme.textSecondary; font.pixelSize: 14 }
-                    Label { text: "Data type:"; color: "#666" }
+                    Label { text: "Data type:"; color: Theme.textSecondary }
                     Text { id: infoDataType; color: Theme.textSecondary; font.pixelSize: 14 }
                 }
             }
@@ -356,11 +351,11 @@ Item {
 
                     TabButton { 
                         text: "Connection"
-                        icon.source: "../../assets/icons/connection.svg"
+                        icon.source: "../../../assets/icons/connection.svg"
                     }
                     TabButton { 
                         text: "Operations"
-                        icon.source: "../../assets/icons/operations.svg"
+                        icon.source: "../../../assets/icons/operations.svg"
                     }
 
                     onCurrentIndexChanged: {

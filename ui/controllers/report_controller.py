@@ -62,7 +62,7 @@ class ReportController(QObject):
 
         self._thread.start()
         self._is_running = True
-        self._set_status(self.tr("Report: running"))
+        self._set_status("Report: running")
         self.runningChanged.emit()
         self._refresh_pending()
         logger.info("ReportController started.")
@@ -82,7 +82,7 @@ class ReportController(QObject):
         self._worker = None
         self._thread = None
         self._is_running = False
-        self._set_status(self.tr("Report: stopped"))
+        self._set_status("Report: stopped")
         self.runningChanged.emit()
         logger.info("ReportController stopped.")
 
@@ -105,7 +105,7 @@ class ReportController(QObject):
             self._thread.quit()
         if self._is_running:
             self._is_running = False
-            self._set_status(self.tr("Report: worker exited"))
+            self._set_status("Report: worker exited")
             self.runningChanged.emit()
 
     def _refresh_pending(self) -> None:

@@ -214,7 +214,7 @@ check("has worker_stopped signal", hasattr(fw, "worker_stopped"))
 # ═══════════════════════════════════════════════════════════════
 section("4. ReportController")
 
-from ui.report_controller import ReportController
+from ui.controllers.report_controller import ReportController
 
 rc = ReportController()
 check("isRunning initial False", rc.isRunning == False)

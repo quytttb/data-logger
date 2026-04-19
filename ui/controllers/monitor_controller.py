@@ -147,6 +147,7 @@ class MonitorController(QObject):
     errorCountChanged = Signal()
     activeSensorsChanged = Signal()
     messageSent = Signal(str, str)
+    recordsCommitted = Signal(int)
 
     def __init__(self, monitor_model: MonitorModel, tester_controller=None, parent=None):
         super().__init__(parent)
@@ -227,8 +228,8 @@ class MonitorController(QObject):
             cfg = session.exec(select(AppConfig)).first()
             if cfg is None:
                 self.messageSent.emit(
-                    self.tr("Error"),
-                    self.tr("No system configuration yet. Open Settings to set up."),
+                    "Error",
+                    "No system configuration yet. Open Settings to set up.",
                 )
                 return
 
@@ -237,8 +238,8 @@ class MonitorController(QObject):
             )
             if not sensors:
                 self.messageSent.emit(
-                    self.tr("Error"),
-                    self.tr("No active sensors. Open Settings to add sensors."),
+                    "Error",
+                    "No active sensors. Open Settings to add sensors.",
                 )
                 return
 
@@ -292,7 +293,7 @@ class MonitorController(QObject):
 
             self._is_polling = True
             self._error_count = 0
-            self._apply_status("acquiring", self.STATUS_OK)
+            self._apply_status("monitoring", self.STATUS_OK)
             self.pollingChanged.emit()
             self.errorCountChanged.emit()
             logger.info("Polling started: %d sensors, interval=%ds", len(sensors), cfg.poll_interval)
@@ -300,8 +301,8 @@ class MonitorController(QObject):
         except Exception as e:
             logger.error("start_polling error: %s", e, exc_info=True)
             self.messageSent.emit(
-                self.tr("Error"),
-                self.tr("Could not start polling: {0}").format(e),
+                "Error",
+                "Could not start polling: {0}".format(e),
             )
         finally:
             session.close()
@@ -397,7 +398,7 @@ class MonitorController(QObject):
         if self._is_stopping:
             return
         if connected:
-            self._apply_status("acquiring", self.STATUS_OK)
+            self._apply_status("monitoring", self.STATUS_OK)
         else:
             self._apply_status("connection_lost", self.STATUS_ERR)
             self._model.set_all_status("ERR")
@@ -427,20 +428,21 @@ class MonitorController(QObject):
 
     def _on_records_saved(self, count: int) -> None:
         logger.debug("DB saved %d records", count)
+        self.recordsCommitted.emit(count)
 
     def _localized_status_text(self) -> str:
         tag = self._status_tag
-        if tag == "acquiring":
-            return self.tr("Acquiring…")
+        if tag == "monitoring":
+            return "Monitoring…"
         if tag == "stopping":
-            return self.tr("Stopping…")
+            return "Stopping…"
         if tag == "connection_lost":
-            return self.tr("Connection lost — retrying…")
+            return "Connection lost — retrying…"
         if tag == "stopped":
-            return self.tr("Stopped")
+            return "Stopped"
         if tag == "stopped_worker":
-            return self.tr("Stopped (worker exited)")
-        return self.tr("Ready")
+            return "Stopped (worker exited)"
+        return "Ready"
 
     def _apply_status(self, tag: str, mode: int | None = None) -> None:
         self._status_tag = tag

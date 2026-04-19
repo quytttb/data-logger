@@ -104,7 +104,7 @@ class SensorListModel(QAbstractListModel):
         errors = self._validate_fields(name, unit, slave_id, register_address)
         if errors:
             self.messageSent.emit(
-                self.tr("Validation error"),
+                "Validation error",
                 "\n".join(errors),
             )
             return
@@ -123,16 +123,16 @@ class SensorListModel(QAbstractListModel):
             session.commit()
             self.refresh()
             self.messageSent.emit(
-                self.tr("Success"),
-                self.tr("Added sensor '{0}'.").format(name),
+                "Success",
+                "Added sensor '{0}'.".format(name),
             )
             logger.info("Sensor added: %s", name)
         except Exception as e:
             session.rollback()
             logger.error("add_sensor error: %s", e)
             self.messageSent.emit(
-                self.tr("Error"),
-                self.tr("Failed to add sensor: {0}").format(e),
+                "Error",
+                "Failed to add sensor: {0}".format(e),
             )
         finally:
             session.close()
@@ -146,7 +146,7 @@ class SensorListModel(QAbstractListModel):
         errors = self._validate_fields(name, unit, slave_id, register_address)
         if errors:
             self.messageSent.emit(
-                self.tr("Validation error"),
+                "Validation error",
                 "\n".join(errors),
             )
             return
@@ -155,7 +155,7 @@ class SensorListModel(QAbstractListModel):
         try:
             sensor = session.get(Sensor, sensor_id)
             if not sensor:
-                self.messageSent.emit(self.tr("Error"), self.tr("Sensor not found."))
+                self.messageSent.emit("Error", "Sensor not found.")
                 return
             sensor.name = name.strip()
             sensor.unit = unit.strip()
@@ -171,15 +171,15 @@ class SensorListModel(QAbstractListModel):
             session.commit()
             self.refresh()
             self.messageSent.emit(
-                self.tr("Success"),
-                self.tr("Updated sensor '{0}'.").format(name),
+                "Success",
+                "Updated sensor '{0}'.".format(name),
             )
         except Exception as e:
             session.rollback()
             logger.error("update_sensor error: %s", e)
             self.messageSent.emit(
-                self.tr("Error"),
-                self.tr("Update failed: {0}").format(e),
+                "Error",
+                "Update failed: {0}".format(e),
             )
         finally:
             session.close()
@@ -194,20 +194,20 @@ class SensorListModel(QAbstractListModel):
                 session.commit()
                 self.refresh()
                 self.messageSent.emit(
-                    self.tr("Success"),
-                    self.tr("Removed sensor '{0}'.").format(sensor.name),
+                    "Success",
+                    "Removed sensor '{0}'.".format(sensor.name),
                 )
             else:
                 self.messageSent.emit(
-                    self.tr("Error"),
-                    self.tr("No sensor found to remove."),
+                    "Error",
+                    "No sensor found to remove.",
                 )
         except Exception as e:
             session.rollback()
             logger.error("remove_sensor error: %s", e)
             self.messageSent.emit(
-                self.tr("Error"),
-                self.tr("Failed to remove sensor: {0}").format(e),
+                "Error",
+                "Failed to remove sensor: {0}".format(e),
             )
         finally:
             session.close()
@@ -229,11 +229,11 @@ class SensorListModel(QAbstractListModel):
     def _validate_fields(self, name, unit, slave_id, register_address) -> list[str]:
         errors: list[str] = []
         if not name.strip():
-            errors.append(self.tr("Sensor name cannot be empty."))
+            errors.append("Sensor name cannot be empty.")
         if not unit.strip():
-            errors.append(self.tr("Unit cannot be empty."))
+            errors.append("Unit cannot be empty.")
         if slave_id < 1 or slave_id > 247:
-            errors.append(self.tr("Slave ID must be between 1 and 247."))
+            errors.append("Slave ID must be between 1 and 247.")
         if register_address < 0 or register_address > 65535:
-            errors.append(self.tr("Register address must be between 0 and 65535."))
+            errors.append("Register address must be between 0 and 65535.")
         return errors
