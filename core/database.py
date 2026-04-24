@@ -40,7 +40,7 @@ def _set_sqlite_pragma(dbapi_connection, connection_record):
 
 def init_db() -> None:
     """Tạo toàn bộ bảng nếu chưa tồn tại."""
-    from models import app_config, report_log, sensor, sensor_data  # noqa: F401
+    from models import app_config, digital_io, report_log, sensor, sensor_data  # noqa: F401
 
     SQLModel.metadata.create_all(engine)
     _migrate()
@@ -59,6 +59,18 @@ def _migrate() -> None:
             ))
             conn.commit()
 
+        # Phase 1: alarm thresholds
+        if "min_threshold" not in cols:
+            conn.execute(text(
+                "ALTER TABLE sensor ADD COLUMN min_threshold REAL DEFAULT NULL"
+            ))
+            conn.commit()
+        if "max_threshold" not in cols:
+            conn.execute(text(
+                "ALTER TABLE sensor ADD COLUMN max_threshold REAL DEFAULT NULL"
+            ))
+            conn.commit()
+
         if inspector.has_table("app_config"):
             acols = {c["name"] for c in inspector.get_columns("app_config")}
             # Thêm cột mới theo từng phiên bản model (DB cũ / file sqlite trong repo).
@@ -69,6 +81,22 @@ def _migrate() -> None:
                 ("serial_bytesize", "INTEGER DEFAULT 8"),
                 ("serial_parity", "VARCHAR DEFAULT 'N'"),
                 ("serial_stopbits", "INTEGER DEFAULT 1"),
+                # Phase 3: General config
+                ("time_format", "VARCHAR DEFAULT 'HH:mm:ss'"),
+                ("date_format", "VARCHAR DEFAULT 'dd/MM/yyyy'"),
+                ("timezone", "VARCHAR DEFAULT 'UTC+7'"),
+                ("auto_sync_time", "BOOLEAN DEFAULT 0"),
+                ("buzzer_enable", "BOOLEAN DEFAULT 0"),
+                # Phase 3: Server / Transmission config
+                ("ftp_prefix", "VARCHAR DEFAULT ''"),
+                ("server_active", "BOOLEAN DEFAULT 0"),
+                ("server_device_type", "VARCHAR DEFAULT 'Standard'"),
+                ("server_name", "VARCHAR DEFAULT ''"),
+                ("server_send_interval", "INTEGER DEFAULT 5"),
+                ("server_start_time", "VARCHAR DEFAULT '00:00'"),
+                ("server_base_folder", "VARCHAR DEFAULT ''"),
+                ("server_time_folder", "VARCHAR DEFAULT 'yyyy/MM/dd'"),
+                ("server_file_suffix", "VARCHAR DEFAULT 'yyyyMMddHHmmss'"),
             ]
             for col_name, col_type in app_config_adds:
                 if col_name not in acols:

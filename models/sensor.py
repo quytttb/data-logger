@@ -37,6 +37,16 @@ class Sensor(SQLModel, table=True):
         description="JSON hệ số công thức: {'a': 1.0, 'b': 0.0} → y = ax + b",
     )
 
+    # === Alarm thresholds ===
+    min_threshold: Optional[float] = Field(
+        default=None,
+        description="Alarm when value <= this (None = disabled)",
+    )
+    max_threshold: Optional[float] = Field(
+        default=None,
+        description="Alarm when value >= this (None = disabled)",
+    )
+
     # === Chu kỳ đọc riêng ===
     poll_interval: int = Field(
         default=3,

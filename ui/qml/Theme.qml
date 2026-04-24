@@ -16,6 +16,8 @@ QtObject {
     // ── Text ─────────────────────────────────────────────────────────────
     readonly property color textPrimary:   "#e5e2e1" // Main content text
     readonly property color textSecondary: "#8c90a0" // Labels, units, timestamps
+    readonly property color textLabel:     "#8c90a0" // Settings labels (reverted color for contrast)
+    readonly property int   fontLabelSize: 14        // Settings labels font size
     readonly property color textDim:       "#666666" // Nhãn phụ / timestamp nhỏ (gần disabled)
     readonly property color textFaint:     "#555555" // RAW, ngày lịch ngoài tháng hiện tại
     readonly property color textOnColoredBtn: "#ffffff" // Chữ trên nút accent / start / stop

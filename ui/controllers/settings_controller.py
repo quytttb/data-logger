@@ -146,6 +146,122 @@ class SettingsController(QObject):
     def serialStopbits(self, v):
         self._cfg.serial_stopbits = v
 
+    # ── General Properties ─────────────────────────────────────────────────
+
+    @Property(str, notify=configLoaded)
+    def timeFormat(self):
+        return self._cfg.time_format
+
+    @timeFormat.setter
+    def timeFormat(self, v):
+        self._cfg.time_format = v
+
+    @Property(str, notify=configLoaded)
+    def dateFormat(self):
+        return self._cfg.date_format
+
+    @dateFormat.setter
+    def dateFormat(self, v):
+        self._cfg.date_format = v
+
+    @Property(str, notify=configLoaded)
+    def timezone(self):
+        return self._cfg.timezone
+
+    @timezone.setter
+    def timezone(self, v):
+        self._cfg.timezone = v
+
+    @Property(bool, notify=configLoaded)
+    def autoSyncTime(self):
+        return self._cfg.auto_sync_time
+
+    @autoSyncTime.setter
+    def autoSyncTime(self, v):
+        self._cfg.auto_sync_time = v
+
+    @Property(bool, notify=configLoaded)
+    def buzzerEnable(self):
+        return self._cfg.buzzer_enable
+
+    @buzzerEnable.setter
+    def buzzerEnable(self, v):
+        self._cfg.buzzer_enable = v
+
+    # ── Server / Transmission Properties ───────────────────────────────────
+
+    @Property(bool, notify=configLoaded)
+    def serverActive(self):
+        return self._cfg.server_active
+
+    @serverActive.setter
+    def serverActive(self, v):
+        self._cfg.server_active = v
+
+    @Property(str, notify=configLoaded)
+    def serverDeviceType(self):
+        return self._cfg.server_device_type
+
+    @serverDeviceType.setter
+    def serverDeviceType(self, v):
+        self._cfg.server_device_type = v
+
+    @Property(str, notify=configLoaded)
+    def serverName(self):
+        return self._cfg.server_name
+
+    @serverName.setter
+    def serverName(self, v):
+        self._cfg.server_name = v
+
+    @Property(int, notify=configLoaded)
+    def serverSendInterval(self):
+        return self._cfg.server_send_interval
+
+    @serverSendInterval.setter
+    def serverSendInterval(self, v):
+        self._cfg.server_send_interval = v
+
+    @Property(str, notify=configLoaded)
+    def serverStartTime(self):
+        return self._cfg.server_start_time
+
+    @serverStartTime.setter
+    def serverStartTime(self, v):
+        self._cfg.server_start_time = v
+
+    @Property(str, notify=configLoaded)
+    def serverBaseFolder(self):
+        return self._cfg.server_base_folder
+
+    @serverBaseFolder.setter
+    def serverBaseFolder(self, v):
+        self._cfg.server_base_folder = v
+
+    @Property(str, notify=configLoaded)
+    def serverTimeFolder(self):
+        return self._cfg.server_time_folder
+
+    @serverTimeFolder.setter
+    def serverTimeFolder(self, v):
+        self._cfg.server_time_folder = v
+
+    @Property(str, notify=configLoaded)
+    def ftpPrefix(self):
+        return self._cfg.ftp_prefix
+
+    @ftpPrefix.setter
+    def ftpPrefix(self, v):
+        self._cfg.ftp_prefix = v
+
+    @Property(str, notify=configLoaded)
+    def serverFileSuffix(self):
+        return self._cfg.server_file_suffix
+
+    @serverFileSuffix.setter
+    def serverFileSuffix(self, v):
+        self._cfg.server_file_suffix = v
+
 
     # ── Slots ──────────────────────────────────────────────────────────────
 
@@ -190,17 +306,31 @@ class SettingsController(QObject):
 
             cfg.station_code = self._cfg.station_code
             cfg.station_name = self._cfg.station_name
+            cfg.time_format = self._cfg.time_format
+            cfg.date_format = self._cfg.date_format
+            cfg.timezone = self._cfg.timezone
+            cfg.auto_sync_time = self._cfg.auto_sync_time
+            cfg.buzzer_enable = self._cfg.buzzer_enable
             cfg.ftp_address = self._cfg.ftp_address
             cfg.ftp_port = self._cfg.ftp_port
             cfg.ftp_username = self._cfg.ftp_username
             cfg.ftp_password = self._cfg.ftp_password
             cfg.ftp_remote_path = self._cfg.ftp_remote_path
+            cfg.ftp_prefix = self._cfg.ftp_prefix
             cfg.poll_interval = self._cfg.poll_interval
             cfg.serial_port = self._cfg.serial_port
             cfg.serial_baudrate = self._cfg.serial_baudrate
             cfg.serial_bytesize = self._cfg.serial_bytesize
             cfg.serial_parity = self._cfg.serial_parity
             cfg.serial_stopbits = self._cfg.serial_stopbits
+            cfg.server_active = self._cfg.server_active
+            cfg.server_device_type = self._cfg.server_device_type
+            cfg.server_name = self._cfg.server_name
+            cfg.server_send_interval = self._cfg.server_send_interval
+            cfg.server_start_time = self._cfg.server_start_time
+            cfg.server_base_folder = self._cfg.server_base_folder
+            cfg.server_time_folder = self._cfg.server_time_folder
+            cfg.server_file_suffix = self._cfg.server_file_suffix
             session.commit()
             session.refresh(cfg)
             self._cfg = cfg

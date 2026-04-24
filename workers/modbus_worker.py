@@ -6,7 +6,6 @@ Hỗ trợ reconnect tự động với exponential backoff khi mất kết nố
 
 import inspect
 import logging
-import struct
 import time
 from datetime import datetime
 
@@ -28,15 +27,18 @@ class ModbusWorker(QObject):
     """Worker đọc dữ liệu Modbus từ cảm biến qua RS485.
 
     Signals:
-        data_ready(dict): payload = {sensor_id, raw_value, value, recorded_at}
+        data_ready(dict): payload = {sensor_id, raw_value, value, recorded_at,
+                          is_alarm, alarm_type, di_states}
         modbus_error(str): Lỗi Timeout/CRC/kết nối.
         connection_changed(bool): True khi kết nối thành công, False khi mất.
+        alarm_changed(dict): {sensor_id, is_alarm, alarm_type} — alarm state transition.
         worker_stopped(): Worker đã dừng hoàn toàn.
     """
 
     data_ready = Signal(dict)
     modbus_error = Signal(str)
     connection_changed = Signal(bool)
+    alarm_changed = Signal(dict)
     worker_stopped = Signal()
 
     def __init__(
@@ -61,10 +63,20 @@ class ModbusWorker(QObject):
         self._is_running = False
         self._client: ModbusSerialClient | None = None
         self._sensors: list[dict] = []
+        # Digital I/O config: {sensor_id: [list of io dicts]}
+        self._digital_ios: dict[int, list[dict]] = {}
+        # Alarm state tracking: {sensor_id: bool}
+        self._alarm_states: dict[int, bool] = {}
 
     def set_sensors(self, sensors: list[dict]) -> None:
         self._sensors = sensors
         logger.info("Cập nhật danh sách cảm biến: %d sensors", len(sensors))
+
+    def set_digital_ios(self, digital_ios: dict[int, list[dict]]) -> None:
+        """Set DI/DO configuration grouped by sensor_id."""
+        self._digital_ios = digital_ios
+        total = sum(len(v) for v in digital_ios.values())
+        logger.info("Digital I/O configured: %d channels across %d sensors", total, len(digital_ios))
 
     def run(self) -> None:
         """Vòng lặp chính — được gọi khi QThread.start()."""
@@ -175,17 +187,47 @@ class ModbusWorker(QObject):
 
             value = apply_formula(raw_value, coefficient_json)
 
+            # --- Alarm threshold check ---
+            is_alarm = False
+            alarm_type = ""  # "min", "max", or "min+max"
+            min_th = sensor_cfg.get("min_threshold")
+            max_th = sensor_cfg.get("max_threshold")
+
+            if min_th is not None and value <= min_th:
+                is_alarm = True
+                alarm_type = "min"
+            if max_th is not None and value >= max_th:
+                is_alarm = True
+                alarm_type = "max" if not alarm_type else "min+max"
+
+            prev_alarm = self._alarm_states.get(sensor_id, False)
+            if is_alarm != prev_alarm:
+                self._alarm_states[sensor_id] = is_alarm
+                self.alarm_changed.emit({
+                    "sensor_id": sensor_id,
+                    "is_alarm": is_alarm,
+                    "alarm_type": alarm_type,
+                })
+                # Drive DO relays on alarm state transition
+                self._drive_do_relays(sensor_id, is_alarm, alarm_type)
+
+            # --- Read DI states ---
+            di_states = self._read_di_states(sensor_id)
+
             payload = {
                 "sensor_id": sensor_id,
                 "raw_value": raw_value,
                 "value": round(value, 4),
                 "recorded_at": datetime.now().isoformat(),
+                "is_alarm": is_alarm,
+                "alarm_type": alarm_type,
+                "di_states": di_states,
             }
 
             self.data_ready.emit(payload)
             logger.debug(
-                "Sensor %d (slave %d): raw=%s → value=%.4f",
-                sensor_id, slave_id, raw_value, value,
+                "Sensor %d (slave %d): raw=%s → value=%.4f alarm=%s",
+                sensor_id, slave_id, raw_value, value, is_alarm,
             )
 
         except ModbusIOException as e:
@@ -218,18 +260,27 @@ class ModbusWorker(QObject):
         data_type: str,
         data_format: str,
     ) -> int | float | None:
-        count = 2 if data_type == "float32" else 1
+        from core.modbus import _normalize_register_type
+        norm_type = _normalize_register_type(register_type)
 
-        if register_type == "input":
+        count = 2 if data_type in ("float32", "int32", "uint32") else 1
+
+        if norm_type == "Input Register":
             kw = self._slave_kwarg("read_input_registers", slave_id)
-            result = self._client.read_input_registers(
-                address=address, count=count, **kw
-            )
-        else:
+            result = self._client.read_input_registers(address=address, count=count, **kw)
+        elif norm_type == "Holding Register":
             kw = self._slave_kwarg("read_holding_registers", slave_id)
-            result = self._client.read_holding_registers(
-                address=address, count=count, **kw
-            )
+            result = self._client.read_holding_registers(address=address, count=count, **kw)
+        elif norm_type == "Discrete Input":
+            kw = self._slave_kwarg("read_discrete_inputs", slave_id)
+            result = self._client.read_discrete_inputs(address=address, count=count, **kw)
+        elif norm_type == "Coil":
+            kw = self._slave_kwarg("read_coils", slave_id)
+            result = self._client.read_coils(address=address, count=count, **kw)
+        else:
+            # Fallback
+            kw = self._slave_kwarg("read_holding_registers", slave_id)
+            result = self._client.read_holding_registers(address=address, count=count, **kw)
 
         if result.isError():
             error_msg = f"Timeout slave_id={slave_id} register={address}"
@@ -237,30 +288,89 @@ class ModbusWorker(QObject):
             self.modbus_error.emit(error_msg)
             return None
 
-        registers = result.registers
+        # Xử lý các thanh ghi trả về kiểu Bool (Coil, Discrete Input)
+        if norm_type in ("Coil", "Discrete Input"):
+            if hasattr(result, "bits"):
+                return 1 if result.bits[0] else 0
+            return None
 
-        if data_type == "float32" and len(registers) == 2:
-            return self._decode_float32(registers, data_format)
-        elif data_type == "uint16":
-            return registers[0]
-        else:
-            return self._convert_signed(registers[0])
+        # Xử lý các thanh ghi trả về list int (Holding, Input)
+        if not hasattr(result, "registers"):
+            return None
 
-    @staticmethod
-    def _convert_signed(value: int, bits: int = 16) -> int:
-        if value >= (1 << (bits - 1)):
-            value -= 1 << bits
-        return value
+        # Dùng chung decode logic với Modbus Tester (single source of truth)
+        from core.modbus import ModbusBase
+        return ModbusBase.decode_data(result.registers, data_type, data_format)
 
-    @staticmethod
-    def _decode_float32(registers: list[int], data_format: str) -> float:
-        if data_format == "CDAB":
-            raw_bytes = struct.pack(">HH", registers[1], registers[0])
-        elif data_format == "BADC":
-            raw_bytes = struct.pack("<HH", registers[0], registers[1])
-        elif data_format == "DCBA":
-            raw_bytes = struct.pack("<HH", registers[1], registers[0])
-        else:  # ABCD — Big-endian (default)
-            raw_bytes = struct.pack(">HH", registers[0], registers[1])
+    def _read_di_states(self, sensor_id: int) -> list[dict]:
+        """Read all DI channels associated with a sensor.
 
-        return struct.unpack(">f", raw_bytes)[0]
+        Returns list of {id, label, state: bool}.
+        """
+        ios = self._digital_ios.get(sensor_id, [])
+        di_channels = [io for io in ios if io.get("io_type") == "DI" and io.get("active", True)]
+        if not di_channels or not self._client or not self._client.connected:
+            return []
+
+        results = []
+        for ch in di_channels:
+            try:
+                kw = self._slave_kwarg("read_discrete_inputs", ch["slave_id"])
+                resp = self._client.read_discrete_inputs(
+                    address=ch["address"], count=1, **kw
+                )
+                if resp.isError():
+                    logger.warning(
+                        "DI read error: sensor=%d slave=%d addr=%d",
+                        sensor_id, ch["slave_id"], ch["address"],
+                    )
+                    results.append({"id": ch["id"], "label": ch["label"], "state": None})
+                else:
+                    results.append({"id": ch["id"], "label": ch["label"], "state": resp.bits[0]})
+            except Exception as e:
+                logger.warning("DI read exception: %s", e)
+                results.append({"id": ch["id"], "label": ch["label"], "state": None})
+        return results
+
+    def _drive_do_relays(self, sensor_id: int, is_alarm: bool, alarm_type: str) -> None:
+        """Write DO coils on alarm state transition.
+
+        When alarm activates: set matching DO coils to ON.
+        When alarm clears: set all DO coils for this sensor to OFF.
+        """
+        ios = self._digital_ios.get(sensor_id, [])
+        do_channels = [io for io in ios if io.get("io_type") == "DO" and io.get("active", True)]
+        if not do_channels or not self._client or not self._client.connected:
+            return
+
+        for ch in do_channels:
+            # Determine if this specific DO should fire
+            if is_alarm:
+                should_activate = False
+                if ch.get("trigger_on_max", True) and "max" in alarm_type:
+                    should_activate = True
+                if ch.get("trigger_on_min", True) and "min" in alarm_type:
+                    should_activate = True
+                coil_value = should_activate
+            else:
+                # Alarm cleared → turn off all DO relays
+                coil_value = False
+
+            try:
+                kw = self._slave_kwarg("write_coil", ch["slave_id"])
+                result = self._client.write_coil(
+                    address=ch["address"], value=coil_value, **kw
+                )
+                if result.isError():
+                    logger.warning(
+                        "DO write error: sensor=%d slave=%d addr=%d value=%s",
+                        sensor_id, ch["slave_id"], ch["address"], coil_value,
+                    )
+                else:
+                    logger.info(
+                        "DO relay %s: sensor=%d slave=%d addr=%d → %s",
+                        "ON" if coil_value else "OFF",
+                        sensor_id, ch["slave_id"], ch["address"], coil_value,
+                    )
+            except Exception as e:
+                logger.warning("DO write exception: sensor=%d err=%s", sensor_id, e)

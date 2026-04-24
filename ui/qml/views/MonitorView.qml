@@ -10,7 +10,6 @@ Rectangle {
 
     MessagePopup {
         id: monitorPopup
-        parent: monitorRoot
     }
 
     Connections {
@@ -45,16 +44,26 @@ Rectangle {
                 height: sensorGrid.cellHeight
 
                 Rectangle {
+                    id: cardBg
                     anchors.fill: parent
                     anchors.margins: 6
                     radius: Theme.radiusCard
                     color: Theme.bgPanel
                     border.color: {
+                        if (model.isAlarm)  return Theme.statusErr;
                         if (model.status === "OK")  return Theme.borderOk;
                         if (model.status === "ERR") return Theme.borderErr;
                         return Theme.borderDefault;
                     }
-                    border.width: model.status === "OK" ? 2 : 1
+                    border.width: model.isAlarm ? 3 : (model.status === "OK" ? 2 : 1)
+
+                    // Alarm pulsing animation
+                    SequentialAnimation on opacity {
+                        running: model.isAlarm
+                        loops: Animation.Infinite
+                        NumberAnimation { to: 0.7; duration: 500 }
+                        NumberAnimation { to: 1.0; duration: 500 }
+                    }
 
                     ColumnLayout {
                         anchors.fill: parent
@@ -68,6 +77,7 @@ Rectangle {
                             Rectangle {
                                 width: 10; height: 10; radius: 5
                                 color: {
+                                    if (model.isAlarm)  return Theme.statusErr;
                                     if (model.status === "OK")  return Theme.statusOk;
                                     if (model.status === "ERR") return Theme.statusErrBright;
                                     return Theme.textSecondary;
@@ -80,6 +90,23 @@ Rectangle {
                                 font.pixelSize: 13; font.bold: true
                                 elide: Text.ElideRight
                                 Layout.fillWidth: true
+                            }
+
+                            // Alarm badge — nằm cạnh tên, không che unit
+                            Rectangle {
+                                visible: model.isAlarm
+                                color: Theme.statusErr
+                                radius: 4
+                                implicitWidth: alarmLabel.implicitWidth + 8
+                                implicitHeight: alarmLabel.implicitHeight + 4
+                                Text {
+                                    id: alarmLabel
+                                    anchors.centerIn: parent
+                                    text: model.alarmType === "min" ? "▼ MIN"
+                                        : (model.alarmType === "max" ? "▲ MAX" : "ALARM")
+                                    color: "#FFFFFF"
+                                    font.pixelSize: 9; font.bold: true
+                                }
                             }
 
                             Text {
@@ -101,7 +128,8 @@ Rectangle {
                             Text {
                                 anchors.centerIn: parent
                                 text: model.value
-                                color: model.status === "ERR" ? Theme.statusErr : Theme.textPrimary
+                                color: model.isAlarm ? Theme.statusErr
+                                     : (model.status === "ERR" ? Theme.statusErr : Theme.textPrimary)
                                 font.pixelSize: model.value === "---" ? 28 : 36
                                 font.family: "Monospace"
                                 font.bold: true
@@ -116,6 +144,7 @@ Rectangle {
                                 font.pixelSize: 10
                                 font.family: "Monospace"
                             }
+
                             Item { Layout.fillWidth: true }
                             Text {
                                 text: model.lastUpdate || ""

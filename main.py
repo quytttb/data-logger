@@ -155,6 +155,20 @@ def main():
 
         QTimer.singleShot(0, _reapply_icons)
 
+    # Auto-start FTP worker nếu server_active = True trong DB
+    try:
+        from sqlmodel import select as _sel
+        from core.database import get_session as _gs
+        from models.app_config import AppConfig as _AC
+        _s = _gs()
+        _cfg = _s.exec(_sel(_AC)).first()
+        if _cfg and _cfg.server_active:
+            report_controller.start_reporting()
+            logger.info("FTP auto-started (server_active=True).")
+        _s.close()
+    except Exception as _e:
+        logger.warning("Không thể auto-start FTP: %s", _e)
+
     app.aboutToQuit.connect(monitor_controller.stop_polling_sync)
     app.aboutToQuit.connect(report_controller.stop_reporting)
 

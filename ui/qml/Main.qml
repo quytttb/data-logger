@@ -13,12 +13,24 @@ ApplicationWindow {
         if (headerChrome.modbusTbLoader.item)
             headerChrome.modbusTbLoader.item.testerView = tabContent.loaderTester.item
     }
+
+    function handleNavigateToAddSensor(data) {
+        root.currentTab = 2  // Switch to Settings tab
+        // Wait a frame for the settings loader to activate, then call openAddSensorWithData
+        Qt.callLater(function() {
+            if (tabContent.loaderSettings.item) {
+                tabContent.loaderSettings.item.returnMainTab = 3  // Return to Tester tab
+                tabContent.loaderSettings.item.openAddSensorWithData(data)
+            }
+        })
+    }
     // Kích thước fallback khi thoát fullscreen (F11 / Alt+F4 vẫn đóng được tùy WM)
     width: 1024
     height: 600
     title: "Data Logger"
     color: Theme.bgDeep
     // Toàn màn hình khi mở: che taskbar + không thanh tiêu đề (decoration)
+    // Tạm thời tắt — bật lại: bỏ comment dòng dưới
     visibility: Window.FullScreen
 
     // ── Navigation state ─────────────────────────────────────────────────
@@ -72,6 +84,18 @@ ApplicationWindow {
         target: tabContent.loaderTester
         function onLoaded() {
             root.syncModbusTaskBarRef()
+            if (tabContent.loaderTester.item)
+                tabContent.loaderTester.item.navigateToAddSensor.connect(root.handleNavigateToAddSensor)
+        }
+    }
+
+    Connections {
+        target: tabContent.loaderSettings
+        function onLoaded() {
+            if (tabContent.loaderSettings.item)
+                tabContent.loaderSettings.item.requestMainTabChange.connect(function(tabIndex) {
+                    root.currentTab = tabIndex
+                })
         }
     }
 

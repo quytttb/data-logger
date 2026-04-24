@@ -92,17 +92,34 @@ ColumnLayout {
                     source: "MonitorTaskBar.qml"
                 }
 
-                Label {
-                    visible: headerChromeRoot.currentTab === 2
-                    text: "Settings"
-                    font.pixelSize: 15
-                    font.bold: true
-                    color: Theme.accentText
-                    Layout.alignment: Qt.AlignVCenter
-                }
-
-                Item {
+                Loader {
+                    id: settingsTbLoader
                     Layout.fillWidth: headerChromeRoot.currentTab === 2
+                    Layout.fillHeight: true
+                    active: headerChromeRoot.currentTab === 2
+                    visible: headerChromeRoot.currentTab === 2
+                    source: "SettingsTaskBar.qml"
+                    onLoaded: {
+                        if (item && tabContent.loaderSettings.item) {
+                            var view = tabContent.loaderSettings.item;
+                            
+                            item.settingsTabIndex = Qt.binding(function() { return view.settingsTabIndex })
+                            item.isConfigChanged = Qt.binding(function() { return view.isConfigChanged })
+                            item.hasSelectedSensor = Qt.binding(function() { return view.hasSelectedSensor })
+                            item.isAddMode = Qt.binding(function() { return view.isAddMode })
+                            item.sensorSubTabIndex = Qt.binding(function() { return view.sensorSubTabIndex })
+
+                            item.tabSelected.connect(function(idx) { view.settingsTabIndex = idx })
+                            item.sensorSubTabSelected.connect(function(idx) { view.sensorSubTabIndex = idx })
+                            item.saveConfig.connect(function() { view.saveConfig() })
+                            item.cancelConfig.connect(function() { view.cancelConfig() })
+                            item.addSensor.connect(function() { view.openAddSensor() })
+                            item.editSelectedSensor.connect(function() { view.editSelectedSensor() })
+                            item.deleteSelectedSensor.connect(function() { view.deleteSelectedSensor() })
+                            item.saveSensorForm.connect(function() { view.saveSensorForm() })
+                            item.cancelSensorForm.connect(function() { view.closeSensorForm() })
+                        }
+                    }
                 }
 
                 Loader {

@@ -15,7 +15,6 @@ Rectangle {
 
     MessagePopup {
         id: histPopup
-        parent: histRoot
     }
 
     Connections {
@@ -174,11 +173,11 @@ Rectangle {
                             anchors.leftMargin: 12
                             anchors.rightMargin: 12
                             spacing: 8
-                            Text { text: model.recordedAt;  color: Theme.textPrimary;   font.pixelSize: 13; Layout.preferredWidth: 160 }
-                            Text { text: model.sensorName;  color: Theme.accentText;    font.pixelSize: 13; font.bold: true; Layout.preferredWidth: 150; elide: Text.ElideRight }
-                            Text { text: model.unit;        color: Theme.textSecondary; font.pixelSize: 13; Layout.preferredWidth: 80 }
+                            Text { text: model.recordedAt;  color: Theme.textLabel;     font.pixelSize: Theme.fontLabelSize; Layout.preferredWidth: 160 }
+                            Text { text: model.sensorName;  color: Theme.accentText;    font.pixelSize: Theme.fontLabelSize; font.bold: true; Layout.preferredWidth: 150; elide: Text.ElideRight }
+                            Text { text: model.unit;        color: Theme.textLabel;     font.pixelSize: Theme.fontLabelSize; Layout.preferredWidth: 80 }
                             Text { text: model.value;       color: Theme.statusOk;      font.pixelSize: 14; font.bold: true; font.family: "Monospace"; Layout.preferredWidth: 120 }
-                            Text { text: model.rawValue;    color: Theme.textSecondary; font.pixelSize: 13; Layout.fillWidth: true }
+                            Text { text: model.rawValue;    color: Theme.textLabel;     font.pixelSize: Theme.fontLabelSize; Layout.fillWidth: true }
                         }
                     }
 

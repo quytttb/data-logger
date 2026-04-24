@@ -18,6 +18,7 @@ from PySide6.QtCore import (
 from sqlmodel import select
 
 from core.database import get_session
+from models.digital_io import DigitalIO
 from models.sensor import Sensor
 
 logger = logging.getLogger(__name__)
@@ -35,6 +36,8 @@ _ROLE_NAMES = {
     Qt.UserRole + 10: b"reportIndex",
     Qt.UserRole + 11: b"active",
     Qt.UserRole + 12: b"pollInterval",
+    Qt.UserRole + 13: b"minThreshold",
+    Qt.UserRole + 14: b"maxThreshold",
 }
 
 _FIELD_MAP = {
@@ -50,6 +53,8 @@ _FIELD_MAP = {
     b"reportIndex": "report_index",
     b"active": "active",
     b"pollInterval": "poll_interval",
+    b"minThreshold": "min_threshold",
+    b"maxThreshold": "max_threshold",
 }
 
 
@@ -96,11 +101,12 @@ class SensorListModel(QAbstractListModel):
         finally:
             session.close()
 
-    @Slot(str, str, int, int, str, str, str, str, int, int, bool)
+    @Slot(str, str, int, int, str, str, str, str, int, int, bool, str, str)
     def add_sensor(self, name: str, unit: str, slave_id: int,
                    register_address: int, register_type: str,
                    data_type: str, data_format: str, coefficient: str,
-                   poll_interval: int, report_index: int, active: bool):
+                   poll_interval: int, report_index: int, active: bool,
+                   min_threshold_str: str, max_threshold_str: str):
         errors = self._validate_fields(name, unit, slave_id, register_address)
         if errors:
             self.messageSent.emit(
@@ -118,6 +124,8 @@ class SensorListModel(QAbstractListModel):
                 coefficient=coefficient.strip() or "{}",
                 poll_interval=max(1, poll_interval),
                 report_index=report_index, active=active,
+                min_threshold=self._parse_threshold(min_threshold_str),
+                max_threshold=self._parse_threshold(max_threshold_str),
             )
             session.add(sensor)
             session.commit()
@@ -137,12 +145,13 @@ class SensorListModel(QAbstractListModel):
         finally:
             session.close()
 
-    @Slot(int, str, str, int, int, str, str, str, str, int, int, bool)
+    @Slot(int, str, str, int, int, str, str, str, str, int, int, bool, str, str)
     def update_sensor(self, sensor_id: int, name: str, unit: str,
                       slave_id: int, register_address: int,
                       register_type: str, data_type: str,
                       data_format: str, coefficient: str,
-                      poll_interval: int, report_index: int, active: bool):
+                      poll_interval: int, report_index: int, active: bool,
+                      min_threshold_str: str, max_threshold_str: str):
         errors = self._validate_fields(name, unit, slave_id, register_address)
         if errors:
             self.messageSent.emit(
@@ -168,6 +177,8 @@ class SensorListModel(QAbstractListModel):
             sensor.poll_interval = max(1, poll_interval)
             sensor.report_index = report_index
             sensor.active = active
+            sensor.min_threshold = self._parse_threshold(min_threshold_str)
+            sensor.max_threshold = self._parse_threshold(max_threshold_str)
             session.commit()
             self.refresh()
             self.messageSent.emit(
@@ -223,6 +234,8 @@ class SensorListModel(QAbstractListModel):
                 "dataFormat": s.data_format, "coefficient": s.coefficient or "{}",
                 "pollInterval": s.poll_interval,
                 "reportIndex": s.report_index, "active": s.active,
+                "minThreshold": s.min_threshold if s.min_threshold is not None else "",
+                "maxThreshold": s.max_threshold if s.max_threshold is not None else "",
             }
         return {}
 
@@ -237,3 +250,112 @@ class SensorListModel(QAbstractListModel):
         if register_address < 0 or register_address > 65535:
             errors.append("Register address must be between 0 and 65535.")
         return errors
+
+    @staticmethod
+    def _parse_threshold(s: str) -> float | None:
+        """Parse threshold string from QML. Empty string = None (disabled)."""
+        t = (s or "").strip().replace(",", ".")
+        if not t:
+            return None
+        try:
+            return float(t)
+        except ValueError:
+            return None
+
+    # ── Digital I/O CRUD ───────────────────────────────────────────────────
+
+    @Slot(int, result="QVariant")
+    def get_digital_ios(self, sensor_id: int):
+        """Return list of DI/DO dicts for a sensor."""
+        session = get_session()
+        try:
+            ios = list(session.exec(
+                select(DigitalIO)
+                .where(DigitalIO.sensor_id == sensor_id)
+                .order_by(DigitalIO.id)
+            ).all())
+            return [
+                {
+                    "id": io.id,
+                    "ioType": io.io_type,
+                    "label": io.label,
+                    "slaveId": io.slave_id,
+                    "address": io.address,
+                    "triggerOnMax": io.trigger_on_max,
+                    "triggerOnMin": io.trigger_on_min,
+                    "active": io.active,
+                }
+                for io in ios
+            ]
+        except Exception as e:
+            logger.error("get_digital_ios error: %s", e)
+            return []
+        finally:
+            session.close()
+
+    @Slot(int, str, str, int, int, bool, bool, bool)
+    def add_digital_io(self, sensor_id: int, io_type: str, label: str,
+                       slave_id: int, address: int,
+                       trigger_on_max: bool, trigger_on_min: bool,
+                       active: bool):
+        """Add a new DI/DO channel to a sensor."""
+        session = get_session()
+        try:
+            # Check limit: max 5 DI and 5 DO per sensor
+            existing = list(session.exec(
+                select(DigitalIO)
+                .where(DigitalIO.sensor_id == sensor_id)
+                .where(DigitalIO.io_type == io_type)
+            ).all())
+            if len(existing) >= 5:
+                self.messageSent.emit(
+                    "Error",
+                    f"Maximum 5 {io_type} channels per sensor.",
+                )
+                return
+
+            dio = DigitalIO(
+                sensor_id=sensor_id,
+                io_type=io_type,
+                label=label.strip() or f"{io_type} {len(existing) + 1}",
+                slave_id=slave_id,
+                address=address,
+                trigger_on_max=trigger_on_max,
+                trigger_on_min=trigger_on_min,
+                active=active,
+            )
+            session.add(dio)
+            session.commit()
+            self.messageSent.emit(
+                "Success",
+                f"Added {io_type} '{dio.label}'.",
+            )
+            logger.info("DigitalIO added: %s for sensor %d", dio.label, sensor_id)
+        except Exception as e:
+            session.rollback()
+            logger.error("add_digital_io error: %s", e)
+            self.messageSent.emit("Error", f"Failed to add {io_type}: {e}")
+        finally:
+            session.close()
+
+    @Slot(int)
+    def remove_digital_io(self, dio_id: int):
+        """Remove a DI/DO channel by its ID."""
+        session = get_session()
+        try:
+            dio = session.get(DigitalIO, dio_id)
+            if dio:
+                session.delete(dio)
+                session.commit()
+                self.messageSent.emit(
+                    "Success",
+                    f"Removed {dio.io_type} '{dio.label}'.",
+                )
+            else:
+                self.messageSent.emit("Error", "Digital I/O not found.")
+        except Exception as e:
+            session.rollback()
+            logger.error("remove_digital_io error: %s", e)
+            self.messageSent.emit("Error", f"Failed to remove: {e}")
+        finally:
+            session.close()

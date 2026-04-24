@@ -51,7 +51,7 @@ def test_m0_2_models():
 
     inspector = inspect(engine)
     tables = inspector.get_table_names()
-    expected = {"sensor", "sensor_data", "app_config", "report_log"}
+    expected = {"sensor", "sensor_data", "app_config", "report_log", "digital_io"}
     assert expected.issubset(set(tables)), f"Missing tables: {expected - set(tables)}"
     print(f"  Tables: {tables} ✓")
 

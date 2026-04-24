@@ -53,7 +53,19 @@ class ReportController(QObject):
         if self._is_running:
             return
 
-        self._worker = FtpWorker(interval_minutes=5)
+        # Đọc interval từ cấu hình DB
+        interval = 5
+        try:
+            from models.app_config import AppConfig
+            session = get_session()
+            config = session.exec(select(AppConfig)).first()
+            if config and config.server_send_interval:
+                interval = max(1, config.server_send_interval)
+            session.close()
+        except Exception as e:
+            logger.warning("Không đọc được interval từ DB, dùng mặc định %d phút: %s", interval, e)
+
+        self._worker = FtpWorker(interval_minutes=interval)
         self._thread = QThread()
         self._worker.moveToThread(self._thread)
         self._thread.started.connect(self._worker.run)
@@ -65,7 +77,7 @@ class ReportController(QObject):
         self._set_status("Report: running")
         self.runningChanged.emit()
         self._refresh_pending()
-        logger.info("ReportController started.")
+        logger.info("ReportController started (interval=%d min).", interval)
 
     @Slot()
     def stop_reporting(self):

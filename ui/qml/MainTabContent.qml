@@ -8,6 +8,7 @@ Item {
 
     property int currentTab: 0
     property alias loaderTester: loaderTester
+    property alias loaderSettings: loaderSettings
 
     Layout.fillWidth: true
     Layout.fillHeight: true

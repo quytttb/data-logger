@@ -22,6 +22,28 @@ class AppConfig(SQLModel, table=True):
         description="Tên trạm quan trắc",
     )
 
+    # === Cài đặt chung (General) ===
+    time_format: str = Field(
+        default="HH:mm:ss",
+        description="Định dạng giờ: HH:mm:ss | hh:mm:ss AP",
+    )
+    date_format: str = Field(
+        default="dd/MM/yyyy",
+        description="Định dạng ngày: dd/MM/yyyy | yyyy-MM-dd | MM/dd/yyyy",
+    )
+    timezone: str = Field(
+        default="UTC+7",
+        description="Múi giờ hệ thống",
+    )
+    auto_sync_time: bool = Field(
+        default=False,
+        description="Tự động đồng bộ thời gian qua NTP",
+    )
+    buzzer_enable: bool = Field(
+        default=False,
+        description="Bật/tắt còi cảnh báo",
+    )
+
     # === Cấu hình FTP ===
     ftp_address: str = Field(default="", description="Địa chỉ FTP Server")
     ftp_port: int = Field(default=22, description="Cổng kết nối (22 cho sFTP)")
@@ -33,6 +55,44 @@ class AppConfig(SQLModel, table=True):
     ftp_remote_path: str = Field(
         default="/",
         description="Đường dẫn thư mục trên FTP server",
+    )
+    ftp_prefix: str = Field(
+        default="",
+        description="Tiền tố tên tệp truyền tin",
+    )
+
+    # === Cấu hình Server / Truyền tin ===
+    server_active: bool = Field(
+        default=False,
+        description="Kích hoạt truyền tin",
+    )
+    server_device_type: str = Field(
+        default="Standard",
+        description="Loại thiết bị (Standard...)",
+    )
+    server_name: str = Field(
+        default="",
+        description="Tên server truyền tin",
+    )
+    server_send_interval: int = Field(
+        default=5,
+        description="Tần suất gửi (phút)",
+    )
+    server_start_time: str = Field(
+        default="00:00",
+        description="Thời gian bắt đầu truyền",
+    )
+    server_base_folder: str = Field(
+        default="",
+        description="Thư mục cơ sở trên server",
+    )
+    server_time_folder: str = Field(
+        default="yyyy/MM/dd",
+        description="Định dạng thư mục thời gian",
+    )
+    server_file_suffix: str = Field(
+        default="yyyyMMddHHmmss",
+        description="Hậu tố tên tệp",
     )
 
     # === Cấu hình Polling ===

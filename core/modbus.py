@@ -15,13 +15,21 @@ logger = logging.getLogger(__name__)
 # DB / ModbusWorker dùng "holding" | "input"; Modbus Tester (QML) dùng nhãn đầy đủ.
 _REG_TYPE_ALIASES: dict[str, str] = {
     "holding": "Holding Register",
+    "holding registers": "Holding Register",
+    "holding register": "Holding Register",
     "hr": "Holding Register",
     "input": "Input Register",
+    "input registers": "Input Register",
+    "input register": "Input Register",
     "ir": "Input Register",
     "coil": "Coil",
+    "coils": "Coil",
     "discrete input": "Discrete Input",
+    "discrete inputs": "Discrete Input",
+    "inputs": "Discrete Input",
     "discrete_input": "Discrete Input",
     "di": "Discrete Input",
+    "invalid": "Invalid"
 }
 
 
@@ -52,7 +60,8 @@ class ModbusBase(ABC):
         """Check if connected to a device."""
         return self.client is not None and self.client.connected
     
-    def read(self, reg_type: str, addr: int, count: int, slave: int, data_type: str) -> Any:
+    def read(self, reg_type: str, addr: int, count: int, slave: int,
+             data_type: str, data_format: str = "ABCD") -> Any:
         """Read Modbus data and decode."""
         if not self.is_connected():
             raise ConnectionError("Device not connected")
@@ -88,13 +97,18 @@ class ModbusBase(ABC):
         if result.isError():
             raise IOError(f"Modbus read error: {result}")
 
-        if hasattr(result, "registers"):
-            regs = result.registers
-            return self.decode_data(regs, data_type)
-        elif hasattr(result, "bits"):
-            return result.bits
+        # Phân tách logic xử lý trả về theo loại thanh ghi
+        if reg_type in ["Coil", "Discrete Input"]:
+            if hasattr(result, "bits"):
+                # Pymodbus luôn trả về danh sách bits. 
+                # Lấy bit đầu tiên vì count=1 (cho mỗi address scan), trả về 1 hoặc 0 cho giao diện.
+                return 1 if result.bits[0] else 0
+            raise IOError("No boolean data returned from device")
         else:
-            raise IOError("No data returned from device")
+            if hasattr(result, "registers"):
+                regs = result.registers
+                return self.decode_data(regs, data_type, data_format)
+            raise IOError("No register data returned from device")
 
     def write(self, reg_type: str, addr: int, value: Any, slave: int, data_type: str) -> bool:
         """Write Modbus data."""
@@ -137,15 +151,73 @@ class ModbusBase(ABC):
         return True
 
     @staticmethod
-    def decode_data(regs: List[int], data_type: str) -> Union[int, float, List[int]]:
-        """Decode register values based on data type."""
-        dt_lower = str(data_type).lower()
+    def _pack_regs_32(regs: List[int], data_format: str) -> bytes:
+        """Pack two 16-bit registers into 4 bytes respecting endianness.
+
+        Supported formats:
+            AB / ABCD  — Big-endian (default, Modicon standard)
+            BA / CDAB  — Big-endian word-swapped (Schneider, ABB)
+            BADC       — Little-endian
+            DCBA       — Little-endian word-swapped
+        """
+        fmt = data_format.upper().strip()
+        if fmt in ("CDAB", "BA"):
+            return struct.pack(">HH", regs[1], regs[0])
+        if fmt == "BADC":
+            return struct.pack("<HH", regs[0], regs[1])
+        if fmt == "DCBA":
+            return struct.pack("<HH", regs[1], regs[0])
+        # Default: ABCD / AB
+        return struct.pack(">HH", regs[0], regs[1])
+
+    @staticmethod
+    def decode_data(regs: List[int], data_type: str,
+                    data_format: str = "ABCD") -> Union[int, float, List[int]]:
+        """Decode register values based on data type and byte order.
+
+        Supports both legacy names (Decimal, Float, Swapped Float) for Tester
+        and new standard names (int16, uint16, int32, uint32, float32) for sensors.
+
+        Args:
+            regs: Raw register values from Modbus read.
+            data_type: Type name (int16, uint16, float32, Decimal, Float, ...).
+            data_format: Byte order for 32-bit types (ABCD, CDAB, BADC, DCBA).
+                         Defaults to ABCD (Big-endian). Ignored for 16-bit types.
+        """
+        dt_lower = str(data_type).lower().replace(" ", "_")
+
+        # Legacy Tester names
         if dt_lower == "decimal":
             return regs[0] if len(regs) == 1 else regs
         if dt_lower == "float" and len(regs) >= 2:
-            return round(struct.unpack(">f", struct.pack(">HH", regs[0], regs[1]))[0], 4)
-        if dt_lower in ["swapped float", "swapped_float"] and len(regs) >= 2:
-            return round(struct.unpack(">f", struct.pack(">HH", regs[1], regs[0]))[0], 4)
+            raw = ModbusBase._pack_regs_32(regs, data_format)
+            return round(struct.unpack(">f", raw)[0], 4)
+        if dt_lower == "swapped_float" and len(regs) >= 2:
+            # Legacy: always word-swap regardless of data_format
+            raw = struct.pack(">HH", regs[1], regs[0])
+            return round(struct.unpack(">f", raw)[0], 4)
+
+        # Standard sensor data types — 16-bit
+        if dt_lower == "uint16":
+            return regs[0] if len(regs) >= 1 else regs
+        if dt_lower == "int16":
+            val = regs[0] if len(regs) >= 1 else 0
+            return val - 65536 if val >= 32768 else val
+
+        # Standard sensor data types — 32-bit (endian-aware)
+        if dt_lower == "uint32" and len(regs) >= 2:
+            raw = ModbusBase._pack_regs_32(regs, data_format)
+            fmt = "<I" if data_format.upper().strip() in ("BADC", "DCBA") else ">I"
+            return struct.unpack(fmt, raw)[0]
+        if dt_lower == "int32" and len(regs) >= 2:
+            raw = ModbusBase._pack_regs_32(regs, data_format)
+            fmt = "<i" if data_format.upper().strip() in ("BADC", "DCBA") else ">i"
+            return struct.unpack(fmt, raw)[0]
+        if dt_lower == "float32" and len(regs) >= 2:
+            raw = ModbusBase._pack_regs_32(regs, data_format)
+            fmt = "<f" if data_format.upper().strip() in ("BADC", "DCBA") else ">f"
+            return round(struct.unpack(fmt, raw)[0], 4)
+
         return regs
 
     @staticmethod
@@ -195,6 +267,18 @@ class ModbusRTU(ModbusBase):
         if self.client and self.client.connected:
             self.client.close()
 
+        # ── Kiểm tra quyền truy cập cổng serial ──
+        import os
+        if os.path.exists(port) and not os.access(port, os.R_OK | os.W_OK):
+            logger.warning(f"⚠️ Không có quyền truy cập {port}, đang thử cấp quyền...")
+            if not self._try_fix_permission(port):
+                raise PermissionError(
+                    f"Không có quyền truy cập cổng {port}.\n"
+                    f"Hãy chạy lệnh sau trong Terminal rồi thử lại:\n"
+                    f"  sudo chmod a+rw {port}\n"
+                    f"  sudo usermod -aG dialout $USER"
+                )
+
         self.client = ModbusSerialClient(
             port=port,
             baudrate=int(baudrate),
@@ -210,6 +294,34 @@ class ModbusRTU(ModbusBase):
         else:
             logger.error(f"❌ Failed to connect to {port}")
             return False
+
+    @staticmethod
+    def _try_fix_permission(port: str) -> bool:
+        """Thử cấp quyền truy cập cổng serial qua pkexec (hộp thoại nhập mật khẩu đồ hoạ)."""
+        import subprocess, shutil
+        # Ưu tiên pkexec (có GUI prompt), fallback sang gksu/kdesu
+        for sudo_gui in ("pkexec", "gksudo", "kdesudo"):
+            if shutil.which(sudo_gui):
+                try:
+                    result = subprocess.run(
+                        [sudo_gui, "chmod", "a+rw", port],
+                        timeout=60,  # Cho phép người dùng 60s nhập mật khẩu
+                    )
+                    if result.returncode == 0:
+                        logger.info(f"✅ Đã cấp quyền truy cập {port} thành công")
+                        # Thêm user vào nhóm dialout (cho các lần sau)
+                        import os
+                        user = os.environ.get("USER", "")
+                        if user:
+                            subprocess.run(
+                                [sudo_gui, "usermod", "-aG", "dialout", user],
+                                timeout=10,
+                            )
+                        return True
+                except (subprocess.TimeoutExpired, Exception) as e:
+                    logger.warning(f"Cấp quyền bằng {sudo_gui} thất bại: {e}")
+                    continue
+        return False
 
 
 # Backward compatibility alias

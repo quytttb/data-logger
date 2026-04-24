@@ -62,8 +62,16 @@ class TesterController(QObject):
 
     def _refresh_ports(self):
         try:
+            import glob
             ports = serial.tools.list_ports.comports()
-            self._ports = [p.device for p in sorted(ports)]
+            # Lọc bỏ các cổng chung chung không khả dụng (ttyS* n/a)
+            valid_ports = [p.device for p in ports if p.description != 'n/a' or "USB" in p.device]
+            self._ports = sorted(valid_ports)
+            
+            pts_ports = [p for p in glob.glob("/dev/pts/*") if p != "/dev/pts/ptmx"]
+            for p in sorted(pts_ports):
+                if p not in self._ports:
+                    self._ports.append(p)
         except Exception:
             self._ports = []
         if not self._ports:
@@ -142,12 +150,13 @@ class TesterController(QObject):
         self.connectionChanged.emit(False)
         self.messageReceived.emit("Notice", "Disconnected.", False)
 
-    @Slot(str, int, int, int, str, result=str)
-    def read_single(self, reg_type: str, addr: int, count: int, slave: int, data_type: str) -> str:
+    @Slot(str, int, int, int, str, str, result=str)
+    def read_single(self, reg_type: str, addr: int, count: int, slave: int,
+                    data_type: str, data_format: str = "ABCD") -> str:
         if not self._is_connected:
             return "ERR: Chưa kết nối"
         try:
-            val = self.modbus.read(reg_type, addr, count, slave, data_type)
+            val = self.modbus.read(reg_type, addr, count, slave, data_type, data_format)
             return str(val)
         except Exception as e:
             logger.error("Lỗi đọc Modbus: %s", e)
@@ -158,7 +167,9 @@ class TesterController(QObject):
         if not self._is_connected:
             return "ERR: Chưa kết nối"
         try:
-            val = float(value_str) if data_type != "Decimal" else int(value_str)
+            # Các kiểu integer parse thành int, kiểu float parse thành float
+            int_types = ("int16", "uint16", "int32", "uint32", "decimal")
+            val = int(value_str) if data_type.lower() in int_types else float(value_str)
         except ValueError:
             return "ERR: Giá trị không hợp lệ"
         try:
@@ -168,9 +179,10 @@ class TesterController(QObject):
             logger.error("Lỗi ghi Modbus: %s", e)
             return f"ERR: {e}"
 
-    @Slot(int, int, int, str, str, int)
+    @Slot(int, int, int, str, str, int, str)
     def start_scan(self, start_addr: int, end_addr: int, count: int,
-                   reg_type: str, data_type: str, slave: int):
+                   reg_type: str, data_type: str, slave: int,
+                   data_format: str = "ABCD"):
         if not self._is_connected:
             self.messageReceived.emit("Error", "Not connected to Modbus.", True)
             return
@@ -179,7 +191,7 @@ class TesterController(QObject):
 
         self._scan_worker = ScanWorker(
             self.modbus, start_addr, end_addr, count,
-            reg_type, data_type, slave
+            reg_type, data_type, slave, data_format
         )
         self._scan_worker.progress.connect(self.scanProgress)
         self._scan_worker.result.connect(self.scanResultReceived)
@@ -195,18 +207,17 @@ class TesterController(QObject):
             self._is_stopping = True
             self.stoppingChanged.emit()
             self._scan_worker.stop()
-            self._scan_worker.wait(3000)
-            self._is_scanning = False
-            self._is_stopping = False
-            self.scanningChanged.emit(False)
-            self.stoppingChanged.emit()
-            self.messageReceived.emit("Notice", "Scan stopped.", False)
 
     def _on_scan_finished(self, found: int):
         self._is_scanning = False
         self.scanningChanged.emit(False)
-        self.messageReceived.emit(
-            "Scan complete",
-            "Scan finished. Found {0} register(s) with values.".format(found),
-            False,
-        )
+        if self._is_stopping:
+            self._is_stopping = False
+            self.stoppingChanged.emit()
+            self.messageReceived.emit("Notice", "Scan stopped.", False)
+        else:
+            self.messageReceived.emit(
+                "Scan complete",
+                "Scan finished. Found {0} register(s) with values.".format(found),
+                False,
+            )

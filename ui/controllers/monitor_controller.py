@@ -24,6 +24,7 @@ from sqlmodel import select
 
 from core.database import get_session
 from models.app_config import AppConfig
+from models.digital_io import DigitalIO
 from models.sensor import Sensor
 from workers.database_worker import DatabaseWorker
 from workers.modbus_worker import ModbusWorker
@@ -40,6 +41,8 @@ _DASH_ROLES = {
     Qt.UserRole + 5: b"rawValue",
     Qt.UserRole + 6: b"status",
     Qt.UserRole + 7: b"lastUpdate",
+    Qt.UserRole + 8: b"isAlarm",
+    Qt.UserRole + 9: b"alarmType",
 }
 
 _DASH_FIELD = {
@@ -50,6 +53,8 @@ _DASH_FIELD = {
     b"rawValue": "raw_value",
     b"status": "status",
     b"lastUpdate": "last_update",
+    b"isAlarm": "is_alarm",
+    b"alarmType": "alarm_type",
 }
 
 
@@ -91,19 +96,25 @@ class MonitorModel(QAbstractListModel):
                 "raw_value": "---",
                 "status": "WAIT",
                 "last_update": "",
+                "is_alarm": False,
+                "alarm_type": "",
             })
             self._id_to_row[s.id] = i
         self.endResetModel()
         self.countChanged.emit()
 
-    def update_value(self, sensor_id: int, value: float, raw_value, recorded_at: str) -> None:
+    def update_value(self, sensor_id: int, value: float, raw_value,
+                     recorded_at: str, is_alarm: bool = False,
+                     alarm_type: str = "") -> None:
         row = self._id_to_row.get(sensor_id)
         if row is None:
             return
         item = self._items[row]
         item["value"] = str(round(value, 4))
         item["raw_value"] = str(raw_value)
-        item["status"] = "OK"
+        item["status"] = "ALARM" if is_alarm else "OK"
+        item["is_alarm"] = is_alarm
+        item["alarm_type"] = alarm_type
         try:
             dt = datetime.fromisoformat(recorded_at)
             item["last_update"] = dt.strftime("%H:%M:%S")
@@ -255,9 +266,29 @@ class MonitorController(QObject):
                     "data_format": s.data_format,
                     "coefficient": s.coefficient or "{}",
                     "poll_interval": s.poll_interval,
+                    "min_threshold": s.min_threshold,
+                    "max_threshold": s.max_threshold,
                 }
                 for s in sensors
             ]
+
+            # Load Digital I/O configs grouped by sensor_id
+            all_ios = list(session.exec(
+                select(DigitalIO).where(DigitalIO.active)
+            ).all())
+            digital_io_map: dict[int, list[dict]] = {}
+            for io in all_ios:
+                dio_dict = {
+                    "id": io.id,
+                    "io_type": io.io_type,
+                    "label": io.label,
+                    "slave_id": io.slave_id,
+                    "address": io.address,
+                    "trigger_on_max": io.trigger_on_max,
+                    "trigger_on_min": io.trigger_on_min,
+                    "active": io.active,
+                }
+                digital_io_map.setdefault(io.sensor_id, []).append(dio_dict)
 
             # DatabaseWorker thread
             self._db_worker = DatabaseWorker()
@@ -279,6 +310,7 @@ class MonitorController(QObject):
                 poll_interval=cfg.poll_interval,
             )
             self._modbus_worker.set_sensors(sensor_dicts)
+            self._modbus_worker.set_digital_ios(digital_io_map)
 
             self._modbus_thread = QThread()
             self._modbus_worker.moveToThread(self._modbus_thread)
@@ -287,6 +319,7 @@ class MonitorController(QObject):
             self._modbus_worker.data_ready.connect(self._on_data_ready)
             self._modbus_worker.modbus_error.connect(self._on_modbus_error)
             self._modbus_worker.connection_changed.connect(self._on_connection_changed)
+            self._modbus_worker.alarm_changed.connect(self._on_alarm_changed)
 
             self._db_thread.start()
             self._modbus_thread.start()
@@ -383,9 +416,23 @@ class MonitorController(QObject):
             value=payload["value"],
             raw_value=payload["raw_value"],
             recorded_at=payload["recorded_at"],
+            is_alarm=payload.get("is_alarm", False),
+            alarm_type=payload.get("alarm_type", ""),
         )
         if self._db_worker:
             self._db_worker.enqueue(payload)
+
+    def _on_alarm_changed(self, info: dict) -> None:
+        """Handle alarm state transitions from ModbusWorker."""
+        sid = info.get("sensor_id")
+        is_alarm = info.get("is_alarm", False)
+        alarm_type = info.get("alarm_type", "")
+        if is_alarm:
+            logger.warning(
+                "⚠️ ALARM sensor=%d type=%s", sid, alarm_type,
+            )
+        else:
+            logger.info("✅ Alarm cleared sensor=%d", sid)
 
     def _on_modbus_error(self, msg: str) -> None:
         if self._is_stopping:

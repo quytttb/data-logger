@@ -151,13 +151,27 @@ dm.load_sensors(sensors)
 check("load_sensors count", dm.rowCount() == len(sensors), f"expected {len(sensors)}, got {dm.rowCount()}")
 
 sid = sensors[0].id
-dm.update_value(sid, 25.1234, 2512, datetime.now().isoformat())
+dm.update_value(sid, 25.1234, 2512, datetime.now().isoformat(), False, "")
 from PySide6.QtCore import Qt
 val_role = Qt.UserRole + 4
 status_role = Qt.UserRole + 6
+is_alarm_role = Qt.UserRole + 8
 idx = dm.index(0, 0)
 check("update_value → value", dm.data(idx, val_role) == "25.1234")
 check("update_value → status OK", dm.data(idx, status_role) == "OK")
+check("update_value → isAlarm False", dm.data(idx, is_alarm_role) == False)
+
+# Test alarm state
+dm.update_value(sid, 99.0, 9900, datetime.now().isoformat(), True, "max")
+check("update_value alarm → status ALARM", dm.data(idx, status_role) == "ALARM")
+check("update_value alarm → isAlarm True", dm.data(idx, is_alarm_role) == True)
+alarm_type_role = Qt.UserRole + 9
+check("update_value alarm → alarmType max", dm.data(idx, alarm_type_role) == "max")
+
+# Clear alarm
+dm.update_value(sid, 50.0, 5000, datetime.now().isoformat(), False, "")
+check("update_value clear → status OK", dm.data(idx, status_role) == "OK")
+check("update_value clear → isAlarm False", dm.data(idx, is_alarm_role) == False)
 
 dm.set_all_status("ERR")
 check("set_all_status ERR", dm.data(idx, status_role) == "ERR")

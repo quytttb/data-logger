@@ -1,0 +1,390 @@
+{
+  "response": {
+    "CÀI ĐẶT": {
+      "A. THIẾT BỊ": {
+        "I. Cài đặt chung": {
+          "Tên thiết bị": "TextInput",
+          "Ngôn ngữ": "Bỏ qua",
+          "Kích thước lưới": "TextInput TextInput",
+          "Tần suất đọc (giây)": "TextInput",
+          "Con trỏ chuột": "Toggle"
+        },
+        "II. Thời gian": {
+          "Định dạng giờ": "Dropdown",
+          "Định dạng ngày": "Dropdown",
+          "Tự động thiết lập thời gian": "Toggle",
+          "Ngày": "DatePicker/TextInput",
+          "Giờ": "TimePicker/TextInput",
+          "Múi giờ": "Label"
+        },
+        "III. Mạng Có Dây": {
+          "Chế độ DHCP": "Toggle",
+          "Địa chỉ IP": "TextInput",
+          "Subnet mask": "TextInput",
+          "Gateway": "TextInput"
+        },
+      },
+      "B. KẾT NỐI": {
+        "Danh sách kết nối": {
+          "Số kết nối": "Label",
+          "Hành động": "Button (THÊM KẾT NỐI +)",
+          "Bảng danh sách": [
+            "STT",
+            "Tên",
+            "Giao thức",
+            "Kênh/Port",
+            "Trạng thái",
+            "Menu Tuỳ chọn"
+          ],
+          "Menu Tuỳ chọn": {
+          "loại": "Dropdown",
+          "giá trị": [
+            "Cài đặt",
+            "Xoá"
+          ]
+        },
+        "Form Cài đặt": {
+          "Kích hoạt": "Toggle",
+          "Tên kết nối": "TextInput",
+          "Bảo trì": "Toggle",
+          "Giao thức": {
+            "loại": "Dropdown",
+            "giá trị": [
+              "Modbus RTU",
+              "Modbus TCP",
+              "4-20 mA",
+              "Serial",
+              "HTTP/HTTPS",
+              "Customize",
+              "SQL",
+              "Pulse"
+            ]
+          },
+          "Loại thiết bị": {
+            "loại": "Dropdown",
+            "giá trị": [
+              "Standard",
+              "Asin",
+              "WM-806B",
+              "Ponsel StacSense",
+              "Aqualabo DIGISENS",
+              "TriOS LISA UV",
+              "WDet-2000",
+              "Evolution WS"
+            ]
+          },
+          "Tự động làm mới kết nối": "Toggle",
+          "Port": {
+            "loại": "Popup",
+            "giá trị": [
+              "ttyAMA0",
+              "ttyRS485",
+              "ttyS0",
+              "ttyUSB0",
+              "ttyUSB1"
+            ]
+          },
+          "Baudrate": {
+            "loại": "Dropdown",
+            "giá trị": [
+              "1200",
+              "2400",
+              "4800",
+              "9600",
+              "19200",
+              "38400",
+              "57600",
+              "115200"
+            ]
+          },
+          "Databits": {
+            "loại": "Dropdown",
+            "giá trị": [
+              "5",
+              "6",
+              "7",
+              "8"
+            ]
+          },
+          "Parity": {
+            "loại": "Dropdown",
+            "giá trị": [
+              "None",
+              "Even",
+              "Odd",
+              "Space",
+              "Mark"
+            ]
+          },
+          "Stopbits": {
+            "loại": "Dropdown",
+            "giá trị": [
+              "1",
+              "1.5",
+              "2"
+            ]
+          }
+        }
+      },
+    "C. CẢM BIẾN": {
+      "Danh sách cảm biến": {
+        "Số cảm biến": "Label",
+        "Hành động": "Button (THÊM CẢM BIẾN +)",
+        "Bảng danh sách": [
+            "STT",
+            "Tên",
+            "Giao thức",
+            "Kênh/Port",
+            "Trạng thái",
+            "Menu Tuỳ chọn"
+          ],
+          "Menu Tuỳ chọn": {
+          "loại": "Dropdown",
+          "giá trị": [
+            "Cài đặt",
+            "Xoá"
+          ]
+        },
+      },
+      "Form Cài đặt (4 Tab: Cài Đặt Chung, Hiệu Chuẩn, Cảnh Báo, Trạng Thái Tự Động)": {
+        "Tab Cài Đặt Chung": {
+          "1. Kích hoạt": "Toggle",
+          "2. Tên cảm biến": "TextInput",
+          "3. Tên biến": "TextInput",
+          "4. Đồng bộ": "Toggle",
+          "5. Trạng thái": "Dropdown (Đang đo, Hiệu chuẩn, Lỗi thiết bị, Tự động)",
+          "6. Đơn vị": "Popup Selection (mV, NTU, ppb, ppm, PtCo, S/cm, V, %, °C, µA, µS/cm, µg/l, kPa, m, m/s, m³, m³/h, m³/min, W/m², m³/s, mA, mg/L, mg/Nm³, mm, mS/cm, A, FTU, hPa, km/h, ...)",
+          "7. Độ chính xác": "Dropdown (0 - 10)" (số chữ số sau dấu phẩy),
+          "8. Giao thức": "Dropdown (Modbus RTU, Modbus TCP, 4-20 mA, Serial, HTTP/HTTPS, Customize, SQL, Pulse)" (phần này trong repo hiện tại nên lược bỏ, vì repo hiện tại đang tập trung làm về Modbus RTU),
+          "9. Loại thiết bị": "Dropdown (Standard, Ponsel StacSense, Aqualabo DIGISENS, TriOS LISA UV)",
+          "10. Kết nối": "Dropdown (ADC-01 đến ADC-08, RS-485-Pro Controller, 485-Z4AI)",
+          "11. ID thiết bị": "TextInput",
+          "12. Thanh ghi": "Dropdown (Invalid, Inputs, Coils, Input Registers, Holding Registers)",
+          "13. Địa chỉ thanh ghi": "TextInput",
+          "14. Kiểu dữ liệu": "Dropdown (UINT16, INT16, UINT32, INT32, FLOAT32, FLOAT64)",
+          "15. Thứ tự byte": "Dropdown (Little Endian, Big Endian, Little Endian Swap, Big Endian Swap)",
+          "16. Đọc từ block": "Toggle",
+          "17. Địa chỉ bắt đầu block": "TextInput",
+          "18. Địa chỉ kết thúc block": "TextInput"
+        },
+        "Tab Hiệu Chuẩn" (Tương đương với scaling mode trong repo hiện tại, repo hiện tại làm phần này tốt hơn mẫu tham khảo này): {
+      "1. Hiệu chuẩn": "Toggle",
+      "2. Loại số âm": "Toggle",
+      "3. Slope": "TextInput" (repo hiện tại tốt hơn),
+      "4. Offset": "TextInput",
+      "5. Công thức": "TextInput (repo hiện tại tốt hơn)",
+      "6. Đóng băng tạm thời": "Toggle",
+      "7. Khoảng thời gian (giây)": "TextInput",
+      "8. Điều kiện:": "TextInput"(nên làm dạng khác thay vì text input),
+    },
+    "Tab Cảnh Báo" (Mentor muốn dạng Dropdown thay vì TextInput, bạn nghiên cứu nhé): {
+      "1. Cảnh báo": "Toggle",
+      "2. Ngưỡng cao": "TextInput",
+      "3. Ngưỡng cao sớm": "TextInput",
+      "4. Ngưỡng thấp sớm": "TextInput",
+      "5. Ngưỡng thấp": "TextInput"
+    },
+    "Tab Trạng Thái Tự Động" (Tôi thấy phần này lặp khá nhiều so với Tab Cài Đặt Chung, chưa tối ưu): {
+      "1. Kích hoạt": "Toggle",
+        "2. Giao thức": "Dropdown (Modbus RTU, Modbus TCP, 4-20 mA, Serial, HTTP/HTTPS, Customize, SQL, Pulse)" (phần này trong repo hiện tại nên lược bỏ, vì repo hiện tại đang tập trung làm về Modbus RTU),
+        "3. Loại thiết bị": "Dropdown (Standard, Ponsel StacSense, Aqualabo DIGISENS, TriOS LISA UV)",
+        "4. Kết nối": "Dropdown (ADC-01 đến ADC-08, RS-485-Pro Controller, 485-Z4AI)",
+       "5. Độ chính xác": "Dropdown (0 - 10)" (số chữ số sau dấu phẩy),
+       "6. Đang đo": "TextInput",
+       "7. Đang hiệu chuẩn": "TextInput",
+       "8. Đang lỗi": "TextInput",
+       "9. ID thiết bị": "TextInput",
+       "10. Thanh ghi": "Dropdown (Invalid, Inputs, Coils, Input Registers, Holding Registers)",
+       "11. Địa chỉ thanh ghi": "TextInput",
+          "12. Kiểu dữ liệu": "Dropdown (UINT16, INT16, UINT32, INT32, FLOAT32, FLOAT64)",
+          "13. Thứ tự byte": "Dropdown (Little Endian, Big Endian, Little Endian Swap, Big Endian Swap)",
+          "14. Đọc từ block": "Toggle",
+          "15. Địa chỉ bắt đầu block": "TextInput",
+          "16. Địa chỉ kết thúc block": "TextInput"
+
+    }
+      }
+    },
+    "D. RELAY": {
+      "Tổng quan": {
+        "Số relay": "Label",
+        "Danh sách": "Table (STT, Tên, Cổng (GPIO), Tính năng, Trạng thái (Thường đóng/mở), Thời gian giữ, Menu Edit)"
+      },
+      "Form Cấu hình": {
+        "1. Kích hoạt": "Toggle",
+        "2. Tên": "TextInput",
+        "3. GPIO": "Dropdown (Chỗ này làm mờ, bị khoá nhập, bạn nghiên cứu nhé)",
+        "4. Tính năng": "Dropdown (Lấy mẫu, Cảnh báo, Kích hoạt làm sạch)",
+        "5. Kiểu tiếp điểm relay": "Dropdown (Thường mở (NO), Thường đóng (NC))",
+        "6. Thời gian giữ relay (mili giây)": "TextInput"
+      }
+    },
+    "E. TRUYỀN TIN": {
+      "Tổng quan": {
+        "Số Server": "Label",
+        "Hành động": "Button (THÊM SERVER +)",
+        "Danh sách": "Table"
+      },
+      "Form Cấu hình (2 Tab: Cài Đặt Chung, Thông Số Truyền)": {
+        "Tab Cài Đặt Chung": {
+          "1. Kích hoạt": "Toggle",
+          "2. Giao thức": "Dropdown (FTP, HTTP, Socket, WebSocket, MQTT)",
+          "3. Loại thiết bị": "Dropdown (Standard)",
+          "4. Tên": "TextInput",
+          "5. Host": "TextInput",
+          "6. Port": "TextInput",
+          "7. Tần suất gửi (phút)": "Dropdown (1, 2, 3, 5, 10, 15, 20, 30, 60)",
+          "8. Thời gian bắt đầu": "TimePicker (VD: 00:00)",
+          "9. Tên đăng nhập": "TextInput",
+          "10. Password": "TextInput",
+          "11. Đường dẫn": "TextInput",
+          "12. Thư mục cơ sở": "TextInput",
+          "13. Thư mục thời gian": "Dropdown có nút reset (yyyy/MM/dd)",
+          "14. Tiền tố tên tệp": "TextInput",
+          "15. Hậu tố tên tệp": "Dropdown có nút reset (yyyyMMddHHmmss)"
+        },
+        "Tab Thông Số Truyền": {
+          "Tự động thêm vào danh sách truyền khi cảm biến mới được tạo": "Toggle",
+          "Chọn / bỏ chọn tất cả": "Checkbox",
+          "Danh sách biến truyền": "Table (STT, Tên cảm biến gốc, Mũi tên, Tên cảm biến truyền, Nút Edit, Checkbox chọn)"
+        }
+      }
+    },
+
+    "F. LẤY MẪU": {
+      "Tổng quan": {
+        "Nội dung": "Màn hình trống (chỉ có tiêu đề Sampler và nút Vô hiệu hóa/Kích hoạt)"
+      },
+      "Form Cấu hình (Lấy mẫu tự động)": {
+        "1. Kích hoạt": "Toggle",
+        "2. Tên": "TextInput",
+        "3. Giao thức": "Dropdown (Modbus RTU, Modbus TCP, 4-20 mA, Serial, HTTP/HTTPS, Customize, SQL, Pulse)",
+        "4. Loại thiết bị": "Dropdown (Standard, Asin, Weko AutoSampler, WM-806B, SmartpH-WS1, WDet-2000, Evolution WS)",
+        "5. Kết nối": "Dropdown (ADC-01 đến ADC-11, RS-485-Pro Controller, 485-Z4AI)",
+        "6. Loại mẫu tự động": "Toggle",
+        "7. Lấy mẫu từ xa": "Toggle",
+        "8. Số chai": "TextInput (Ví dụ: 24)"
+      }
+    },
+    "G. CẢNH BÁO": {
+      "Tổng quan": {
+        "Các menu con": "THIẾT BỊ, KẾT NỐI, CẢM BIẾN, RELAY, TRUYỀN TIN, LẤY MẪU, CẢNH BÁO (Email, SMS, Đèn)"
+      },
+      "Form Cấu hình (Email)": {
+        "1. Kích hoạt": "Toggle",
+        "2. Cảnh báo vượt ngưỡng": "Toggle",
+        "3. Cảnh báo sớm": "Toggle",
+        "4. Loại máy chủ": "Dropdown (SMTP)",
+        "5. Host": "TextInput (VD: smtp.google.com)",
+        "6. Port": "TextInput (VD: 587)",
+        "7. Loại kết nối": "Dropdown (TCP, SSL, TLS)",
+        "8. Tên đăng nhập": "TextInput (VD: automailer.ev@gmail.com)",
+        "9. Password": "TextInput (Password dạng ẩn)",
+        "10. Email": "TextInput (VD: automailer.ev@gmail.com)",
+        "11. Tên": "TextInput (VD: EV Automailer)",
+        "12. Tiêu đề": "TextInput",
+        "13. Nút hành động": "KIỂM TRA, LƯU"
+      },
+      "Form Cấu hình (SMS)": {
+        "1. Kích hoạt": "Toggle",
+        "2. Cảnh báo vượt ngưỡng": "Toggle",
+        "3. Cảnh báo sớm": "Toggle"
+      },
+      "Form Cấu hình (Relay)": {
+        "1. Kích hoạt": "Toggle",
+        "2. Cảm biến": "Dropdown (PM-Lo 2, Flow-Lo2, P-Lo 2, Temp-Lo 2, O2-Lo 2, CO-Lo 2, NOx-Lo 2, SO2, RTU, test, test2)",
+        "3. Chế độ cảnh báo": "Dropdown (Đang đo, Hiệu chuẩn, Lỗi, Bình thường, Cảnh báo, Cảnh báo sớm)",
+        "4. Điều kiện": "TextInput",
+        "5. Model": "TextInput",
+        "6. Kết nối": "Dropdown (ADC-01 đến ADC-08, RS-485-Pro Controller, 485-Z4AI)",
+        "7. Địa chỉ cảm biến": "TextInput"
+      },
+      "Form Cấu hình (Đèn)": {
+        "1. Màn hình trống": "(Chỉ có chữ Số cảnh báo: 0 và nút +)"
+      }
+    },
+    "H. TÍCH HỢP": {
+      "Form Cài Đặt Chung": {
+        "1. Kích hoạt": "Toggle",
+        "2. Nền tảng": "Dropdown (Becamex, Envisoft, Inventia)"
+      },
+      "Cấu hình Giao thức (4 Tab)": {
+        "Tab Modbus TCP": {
+          "1. Kích hoạt": "Toggle",
+          "2. ID thiết bị": "TextInput",
+          "3. Endianness": "Dropdown (Little Endian, Big Endian, Little Endian Swap, Big Endian Swap)"
+        },
+        "Tab Modbus RTU": {
+          "1. Kích hoạt": "Toggle",
+          "2. ID thiết bị": "TextInput",
+          "3. Endianness": "Dropdown",
+          "4. Port": "Popup Selection",
+          "5. Baudrate": "Dropdown"
+        },
+        "Tab MQTT": {
+          "1. Kích hoạt": "Toggle",
+          "2. Host": "TextInput",
+          "3. Port": "TextInput",
+          "4. Tên đăng nhập": "TextInput",
+          "5. Password": "TextInput",
+          "6. Custom publish topic": "TextInput",
+          "7. Custom subscribe topic": "TextInput"
+        },
+        "Tab Gateway": {
+          "1. Port": "Popup Selection",
+          "2. Baudrate": "Dropdown",
+          "3. Databits": "Dropdown",
+          "4. Parity": "Dropdown",
+          "5. Stopbits": "Dropdown"
+        }
+      }
+    },
+    "I. NGƯỜI DÙNG": {
+      "Tổng quan": {
+        "Danh sách": "Table"
+      },
+      "Form Thêm/Sửa": {
+        "1. Tên đăng nhập": "TextInput",
+        "2. Password": "PasswordInput",
+        "3. Kích hoạt": "Toggle",
+        "4. Vai trò": "Dropdown (Administrator, Viewer)"
+      }
+    },
+    "J. BẢO TRÌ & CÔNG CỤ": {
+      "Tabs": {
+        "Thông Tin Hệ Thống": {
+          "Nội dung": "Hiển thị thông tin phiên bản, SN, MAC..."
+        },
+        "Kiểm Tra Serial": {
+          "1. Port": "Dropdown",
+          "2. Baudrate": "Dropdown",
+          "3. Databits": "Dropdown",
+          "4. Parity": "Dropdown",
+          "5. Stopbits": "Dropdown",
+          "Hành động": "Button (GỬI)",
+          "Hiển thị": "Vùng text hiển thị log"
+        },
+        "Kiểm Tra Relay": {
+          "Nội dung": "(Chưa có chi tiết)"
+        }
+      }
+    },
+    "C. CẢM BIẾN (Bổ sung: Mapping Phần cứng)": {
+      "Tổng quan": {
+        "Danh sách": "Table (Cảm biến, Trạng thái/Điều kiện, Model, Kết nối, Địa chỉ, Hành động)"
+      },
+      "Form Cấu hình": {
+        "1. Kích hoạt": "Toggle",
+        "2. Cảm biến": "Dropdown",
+        "3. Điều kiện": "Dropdown (Đang đo, Cảnh báo tức thì...)",
+        "4. Model": "Dropdown (Yotta A-1055S, Becamex, Envisoft...)",
+        "5. Kết nối": "Dropdown",
+        "6. Địa chỉ cảm biến": "TextInput"
+      }
+    }
+    }
+  }
+}
+
+
+

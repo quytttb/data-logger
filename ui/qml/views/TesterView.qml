@@ -9,252 +9,88 @@ Item {
     anchors.fill: parent
 
     property bool narrow: width < 700
-    property bool connVisited: true
-    property bool opsVisited: false
-    property bool pendingScanLoad: false
+    property bool hideZeros: false
+    // Expose Operations tab item cho TaskBar truy cập isWritableType
+    readonly property var opsItem: opsLoader.item
 
-    property string errorDialogTitle: ""
-    property string errorDialogMessage: ""
-
+    signal navigateToAddSensor(var data)
     function showError(title, msg) {
-        errorDialogTitle = title
-        errorDialogMessage = msg
-        errorDialog.open()
+        errorDialog.showMessage(title, msg)
     }
 
     function showToast(title, msg) {
-        toastTitleLabel.text = title
-        toastMsgLabel.text = msg
-        toastPopup.open()
+        toastPopup.showToast(title, msg)
     }
 
-    // ── Lỗi: Dialog modal (bắt buộc xác nhận) ───────────────────────────
-    Dialog {
+    // ── Error Dialog ──────────────────────────────────────────────────
+    MessagePopup {
         id: errorDialog
-        parent: Overlay.overlay
-        modal: true
-        title: testerRoot.errorDialogTitle
-        width: Overlay.overlay ? Math.min(420, Overlay.overlay.width - 40) : 420
-        x: Overlay.overlay ? Math.round((Overlay.overlay.width - width) / 2) : 0
-        y: Overlay.overlay ? Math.round((Overlay.overlay.height - height) / 2) : 0
-        standardButtons: Dialog.Ok
-
-        contentItem: Label {
-            text: testerRoot.errorDialogMessage
-            wrapMode: Text.WordWrap
-            width: Overlay.overlay ? Math.min(380, Overlay.overlay.width - 64) : 380
-            padding: 4
-            color: Theme.textPrimary
-            font.pixelSize: 14
-        }
     }
 
-    // ── Thành công / thông tin: toast không chặn UI ───────────────────────
-    Popup {
+    // ── Toast Popup ───────────────────────────────────────────────────
+    ToastPopup {
         id: toastPopup
-        parent: Overlay.overlay
-        modal: false
-        focus: false
-        closePolicy: Popup.CloseOnPressOutside | Popup.CloseOnEscape
-        width: Overlay.overlay ? Math.min(440, Overlay.overlay.width - 24) : 440
-        x: Overlay.overlay ? Math.round((Overlay.overlay.width - width) / 2) : 0
-        y: 72
-        padding: 12
-
-        background: Rectangle {
-            color: Theme.bgPanel
-            radius: Theme.radiusCard
-            border.color: Theme.statusOk
-            border.width: 1
-        }
-
-        contentItem: ColumnLayout {
-            spacing: 8
-            width: toastPopup.availableWidth
-            Label {
-                id: toastTitleLabel
-                font.bold: true
-                font.pixelSize: 14
-                color: Theme.textPrimary
-                Layout.fillWidth: true
-            }
-            Label {
-                id: toastMsgLabel
-                wrapMode: Text.WordWrap
-                font.pixelSize: 13
-                color: Theme.accentText
-                Layout.fillWidth: true
-            }
-        }
-
-        Timer {
-            id: toastTimer
-            interval: 2800
-            repeat: false
-            onTriggered: toastPopup.close()
-        }
-        onOpened: toastTimer.restart()
     }
 
-    // ── Save Sensor Dialog ────────────────────────────────────────────────
-    Popup {
-        id: saveSensorDialog
-        anchors.centerIn: parent
-        width: Math.min(440, parent.width - 16)
-        height: Math.min(400, parent.height - 24)
-        modal: true
-        focus: true
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-        background: Rectangle {
-            color: Theme.bgPanel
-            radius: Theme.radiusCard
-            border.color: Theme.accent
-            border.width: 1
-        }
-
-        ColumnLayout {
-            anchors.fill: parent
-            anchors.margins: 18
-            spacing: 10
-            Text {
-                text: "Save new sensor"
-                color: Theme.accentText
-                font.pixelSize: 18
-                font.bold: true
-                Layout.alignment: Qt.AlignHCenter
-            }
-
-            Flickable {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                contentHeight: saveGrid.implicitHeight
-                clip: true
-                boundsBehavior: Flickable.StopAtBounds
-
-                GridLayout {
-                    id: saveGrid
-                    columns: 2
-                    width: parent.width
-                    columnSpacing: 10
-                    rowSpacing: 8
-
-                    Label { text: "Name:"; color: Theme.textSecondary }
-                    AppTextField {
-                        id: sensorNameInput
-                        Layout.fillWidth: true
-                    }
-
-                    Label { text: "Unit:"; color: Theme.textSecondary }
-                    AppTextField {
-                        id: sensorUnitInput
-                        Layout.fillWidth: true
-                    }
-
-                    Label { text: "Coefficients (JSON):"; color: Theme.textSecondary }
-                    AppTextField {
-                        id: sensorCoeffInput
-                        Layout.fillWidth: true
-                        text: "{}"
-                    }
-
-                    Label { text: "Poll interval (s):"; color: Theme.textSecondary }
-                    SpinBox { id: sensorPollInterval; from: 1; to: 3600; value: 3; Layout.fillWidth: true }
-
-                    Label { text: "Report column:"; color: Theme.textSecondary }
-                    SpinBox { id: sensorReportIdx; from: 0; to: 99; value: 0; Layout.fillWidth: true }
-
-                    Rectangle { Layout.columnSpan: 2; Layout.fillWidth: true; height: 1; color: Theme.borderDefault }
-
-                    Label { text: "Slave ID:"; color: Theme.textSecondary }
-                    Text { id: infoSlaveId; color: Theme.textSecondary; font.pixelSize: 14 }
-                    Label { text: "Start address:"; color: Theme.textSecondary }
-                    Text { id: infoAddr; color: Theme.textSecondary; font.pixelSize: 14 }
-                    Label { text: "Register type:"; color: Theme.textSecondary }
-                    Text { id: infoRegType; color: Theme.textSecondary; font.pixelSize: 14 }
-                    Label { text: "Data type:"; color: Theme.textSecondary }
-                    Text { id: infoDataType; color: Theme.textSecondary; font.pixelSize: 14 }
-                }
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 10
-                Button {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 44
-                    onClicked: saveSensorDialog.close()
-                }
-                Button {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 44
-                    onClicked: {
-                        if (!connLoader.item || !opsLoader.item)
-                            return
-                        var regMap = { "Holding Register": "holding", "Input Register": "input" }
-                        var dtMap = { "Decimal": "uint16", "Float": "float32", "Swapped Float": "float32" }
-                        var fmtMap = { "Decimal": "AB", "Float": "ABCD", "Swapped Float": "CDAB" }
-                        var c = connLoader.item
-                        var o = opsLoader.item
-                        settingsController.save_serial_config(
-                            c.portCombo.currentText,
-                            parseInt(c.baudCombo.currentText),
-                            c.dataBitsSpin.value,
-                            c.parityCombo.currentText,
-                            parseInt(c.stopBitsCombo.currentText)
-                        )
-                        sensorModel.add_sensor(
-                            sensorNameInput.text,
-                            sensorUnitInput.text,
-                            c.slaveSpin.value,
-                            o.scanStartSpin.value,
-                            regMap[o.regTypeCombo.currentText] || "holding",
-                            dtMap[o.dataTypeCombo.currentText] || "uint16",
-                            fmtMap[o.dataTypeCombo.currentText] || "AB",
-                            sensorCoeffInput.text,
-                            sensorPollInterval.value,
-                            sensorReportIdx.value,
-                            true
-                        )
-                        saveSensorDialog.close()
-                    }
-                }
-            }
-        }
-    }
-
-    function openSaveSensorDialog() {
-        opsVisited = true
-        pendingScanLoad = true
-        Qt.callLater(function () {
-            pendingScanLoad = false
-            if (!connLoader.item || !opsLoader.item) {
-                showError("Error", "Could not load configuration tabs.")
-                return
-            }
-            fillSaveDialogFields()
-            saveSensorDialog.open()
-        })
-    }
-
-    function fillSaveDialogFields() {
-        var c = connLoader.item
-        var o = opsLoader.item
-        if (!c || !o)
+    // ── Navigate to Settings > Add Sensor with Tester data ─────────────
+    function openSaveSensorInSettings() {
+        if (!opsLoader.item) {
+            showError("Error", "Operations tab not loaded.")
             return
-        sensorNameInput.text = ""
-        sensorUnitInput.text = ""
-        sensorCoeffInput.text = "{}"
-        sensorPollInterval.value = 3
-        sensorReportIdx.value = 0
-        infoSlaveId.text = String(c.slaveSpin.value)
-        infoAddr.text = String(o.scanStartSpin.value)
-        infoRegType.text = o.regTypeCombo.currentText
-        infoDataType.text = o.dataTypeCombo.currentText
+        }
+        var o = opsLoader.item
+
+        // Tester giờ dùng cùng tên option với SensorConfigForm → truyền thẳng
+        var data = {
+            slaveId: o.slaveSpin.value,
+            registerAddress: o.scanStartSpin.value,
+            registerType: o.regTypeCombo.currentText,
+            dataType: o.dataTypeCombo.currentText,
+            dataFormat: o.dataFormatCombo.currentText
+        }
+
+        navigateToAddSensor(data)
+    }
+
+    // ── Connect/Disconnect uses global settingsController (Modbus Master) ──
+    function connectOrDisconnect() {
+        if (testerController.isConnected)
+            testerController.disconnect_serial()
+        else
+            testerController.connect_serial(
+                settingsController.serialPort,
+                settingsController.serialBaudrate,
+                settingsController.serialBytesize,
+                settingsController.serialParity,
+                settingsController.serialStopbits
+            )
     }
 
     function performScan() {
-        if (!connLoader.item || !opsLoader.item) {
-            showError("Error", "Configuration is still loading. Try again.")
+        if (!opsLoader.item) {
+            showError("Error", "Operations tab is still loading.")
+            return
+        }
+        if (!testerController.isConnected) {
+            showError("Error", "Not connected to Modbus. Check Connection settings.")
+            return
+        }
+        var o = opsLoader.item
+        if (o.scanStartSpin.value > o.scanEndSpin.value) {
+            showError("Error", "Start address must be ≤ end address.")
+            return
+        }
+        scanModel.clear()
+        testerController.start_scan(
+            o.scanStartSpin.value, o.scanEndSpin.value, o.scanCountSpin.value,
+            o.regTypeCombo.currentText, o.dataTypeCombo.currentText,
+            o.slaveSpin.value, o.dataFormatCombo.currentText
+        )
+    }
+
+    function performWrite() {
+        if (!opsLoader.item) {
+            showError("Error", "Operations tab not loaded.")
             return
         }
         if (!testerController.isConnected) {
@@ -262,77 +98,96 @@ Item {
             return
         }
         var o = opsLoader.item
-        if (o.scanStartSpin.value > o.scanEndSpin.value) {
-            showError("Error", "Start address must be less than or equal to end address.")
-            return
+        var addr = o.writeAddrSpin.value
+        var valStr = String(o.writeValSpin.value)
+        var regType = o.regTypeCombo.currentText
+        var dataType = o.isBooleanType ? "uint16" : o.dataTypeCombo.currentText
+        var slaveId = o.slaveSpin.value
+        var result = testerController.write_single(regType, addr, valStr, slaveId, dataType)
+        if (result === "SUCCESS") {
+            showToast("Write OK", "Wrote " + valStr + " to address " + addr)
+            
+            var found = false
+            for (var i = 0; i < scanModel.count; i++) {
+                if (scanModel.get(i).address === addr) {
+                    scanModel.setProperty(i, "value", valStr)
+                    found = true
+                    break
+                }
+            }
+            if (!found) {
+                scanModel.append({ "address": addr, "value": valStr })
+            }
+            _rebuildFiltered()
+        } else {
+            showError("Write Error", result)
         }
-        scanModel.clear()
-        testerController.start_scan(
-            o.scanStartSpin.value,
-            o.scanEndSpin.value,
-            o.scanCountSpin.value,
-            o.regTypeCombo.currentText,
-            o.dataTypeCombo.currentText,
-            connLoader.item.slaveSpin.value
-        )
     }
 
-    function connectOrDisconnect() {
-        if (!connLoader.item)
-            return
-        var c = connLoader.item
-        if (testerController.isConnected)
-            testerController.disconnect_serial()
-        else
-            testerController.connect_serial(
-                c.portCombo.currentText,
-                parseInt(c.baudCombo.currentText),
-                c.dataBitsSpin.value,
-                c.parityCombo.currentText,
-                parseInt(c.stopBitsCombo.currentText)
-            )
-    }
-
-    function clearResultsTable() {
-        scanModel.clear()
-    }
+    function clearResultsTable() { scanModel.clear(); filteredModel.clear() }
 
     function toggleScan() {
-        if (testerController.isScanning) {
+        if (testerController.isScanning)
             testerController.stop_scan()
-        } else {
-            pendingScanLoad = true
-            opsVisited = true
-            Qt.callLater(function () {
-                pendingScanLoad = false
-                performScan()
-            })
-        }
+        else
+            performScan()
     }
 
     Connections {
         target: testerController
         function onMessageReceived(title, msg, isError) {
-            if (isError)
-                showError(title, msg)
-            else
-                showToast(title, msg)
+            if (isError) showError(title, msg)
+            else showToast(title, msg)
         }
         function onScanResultReceived(addr, val) {
             scanModel.append({ "address": addr, "value": val })
+            if (!hideZeros || !_isZeroValue(val))
+                filteredModel.append({ "address": addr, "value": val })
         }
     }
 
     ListModel { id: scanModel }
 
+    // Model đã lọc (ẩn hàng có giá trị 0)
+    ListModel { id: filteredModel }
+
+    function _rebuildFiltered() {
+        filteredModel.clear()
+        for (var i = 0; i < scanModel.count; i++) {
+            var item = scanModel.get(i)
+            if (hideZeros && _isZeroValue(item.value))
+                continue
+            filteredModel.append({ "address": item.address, "value": item.value })
+        }
+    }
+
+    function _isZeroValue(val) {
+        // Kiểm tra giá trị 0: "0", "0.0", "0.0000", "[0]", "[0, 0]", v.v.
+        var s = String(val).trim()
+        if (s === "0" || s === "0.0" || s === "0.00" || s === "0.000" || s === "0.0000") return true
+        // Dạng list: [0], [0, 0], [0, 0, 0, ...]
+        var m = s.match(/^\[([\d,\s]*)\]$/)
+        if (m) {
+            var nums = m[1].split(",")
+            for (var i = 0; i < nums.length; i++) {
+                if (parseInt(nums[i].trim()) !== 0) return false
+            }
+            return true
+        }
+        return false
+    }
+
+    onHideZerosChanged: _rebuildFiltered()
+
+    // ── Main Layout ──────────────────────────────────────────────────
     SplitView {
         id: split
         anchors.fill: parent
         orientation: testerRoot.narrow ? Qt.Vertical : Qt.Horizontal
 
+        // LEFT: Operations only (Connection tab removed — uses global Master config)
         ScrollView {
-            id: leftScroll
-            clip: true
+            id: leftScroll; clip: true
             SplitView.minimumWidth: 260
             SplitView.preferredWidth: testerRoot.narrow ? -1 : 340
             SplitView.preferredHeight: testerRoot.narrow ? 380 : -1
@@ -340,133 +195,69 @@ Item {
             SplitView.fillHeight: !testerRoot.narrow
 
             ColumnLayout {
-                id: leftColumn
-                width: leftScroll.availableWidth
-                spacing: 8
+                width: leftScroll.availableWidth; spacing: 8
 
-                TabBar {
-                    id: testerTabBar
-                    Layout.fillWidth: true
-                    currentIndex: 0
+                // Info banner: shows current Master serial config
+                Rectangle {
+                    Layout.fillWidth: true; height: infoBanner.implicitHeight + 16
+                    color: Theme.bgSeparator; radius: Theme.radiusTiny
+                    border.color: Theme.borderDefault; border.width: 1
 
-                    TabButton { 
-                        text: "Connection"
-                        icon.source: "../../../assets/icons/connection.svg"
-                    }
-                    TabButton { 
-                        text: "Operations"
-                        icon.source: "../../../assets/icons/operations.svg"
-                    }
-
-                    onCurrentIndexChanged: {
-                        if (currentIndex === 1)
-                            testerRoot.opsVisited = true
+                    ColumnLayout {
+                        id: infoBanner
+                        anchors.fill: parent; anchors.margins: 8; spacing: 4
+                        Text {
+                            text: "Serial: " + settingsController.serialPort + " @ " + settingsController.serialBaudrate + " baud"
+                            color: Theme.textPrimary; font.pixelSize: 13; font.bold: true
+                        }
+                        Text {
+                            text: settingsController.serialBytesize + "bit, Parity:" + settingsController.serialParity + ", Stop:" + settingsController.serialStopbits
+                            color: Theme.textSecondary; font.pixelSize: 12
+                        }
                     }
                 }
 
-                StackLayout {
-                    id: tabStackLayout
+                Loader {
+                    id: opsLoader
+                    active: true
                     Layout.fillWidth: true
-                    Layout.preferredHeight: {
-                        if (testerTabBar.currentIndex === 0)
-                            return connLoader.item ? Math.max(connLoader.item.implicitHeight, 120) : 200
-                        return opsLoader.item ? Math.max(opsLoader.item.implicitHeight, 120) : 200
-                    }
-                    currentIndex: testerTabBar.currentIndex
-
-                    Loader {
-                        id: connLoader
-                        active: testerRoot.connVisited
-                        width: tabStackLayout.width
-                        source: "TesterConnectionTab.qml"
-                    }
-
-                    Loader {
-                        id: opsLoader
-                        active: testerRoot.opsVisited || testerRoot.pendingScanLoad
-                        width: tabStackLayout.width
-                        source: "TesterOperationsTab.qml"
-                    }
+                    source: "TesterOperationsTab.qml"
                 }
             }
         }
 
+        // RIGHT: Scan results table
         Pane {
-            id: rightPane
-            SplitView.fillWidth: true
-            SplitView.fillHeight: true
-            padding: 10
+            SplitView.fillWidth: true; SplitView.fillHeight: true; padding: 10
 
             ColumnLayout {
-                anchors.fill: parent
-                spacing: 8
+                anchors.fill: parent; spacing: 8
 
-                Label {
-                    text: "Scan results"
-                    font.pixelSize: 14
-                    font.bold: true
-                    color: Theme.accentText
-                    Layout.fillWidth: true
-                }
+                Label { text: "Scan results"; font.pixelSize: 14; font.bold: true; color: Theme.accentText; Layout.fillWidth: true }
 
                 Rectangle {
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    color: Theme.bgDeep
-                    border.color: Theme.borderDefault
-                    radius: Theme.radiusSmall
+                    Layout.fillWidth: true; Layout.fillHeight: true
+                    color: Theme.bgDeep; border.color: Theme.borderDefault; radius: Theme.radiusSmall
 
                     ColumnLayout {
-                        anchors.fill: parent
-                        anchors.margins: 8
-                        spacing: 0
+                        anchors.fill: parent; anchors.margins: 8; spacing: 0
 
                         RowLayout {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 28
-                            Label {
-                                text: "Address"
-                                color: Theme.accent
-                                font.bold: true
-                                font.pixelSize: 13
-                                Layout.preferredWidth: 100
-                            }
-                            Label {
-                                text: "Value"
-                                color: Theme.accent
-                                font.bold: true
-                                font.pixelSize: 13
-                                Layout.fillWidth: true
-                            }
+                            Layout.fillWidth: true; Layout.preferredHeight: 28
+                            Label { text: "Address"; color: Theme.accent; font.bold: true; font.pixelSize: 13; Layout.preferredWidth: 100 }
+                            Label { text: "Value"; color: Theme.accent; font.bold: true; font.pixelSize: 13; Layout.fillWidth: true }
                         }
 
                         ListView {
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            model: scanModel
-                            clip: true
-                            spacing: 2
-
+                            Layout.fillWidth: true; Layout.fillHeight: true
+                            model: filteredModel; clip: true; spacing: 2
                             delegate: Rectangle {
-                                width: ListView.view.width
-                                height: 36
+                                width: ListView.view.width; height: 36
                                 color: index % 2 === 0 ? Theme.bgPanel : Theme.bgSeparator
                                 RowLayout {
-                                    anchors.fill: parent
-                                    anchors.margins: 5
-                                    Text {
-                                        text: model.address
-                                        color: Theme.textPrimary
-                                        font.pixelSize: 14
-                                        Layout.preferredWidth: 100
-                                    }
-                                    Text {
-                                        text: model.value
-                                        color: Theme.statusOk
-                                        font.pixelSize: 14
-                                        font.bold: true
-                                        Layout.fillWidth: true
-                                    }
+                                    anchors.fill: parent; anchors.margins: 5
+                                    Text { text: model.address; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; Layout.preferredWidth: 100 }
+                                    Text { text: model.value; color: Theme.statusOk; font.pixelSize: 14; font.bold: true; Layout.fillWidth: true }
                                 }
                             }
                         }

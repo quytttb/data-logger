@@ -6,7 +6,8 @@ class ScanWorker(QThread):
     result = Signal(int, str)
     finished_scan = Signal(int)
     error = Signal(str)
-    def __init__(self, modbus_client, start_addr, end_addr, count, reg_type, data_type, slave):
+    def __init__(self, modbus_client, start_addr, end_addr, count,
+                 reg_type, data_type, slave, data_format="ABCD"):
         super().__init__()
         self.modbus = modbus_client
         self.start_addr = start_addr
@@ -15,6 +16,7 @@ class ScanWorker(QThread):
         self.reg_type = reg_type
         self.data_type = data_type
         self.slave = slave
+        self.data_format = data_format
         self.running = True
     def run(self):
         found = 0
@@ -25,7 +27,8 @@ class ScanWorker(QThread):
             self.progress.emit(i + 1, total)
             try:
                 value = self.modbus.read(
-                    self.reg_type, addr, self.count, self.slave, self.data_type
+                    self.reg_type, addr, self.count, self.slave,
+                    self.data_type, self.data_format
                 )
                 if value is not None:
                     value_str = str(value)
@@ -36,3 +39,4 @@ class ScanWorker(QThread):
         self.finished_scan.emit(found)
     def stop(self):
         self.running = False
+

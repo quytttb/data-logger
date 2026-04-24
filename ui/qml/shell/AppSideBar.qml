@@ -140,14 +140,28 @@ Rectangle {
                         }
                     }
                     Text {
-                        text: reportController.isRunning
-                            ? (reportController.pendingCount > 0
-                                ? "FTP (%1 pending)".arg(reportController.pendingCount)
-                                : "FTP")
-                            : "FTP off"
+                        text: {
+                            if (!reportController.isRunning)
+                                return "FTP off";
+                            var s = reportController.lastStatus;
+                            if (s.indexOf("FAIL") >= 0 || s.indexOf("ERROR") >= 0)
+                                return "FTP error";
+                            if (reportController.pendingCount > 0)
+                                return "FTP (%1 pending)".arg(reportController.pendingCount);
+                            return "FTP on";
+                        }
                         font.pixelSize: 10
                         font.weight: Font.Bold
-                        color: Theme.textSecondary
+                        color: {
+                            if (!reportController.isRunning)
+                                return Theme.textSecondary;
+                            var s = reportController.lastStatus;
+                            if (s.indexOf("FAIL") >= 0 || s.indexOf("ERROR") >= 0)
+                                return Theme.statusErrBright;
+                            if (s.indexOf("OK") >= 0)
+                                return Theme.statusOk;
+                            return Theme.accentText;
+                        }
                     }
                 }
             }

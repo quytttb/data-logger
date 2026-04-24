@@ -113,7 +113,7 @@ sm.refresh()
 initial_count = sm.rowCount()
 
 # Add
-sm.add_sensor("Nhiệt Độ", "°C", 1, 100, "input", "int16", "AB", '{"a":0.1,"b":0}', 1, True)
+sm.add_sensor("Nhiệt Độ", "°C", 1, 100, "input", "int16", "AB", '{"a":0.1,"b":0}', 1, 1, True, "", "")
 sm.refresh()
 check("add_sensor increases count", sm.rowCount() == initial_count + 1, f"count={sm.rowCount()}")
 
@@ -125,7 +125,7 @@ check("get_sensor returns correct registerAddress", s.get("registerAddress") == 
 sensor_id = s.get("sensorId")
 
 # Update
-sm.update_sensor(sensor_id, "Nhiệt Độ v2", "K", 2, 200, "holding", "float32", "ABCD", '{"a":1,"b":-273}', 2, False)
+sm.update_sensor(sensor_id, "Nhiệt Độ v2", "K", 2, 200, "holding", "float32", "ABCD", '{"a":1,"b":-273}', 2, 2, False, "", "")
 sm.refresh()
 s2 = None
 for i in range(sm.rowCount()):
@@ -145,7 +145,7 @@ check("remove_sensor decreases count", sm.rowCount() == initial_count, f"count={
 # Validation
 print("\n=== M2.2: Sensor Validation ===")
 errors_before = sm.rowCount()
-sm.add_sensor("", "°C", 0, 0, "input", "int16", "AB", "{}", 0, True)
+sm.add_sensor("", "°C", 0, 0, "input", "int16", "AB", "{}", 0, 0, True, "", "")
 sm.refresh()
 check("Empty name rejected (count unchanged)", sm.rowCount() == errors_before)
 
