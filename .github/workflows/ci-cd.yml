@@ -12,25 +12,27 @@ jobs:
   build:
     name: Build & Release Binary
     runs-on: [self-hosted, linux, ARM64]
+    permissions:
+      contents: write
     
     steps:
       - name: Checkout Code
         uses: actions/checkout@v6
 
-      - name: Prepare Python Virtual Environment & Install Dependencies
+      - name: Setup Virtual Environment & Verify Python
         run: |
-          # Dùng python3 mặc định của Raspberry Pi OS (Bookworm) và tạo virtual env
           python3 -m venv venv-build
-          source venv-build/bin/activate
-          python -m pip install --upgrade pip
-          pip install -e .
-          pip install nuitka
+          venv-build/bin/python --version
+          venv-build/bin/pip install --upgrade pip
+
+      - name: Install dependencies
+        run: |
+          venv-build/bin/pip install -e .
+          venv-build/bin/pip install nuitka
 
       - name: Build Standalone Binary with Nuitka
         run: |
-          source venv-build/bin/activate
-          # Khi đã ở trong venv, gọi thẳng lệnh nuitka3
-          nuitka3 --standalone --onefile \
+          venv-build/bin/python -m nuitka --standalone --onefile \
             --include-data-dir=config=config \
             --include-data-dir=ui/qml=ui/qml \
             --plugin-enable=pyside6 \
@@ -39,19 +41,17 @@ jobs:
 
       - name: Generate VERSION file & Package Release Archive
         run: |
-          source venv-build/bin/activate
           mkdir -p release_package
           
-          # Lấy version từ _version.py
-          PYTHONPATH=. python -c "import core._version as v; print(v.__version__)" > VERSION
-          cp VERSION release_package/
+          # Sinh VERSION
+          PYTHONPATH=. venv-build/bin/python -c "import core._version as v; print(v.__version__)" > VERSION
           
-          # Đưa binary và resources vào (Nuitka lưu file output là datalogger)
+          # Copy các file cần thiết
+          cp VERSION deploy.sh release_package/
           cp datalogger release_package/ || cp main.bin release_package/datalogger
-          cp -r config release_package/
-          cp -r ui release_package/
-          cp deploy.sh release_package/
+          cp -r config ui release_package/
           
+          # Nén tarball
           tar -czvf datalogger-release-${{ github.ref_name }}.tar.gz -C release_package .
 
       - name: Create GitHub Release
