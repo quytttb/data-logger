@@ -137,20 +137,23 @@ fi
 # ==========================================
 # GIAO DIỆN INTERACTIVE LAPTOP DEV MENU
 # ==========================================
+echo ""
+echo "==========================================="
+echo "    DATA LOGGER - LAPTOP DEPLOY MANAGER    "
+echo "==========================================="
+echo " (Cảnh báo: Không chạy script này tương tác trên Pi)"
+echo " 1. Release phiên bản mới (Tạo Git Tag -> Kích hoạt CI/CD Build Binary)"
+echo " 2. Xem phiên bản code mã nguồn hiện tại"
+echo " 3. Thoát"
+echo "==========================================="
+
 while true; do
-    echo ""
-    echo "==========================================="
-    echo "    DATA LOGGER - LAPTOP DEPLOY MANAGER    "
-    echo "==========================================="
-    echo " (Cảnh báo: Không chạy script này tương tác trên Pi)"
-    echo " 1. Release phiên bản mới (Tạo Git Tag -> Kích hoạt CI/CD Build Binary)"
-    echo " 2. Xem phiên bản code bộ nguồn hiện tại"
-    echo " 3. Thoát"
-    echo "==========================================="
     read -p "Chọn chức năng (1-3): " choice
     
     case $choice in
-        1) release_version ;;
+        1) 
+            release_version 
+            ;;
         2) 
             echo -n "Phiên bản hiện tại file _version.py: "
             python -c "import core._version as v; print(v.__version__)" 2>/dev/null || echo "Unknown"
@@ -161,7 +164,7 @@ while true; do
             exit 0
             ;;
         *)
-            echo "Lựa chọn không hợp lệ."
+            echo "Lựa chọn không hợp lệ. Vui lòng chọn (1-3)."
             ;;
     esac
 done
