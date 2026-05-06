@@ -5,7 +5,7 @@ APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SERVICE_NAME="datalogger"
 
 # ==========================================
-# CÁC HÀM XỬ LÝ LÕI
+# CÁC HÀM XỬ LÝ LÕI NGẦM (DÀNH CHO PI KHI CHẠY CI/CD HOẶC OTA)
 # ==========================================
 
 show_version() {
@@ -69,6 +69,7 @@ run_ota() {
 
     # 3. Đồng bộ (rsync)
     echo "[OTA] Cập nhật file..."
+    # Không sync đè các file cấu hình và database
     rsync -av --progress /tmp/datalogger_ota/ $APP_DIR/ \
       --exclude 'config' \
       --exclude 'var' \
@@ -119,26 +120,8 @@ release_version() {
     fi
 }
 
-build_nuitka() {
-    echo "=== XÂY DỰNG BINARY NUITKA THỦ CÔNG ==="
-    echo "Phù hợp để test nhanh khi đang phát triển (dev) trên Raspberry Pi."
-    read -p "Xác nhận build? (y/n): " confirm
-    if [[ "$confirm" == "y" || "$confirm" == "Y" ]]; then
-        nuitka3 --standalone --onefile \
-            --include-data-dir=config=config \
-            --include-data-dir=ui/qml=ui/qml \
-            --plugin-enable=pyside6 \
-            --output-filename=datalogger \
-            main.py
-        echo "Hoàn tất. File thực thi là 'datalogger'."
-    else
-        echo "Đã hủy."
-    fi
-}
-
 # ==========================================
-# XỬ LÝ MÔI TRƯỜNG DÒNG LỆNH (NON-INTERACTIVE)
-# (Dùng cho ứng dụng tự động gọi)
+# XỬ LÝ DÒNG LỆNH (NON-INTERACTIVE - DÙNG TRÊN RASPBERRY PI KHI OTA)
 # ==========================================
 if [ "$1" == "--version" ]; then
     show_version
@@ -152,36 +135,28 @@ elif [ "$1" == "--service" ]; then
 fi
 
 # ==========================================
-# GIAO DIỆN INTERACTIVE (MENU)
+# GIAO DIỆN INTERACTIVE LAPTOP DEV MENU
 # ==========================================
 while true; do
     echo ""
     echo "==========================================="
-    echo "    DATA LOGGER - DEPLOY & OTA MANAGER     "
+    echo "    DATA LOGGER - LAPTOP DEPLOY MANAGER    "
     echo "==========================================="
-    echo " 1. Release phiên bản mới (Git Tag -> CI/CD)"
-    echo " 2. Build binary Nuitka thủ công trên Pi"
-    echo " 3. Cài đặt SystemD service (--service)"
-    echo " 4. Cập nhật OTA cài File thủ công (--ota)"
-    echo " 5. Xem version hiện tại"
-    echo " 6. Thoát"
+    echo " (Cảnh báo: Không chạy script này tương tác trên Pi)"
+    echo " 1. Release phiên bản mới (Tạo Git Tag -> Kích hoạt CI/CD Build Binary)"
+    echo " 2. Xem phiên bản code bộ nguồn hiện tại"
+    echo " 3. Thoát"
     echo "==========================================="
-    read -p "Chọn chức năng (1-6): " choice
+    read -p "Chọn chức năng (1-3): " choice
     
     case $choice in
         1) release_version ;;
-        2) build_nuitka ;;
-        3) install_service ;;
-        4)
-            read -p "Nhập đường dẫn tới file .tar.gz (vd: /tmp/update.tar.gz): " tar_path
-            run_ota "$tar_path"
-            ;;
-        5)
-            echo -n "Phiên bản hiện hành: "
-            show_version
+        2) 
+            echo -n "Phiên bản hiện tại file _version.py: "
+            python -c "import core._version as v; print(v.__version__)" 2>/dev/null || echo "Unknown"
             echo ""
             ;;
-        6)
+        3)
             echo "Thoát chương trình. Tạm biệt!"
             exit 0
             ;;
