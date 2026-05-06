@@ -19,6 +19,11 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v6
 
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y patchelf
+
       - name: Setup Virtual Environment & Verify Python
         run: |
           python3 -m venv venv-build
