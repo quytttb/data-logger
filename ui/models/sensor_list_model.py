@@ -71,7 +71,7 @@ class SensorListModel(QAbstractListModel):
     def rowCount(self, parent=QModelIndex()):
         return len(self._sensors)
 
-    def data(self, index: QModelIndex, role: int = Qt.DisplayRole) -> Any:
+    def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole) -> Any:
         if not index.isValid() or index.row() >= len(self._sensors):
             return None
         sensor = self._sensors[index.row()]
@@ -129,7 +129,12 @@ class SensorListModel(QAbstractListModel):
             )
             session.add(sensor)
             session.commit()
-            self.refresh()
+            session.refresh(sensor)
+            session.expunge(sensor)
+            self.beginInsertRows(QModelIndex(), len(self._sensors), len(self._sensors))
+            self._sensors.append(sensor)
+            self.endInsertRows()
+            self.countChanged.emit()
             self.messageSent.emit(
                 "Success",
                 "Added sensor '{0}'.".format(name),
@@ -180,7 +185,16 @@ class SensorListModel(QAbstractListModel):
             sensor.min_threshold = self._parse_threshold(min_threshold_str)
             sensor.max_threshold = self._parse_threshold(max_threshold_str)
             session.commit()
-            self.refresh()
+            
+            session.refresh(sensor)
+            session.expunge(sensor)
+            for idx, s in enumerate(self._sensors):
+                if s.id == sensor_id:
+                    self._sensors[idx] = sensor
+                    m_idx = self.index(idx, 0)
+                    self.dataChanged.emit(m_idx, m_idx, [])
+                    break
+
             self.messageSent.emit(
                 "Success",
                 "Updated sensor '{0}'.".format(name),
@@ -203,7 +217,13 @@ class SensorListModel(QAbstractListModel):
             if sensor:
                 session.delete(sensor)
                 session.commit()
-                self.refresh()
+                for idx, s in enumerate(self._sensors):
+                    if s.id == sensor_id:
+                        self.beginRemoveRows(QModelIndex(), idx, idx)
+                        self._sensors.pop(idx)
+                        self.endRemoveRows()
+                        self.countChanged.emit()
+                        break
                 self.messageSent.emit(
                     "Success",
                     "Removed sensor '{0}'.".format(sensor.name),
@@ -279,6 +299,7 @@ class SensorListModel(QAbstractListModel):
                     "id": io.id,
                     "ioType": io.io_type,
                     "label": io.label,
+                    "diType": io.di_type or "",
                     "slaveId": io.slave_id,
                     "address": io.address,
                     "triggerOnMax": io.trigger_on_max,
@@ -293,8 +314,8 @@ class SensorListModel(QAbstractListModel):
         finally:
             session.close()
 
-    @Slot(int, str, str, int, int, bool, bool, bool)
-    def add_digital_io(self, sensor_id: int, io_type: str, label: str,
+    @Slot(int, str, str, str, int, int, bool, bool, bool)
+    def add_digital_io(self, sensor_id: int, io_type: str, label: str, di_type: str,
                        slave_id: int, address: int,
                        trigger_on_max: bool, trigger_on_min: bool,
                        active: bool):
@@ -318,6 +339,7 @@ class SensorListModel(QAbstractListModel):
                 sensor_id=sensor_id,
                 io_type=io_type,
                 label=label.strip() or f"{io_type} {len(existing) + 1}",
+                di_type=di_type.strip() if di_type and io_type == "DI" else None,
                 slave_id=slave_id,
                 address=address,
                 trigger_on_max=trigger_on_max,

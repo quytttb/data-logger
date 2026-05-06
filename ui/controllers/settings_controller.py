@@ -18,6 +18,7 @@ from sqlmodel import select
 
 from core.crypto import decrypt, encrypt
 from core.database import get_session
+from core.updater import AppUpdater
 from models.app_config import AppConfig
 
 logger = logging.getLogger(__name__)
@@ -31,6 +32,20 @@ class SettingsController(QObject):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._cfg = AppConfig()
+        self._updater = AppUpdater(parent=self)
+        self._updater.updateComplete.connect(self._on_update_complete)
+        self._updater.progressChanged.connect(self._on_update_progress)
+
+    def _on_update_complete(self, success, msg):
+        self.messageSent.emit("OTA Update", msg)
+        
+    def _on_update_progress(self, pct, msg):
+        self.messageSent.emit("OTA Progress", f"{pct}%: {msg}")
+
+    @Slot()
+    def checkUpdates(self):
+        """Called from QML."""
+        self._updater.checkForUpdates()
 
     # ── Properties exposed to QML ──────────────────────────────────────────
 
@@ -334,6 +349,19 @@ class SettingsController(QObject):
             session.commit()
             session.refresh(cfg)
             self._cfg = cfg
+            
+            # Reset retry_count for failed FTP logs to allow backfilling
+            try:
+                from models.report_log import ReportLog
+                failed_logs = session.exec(select(ReportLog).where(ReportLog.status == "failed")).all()
+                if failed_logs:
+                    for log in failed_logs:
+                        log.retry_count = 0
+                    session.commit()
+                    logger.info("Reset retry_count cho %d bản ghi failed để gửi bù.", len(failed_logs))
+            except Exception as e:
+                logger.error("Lỗi khi reset retry_count: %s", e)
+
             self.configLoaded.emit()
             self.configSaved.emit()
             self.messageSent.emit("Success", "Configuration saved.")

@@ -5,6 +5,7 @@ lên FTP Server Sở TNMT. Tự động retry các file pending/failed.
 """
 
 import logging
+import time
 from datetime import datetime, timedelta
 
 from PySide6.QtCore import QObject, Signal
@@ -35,6 +36,7 @@ class FtpWorker(QObject):
 
     ftp_status = Signal(str)
     worker_stopped = Signal()
+    heartbeat = Signal(str)
 
     def __init__(self, interval_minutes: int = 5, parent: QObject | None = None):
         super().__init__(parent)
@@ -47,6 +49,8 @@ class FtpWorker(QObject):
         logger.info("FtpWorker đã khởi động (chu kỳ %d phút).", self._interval)
 
         while self._is_running:
+            self.heartbeat.emit("FtpWorker")
+            
             try:
                 self._generate_and_send()
                 self._retry_pending()
@@ -55,11 +59,14 @@ class FtpWorker(QObject):
                 self.ftp_status.emit(f"ERROR: {e}")
 
             # Chờ đến chu kỳ tiếp theo
+            last_time = time.time()
             for _ in range(self._interval * 60):
                 if not self._is_running:
                     break
-                import time
                 time.sleep(1)
+                if time.time() - last_time >= 5.0:
+                    self.heartbeat.emit("FtpWorker")
+                    last_time = time.time()
 
         logger.info("FtpWorker đã dừng.")
         self.worker_stopped.emit()
@@ -113,6 +120,7 @@ class FtpWorker(QObject):
                 {
                     "sensor_id": r.sensor_id,
                     "value": r.value,
+                    "status": getattr(r, "status", None),
                     "recorded_at": r.recorded_at,
                 }
                 for r in records_raw
@@ -177,7 +185,7 @@ class FtpWorker(QObject):
             pending_logs = session.exec(
                 select(ReportLog)
                 .where(ReportLog.status.in_(["pending", "failed"]))
-                .where(ReportLog.retry_count < MAX_RETRY)
+                .order_by(ReportLog.id)
             ).all()
 
             for log in pending_logs:
@@ -197,15 +205,19 @@ class FtpWorker(QObject):
                     log.status = "sent"
                     log.sent_at = datetime.now()
                     logger.info("Retry thành công: %s", log.filename)
+                    self.ftp_status.emit(f"OK: {log.filename} (retry)")
+                    session.commit()
                 else:
                     log.retry_count += 1
                     log.error_message = "Retry failed"
                     logger.warning(
-                        "Retry thất bại: %s (lần %d/%d)",
-                        log.filename, log.retry_count, MAX_RETRY,
+                        "Retry thất bại: %s. Tạm dừng truyền bù để chờ kết nối.",
+                        log.filename
                     )
+                    self.ftp_status.emit(f"FAIL: {log.filename} (retry)")
+                    session.commit()
+                    break  # Break out of loop immediately to prevent blocking
 
-            session.commit()
         except Exception as e:
             logger.error("Lỗi retry_pending: %s", e, exc_info=True)
         finally:

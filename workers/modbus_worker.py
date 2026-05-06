@@ -40,6 +40,7 @@ class ModbusWorker(QObject):
     connection_changed = Signal(bool)
     alarm_changed = Signal(dict)
     worker_stopped = Signal()
+    heartbeat = Signal(str)
 
     def __init__(
         self,
@@ -49,10 +50,21 @@ class ModbusWorker(QObject):
         parity: str = "N",
         stopbits: int = 1,
         timeout: int = 1,
-        poll_interval: int = 3,
+        poll_interval: int = 5,
         parent: QObject | None = None,
     ):
         super().__init__(parent)
+        
+        try:
+            import tomllib
+            from core._paths import ROOT_DIR
+            with open(f"{ROOT_DIR}/config/config.toml", "rb") as f:
+                cfg = tomllib.load(f)
+                if "modbus" in cfg and "POLLING_INTERVAL" in cfg["modbus"]:
+                    poll_interval = cfg["modbus"]["POLLING_INTERVAL"]
+        except Exception:
+            pass
+
         self._port = port
         self._baudrate = baudrate
         self._bytesize = bytesize
@@ -92,7 +104,14 @@ class ModbusWorker(QObject):
                 s["id"]: now for s in self._sensors
             }
 
+            last_heartbeat = time.monotonic()
+            
             while self._is_running:
+                now = time.monotonic()
+                if now - last_heartbeat >= 5.0:
+                    self.heartbeat.emit("ModbusWorker")
+                    last_heartbeat = now
+
                 if not self._client or not self._client.connected:
                     self.connection_changed.emit(False)
                     self.modbus_error.emit(f"Mất kết nối {self._port}, thử lại sau {backoff:.0f}s...")
@@ -121,9 +140,9 @@ class ModbusWorker(QObject):
                         polled_any = True
 
                 if not polled_any:
-                    time.sleep(0.1)
+                    time.sleep(self._poll_interval)
                 else:
-                    time.sleep(0.05)
+                    time.sleep(self._poll_interval)
 
             if self._client:
                 self._client.close()
@@ -214,10 +233,27 @@ class ModbusWorker(QObject):
             # --- Read DI states ---
             di_states = self._read_di_states(sensor_id)
 
+            # --- Status code resolution ---
+            current_status = "00"
+            for di in di_states:
+                if di.get("state") is True:
+                    dt = di.get("di_type")
+                    if dt:
+                        if dt == "02":
+                            current_status = "02"
+                            break  # Highest priority
+                        elif dt == "03" and current_status not in ["02"]:
+                            current_status = "03"
+                        elif dt == "01" and current_status not in ["02", "03"]:
+                            current_status = "01"
+                        elif current_status == "00": # Handle custom status
+                            current_status = dt
+
             payload = {
                 "sensor_id": sensor_id,
                 "raw_value": raw_value,
                 "value": round(value, 4),
+                "status": current_status,
                 "recorded_at": datetime.now().isoformat(),
                 "is_alarm": is_alarm,
                 "alarm_type": alarm_type,
@@ -324,12 +360,12 @@ class ModbusWorker(QObject):
                         "DI read error: sensor=%d slave=%d addr=%d",
                         sensor_id, ch["slave_id"], ch["address"],
                     )
-                    results.append({"id": ch["id"], "label": ch["label"], "state": None})
+                    results.append({"id": ch["id"], "label": ch["label"], "di_type": ch.get("di_type"), "state": None})
                 else:
-                    results.append({"id": ch["id"], "label": ch["label"], "state": resp.bits[0]})
+                    results.append({"id": ch["id"], "label": ch["label"], "di_type": ch.get("di_type"), "state": resp.bits[0]})
             except Exception as e:
                 logger.warning("DI read exception: %s", e)
-                results.append({"id": ch["id"], "label": ch["label"], "state": None})
+                results.append({"id": ch["id"], "label": ch["label"], "di_type": ch.get("di_type"), "state": None})
         return results
 
     def _drive_do_relays(self, sensor_id: int, is_alarm: bool, alarm_type: str) -> None:

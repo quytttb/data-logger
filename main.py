@@ -31,16 +31,10 @@ from ui.models.sensor_list_model import SensorListModel
 from ui.controllers.monitor_controller import MonitorController, MonitorModel
 from ui.controllers.history_controller import HistoryController, HistoryModel
 from ui.controllers.report_controller import ReportController
+from core.log_setup import setup_logging
 
 # === Logging Setup ===
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
-    handlers=[
-        logging.FileHandler(LOG_DIR / "app.log", encoding="utf-8"),
-        logging.StreamHandler(sys.stdout),
-    ],
-)
+setup_logging()
 logger = logging.getLogger("datalogger")
 
 
@@ -112,6 +106,8 @@ def main():
     # Khi danh sách sensor thay đổi → cập nhật ComboBox lịch sử + monitor
     sensor_model.countChanged.connect(history_controller.load_sensors)
     sensor_model.countChanged.connect(monitor_controller.refresh_sensors)
+    # Forward FTP heartbeats to MonitorController Watchdog
+    report_controller.workerHeartbeat.connect(monitor_controller.register_heartbeat)
 
     engine.rootContext().setContextProperty("testerController", tester_controller)
     engine.rootContext().setContextProperty("settingsController", settings_controller)
@@ -156,18 +152,26 @@ def main():
         QTimer.singleShot(0, _reapply_icons)
 
     # Auto-start FTP worker nếu server_active = True trong DB
-    try:
-        from sqlmodel import select as _sel
-        from core.database import get_session as _gs
-        from models.app_config import AppConfig as _AC
-        _s = _gs()
-        _cfg = _s.exec(_sel(_AC)).first()
-        if _cfg and _cfg.server_active:
-            report_controller.start_reporting()
-            logger.info("FTP auto-started (server_active=True).")
-        _s.close()
-    except Exception as _e:
-        logger.warning("Không thể auto-start FTP: %s", _e)
+    def _start_ftp_if_active():
+        try:
+            from sqlmodel import select as _sel
+            from core.database import get_session as _gs
+            from models.app_config import AppConfig as _AC
+            _s = _gs()
+            _cfg = _s.exec(_sel(_AC)).first()
+            if _cfg and _cfg.server_active:
+                report_controller.start_reporting()
+                logger.info("FTP auto-started (server_active=True).")
+            _s.close()
+        except Exception as _e:
+            logger.warning("Không thể auto-start FTP: %s", _e)
+
+    def _restart_ftp_on_save():
+        report_controller.stop_reporting()
+        QTimer.singleShot(500, _start_ftp_if_active)
+
+    _start_ftp_if_active()
+    settings_controller.configSaved.connect(_restart_ftp_on_save)
 
     app.aboutToQuit.connect(monitor_controller.stop_polling_sync)
     app.aboutToQuit.connect(report_controller.stop_reporting)

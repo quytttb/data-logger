@@ -108,6 +108,7 @@ ColumnLayout {
                             item.hasSelectedSensor = Qt.binding(function() { return view.hasSelectedSensor })
                             item.isAddMode = Qt.binding(function() { return view.isAddMode })
                             item.sensorSubTabIndex = Qt.binding(function() { return view.sensorSubTabIndex })
+                            item.hasSelectedDio = Qt.binding(function() { return view.hasSelectedDio })
 
                             item.tabSelected.connect(function(idx) { view.settingsTabIndex = idx })
                             item.sensorSubTabSelected.connect(function(idx) { view.sensorSubTabIndex = idx })
@@ -118,6 +119,8 @@ ColumnLayout {
                             item.deleteSelectedSensor.connect(function() { view.deleteSelectedSensor() })
                             item.saveSensorForm.connect(function() { view.saveSensorForm() })
                             item.cancelSensorForm.connect(function() { view.closeSensorForm() })
+                            item.editSelectedDio.connect(function() { view.editSelectedDio() })
+                            item.deleteSelectedDio.connect(function() { view.deleteSelectedDio() })
                         }
                     }
                 }

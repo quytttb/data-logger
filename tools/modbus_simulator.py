@@ -6,7 +6,7 @@ import struct
 import time
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QLabel, QSpinBox, QPushButton, QComboBox, QGroupBox, QGridLayout,
+    QLabel, QDoubleSpinBox, QPushButton, QComboBox, QGroupBox, QGridLayout,
     QCheckBox
 )
 from PySide6.QtCore import Qt, QTimer
@@ -35,9 +35,12 @@ class ModbusSimWindow(QMainWindow):
         self.server_thread = None
         self.is_running = False
         
-        self.hr_val = 5000
-        self.di_val = False
-        self.do_val = False
+        self.temp_val = 25.5
+        self.hum_val = 60.0
+        self.di10_val = False
+        self.di11_val = False
+        self.do0_val = False
+        self.do1_val = False
         
         # UI Setup
         central_widget = QWidget()
@@ -75,22 +78,43 @@ class ModbusSimWindow(QMainWindow):
         reg_group = QGroupBox("Giả lập Dữ liệu (Slave ID 1)")
         reg_layout = QGridLayout()
         
-        reg_layout.addWidget(QLabel("Holding Register 0 (Analog):"), 0, 0)
-        self.spin_hr0 = QSpinBox()
-        self.spin_hr0.setRange(0, 65535)
-        self.spin_hr0.setValue(self.hr_val)
-        self.spin_hr0.valueChanged.connect(self.update_values)
-        reg_layout.addWidget(self.spin_hr0, 0, 1)
+        reg_layout.addWidget(QLabel("Nhiệt độ (IR 200, Float32):"), 0, 0)
+        self.spin_temp = QDoubleSpinBox()
+        self.spin_temp.setRange(-100.0, 1000.0)
+        self.spin_temp.setDecimals(2)
+        self.spin_temp.setSingleStep(0.1)
+        self.spin_temp.setValue(self.temp_val)
+        self.spin_temp.valueChanged.connect(self.update_values)
+        reg_layout.addWidget(self.spin_temp, 0, 1)
+
+        reg_layout.addWidget(QLabel("Độ ẩm (IR 202, Float32):"), 1, 0)
+        self.spin_hum = QDoubleSpinBox()
+        self.spin_hum.setRange(0.0, 100.0)
+        self.spin_hum.setDecimals(2)
+        self.spin_hum.setSingleStep(0.1)
+        self.spin_hum.setValue(self.hum_val)
+        self.spin_hum.valueChanged.connect(self.update_values)
+        reg_layout.addWidget(self.spin_hum, 1, 1)
         
-        reg_layout.addWidget(QLabel("Discrete Input 10 (DI):"), 1, 0)
-        self.chk_di10 = QCheckBox("ON / OFF")
+        reg_layout.addWidget(QLabel("Trạng thái (DI 10, DI 11):"), 2, 0)
+        di_layout = QHBoxLayout()
+        self.chk_di10 = QCheckBox("DI 10 (Lỗi)")
+        self.chk_di11 = QCheckBox("DI 11 (Bảo trì)")
         self.chk_di10.stateChanged.connect(self.update_values)
-        reg_layout.addWidget(self.chk_di10, 1, 1)
+        self.chk_di11.stateChanged.connect(self.update_values)
+        di_layout.addWidget(self.chk_di10)
+        di_layout.addWidget(self.chk_di11)
+        reg_layout.addLayout(di_layout, 2, 1)
         
-        reg_layout.addWidget(QLabel("Coil 0 (DO Relay Status):"), 2, 0)
-        self.lbl_coil0 = QLabel("OFF")
-        self.lbl_coil0.setStyleSheet("font-weight: bold; color: gray;")
-        reg_layout.addWidget(self.lbl_coil0, 2, 1)
+        reg_layout.addWidget(QLabel("Đèn báo DO 0 (Coil 0):"), 3, 0)
+        self.lbl_coil0 = QLabel("⚫")
+        self.lbl_coil0.setStyleSheet("font-size: 32px; color: gray;")
+        reg_layout.addWidget(self.lbl_coil0, 3, 1)
+
+        reg_layout.addWidget(QLabel("Đèn báo DO 1 (Coil 1):"), 4, 0)
+        self.lbl_coil1 = QLabel("⚫")
+        self.lbl_coil1.setStyleSheet("font-size: 32px; color: gray;")
+        reg_layout.addWidget(self.lbl_coil1, 4, 1)
         
         reg_group.setLayout(reg_layout)
         main_layout.addWidget(reg_group)
@@ -100,16 +124,25 @@ class ModbusSimWindow(QMainWindow):
         self.timer.start(500)
 
     def update_values(self):
-        self.hr_val = self.spin_hr0.value()
-        self.di_val = self.chk_di10.isChecked()
+        self.temp_val = self.spin_temp.value()
+        self.hum_val = self.spin_hum.value()
+        self.di10_val = self.chk_di10.isChecked()
+        self.di11_val = self.chk_di11.isChecked()
 
     def update_ui(self):
-        if self.do_val:
-            self.lbl_coil0.setText("ON (ALARM TRIPPED)")
-            self.lbl_coil0.setStyleSheet("font-weight: bold; color: red;")
+        if self.do0_val:
+            self.lbl_coil0.setText("🔴")
+            self.lbl_coil0.setStyleSheet("font-size: 32px; color: red;")
         else:
-            self.lbl_coil0.setText("OFF")
-            self.lbl_coil0.setStyleSheet("font-weight: bold; color: green;")
+            self.lbl_coil0.setText("⚫")
+            self.lbl_coil0.setStyleSheet("font-size: 32px; color: gray;")
+
+        if self.do1_val:
+            self.lbl_coil1.setText("🔴")
+            self.lbl_coil1.setStyleSheet("font-size: 32px; color: red;")
+        else:
+            self.lbl_coil1.setText("⚫")
+            self.lbl_coil1.setStyleSheet("font-size: 32px; color: gray;")
 
     def toggle_server(self):
         if not self.is_running:
@@ -143,42 +176,78 @@ class ModbusSimWindow(QMainWindow):
                             
                             response = bytearray()
                             if slave_id == 1:
-                                if fc == 3: # Read Holding Registers
+                                if fc == 4: # Read Input Registers
                                     response.append(slave_id)
                                     response.append(fc)
                                     response.append(val_count * 2) # Byte count
-                                    # We only pretend addr 0 has self.hr_val
+                                    # Emulate Float32 at address 200 and 202 (ABCD endian)
+                                    b_temp = struct.pack(">f", self.temp_val)
+                                    b_hum = struct.pack(">f", self.hum_val)
                                     for i in range(val_count):
-                                        if addr + i == 0:
-                                            response.extend(struct.pack(">H", self.hr_val))
+                                        cur_addr = addr + i
+                                        if cur_addr == 200:
+                                            response.extend(b_temp[0:2])
+                                        elif cur_addr == 201:
+                                            response.extend(b_temp[2:4])
+                                        elif cur_addr == 202:
+                                            response.extend(b_hum[0:2])
+                                        elif cur_addr == 203:
+                                            response.extend(b_hum[2:4])
                                         else:
                                             response.extend(struct.pack(">H", 0))
+                                    response.extend(calculate_crc(response))
+                                    ser.write(response)
+
+                                elif fc == 1: # Read Coils
+                                    response.append(slave_id)
+                                    response.append(fc)
+                                    byte_count = (val_count + 7) // 8
+                                    response.append(byte_count)
+                                    bytes_arr = bytearray(byte_count)
+                                    for i in range(val_count):
+                                        cur_addr = addr + i
+                                        bit_val = False
+                                        if cur_addr == 0:
+                                            bit_val = self.do0_val
+                                        elif cur_addr == 1:
+                                            bit_val = self.do1_val
+                                        
+                                        if bit_val:
+                                            byte_idx = i // 8
+                                            bit_idx = i % 8
+                                            bytes_arr[byte_idx] |= (1 << bit_idx)
+                                    response.extend(bytes_arr)
                                     response.extend(calculate_crc(response))
                                     ser.write(response)
                                     
                                 elif fc == 2: # Read Discrete Inputs
                                     response.append(slave_id)
                                     response.append(fc)
-                                    # Calculate byte count
                                     byte_count = (val_count + 7) // 8
                                     response.append(byte_count)
-                                    # We only pretend addr 10 has self.di_val
-                                    byte_val = 0
-                                    if addr <= 10 and addr + val_count > 10 and self.di_val:
-                                        bit_offset = 10 - addr
-                                        if bit_offset < 8:
-                                            byte_val |= (1 << bit_offset)
-                                    response.append(byte_val)
-                                    # Append empty bytes if more than 1
-                                    for _ in range(byte_count - 1):
-                                        response.append(0)
+                                    bytes_arr = bytearray(byte_count)
+                                    for i in range(val_count):
+                                        cur_addr = addr + i
+                                        bit_val = False
+                                        if cur_addr == 10:
+                                            bit_val = self.di10_val
+                                        elif cur_addr == 11:
+                                            bit_val = self.di11_val
+                                        
+                                        if bit_val:
+                                            byte_idx = i // 8
+                                            bit_idx = i % 8
+                                            bytes_arr[byte_idx] |= (1 << bit_idx)
+                                    response.extend(bytes_arr)
                                     response.extend(calculate_crc(response))
                                     ser.write(response)
                                     
                                 elif fc == 5: # Write Single Coil
                                     # req[4:6] is value (FF00 = ON, 0000 = OFF)
                                     if addr == 0:
-                                        self.do_val = (val_count == 0xFF00)
+                                        self.do0_val = (val_count == 0xFF00)
+                                    elif addr == 1:
+                                        self.do1_val = (val_count == 0xFF00)
                                     # Echo back exactly what was received
                                     ser.write(req)
                         

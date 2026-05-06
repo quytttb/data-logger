@@ -104,6 +104,30 @@ Item {
                         checked: settingsController ? settingsController.autoSyncTime : false
                         onToggled: { settingsController.autoSyncTime = checked; root.configChanged = true }
                     }
+                    
+                    Item { Layout.preferredHeight: 15 }
+                    
+                    Text { text: "Firmware Update"; color: Theme.accentText; font.bold: true; font.pixelSize: 15 }
+                    Rectangle { Layout.fillWidth: true; height: 1; color: Theme.borderDefault }
+                    
+                    Button {
+                        text: "Check Updates"
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 40
+                        onClicked: {
+                            settingsController.checkUpdates()
+                        }
+                        background: Rectangle {
+                            color: Theme.accent
+                            radius: Theme.radiusMedium
+                        }
+                        contentItem: Text {
+                            text: parent.text
+                            color: Theme.textOnColoredBtn
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                        }
+                    }
                 }
             }
         }

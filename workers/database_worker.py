@@ -5,6 +5,7 @@ vào bảng sensor_data để giảm số lần thao tác ổ đĩa SSD.
 """
 
 import logging
+import time
 from datetime import datetime
 from queue import Empty, Queue
 
@@ -16,7 +17,7 @@ from models.sensor_data import SensorData
 logger = logging.getLogger("datalogger.database")
 
 # Ngưỡng batch — gom đủ N bản ghi mới INSERT 1 lần
-BATCH_SIZE = 10
+BATCH_SIZE = 50
 # Timeout — nếu chưa đủ batch nhưng đợi quá lâu thì cũng flush
 FLUSH_TIMEOUT = 5.0  # giây
 
@@ -32,6 +33,7 @@ class DatabaseWorker(QObject):
     db_error = Signal(str)
     records_saved = Signal(int)
     worker_stopped = Signal()
+    heartbeat = Signal(str)
 
     def __init__(self, parent: QObject | None = None):
         super().__init__(parent)
@@ -54,7 +56,13 @@ class DatabaseWorker(QObject):
         logger.info("DatabaseWorker đã khởi động.")
 
         try:
+            last_heartbeat = time.monotonic()
             while self._is_running:
+                now = time.monotonic()
+                if now - last_heartbeat >= 5.0:
+                    self.heartbeat.emit("DatabaseWorker")
+                    last_heartbeat = now
+
                 try:
                     data = self._queue.get(timeout=FLUSH_TIMEOUT)
 
@@ -62,6 +70,7 @@ class DatabaseWorker(QObject):
                         sensor_id=data["sensor_id"],
                         raw_value=data.get("raw_value"),
                         value=data.get("value"),
+                        status=data.get("status"),
                         recorded_at=datetime.fromisoformat(data["recorded_at"]),
                     )
                     batch.append(record)
@@ -95,8 +104,24 @@ class DatabaseWorker(QObject):
         """Yêu cầu dừng vòng lặp."""
         self._is_running = False
 
+    def upgrade_database(self) -> None:
+        """Chạy alembic upgrade head để update DB schema bằng Alembic API."""
+        from alembic import command
+        from alembic.config import Config
+        from core._paths import ROOT_DIR
+        try:
+            logger.info("Chạy Alembic migration (upgrade head)...")
+            alembic_cfg = Config(f"{ROOT_DIR}/alembic.ini")
+            alembic_cfg.set_main_option("script_location", f"{ROOT_DIR}/migrations")
+            command.upgrade(alembic_cfg, "head")
+            logger.info("Alembic migration hoàn tất.")
+        except Exception as e:
+            logger.error(f"Lỗi khi chạy migration: {e}")
+
     def _batch_insert(self, batch: list[SensorData]) -> None:
         """Ghi batch bản ghi vào DB trong 1 transaction."""
+        import time
+        start_t = time.perf_counter()
         session = None
         try:
             session = get_session()
@@ -106,8 +131,9 @@ class DatabaseWorker(QObject):
             session = None
 
             count = len(batch)
+            duration = (time.perf_counter() - start_t) * 1000
             self.records_saved.emit(count)
-            logger.info("Đã ghi %d bản ghi vào sensor_data.", count)
+            logger.info(f"Batch insert {count} records in {duration:.2f}ms")
 
         except Exception as e:
             error_msg = f"Lỗi batch INSERT: {e}"

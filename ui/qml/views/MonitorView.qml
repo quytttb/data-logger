@@ -8,6 +8,11 @@ Rectangle {
     id: monitorRoot
     color: "transparent"
 
+    // Helper to pass DI states to Repeater (avoids model shadowing in delegate)
+    function getDisForDelegate(diStates) {
+        return diStates && diStates.length > 0 ? diStates : []
+    }
+
     MessagePopup {
         id: monitorPopup
     }
@@ -143,6 +148,33 @@ Rectangle {
                                 color: Theme.textOnColoredBtn
                                 font.pixelSize: 10
                                 font.family: "Monospace"
+                            }
+
+                            // DI indicator dots — only active DIs shown
+                            Row {
+                                spacing: 4
+                                visible: model.diStates && model.diStates.length > 0
+                                Layout.leftMargin: 6
+
+                                Repeater {
+                                    model: monitorRoot.getDisForDelegate(diStates)
+
+                                    Rectangle {
+                                        width: 10; height: 10; radius: 5
+                                        color: modelData.color || "#888888"
+
+                                        // Subtle pulsing to draw attention
+                                        SequentialAnimation on opacity {
+                                            running: true
+                                            loops: Animation.Infinite
+                                            NumberAnimation { to: 0.5; duration: 800 }
+                                            NumberAnimation { to: 1.0; duration: 800 }
+                                        }
+                                    }
+                                }
+
+                                // Alias to resolve model.diStates at delegate scope
+                                property var diStates: model.diStates || []
                             }
 
                             Item { Layout.fillWidth: true }

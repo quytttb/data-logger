@@ -146,14 +146,14 @@ lines = content.strip().split("\n")
 check("Has 3 data lines", len(lines) == 3, f"lines: {len(lines)}")
 
 first_line = lines[0]
-fields = first_line.split(",")
+fields = first_line.split("\t")
 check("5 fields per line", len(fields) == 5, f"fields: {len(fields)} — {first_line}")
 
 check("Field 1: sensor name", fields[0] == "Nhiet do", f"got: {fields[0]}")
 check("Field 2: value", fields[1] == "25.5000", f"got: {fields[1]}")
 check("Field 3: unit", fields[2] == "°C", f"got: {fields[2]}")
-check("Field 4: timestamp", "08/04/2026" in fields[3], f"got: {fields[3]}")
-check("Field 5: status", fields[4] == "Binh thuong", f"got: {fields[4]}")
+check("Field 4: timestamp", "20260408" in fields[3], f"got: {fields[3]}")
+check("Field 5: status", fields[4] == "00", f"got: {fields[4]}")
 
 # Verify second sensor also present
 ph_lines = [l for l in lines if l.startswith("pH")]
@@ -224,7 +224,7 @@ check("pendingCount type int", isinstance(rc.pendingCount, int))
 # Test start — FtpWorker will attempt generate_and_send (upload fails fast to localhost)
 rc.start_reporting()
 check("isRunning after start", rc.isRunning == True)
-check("lastStatus set after start", "chạy" in rc.lastStatus, f"got: '{rc.lastStatus}'")
+check("lastStatus set after start", "chạy" in rc.lastStatus.lower() or "running" in rc.lastStatus.lower(), f"got: '{rc.lastStatus}'")
 
 # Give worker time to attempt first cycle then stop
 for _ in range(30):
@@ -251,7 +251,7 @@ if report_files:
     lines = content.strip().split("\n")
     check("Report has data lines", len(lines) > 0, f"lines: {len(lines)}")
     if lines:
-        fields = lines[0].split(",")
+        fields = lines[0].split("\t")
         check("Report 5 fields", len(fields) == 5, f"fields: {len(fields)} — {lines[0]}")
 
 # ═══════════════════════════════════════════════════════════════

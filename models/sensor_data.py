@@ -21,6 +21,10 @@ class SensorData(SQLModel, table=True):
         default=None,
         description="Giá trị thô đọc từ thanh ghi Modbus",
     )
+    status: Optional[str] = Field(
+        default=None,
+        description="Mã trạng thái thiết bị (00, 01, 02, 03..)",
+    )
     recorded_at: datetime = Field(
         default_factory=datetime.now,
         index=True,

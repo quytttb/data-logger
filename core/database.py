@@ -28,12 +28,14 @@ def _set_sqlite_pragma(dbapi_connection, connection_record):
 
     # NORMAL: Cân bằng giữa tốc độ và an toàn dữ liệu
     cursor.execute("PRAGMA synchronous = NORMAL;")
+    cursor.execute("PRAGMA journal_size_limit = 1000000;")
+    cursor.execute("PRAGMA mmap_size = 30000000;")
 
     # MEMORY: Dùng RAM cho temp tables, giảm ghi vật lý xuống SSD
     cursor.execute("PRAGMA temp_store = MEMORY;")
 
-    # 8MB cache: Tăng hiệu suất truy vấn lịch sử
-    cursor.execute("PRAGMA cache_size = -8000;")
+    # 20MB cache: Tăng hiệu suất truy vấn lịch sử
+    cursor.execute("PRAGMA cache_size = -20000;")
 
     cursor.close()
 
@@ -105,6 +107,18 @@ def _migrate() -> None:
                     )
                     conn.commit()
                     acols.add(col_name)
+
+            if "digital_io" in inspector.get_table_names():
+                dicols = {c["name"] for c in inspector.get_columns("digital_io")}
+                if "di_type" not in dicols:
+                    conn.execute(text("ALTER TABLE digital_io ADD COLUMN di_type VARCHAR DEFAULT NULL"))
+                    conn.commit()
+
+            if "sensor_data" in inspector.get_table_names():
+                sdcols = {c["name"] for c in inspector.get_columns("sensor_data")}
+                if "status" not in sdcols:
+                    conn.execute(text("ALTER TABLE sensor_data ADD COLUMN status VARCHAR DEFAULT NULL"))
+                    conn.commit()
 
 
 def get_session() -> Session:

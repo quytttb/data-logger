@@ -8,6 +8,77 @@ Item {
     id: root
     implicitHeight: 64
 
+    // ── DI Legend Popup ──────────────────────────────────────────────────
+    Popup {
+        id: diLegendPopup
+        parent: Overlay.overlay
+        anchors.centerIn: parent
+        width: Math.min(400, parent.width - 32)
+        padding: 18
+        modal: true
+        focus: true
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+
+        background: Rectangle {
+            color: Theme.bgPanel
+            radius: Theme.radiusCard
+            border.color: Theme.accent
+            border.width: 1
+        }
+
+        contentItem: ColumnLayout {
+            spacing: 12
+
+            Text {
+                text: "DI Status Legend"
+                font.bold: true; font.pixelSize: 18
+                color: Theme.textPrimary
+                Layout.fillWidth: true
+                horizontalAlignment: Text.AlignHCenter
+            }
+
+            Rectangle { Layout.fillWidth: true; height: 1; color: Theme.borderDefault }
+
+            Repeater {
+                model: monitorController.diLegend
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 10
+
+                    Rectangle {
+                        width: 12; height: 12; radius: 6
+                        color: modelData.color
+                    }
+                    Text {
+                        text: modelData.label
+                        color: Theme.textPrimary
+                        font.pixelSize: 14
+                        Layout.fillWidth: true
+                    }
+                }
+            }
+
+            Text {
+                visible: !monitorController.diLegend || monitorController.diLegend.length === 0
+                text: "No DI channels configured."
+                color: Theme.textSecondary
+                font.pixelSize: 14
+                Layout.fillWidth: true
+                horizontalAlignment: Text.AlignHCenter
+            }
+
+            Item { Layout.preferredHeight: 4 }
+
+            Button {
+                text: "OK"
+                Layout.alignment: Qt.AlignHCenter
+                Layout.preferredWidth: 100
+                onClicked: diLegendPopup.close()
+            }
+        }
+    }
+
     RowLayout {
         anchors.left: parent.left
         anchors.right: parent.right
@@ -70,10 +141,83 @@ Item {
             color: Theme.textPrimary
             font.pixelSize: 14
             font.bold: true
-            Layout.fillWidth: true
             Layout.minimumWidth: 80
             elide: Text.ElideRight
             wrapMode: Text.NoWrap
+        }
+
+        // ── DI Legend button ─────────────────────────────────────────────
+        Button {
+            visible: monitorController.isPolling && monitorController.diLegend && monitorController.diLegend.length > 0
+            Layout.preferredHeight: 44
+            Layout.alignment: Qt.AlignVCenter
+            onClicked: diLegendPopup.open()
+
+            contentItem: Row {
+                spacing: 6
+                anchors.verticalCenter: parent.verticalCenter
+
+                // Mini dots preview
+                Repeater {
+                    model: monitorController.diLegend
+                    Rectangle {
+                        width: 8; height: 8; radius: 4
+                        color: modelData.color
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+                }
+
+                Text {
+                    text: "DI Status"
+                    color: Theme.textPrimary
+                    font.pixelSize: 12; font.bold: true
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+            }
+
+            background: Rectangle {
+                radius: Theme.radiusSmall
+                color: Theme.bgSeparator
+                border.color: Theme.borderDefault
+                border.width: 1
+                opacity: parent.pressed ? 0.7 : 1.0
+            }
+        }
+
+        Item { Layout.fillWidth: true }
+        
+        Rectangle {
+            Layout.preferredWidth: wdLabel.implicitWidth + 24
+            Layout.preferredHeight: 32
+            radius: Theme.radiusSmall
+            color: monitorController.watchdogStatus === "OK" ? Theme.bgSeparator : Theme.bgErrorTint
+            Layout.alignment: Qt.AlignVCenter
+
+            Text {
+                id: wdLabel
+                anchors.centerIn: parent
+                text: "WD: " + monitorController.watchdogStatus
+                color: monitorController.watchdogStatus === "OK" ? Theme.textSecondary : Theme.statusErr
+                font.pixelSize: 12
+                font.bold: true
+            }
+        }
+        
+        Rectangle {
+            Layout.preferredWidth: cpuLabel.implicitWidth + 24
+            Layout.preferredHeight: 32
+            radius: Theme.radiusSmall
+            color: monitorController.cpuTemp > 65.0 ? Theme.bgErrorTint : Theme.bgSeparator
+            Layout.alignment: Qt.AlignVCenter
+
+            Text {
+                id: cpuLabel
+                anchors.centerIn: parent
+                text: "CPU: " + monitorController.cpuTemp.toFixed(1) + "°C"
+                color: monitorController.cpuTemp > 65.0 ? Theme.statusErr : Theme.textSecondary
+                font.pixelSize: 12
+                font.bold: true
+            }
         }
 
         Rectangle {

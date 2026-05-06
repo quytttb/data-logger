@@ -69,6 +69,12 @@ ApplicationWindow {
                 Layout.fillHeight: true
                 currentTab: root.currentTab
                 onSelectTab: function (i) {
+                    // If leaving Settings while Add/Edit form is open, cancel it
+                    if (root.currentTab === 2 && i !== 2) {
+                        if (tabContent.loaderSettings.item && tabContent.loaderSettings.item.settingsTabIndex === 4) {
+                            tabContent.loaderSettings.item.closeSensorForm()
+                        }
+                    }
                     root.currentTab = i
                 }
             }

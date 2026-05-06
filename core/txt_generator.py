@@ -36,7 +36,8 @@ def generate_report(
     if report_time is None:
         report_time = datetime.now()
 
-    filename = f"{station_code}_{report_time.strftime('%Y%m%d_%H%M')}.txt"
+    # Định dạng tên file: TenTinh_TenCoso_TenTram_yyyyMMddhhmmss.txt
+    filename = f"{station_code}_{report_time.strftime('%Y%m%d%H%M%S')}.txt"
     filepath = REPORT_DIR / filename
 
     sensor_map = {s["id"]: s for s in sensor_order}
@@ -53,10 +54,14 @@ def generate_report(
         val = record["value"]
         val_str = f"{val:.4f}" if val is not None else ""
         ts = record["recorded_at"]
-        ts_str = ts.strftime("%d/%m/%Y %H:%M:%S") if isinstance(ts, datetime) else str(ts)
-        status = "Binh thuong" if val is not None else "Loi"
-
-        lines.append(f"{name},{val_str},{unit},{ts_str},{status}")
+        ts_str = ts.strftime("%Y%m%d%H%M%S") if isinstance(ts, datetime) else str(ts)
+        
+        # Xác định trạng thái báo cáo phụ lục thiết bị
+        status_code = record.get("status")
+        if status_code is None:
+            status_code = "00" if val is not None else "02"
+            
+        lines.append(f"{name}\t{val_str}\t{unit}\t{ts_str}\t{status_code}")
 
     content = "\n".join(lines)
     filepath.write_text(content, encoding="utf-8")

@@ -11,10 +11,12 @@ requires-python = ">=3.12"
 dependencies = [
     "pyside6>=6.7",
     "sqlmodel>=0.0.22",
+    "alembic>=1.13",
     "pymodbus[serial]>=3.7",
     "pyserial>=3.5",
     "asyncssh>=2.17",
     "cryptography>=43.0",
+    "paho-mqtt>=2.1.0",
 ]
 
 [project.optional-dependencies]

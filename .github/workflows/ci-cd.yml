@@ -1,0 +1,58 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build:
+    name: Build & Release Binary
+    runs-on: [self-hosted, linux, ARM64]
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -e .
+          pip install nuitka
+
+      - name: Build Standalone Binary with Nuitka
+        run: |
+          nuitka3 --standalone --onefile \
+            --include-data-dir=config=config \
+            --include-data-dir=ui/qml=ui/qml \
+            --plugin-enable=pyside6 \
+            --output-filename=datalogger \
+            main.py
+
+      - name: Generate VERSION file & Package Release Archive
+        run: |
+          mkdir -p release_package
+          # Lấy version từ _version.py
+          PYTHONPATH=. python -c "import core._version as v; print(v.__version__)" > VERSION
+          cp VERSION release_package/
+          
+          # Đưa binary và resources vào (Nuitka lưu file output là datalogger)
+          cp datalogger release_package/ || cp main.bin release_package/datalogger
+          cp -r config release_package/
+          cp -r ui release_package/
+          cp deploy.sh release_package/
+          
+          tar -czvf datalogger-release-${{ github.ref_name }}.tar.gz -C release_package .
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: datalogger-release-${{ github.ref_name }}.tar.gz
+          draft: false
+          prerelease: false
+          generate_release_notes: true

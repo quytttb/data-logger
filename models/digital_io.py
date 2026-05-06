@@ -37,6 +37,12 @@ class DigitalIO(SQLModel, table=True):
         description="Coil/Discrete-input address on the slave device",
     )
 
+    # === Status code (DI only) ===
+    di_type: Optional[str] = Field(
+        default=None,
+        description="Mã trạng thái báo cáo phụ lục (00, 01, 02, 03...). NULL nếu là DO.",
+    )
+
     # === DO-specific: alarm trigger condition ===
     trigger_on_max: bool = Field(
         default=True,

@@ -18,6 +18,7 @@ Rectangle {
     property int editSensorId: -1
     property int sensorSubTabIndex: 0
     property int returnMainTab: -1  // -1 = stay in Settings; >=0 = navigate to that main tab after Save/Cancel
+    property bool hasSelectedDio: sensorForm.hasSelectedDio
 
     signal requestMainTabChange(int tabIndex)
 
@@ -25,12 +26,18 @@ Rectangle {
     function saveConfig() {
         settingsController.save_config()
         isConfigChanged = false
-        toastPopup.showToast("Success", "Configuration saved.")
+        if (generalTab) generalTab.configChanged = false
+        if (connectionTab) connectionTab.configChanged = false
+        if (serverTab) serverTab.configChanged = false
+        // toastPopup is handled by messageSent from controller now, but we can keep it if needed.
     }
 
     function cancelConfig() {
         settingsController.load_config() // Reload from DB
         isConfigChanged = false
+        if (generalTab) generalTab.configChanged = false
+        if (connectionTab) connectionTab.configChanged = false
+        if (serverTab) serverTab.configChanged = false
     }
 
     function openAddSensor() {
@@ -125,6 +132,14 @@ Rectangle {
         _navigateBack()
     }
 
+    function editSelectedDio() {
+        sensorForm.editSelectedDio()
+    }
+
+    function deleteSelectedDio() {
+        sensorForm.deleteSelectedDio()
+    }
+
     function _navigateBack() {
         if (returnMainTab >= 0) {
             var tab = returnMainTab
@@ -175,18 +190,21 @@ Rectangle {
 
             // ── Tab 0: General ──
             SettingsGeneralTab {
+                id: generalTab
                 Layout.fillWidth: true; Layout.fillHeight: true
                 onConfigChangedChanged: { if (configChanged) settingsRoot.isConfigChanged = true }
             }
 
             // ── Tab 1: Connection ──
             SettingsConnectionTab {
+                id: connectionTab
                 Layout.fillWidth: true; Layout.fillHeight: true
                 onConfigChangedChanged: { if (configChanged) settingsRoot.isConfigChanged = true }
             }
 
             // ── Tab 2: Server ──
             SettingsServerTab {
+                id: serverTab
                 Layout.fillWidth: true; Layout.fillHeight: true
                 onConfigChangedChanged: { if (configChanged) settingsRoot.isConfigChanged = true }
             }
@@ -206,8 +224,8 @@ Rectangle {
                 isAddMode: settingsRoot.isAddMode
                 editSensorId: settingsRoot.editSensorId
                 sensorSubTabIndex: settingsRoot.sensorSubTabIndex
-                onAddDioFormSubmitted: function(ioType, label, slave, addr, trigMax, trigMin) {
-                    sensorModel.add_digital_io(settingsRoot.editSensorId, ioType, label, slave, addr, trigMax, trigMin, true)
+                onAddDioFormSubmitted: function(ioType, label, diType, slave, addr, trigMax, trigMin) {
+                    sensorModel.add_digital_io(settingsRoot.editSensorId, ioType, label, diType, slave, addr, trigMax, trigMin, true)
                     sensorForm.dioRepeaterRef.model = sensorModel.get_digital_ios(settingsRoot.editSensorId)
                 }
                 onRemoveDioRequested: function(dioId) {

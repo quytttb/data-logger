@@ -6,6 +6,7 @@ import ".."
 // Shared sensor configuration form used by both SettingsView and TesterView.
 // This is a "dumb component" — it does NOT call controllers/models directly.
 // Parent views call loadData() / resetForm() to populate, and getFormData() to read values.
+// Note: It delegates rendering to 3 sub-tabs: Basic, Scaling, and Digital I/O.
 
 Item {
     id: root
@@ -17,93 +18,101 @@ Item {
     property int sensorSubTabIndex: 0
 
     // Expose for parent to connect Digital I/O adding/removing
-    signal addDioFormSubmitted(string ioType, string label, int slave, int addr, bool trigMax, bool trigMin)
+    signal addDioFormSubmitted(string ioType, string label, string diType, int slave, int addr, bool trigMax, bool trigMin)
     signal removeDioRequested(int dioId)
 
-    // ── Internal refs (aliases for parent access) ──
-    property alias sensorName: dName
-    property alias sensorUnit: dUnit
-    property alias slaveId: dSlave
-    property alias registerAddress: dAddr
-    property alias registerType: dRegType
-    property alias dataType: dDataType
-    property alias dataFormat: dDataFmt
-    property alias scalingMode: dScalingMode
-    property alias linearA: dLinearA
-    property alias linearB: dLinearB
-    property alias rawMin: dRawMin
-    property alias rawMax: dRawMax
-    property alias scaleMin: dScaleMin
-    property alias scaleMax: dScaleMax
-    property alias coeffJson: dCoeffJson
-    property alias pollInterval: dPollInterval
-    property alias reportIndex: dReportIdx
-    property alias activeSwitch: dActive
-    property alias minThreshold: dMinThreshold
-    property alias maxThreshold: dMaxThreshold
-    property alias dioRepeaterRef: dioRepeater
+    // ── Internal refs (aliases mapped to sub-tabs) ──
+    property alias sensorName: basicTab.dName
+    property alias sensorUnit: basicTab.dUnit
+    property alias slaveId: basicTab.dSlave
+    property alias registerAddress: basicTab.dAddr
+    property alias registerType: basicTab.dRegType
+    property alias dataType: basicTab.dDataType
+    property alias dataFormat: basicTab.dDataFmt
+    property alias pollInterval: basicTab.dPollInterval
+    property alias reportIndex: basicTab.dReportIdx
+    property alias activeSwitch: basicTab.dActive
+
+    property alias scalingMode: scalingTab.dScalingMode
+    property alias linearA: scalingTab.dLinearA
+    property alias linearB: scalingTab.dLinearB
+    property alias rawMin: scalingTab.dRawMin
+    property alias rawMax: scalingTab.dRawMax
+    property alias scaleMin: scalingTab.dScaleMin
+    property alias scaleMax: scalingTab.dScaleMax
+    property alias coeffJson: scalingTab.dCoeffJson
+    property alias minThreshold: scalingTab.dMinThreshold
+    property alias maxThreshold: scalingTab.dMaxThreshold
+
+    property alias dioRepeaterRef: dioTab.dioRepeaterRef
+
+    // Exposed DIO functions for TaskBar buttons
+    property bool hasSelectedDio: dioTab.hasSelectedDio
+    function getSelectedDioId() { return dioTab.getSelectedDioId() }
+    function editSelectedDio() { dioTab.editSelectedDio() }
+    function deleteSelectedDio() { dioTab.deleteSelectedDio() }
 
     // ── Public functions ──
     function resetForm() {
-        dName.text = ""; dUnit.currentIndex = 0; dSlave.value = 1; dAddr.value = 0
-        dRegType.currentIndex = 0; dDataType.currentIndex = 0; dDataFmt.currentIndex = 0
-        dScalingMode.currentIndex = 0
-        dLinearA.text = "1"; dLinearB.text = "0"
-        dRawMin.text = "4000"; dRawMax.text = "20000"; dScaleMin.text = "4"; dScaleMax.text = "20"
-        dCoeffJson.text = "{}"
-        dPollInterval.value = 3; dReportIdx.value = 0; dActive.checked = true
-        dMinThreshold.text = ""; dMaxThreshold.text = ""
+        basicTab.dName.text = ""; basicTab.dUnit.currentIndex = 0; basicTab.dSlave.value = 1; basicTab.dAddr.value = 0
+        basicTab.dRegType.currentIndex = 0; basicTab.dDataType.currentIndex = 0; basicTab.dDataFmt.currentIndex = 0
+        scalingTab.dScalingMode.currentIndex = 0
+        scalingTab.dLinearA.text = "1"; scalingTab.dLinearB.text = "0"
+        scalingTab.dRawMin.text = "4000"; scalingTab.dRawMax.text = "20000"; scalingTab.dScaleMin.text = "4"; scalingTab.dScaleMax.text = "20"
+        scalingTab.dCoeffJson.text = "{}"
+        basicTab.dPollInterval.value = 3; basicTab.dReportIdx.value = 0; basicTab.dActive.checked = true
+        scalingTab.dMinThreshold.text = ""; scalingTab.dMaxThreshold.text = ""
     }
 
     function loadData(s, uiState) {
-        dName.text = s.name
+        basicTab.dName.text = s.name
         // Set unit ComboBox: try to find in list, otherwise set editText
-        var unitIdx = dUnit.find(s.unit)
-        if (unitIdx >= 0) dUnit.currentIndex = unitIdx
-        else dUnit.editText = s.unit
+        var unitIdx = basicTab.dUnit.find(s.unit)
+        if (unitIdx >= 0) basicTab.dUnit.currentIndex = unitIdx
+        else basicTab.dUnit.editText = s.unit
 
-        dSlave.value = s.slaveId; dAddr.value = s.registerAddress
-        dRegType.currentIndex = dRegType.model.indexOf(s.registerType)
-        dDataType.currentIndex = dDataType.model.indexOf(s.dataType)
-        dDataFmt.currentIndex = dDataFmt.model.indexOf(s.dataFormat)
+        basicTab.dSlave.value = s.slaveId; basicTab.dAddr.value = s.registerAddress
+        basicTab.dRegType.currentIndex = basicTab.dRegType.model.indexOf(s.registerType)
+        basicTab.dDataType.currentIndex = basicTab.dDataType.model.indexOf(s.dataType)
+        basicTab.dDataFmt.currentIndex = basicTab.dDataFmt.model.indexOf(s.dataFormat)
         
-        dScalingMode.currentIndex = Math.min(uiState.mode, dScalingMode.count - 1)
-        dLinearA.text = uiState.linearA !== undefined ? String(uiState.linearA) : "1"
-        dLinearB.text = uiState.linearB !== undefined ? String(uiState.linearB) : "0"
-        dRawMin.text = uiState.rawMin !== undefined ? String(uiState.rawMin) : "4000"
-        dRawMax.text = uiState.rawMax !== undefined ? String(uiState.rawMax) : "20000"
-        dScaleMin.text = uiState.scaleMin !== undefined ? String(uiState.scaleMin) : "4"
-        dScaleMax.text = uiState.scaleMax !== undefined ? String(uiState.scaleMax) : "20"
-        dCoeffJson.text = uiState.legacyJson !== undefined ? String(uiState.legacyJson) : "{}"
+        scalingTab.dScalingMode.currentIndex = Math.min(uiState.mode, scalingTab.dScalingMode.count - 1)
+        scalingTab.dLinearA.text = uiState.linearA !== undefined ? String(uiState.linearA) : "1"
+        scalingTab.dLinearB.text = uiState.linearB !== undefined ? String(uiState.linearB) : "0"
+        scalingTab.dRawMin.text = uiState.rawMin !== undefined ? String(uiState.rawMin) : "4000"
+        scalingTab.dRawMax.text = uiState.rawMax !== undefined ? String(uiState.rawMax) : "20000"
+        scalingTab.dScaleMin.text = uiState.scaleMin !== undefined ? String(uiState.scaleMin) : "4"
+        scalingTab.dScaleMax.text = uiState.scaleMax !== undefined ? String(uiState.scaleMax) : "20"
+        scalingTab.dCoeffJson.text = uiState.legacyJson !== undefined ? String(uiState.legacyJson) : "{}"
         
-        dPollInterval.value = s.pollInterval || 3
-        dReportIdx.value = s.reportIndex; dActive.checked = s.active
-        dMinThreshold.text = s.minThreshold !== undefined && s.minThreshold !== "" ? String(s.minThreshold) : ""
-        dMaxThreshold.text = s.maxThreshold !== undefined && s.maxThreshold !== "" ? String(s.maxThreshold) : ""
+        basicTab.dPollInterval.value = s.pollInterval || 3
+        basicTab.dReportIdx.value = s.reportIndex; basicTab.dActive.checked = s.active
+        scalingTab.dMinThreshold.text = s.minThreshold !== undefined && s.minThreshold !== "" ? String(s.minThreshold) : ""
+        scalingTab.dMaxThreshold.text = s.maxThreshold !== undefined && s.maxThreshold !== "" ? String(s.maxThreshold) : ""
     }
 
     function getFormData() {
         return {
-            name: dName.text,
-            unit: dUnit.editText,
-            slaveId: dSlave.value,
-            registerAddress: dAddr.value,
-            registerType: dRegType.currentText,
-            dataType: dDataType.currentText,
-            dataFormat: dDataFmt.currentText,
-            scalingModeIndex: dScalingMode.currentIndex,
-            linearA: dLinearA.text,
-            linearB: dLinearB.text,
-            rawMin: dRawMin.text,
-            rawMax: dRawMax.text,
-            scaleMin: dScaleMin.text,
-            scaleMax: dScaleMax.text,
-            coeffJson: dCoeffJson.text,
-            pollInterval: dPollInterval.value,
-            reportIndex: dReportIdx.value,
-            active: dActive.checked,
-            minThreshold: dMinThreshold.text,
-            maxThreshold: dMaxThreshold.text
+            name: basicTab.dName.text,
+            unit: basicTab.dUnit.editText,
+            slaveId: basicTab.dSlave.value,
+            registerAddress: basicTab.dAddr.value,
+            registerType: basicTab.dRegType.currentText,
+            dataType: basicTab.dDataType.currentText,
+            dataFormat: basicTab.dDataFmt.currentText,
+            scalingModeIndex: scalingTab.dScalingMode.currentIndex,
+            linearA: scalingTab.dLinearA.text,
+            linearB: scalingTab.dLinearB.text,
+            rawMin: scalingTab.dRawMin.text,
+            rawMax: scalingTab.dRawMax.text,
+            scaleMin: scalingTab.dScaleMin.text,
+            scaleMax: scalingTab.dScaleMax.text,
+            coeffJson: scalingTab.dCoeffJson.text,
+            pollInterval: basicTab.dPollInterval.value,
+            reportIndex: basicTab.dReportIdx.value,
+            active: basicTab.dActive.checked,
+            minThreshold: scalingTab.dMinThreshold.text,
+            maxThreshold: scalingTab.dMaxThreshold.text
         }
     }
 
@@ -113,279 +122,23 @@ Item {
         anchors.fill: parent
         currentIndex: root.sensorSubTabIndex
 
-        // ═══════════════════════════════════════════════════════════════
-        // TAB 0: Basic Info & Modbus Settings
-        // ═══════════════════════════════════════════════════════════════
-        Rectangle {
-            color: Theme.bgPanel; radius: Theme.radiusCard
-            border.color: Theme.borderDefault; border.width: 1
-
-            RowLayout {
-                anchors.fill: parent; anchors.margins: 20
-                spacing: 25
-
-                // ── COLUMN 1: Basic Info ──
-                ColumnLayout {
-                    Layout.fillWidth: true; Layout.alignment: Qt.AlignTop; spacing: 8
-                    Text { text: "Basic Info"; color: Theme.accentText; font.bold: true; font.pixelSize: 15 }
-                    Rectangle { Layout.fillWidth: true; height: 1; color: Theme.borderDefault }
-                    
-                    RowLayout {
-                        Layout.fillWidth: true
-                        Text { text: "Active:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; Layout.fillWidth: true }
-                        Switch { id: dActive; checked: true }
-                    }
-                    
-                    Text { text: "Name:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
-                    TextField { id: dName; Layout.fillWidth: true }
-
-                    Text { text: "Unit:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
-                    ComboBox {
-                        id: dUnit; Layout.fillWidth: true
-                        editable: true
-                        model: [
-                            "°C", "°F", "%", "%RH",
-                            "pH", "mg/L", "µg/L", "NTU",
-                            "m³/h", "m³/s", "L/min", "L/h",
-                            "m³", "m²", "m", "mm",
-                            "mV", "V", "mA", "A",
-                            "kPa", "Pa", "bar", "psi",
-                            "dB", "dBA", "lux",
-                            "ppm", "ppb", "mg/m³"
-                        ]
-                    }
-
-                    Text { text: "Poll interval (s):"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; visible: !root.isTesterMode }
-                    SpinBox { id: dPollInterval; from: 1; to: 3600; value: 3; Layout.fillWidth: true; visible: !root.isTesterMode }
-
-                    Text { text: "Report column index:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; visible: !root.isTesterMode }
-                    SpinBox { id: dReportIdx; from: 0; to: 99; value: 0; Layout.fillWidth: true; visible: !root.isTesterMode }
-                }
-
-                // ── COLUMN 2: Modbus Settings ──
-                ColumnLayout {
-                    Layout.fillWidth: true; Layout.alignment: Qt.AlignTop; spacing: 8
-                    Text { text: "Modbus Settings"; color: Theme.accentText; font.bold: true; font.pixelSize: 15 }
-                    Rectangle { Layout.fillWidth: true; height: 1; color: Theme.borderDefault }
-                    
-                    RowLayout {
-                        spacing: 10; Layout.fillWidth: true
-                        Text { text: "Slave ID:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; Layout.preferredWidth: 80 }
-                        SpinBox { id: dSlave; from: 1; to: 247; value: 1; Layout.fillWidth: true }
-                    }
-                    
-                    RowLayout {
-                        spacing: 10; Layout.fillWidth: true
-                        Text { text: "Address:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; Layout.preferredWidth: 80 }
-                        SpinBox { id: dAddr; from: 0; to: 65535; value: 0; Layout.fillWidth: true; editable: true }
-                    }
-
-                    Text { text: "Register type:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
-                    ComboBox { id: dRegType; model: ["Invalid", "Discrete Inputs", "Coils", "Input Registers", "Holding Registers"]; Layout.fillWidth: true }
-
-                    Text { text: "Data type:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
-                    ComboBox { id: dDataType; model: ["int16", "uint16", "int32", "uint32", "float32"]; Layout.fillWidth: true }
-
-                    Text { text: "Endian format:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
-                    ComboBox { id: dDataFmt; model: ["AB", "BA", "ABCD", "CDAB"]; Layout.fillWidth: true }
-                }
-            }
+        SensorBasicTab {
+            id: basicTab
+            isTesterMode: root.isTesterMode
         }
 
-        // ═══════════════════════════════════════════════════════════════
-        // TAB 1: Scaling & Alarms
-        // ═══════════════════════════════════════════════════════════════
-        Rectangle {
-            color: Theme.bgPanel; radius: Theme.radiusCard
-            border.color: Theme.borderDefault; border.width: 1
-
-            ColumnLayout {
-                anchors.left: parent.left; anchors.right: parent.right
-                anchors.top: parent.top; anchors.margins: 20
-                spacing: 8
-
-                Text { text: "Scaling & Alarms"; color: Theme.accentText; font.bold: true; font.pixelSize: 15 }
-                Rectangle { Layout.fillWidth: true; height: 1; color: Theme.borderDefault }
-
-                // Use a 2-column grid for compact threshold + scaling layout
-                GridLayout {
-                    columns: 4; Layout.fillWidth: true; columnSpacing: 15; rowSpacing: 8
-
-                    Text { text: "Min threshold:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
-                    TextField { id: dMinThreshold; Layout.fillWidth: true; placeholderText: text.length > 0 ? "" : "Empty = disabled"; inputMethodHints: Qt.ImhFormattedNumbersOnly }
-                    Text { text: "Max threshold:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
-                    TextField { id: dMaxThreshold; Layout.fillWidth: true; placeholderText: text.length > 0 ? "" : "Empty = disabled"; inputMethodHints: Qt.ImhFormattedNumbersOnly }
-                }
-
-                Item { Layout.preferredHeight: 8 }
-
-                Text { text: "Scaling mode:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
-                ComboBox {
-                    id: dScalingMode; Layout.fillWidth: true; Layout.maximumWidth: 400
-                    model: ["No scaling (raw value)", "Linear (y = ax + b)", "Two-point mapping", "Advanced (JSON)"]
-                }
-
-                StackLayout {
-                    Layout.fillWidth: true; currentIndex: dScalingMode.currentIndex
-                    Item { implicitHeight: 0 }
-                    RowLayout {
-                        spacing: 8
-                        Text { text: "a:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
-                        TextField { id: dLinearA; Layout.fillWidth: true; text: "1" }
-                        Text { text: "b:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
-                        TextField { id: dLinearB; Layout.fillWidth: true; text: "0" }
-                    }
-                    ColumnLayout {
-                        spacing: 6
-                        RowLayout {
-                            spacing: 8
-                            Text { text: "RawMin:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; Layout.preferredWidth: 60 }
-                            TextField { id: dRawMin; text: "4000"; Layout.fillWidth: true }
-                            Text { text: "Max:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
-                            TextField { id: dRawMax; text: "20000"; Layout.fillWidth: true }
-                        }
-                        RowLayout {
-                            spacing: 8
-                            Text { text: "ScaleMin:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; Layout.preferredWidth: 60 }
-                            TextField { id: dScaleMin; text: "4"; Layout.fillWidth: true }
-                            Text { text: "Max:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
-                            TextField { id: dScaleMax; text: "20"; Layout.fillWidth: true }
-                        }
-                    }
-                    TextField { id: dCoeffJson; text: "{}"; Layout.fillWidth: true }
-                }
-            }
+        SensorScalingTab {
+            id: scalingTab
         }
 
-        // ═══════════════════════════════════════════════════════════════
-        // TAB 2: Digital I/O
-        // ═══════════════════════════════════════════════════════════════
-        Rectangle {
-            color: Theme.bgPanel; radius: Theme.radiusCard
-            border.color: Theme.borderDefault; border.width: 1
-
-            RowLayout {
-                anchors.fill: parent; anchors.margins: 20
-                spacing: 20
-
-                // ── LEFT: Add Form ──
-                ColumnLayout {
-                    Layout.fillHeight: true
-                    Layout.fillWidth: true
-                    Layout.preferredWidth: 1
-                    spacing: 12
-
-                    Text { text: "Add Digital I/O"; color: Theme.accentText; font.bold: true; font.pixelSize: 15 }
-                    Rectangle { Layout.fillWidth: true; height: 1; color: Theme.borderDefault }
-
-                    GridLayout {
-                        columns: 2; Layout.fillWidth: true; columnSpacing: 10; rowSpacing: 10
-
-                        Text { text: "Type:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
-                        ComboBox {
-                            id: newDioType
-                            model: ["DI", "DO"]
-                            Layout.fillWidth: true
-                        }
-
-                        Text { text: "Label:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
-                        AppTextField { id: newDioLabel; Layout.fillWidth: true; placeholderText: "e.g. Buzzer, Lamp" }
-
-                        Text { text: "Slave ID:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
-                        SpinBox { id: newDioSlave; from: 1; to: 247; value: 1; Layout.fillWidth: true; editable: true }
-
-                        Text { text: "Address:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
-                        SpinBox { id: newDioAddr; from: 0; to: 65535; value: 0; Layout.fillWidth: true; editable: true }
-
-                        Text { text: "Trigger on Max:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; visible: newDioType.currentText === "DO" }
-                        Switch { id: newDioTrigMax; checked: true; visible: newDioType.currentText === "DO" }
-
-                        Text { text: "Trigger on Min:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; visible: newDioType.currentText === "DO" }
-                        Switch { id: newDioTrigMin; checked: true; visible: newDioType.currentText === "DO" }
-                    }
-
-                    Item { Layout.fillHeight: true } // Spacer
-
-                    Button {
-                        text: "ADD " + newDioType.currentText
-                        Layout.fillWidth: true
-                        onClicked: {
-                            if (newDioLabel.text.trim() === "") return
-                            root.addDioFormSubmitted(newDioType.currentText, newDioLabel.text, newDioSlave.value, newDioAddr.value, newDioTrigMax.checked, newDioTrigMin.checked)
-                            // Reset form somewhat
-                            newDioLabel.text = ""
-                            newDioAddr.value = newDioAddr.value + 1
-                        }
-                    }
-                }
-
-                // Divider
-                Rectangle { width: 1; Layout.fillHeight: true; color: Theme.borderDefault }
-
-                // ── RIGHT: List ──
-                ColumnLayout {
-                    Layout.fillHeight: true
-                    Layout.fillWidth: true
-                    Layout.preferredWidth: 1
-                    spacing: 12
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        Text { text: "Configured I/O"; color: Theme.accentText; font.bold: true; font.pixelSize: 15; Layout.fillWidth: true }
-                        Text {
-                            text: dioRepeater.count > 0 ? dioRepeater.count + " item(s)" : ""
-                            color: Theme.textSecondary; font.pixelSize: 13
-                        }
-                    }
-                    Rectangle { Layout.fillWidth: true; height: 1; color: Theme.borderDefault }
-
-                    ListView {
-                        id: dioListView
-                        Layout.fillWidth: true; Layout.fillHeight: true
-                        clip: true; spacing: 4
-                        model: dioRepeater.model
-
-                        delegate: Rectangle {
-                            width: dioListView.width; height: 40; radius: 4
-                            color: modelData.ioType === "DO" ? "#301010" : "#103010"
-                            RowLayout {
-                                anchors.fill: parent; anchors.margins: 6; spacing: 8
-                                Rectangle {
-                                    width: 36; height: 24; radius: 4
-                                    color: modelData.ioType === "DO" ? Theme.btnStop : Theme.btnStart
-                                    Text {
-                                        anchors.centerIn: parent
-                                        text: modelData.ioType; color: "#FFF"; font.bold: true; font.pixelSize: 12
-                                    }
-                                }
-                                Text { text: modelData.label; color: Theme.textPrimary; font.pixelSize: 14; Layout.fillWidth: true; elide: Text.ElideRight }
-                                Text { text: "Slave " + modelData.slaveId + " / Addr " + modelData.address; color: Theme.textSecondary; font.pixelSize: 12 }
-                                Button {
-                                    text: "✕"
-                                    Layout.preferredWidth: 32; Layout.preferredHeight: 28
-                                    background: Rectangle { color: Theme.bgErrorTint; radius: 4 }
-                                    onClicked: root.removeDioRequested(modelData.id)
-                                }
-                            }
-                        }
-
-                        // Empty state
-                        Text {
-                            visible: dioListView.count === 0
-                            anchors.centerIn: parent
-                            text: "No digital I/O pins configured.\nUse the form on the left to add DI or DO."
-                            color: Theme.textFaint; font.pixelSize: 14
-                            horizontalAlignment: Text.AlignHCenter
-                        }
-                    }
-                }
+        SensorDigitalIOTab {
+            id: dioTab
+            onAddDioFormSubmitted: function(ioType, label, diType, slave, addr, trigMax, trigMin) {
+                root.addDioFormSubmitted(ioType, label, diType, slave, addr, trigMax, trigMin)
+            }
+            onRemoveDioRequested: function(dioId) {
+                root.removeDioRequested(dioId)
             }
         }
-    }
-
-    // Hidden Repeater to maintain dioRepeater alias compatibility
-    Repeater {
-        id: dioRepeater
-        delegate: Item { visible: false }
     }
 }

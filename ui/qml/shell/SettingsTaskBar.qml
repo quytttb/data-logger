@@ -12,6 +12,7 @@ Item {
     property bool hasSelectedSensor: false
     property bool isAddMode: true // true for Add sensor, false for Edit sensor
     property int sensorSubTabIndex: 0
+    property bool hasSelectedDio: false
 
     signal tabSelected(int idx)
     signal sensorSubTabSelected(int idx)
@@ -28,6 +29,10 @@ Item {
     // Actions for Sensor form (Add/Edit)
     signal saveSensorForm()
     signal cancelSensorForm()
+
+    // Actions for Digital I/O
+    signal editSelectedDio()
+    signal deleteSelectedDio()
 
     RowLayout {
         anchors.left: parent.left
@@ -73,15 +78,6 @@ Item {
         RowLayout {
             visible: root.settingsTabIndex === 4
             spacing: 10
-
-            Label {
-                text: root.isAddMode ? "Add sensor" : "Edit sensor"
-                font.pixelSize: 15; font.bold: true
-                color: Theme.accentText
-                Layout.alignment: Qt.AlignVCenter
-            }
-
-            Rectangle { width: 1; height: 28; color: Theme.borderDefault; Layout.alignment: Qt.AlignVCenter }
 
             TabBar {
                 id: sensorSubTabBar
@@ -204,6 +200,41 @@ Item {
         RowLayout {
             visible: root.settingsTabIndex === 4
             spacing: 8
+
+            // DIO Edit/Delete buttons (visible only on Digital I/O sub-tab)
+            Button {
+                visible: root.sensorSubTabIndex === 2 && root.hasSelectedDio
+                Layout.preferredWidth: 44
+                Layout.preferredHeight: 44
+                icon.source: "../../../assets/icons/delete.svg"
+                icon.color: Theme.textOnColoredBtn
+                icon.width: 18
+                icon.height: 18
+                background: Rectangle {
+                    radius: Theme.radiusSmall
+                    color: Theme.btnStop
+                    opacity: parent.pressed ? 0.75 : 1.0
+                }
+                onClicked: root.deleteSelectedDio()
+            }
+
+            Button {
+                visible: root.sensorSubTabIndex === 2 && root.hasSelectedDio
+                Layout.preferredWidth: 44
+                Layout.preferredHeight: 44
+                icon.source: "../../../assets/icons/edit.svg"
+                icon.color: Theme.textOnColoredBtn
+                icon.width: 18
+                icon.height: 18
+                background: Rectangle {
+                    radius: Theme.radiusSmall
+                    color: Theme.accent
+                    opacity: parent.pressed ? 0.75 : 1.0
+                }
+                onClicked: root.editSelectedDio()
+            }
+
+            Rectangle { width: 1; height: 28; color: Theme.borderDefault; Layout.alignment: Qt.AlignVCenter; visible: root.sensorSubTabIndex === 2 && root.hasSelectedDio }
             
             Button {
                 text: "Cancel"

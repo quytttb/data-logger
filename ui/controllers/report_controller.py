@@ -23,6 +23,7 @@ class ReportController(QObject):
     lastStatusChanged = Signal()
     pendingCountChanged = Signal()
     messageSent = Signal(str, str)
+    workerHeartbeat = Signal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -71,6 +72,7 @@ class ReportController(QObject):
         self._thread.started.connect(self._worker.run)
         self._worker.worker_stopped.connect(self._on_worker_stopped)
         self._worker.ftp_status.connect(self._on_ftp_status)
+        self._worker.heartbeat.connect(self.workerHeartbeat)
 
         self._thread.start()
         self._is_running = True

@@ -153,6 +153,50 @@ EOF
     info "Xem log:           sudo journalctl -u $SERVICE_NAME -f"
 }
 
+optimize_pi() {
+    header "Tối ưu Raspberry Pi OS (Tắt dịch vụ thừa)"
+    if [ "$EUID" -ne 0 ]; then
+        error "Cần quyền root để ghi vào /boot/config.txt. Chạy: sudo ./setup.sh --optimize"
+        exit 1
+    fi
+
+    CONFIG_FILE="/boot/config.txt"
+    if [ ! -f "$CONFIG_FILE" ]; then
+        # Pi 5 / Bookworm uses /boot/firmware/config.txt
+        if [ -f "/boot/firmware/config.txt" ]; then
+            CONFIG_FILE="/boot/firmware/config.txt"
+        else
+            warn "Không tìm thấy $CONFIG_FILE. Bỏ qua tối ưu OS."
+            return
+        fi
+    fi
+
+    info "Cập nhật $CONFIG_FILE ..."
+    
+    # Disable Bluetooth
+    if ! grep -q "^dtoverlay=disable-bt" "$CONFIG_FILE"; then
+        echo "dtoverlay=disable-bt" >> "$CONFIG_FILE"
+    fi
+    # Disable Wi-Fi
+    if ! grep -q "^dtoverlay=disable-wifi" "$CONFIG_FILE"; then
+        echo "dtoverlay=disable-wifi" >> "$CONFIG_FILE"
+    fi
+    # Disable Audio
+    sed -i 's/^dtparam=audio=on/dtparam=audio=off/' "$CONFIG_FILE"
+    if ! grep -q "^dtparam=audio=off" "$CONFIG_FILE"; then
+        echo "dtparam=audio=off" >> "$CONFIG_FILE"
+    fi
+    # Disable Camera Auto Detect
+    sed -i 's/^camera_auto_detect=1/camera_auto_detect=0/' "$CONFIG_FILE"
+    if ! grep -q "^camera_auto_detect=0" "$CONFIG_FILE"; then
+        echo "camera_auto_detect=0" >> "$CONFIG_FILE"
+    fi
+
+    info "Đã thêm cấu hình tắt Bluetooth, Wi-Fi, Audio và Camera."
+    info "Bạn có thể tắt cổng HDMI bằng lệnh: vcgencmd display_power 0 (khi không cần cắm màn hình)"
+    warn "Cần khởi động lại (sudo reboot) để áp dụng."
+}
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 case "$MODE" in
     --install)
@@ -165,13 +209,16 @@ case "$MODE" in
         install_step
         install_service
         ;;
+    --optimize)
+        optimize_pi
+        ;;
     "")
         # Mặc định: cài rồi chạy
         install_step
         run_step
         ;;
     *)
-        echo "Dùng: $0 [--install | --run | --service]"
+        echo "Dùng: $0 [--install | --run | --service | --optimize]"
         exit 1
         ;;
 esac

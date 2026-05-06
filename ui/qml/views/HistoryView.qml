@@ -155,6 +155,8 @@ Rectangle {
                 // Data rows
                 ListView {
                     id: historyList
+                    clip: true
+                    smooth: false
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     model: historyModel

@@ -12,6 +12,12 @@ Rectangle {
 
     signal sensorDoubleClicked()
 
+    onVisibleChanged: {
+        if (visible) {
+            sensorListView.currentIndex = -1
+        }
+    }
+
     ColumnLayout {
         anchors.fill: parent; spacing: 0
         
@@ -38,6 +44,8 @@ Rectangle {
         // List
         ListView {
             id: sensorListView
+            clip: true
+            smooth: false
             Layout.fillWidth: true; Layout.fillHeight: true
             clip: true
             model: sensorModel
@@ -45,11 +53,15 @@ Rectangle {
             
             delegate: Rectangle {
                 width: sensorListView.width; height: 44
-                color: ListView.isCurrentItem ? Theme.bgSeparator : (index % 2 === 0 ? "transparent" : Theme.bgDeep)
+                color: index % 2 === 0 ? "transparent" : Theme.bgDeep
+                border.color: ListView.isCurrentItem ? Theme.accent : "transparent"
+                border.width: ListView.isCurrentItem ? 2 : 0
                 
                 MouseArea {
                     anchors.fill: parent
-                    onClicked: sensorListView.currentIndex = index
+                    onClicked: {
+                        sensorListView.currentIndex = (sensorListView.currentIndex === index) ? -1 : index
+                    }
                     onDoubleClicked: root.sensorDoubleClicked()
                 }
 
