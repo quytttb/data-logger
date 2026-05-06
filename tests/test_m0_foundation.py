@@ -37,7 +37,7 @@ def test_m0_1_pragma():
     print(f"  temp_store = {result} (MEMORY) ✓")
 
     result = session.execute(text("PRAGMA cache_size;")).scalar()
-    assert result == -8000, f"Expected -8000, got {result}"
+    assert result == -20000, f"Expected -20000, got {result}"
     print(f"  cache_size = {result} ✓")
 
     session.close()
