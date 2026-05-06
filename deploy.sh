@@ -106,8 +106,26 @@ release_version() {
         echo "Cảnh báo: Định dạng version thường nên bắt đầu bằng 'v' và 3 số (vd: v1.0.1)"
     fi
     
+    # Kiểm tra an toàn: Nếu Tag đã tồn tại thì huỷ bỏ
+    if git rev-parse -q --verify "refs/tags/$NEW_VERSION" >/dev/null; then
+        echo "[Lỗi] Phiên bản $NEW_VERSION đã tồn tại ở local/remote! Dừng thao tác để tránh xung đột."
+        return
+    fi
+    
     read -p "2. Bạn có chắc chắn muốn phát hành tag Git $NEW_VERSION? (y/n): " confirm
     if [[ "$confirm" == "y" || "$confirm" == "Y" ]]; then
+        RAW_VERSION="${NEW_VERSION#v}"
+        
+        # 1. Update version trong source code
+        echo "Đang tự động cập nhật core/_version.py thành $RAW_VERSION..."
+        sed -i "s/__version__ = .*/__version__ = \"${RAW_VERSION}\"/" "$APP_DIR/core/_version.py"
+        
+        # 2. Push commit thay đổi này lên main trước
+        git add "$APP_DIR/core/_version.py"
+        git commit -m "chore(release): bump version to $NEW_VERSION"
+        git push origin main
+        
+        # 3. Tạo Tag & Trigger CI/CD
         echo "Đang tạo Git Tag $NEW_VERSION..."
         git tag $NEW_VERSION
         
