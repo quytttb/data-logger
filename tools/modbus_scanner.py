@@ -1,5 +1,3 @@
-import sys
-import time
 import argparse
 from pymodbus.client import ModbusSerialClient
 
@@ -46,7 +44,7 @@ def scan_modbus(port):
                     result = client.read_holding_registers(address=0, count=1, **kwargs)
                     found = False
                     if not result.isError():
-                        print(f"\n[+] TÌM THẤY THIẾT BỊ!")
+                        print("\n[+] TÌM THẤY THIẾT BỊ!")
                         print(f"  - Cổng: {port}")
                         print(f"  - Baudrate: {baud}")
                         print(f"  - Parity: {parity}")
@@ -54,7 +52,7 @@ def scan_modbus(port):
                         print(f"  - Phản hồi từ Holding Register 0: {result.registers}")
                         found = True
                     elif hasattr(result, 'exception_code'):
-                        print(f"\n[+] TÌM THẤY THIẾT BỊ (Nhưng báo lỗi Exception)!")
+                        print("\n[+] TÌM THẤY THIẾT BỊ (Nhưng báo lỗi Exception)!")
                         print(f"  - Cổng: {port}")
                         print(f"  - Baudrate: {baud}")
                         print(f"  - Parity: {parity}")

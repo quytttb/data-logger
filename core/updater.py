@@ -1,8 +1,6 @@
-import os
 import json
 import urllib.request
 import subprocess
-from pathlib import Path
 import logging
 
 from PySide6.QtCore import QObject, Signal, Slot, QThread

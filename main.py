@@ -18,7 +18,6 @@ from PySide6.QtQuick import QQuickWindow
 
 from core._paths import (
     APP_DESKTOP_ID,
-    LOG_DIR,
     QML_DIR,
     app_icon_path,
     argv_for_qt,

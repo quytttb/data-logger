@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (
     QLabel, QDoubleSpinBox, QPushButton, QComboBox, QGroupBox, QGridLayout,
     QCheckBox
 )
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import QTimer
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("ModbusSimulator")

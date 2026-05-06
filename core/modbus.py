@@ -100,7 +100,7 @@ class ModbusBase(ABC):
         # Phân tách logic xử lý trả về theo loại thanh ghi
         if reg_type in ["Coil", "Discrete Input"]:
             if hasattr(result, "bits"):
-                # Pymodbus luôn trả về danh sách bits. 
+                # Pymodbus luôn trả về danh sách bits.
                 # Lấy bit đầu tiên vì count=1 (cho mỗi address scan), trả về 1 hoặc 0 cho giao diện.
                 return 1 if result.bits[0] else 0
             raise IOError("No boolean data returned from device")
@@ -298,7 +298,8 @@ class ModbusRTU(ModbusBase):
     @staticmethod
     def _try_fix_permission(port: str) -> bool:
         """Thử cấp quyền truy cập cổng serial qua pkexec (hộp thoại nhập mật khẩu đồ hoạ)."""
-        import subprocess, shutil
+        import subprocess
+        import shutil
         # Ưu tiên pkexec (có GUI prompt), fallback sang gksu/kdesu
         for sudo_gui in ("pkexec", "gksudo", "kdesudo"):
             if shutil.which(sudo_gui):

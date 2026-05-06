@@ -16,10 +16,10 @@ if config.config_file_name is not None:
 
 # add your model's MetaData object here
 # for 'autogenerate' support
-import os
-import sys
+import os  # noqa: E402
+import sys  # noqa: E402
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from sqlmodel import SQLModel
+from sqlmodel import SQLModel  # noqa: E402
 # Ensure models are loaded
 import models.app_config  # noqa
 import models.digital_io  # noqa
@@ -29,7 +29,7 @@ import models.sensor_data # noqa
 
 target_metadata = SQLModel.metadata
 
-from core.database import DATABASE_URL
+from core.database import DATABASE_URL  # noqa: E402
 config.set_main_option("sqlalchemy.url", DATABASE_URL)
 
 
