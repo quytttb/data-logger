@@ -25,6 +25,8 @@ else:
     # Python source: __file__ = app/core/_paths.py → parent.parent = app/
     _BIN_DIR = Path(__file__).resolve().parent.parent
 
+ROOT_DIR = _BIN_DIR
+
 DATA_DIR   = Path(os.environ.get("DATALOGGER_DATA_DIR",   str(_BIN_DIR / "data")))
 CONFIG_DIR = Path(os.environ.get("DATALOGGER_CONFIG_DIR", str(_BIN_DIR / "config")))
 LOG_DIR    = Path(os.environ.get("DATALOGGER_LOG_DIR",    str(_BIN_DIR / "logs")))
