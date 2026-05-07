@@ -57,11 +57,13 @@ class ModbusWorker(QObject):
         
         try:
             import tomllib
-            from core._paths import ROOT_DIR
-            with open(f"{ROOT_DIR}/config/config.toml", "rb") as f:
-                cfg = tomllib.load(f)
-                if "modbus" in cfg and "POLLING_INTERVAL" in cfg["modbus"]:
-                    poll_interval = cfg["modbus"]["POLLING_INTERVAL"]
+            from core._paths import CONFIG_DIR
+            config_file = CONFIG_DIR / "config.toml"
+            if config_file.exists():
+                with open(config_file, "rb") as f:
+                    cfg = tomllib.load(f)
+                    if "modbus" in cfg and "POLLING_INTERVAL" in cfg["modbus"]:
+                        poll_interval = cfg["modbus"]["POLLING_INTERVAL"]
         except Exception:
             pass
 

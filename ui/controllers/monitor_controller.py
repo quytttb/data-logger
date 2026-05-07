@@ -301,9 +301,14 @@ class MonitorController(QObject):
     def _init_exporter(self):
         """Initialize Cloud Exporter if enabled in config.toml."""
         import tomllib
-        from core._paths import ROOT_DIR
+        from core._paths import CONFIG_DIR
         try:
-            with open(f"{ROOT_DIR}/config/config.toml", "rb") as f:
+            config_file = CONFIG_DIR / "config.toml"
+            if not config_file.exists():
+                logger.debug(f"Config file not found: {config_file}. Exporter will not start.")
+                return
+            
+            with open(config_file, "rb") as f:
                 cfg = tomllib.load(f)
                 cloud_cfg = cfg.get("cloud", {})
                 if cloud_cfg.get("enable_mqtt", False):

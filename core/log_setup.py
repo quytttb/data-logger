@@ -20,7 +20,8 @@ def _rotator(source: str, dest: str) -> None:
 
 def setup_logging() -> None:
     # Đọc config.toml
-    config_path = ROOT_DIR / "config" / "config.toml"
+    from core._paths import CONFIG_DIR
+    config_path = CONFIG_DIR / "config.toml"
     log_level = logging.INFO
     log_file = LOG_DIR / "app.log"
     max_bytes = 5 * 1024 * 1024  # 5MB
