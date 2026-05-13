@@ -79,6 +79,9 @@ class SensorListModel(QAbstractListModel):
         role_name = _ROLE_NAMES.get(role)
         if role_name is None:
             return None
+        field = _FIELD_MAP.get(role_name)
+        if field is None:
+            return None
         val = getattr(sensor, field)
         return val.value if hasattr(val, "value") else val
 
