@@ -36,7 +36,7 @@ jobs:
           sudo apt-get install -y patchelf
 
       - name: Cache pip
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/pip
           key: pip-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pyproject.toml') }}
@@ -44,7 +44,7 @@ jobs:
             pip-${{ runner.os }}-${{ runner.arch }}-
 
       - name: Cache Nuitka
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/Nuitka
           key: nuitka-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pyproject.toml') }}
