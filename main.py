@@ -4,6 +4,7 @@ Khởi tạo QGuiApplication, Database và load Main.qml.
 Giao diện QML được thiết kế theo triết lý "Precision Brutalism"
 tối ưu màn hình công nghiệp 1024x600.
 """
+# ruff: noqa: E402
 
 import logging
 import os
