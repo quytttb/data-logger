@@ -15,11 +15,11 @@ ApplicationWindow {
     }
 
     function handleNavigateToAddSensor(data) {
-        root.currentTab = 2  // Switch to Settings tab
+        root.currentTab = 3  // Switch to Settings tab
         // Wait a frame for the settings loader to activate, then call openAddSensorWithData
         Qt.callLater(function() {
             if (tabContent.loaderSettings.item) {
-                tabContent.loaderSettings.item.returnMainTab = 3  // Return to Tester tab
+                tabContent.loaderSettings.item.returnMainTab = 4  // Return to Tester tab
                 tabContent.loaderSettings.item.openAddSensorWithData(data)
             }
         })
@@ -31,7 +31,7 @@ ApplicationWindow {
     color: Theme.bgDeep
     // Toàn màn hình khi mở: che taskbar + không thanh tiêu đề (decoration)
     // Tạm thời tắt — bật lại: bỏ comment dòng dưới
-    visibility: Window.FullScreen
+    // visibility: Window.FullScreen
 
     // ── Navigation state ─────────────────────────────────────────────────
     property int currentTab: 0
@@ -70,7 +70,7 @@ ApplicationWindow {
                 currentTab: root.currentTab
                 onSelectTab: function (i) {
                     // If leaving Settings while Add/Edit form is open, cancel it
-                    if (root.currentTab === 2 && i !== 2) {
+                    if (root.currentTab === 3 && i !== 3) {
                         if (tabContent.loaderSettings.item && tabContent.loaderSettings.item.settingsTabIndex === 4) {
                             tabContent.loaderSettings.item.closeSensorForm()
                         }

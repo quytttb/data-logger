@@ -358,9 +358,9 @@ class SettingsController(QObject):
                     for log in failed_logs:
                         log.retry_count = 0
                     session.commit()
-                    logger.info("Reset retry_count cho %d bản ghi failed để gửi bù.", len(failed_logs))
+                    logger.info("Reset retry_count for %d failed records for backfill.", len(failed_logs))
             except Exception as e:
-                logger.error("Lỗi khi reset retry_count: %s", e)
+                logger.error("Error resetting retry_count: %s", e)
 
             self.configLoaded.emit()
             self.configSaved.emit()

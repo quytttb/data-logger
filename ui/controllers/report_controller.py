@@ -64,7 +64,7 @@ class ReportController(QObject):
                 interval = max(1, config.server_send_interval)
             session.close()
         except Exception as e:
-            logger.warning("Không đọc được interval từ DB, dùng mặc định %d phút: %s", interval, e)
+            logger.warning("Could not read interval from DB, using default %d min: %s", interval, e)
 
         self._worker = FtpWorker(interval_minutes=interval)
         self._thread = QThread()
@@ -86,19 +86,32 @@ class ReportController(QObject):
         if not self._is_running:
             return
 
+        self._is_running = False
+
         if self._worker:
             self._worker.stop()
 
+        # Nếu thread vẫn đang chạy (worker bị block trong FTP I/O),
+        # đợi worker_stopped signal để dọn dẹp an toàn thay vì
+        # destroy QThread ngay lập tức gây crash.
         if self._thread and self._thread.isRunning():
             self._thread.quit()
-            self._thread.wait(10000)
+            if not self._thread.wait(3000):
+                logger.warning(
+                    "FtpWorker thread did not stop within 3s, forcing termination to prevent crash..."
+                )
+                self._thread.terminate()
+                self._thread.wait()
 
-        self._worker = None
-        self._thread = None
-        self._is_running = False
+        self._cleanup_thread()
         self._set_status("Report: stopped")
         self.runningChanged.emit()
         logger.info("ReportController stopped.")
+
+    def _cleanup_thread(self):
+        """Dọn dẹp thread + worker references an toàn."""
+        self._worker = None
+        self._thread = None
 
     @Slot()
     def refresh_pending(self):
@@ -117,6 +130,8 @@ class ReportController(QObject):
     def _on_worker_stopped(self) -> None:
         if self._thread and self._thread.isRunning():
             self._thread.quit()
+            self._thread.wait(3000)
+        self._cleanup_thread()
         if self._is_running:
             self._is_running = False
             self._set_status("Report: worker exited")

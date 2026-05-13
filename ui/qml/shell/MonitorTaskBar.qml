@@ -185,56 +185,27 @@ Item {
         }
 
         Item { Layout.fillWidth: true }
-        
-        Rectangle {
-            Layout.preferredWidth: wdLabel.implicitWidth + 24
-            Layout.preferredHeight: 32
-            radius: Theme.radiusSmall
-            color: monitorController.watchdogStatus === "OK" ? Theme.bgSeparator : Theme.bgErrorTint
-            Layout.alignment: Qt.AlignVCenter
 
-            Text {
-                id: wdLabel
-                anchors.centerIn: parent
-                text: "WD: " + monitorController.watchdogStatus
-                color: monitorController.watchdogStatus === "OK" ? Theme.textSecondary : Theme.statusErr
-                font.pixelSize: 12
-                font.bold: true
-            }
-        }
-        
-        Rectangle {
-            Layout.preferredWidth: cpuLabel.implicitWidth + 24
-            Layout.preferredHeight: 32
-            radius: Theme.radiusSmall
-            color: monitorController.cpuTemp > 65.0 ? Theme.bgErrorTint : Theme.bgSeparator
-            Layout.alignment: Qt.AlignVCenter
-
-            Text {
-                id: cpuLabel
-                anchors.centerIn: parent
-                text: "CPU: " + monitorController.cpuTemp.toFixed(1) + "°C"
-                color: monitorController.cpuTemp > 65.0 ? Theme.statusErr : Theme.textSecondary
-                font.pixelSize: 12
-                font.bold: true
-            }
-        }
 
         Rectangle {
             Layout.preferredWidth: errLabel.implicitWidth + 24
             Layout.preferredHeight: 32
             radius: Theme.radiusSmall
-            color: monitorController.errorCount > 0 ? Theme.bgErrorTint : Theme.bgSeparator
+            color: (monitorController.watchdogStatus !== "OK" && monitorController.watchdogStatus !== "N/A") || monitorController.errorCount > 0 ? Theme.bgErrorTint : Theme.bgSeparator
             visible: monitorController.isPolling
             Layout.alignment: Qt.AlignVCenter
 
             Text {
                 id: errLabel
                 anchors.centerIn: parent
-                text: monitorController.errorCount > 0
-                    ? "Modbus read errors: %1".arg(monitorController.errorCount)
-                    : "No read errors"
-                color: monitorController.errorCount > 0 ? Theme.statusErr : Theme.textSecondary
+                text: {
+                    if (monitorController.watchdogStatus !== "OK" && monitorController.watchdogStatus !== "N/A")
+                        return "SYSTEM FAULT - " + monitorController.watchdogStatus;
+                    if (monitorController.errorCount > 0)
+                        return "Modbus read errors: " + monitorController.errorCount;
+                    return "No read errors";
+                }
+                color: (monitorController.watchdogStatus !== "OK" && monitorController.watchdogStatus !== "N/A") || monitorController.errorCount > 0 ? Theme.statusErr : Theme.textSecondary
                 font.pixelSize: 12
                 font.bold: true
             }

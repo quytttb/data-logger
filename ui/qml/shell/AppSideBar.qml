@@ -20,7 +20,7 @@ Rectangle {
             spacing: 0
 
             Repeater {
-                model: 4
+                model: 5
 
                 delegate: ItemDelegate {
                     id: navDelegate
@@ -43,11 +43,11 @@ Rectangle {
                         }
                     }
 
-                    text: ["Monitor", "History", "Settings", "Modbus tester"][navDelegate.index]
+                    text: ["Monitor", "History", "Trending", "Settings", "Modbus tester"][navDelegate.index]
                     font.pixelSize: 14
                     font.weight: Font.Bold
                     palette.buttonText: sideBarRoot.currentTab === navDelegate.tabIdx ? Theme.textPrimary : Theme.textSecondary
-                    icon.source: ["../../../assets/icons/monitor.svg", "../../../assets/icons/history.svg", "../../../assets/icons/settings.svg", "../../../assets/icons/tester.svg"][navDelegate.index]
+                    icon.source: ["../../../assets/icons/monitor.svg", "../../../assets/icons/history.svg", "../../../assets/icons/chart.svg", "../../../assets/icons/settings.svg", "../../../assets/icons/tester.svg"][navDelegate.index]
                     icon.color: sideBarRoot.currentTab === navDelegate.tabIdx ? Theme.textPrimary : Theme.textSecondary
                     icon.width: 18
                     icon.height: 18

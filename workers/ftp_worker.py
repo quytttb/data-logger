@@ -1,7 +1,7 @@
-"""Worker FtpWorker — Lập lịch sinh file TXT và gửi sFTP.
+"""Worker FtpWorker — Lập lịch sinh file TXT và gửi FTP.
 
-Chạy trên QThread riêng biệt, sử dụng asyncssh để đẩy file
-lên FTP Server Sở TNMT. Tự động retry các file pending/failed.
+Chạy trên QThread riêng biệt, sử dụng ftplib để đẩy file
+lên FTP Server. Tự động retry các file pending/failed.
 """
 
 import logging
@@ -14,7 +14,7 @@ from sqlmodel import select
 
 from core.crypto import decrypt
 from core.database import get_session
-from core.txt_generator import generate_report
+from core.txt_generator import cleanup_old_report_files, generate_report
 from models.app_config import AppConfig
 from models.report_log import ReportLog
 from models.sensor import Sensor
@@ -46,16 +46,17 @@ class FtpWorker(QObject):
     def run(self) -> None:
         """Vòng lặp chính — sinh file và gửi FTP theo chu kỳ."""
         self._is_running = True
-        logger.info("FtpWorker đã khởi động (chu kỳ %d phút).", self._interval)
+        logger.info("FtpWorker started (interval: %d min).", self._interval)
 
         while self._is_running:
             self.heartbeat.emit("FtpWorker")
             
             try:
+                cleanup_old_report_files()
                 self._generate_and_send()
                 self._retry_pending()
             except Exception as e:
-                logger.error("FtpWorker lỗi: %s", e, exc_info=True)
+                logger.error("FtpWorker error: %s", e, exc_info=True)
                 self.ftp_status.emit(f"ERROR: {e}")
 
             # Chờ đến chu kỳ tiếp theo
@@ -68,7 +69,7 @@ class FtpWorker(QObject):
                     self.heartbeat.emit("FtpWorker")
                     last_time = time.time()
 
-        logger.info("FtpWorker đã dừng.")
+        logger.info("FtpWorker stopped.")
         self.worker_stopped.emit()
 
     def stop(self) -> None:
@@ -83,7 +84,7 @@ class FtpWorker(QObject):
             # Lấy cấu hình trạm
             config = session.exec(select(AppConfig)).first()
             if not config:
-                logger.warning("Chưa có cấu hình AppConfig trong DB.")
+                logger.warning("AppConfig not found in database.")
                 return
 
             # Lấy danh sách cảm biến active, sắp xếp theo report_index
@@ -95,7 +96,7 @@ class FtpWorker(QObject):
             ).all()
 
             if not sensors:
-                logger.warning("Không có cảm biến nào được cấu hình report_index.")
+                logger.warning("No sensors configured with report_index.")
                 return
 
             # Truy vấn dữ liệu trong khoảng interval phút gần nhất
@@ -112,7 +113,7 @@ class FtpWorker(QObject):
             ).all()
 
             if not records_raw:
-                logger.info("Không có dữ liệu mới trong %d phút qua.", self._interval)
+                logger.debug("No new data in the last %d minutes.", self._interval)
                 return
 
             # Chuyển sang dict cho TxtGenerator
@@ -136,6 +137,8 @@ class FtpWorker(QObject):
                 sensor_order=sensor_order,
                 station_code=config.station_code,
                 report_time=now,
+                prefix=config.ftp_prefix or "",
+                suffix_format=config.server_file_suffix or "yyyyMMddHHmmss",
             )
 
             # Tạo ReportLog
@@ -144,14 +147,14 @@ class FtpWorker(QObject):
             session.add(report_log)
             session.commit()
 
-            # Gửi sFTP
-            success = self._upload_sftp(
+            # Gửi file qua FTP
+            success = self._upload_ftp(
                 filepath=filepath,
                 host=config.ftp_address,
                 port=config.ftp_port,
                 username=config.ftp_username,
                 password=decrypt(config.ftp_password) if config.ftp_password else "",
-                remote_path=config.ftp_remote_path,
+                remote_path=self._build_remote_path(config),
             )
 
             if success:
@@ -159,7 +162,7 @@ class FtpWorker(QObject):
                 report_log.sent_at = datetime.now()
                 session.commit()
                 self.ftp_status.emit(f"OK: {filename}")
-                logger.info("Đã gửi thành công: %s", filename)
+                logger.info("Successfully sent: %s", filename)
             else:
                 report_log.status = "failed"
                 report_log.retry_count += 1
@@ -168,7 +171,7 @@ class FtpWorker(QObject):
                 self.ftp_status.emit(f"FAIL: {filename}")
 
         except Exception as e:
-            logger.error("Lỗi generate_and_send: %s", e, exc_info=True)
+            logger.error("Error in generate_and_send: %s", e, exc_info=True)
             self.ftp_status.emit(f"ERROR: {e}")
         finally:
             session.close()
@@ -189,29 +192,43 @@ class FtpWorker(QObject):
             ).all()
 
             for log in pending_logs:
+                if not self._is_running:
+                    break  # Dừng ngay khi worker bị yêu cầu stop
+
                 from core.txt_generator import REPORT_DIR
                 filepath = str(REPORT_DIR / log.filename)
 
-                success = self._upload_sftp(
+                # Bỏ qua file không còn tồn tại trên đĩa
+                import os
+                if not os.path.isfile(filepath):
+                    log.status = "expired"
+                    log.error_message = "File not found on disk"
+                    session.commit()
+                    logger.warning("File not found, marked expired: %s", log.filename)
+                    continue
+
+                success = self._upload_ftp(
                     filepath=filepath,
                     host=config.ftp_address,
                     port=config.ftp_port,
                     username=config.ftp_username,
                     password=decrypt(config.ftp_password) if config.ftp_password else "",
-                    remote_path=config.ftp_remote_path,
+                    remote_path=self._build_remote_path(config),
                 )
 
                 if success:
                     log.status = "sent"
                     log.sent_at = datetime.now()
-                    logger.info("Retry thành công: %s", log.filename)
+                    logger.info("Retry successful: %s", log.filename)
                     self.ftp_status.emit(f"OK: {log.filename} (retry)")
                     session.commit()
+                    self.heartbeat.emit("FtpWorker")
+                    time.sleep(2)  # Tránh gửi quá dồn dập bị server block
                 else:
                     log.retry_count += 1
                     log.error_message = "Retry failed"
                     logger.warning(
-                        "Retry thất bại: %s. Tạm dừng truyền bù để chờ kết nối.",
+                        "Retry failed: %s. Pausing backfill.",
                         log.filename
                     )
                     self.ftp_status.emit(f"FAIL: {log.filename} (retry)")
@@ -219,12 +236,30 @@ class FtpWorker(QObject):
                     break  # Break out of loop immediately to prevent blocking
 
         except Exception as e:
-            logger.error("Lỗi retry_pending: %s", e, exc_info=True)
+            logger.error("Error in retry_pending: %s", e, exc_info=True)
         finally:
             session.close()
 
     @staticmethod
-    def _upload_sftp(
+    def _build_remote_path(config: "AppConfig") -> str:
+        """Xây dựng remote path động từ base_folder / time_folder.
+
+        Khớp logic preview trên giao diện SettingsServerTab.qml.
+        Format: /{base_folder}/{time_folder}/
+        """
+        now = datetime.now()
+        base = (config.server_base_folder or "").strip()
+        time_fmt = (config.server_time_folder or "").strip()
+
+        # Chuyển pattern QML (yyyy/MM/dd) sang strftime (%Y/%m/%d)
+        time_part = time_fmt.replace("yyyy", "%Y").replace("MM", "%m").replace("dd", "%d")
+        time_part = now.strftime(time_part) if time_part else ""
+
+        parts = [p for p in [base, time_part] if p]
+        return "/".join(parts) if parts else "/"
+
+    @staticmethod
+    def _upload_ftp(
         filepath: str,
         host: str,
         port: int,
@@ -232,44 +267,41 @@ class FtpWorker(QObject):
         password: str,
         remote_path: str,
     ) -> bool:
-        """Upload file qua sFTP sử dụng asyncssh.
+        """Upload file qua FTP sử dụng ftplib.
 
         Returns:
             True nếu upload thành công, False nếu thất bại.
         """
-        import asyncio
-        import asyncssh
+        import ftplib
         from pathlib import Path
 
-        known_hosts_path = Path.home() / ".ssh" / "known_hosts"
-        known_hosts: str | None = str(known_hosts_path) if known_hosts_path.is_file() else None
-        if known_hosts is None:
-            logger.warning(
-                "sFTP: không tìm thấy ~/.ssh/known_hosts — không xác thực host key "
-                "(chấp nhận mọi server). Nên tạo known_hosts trên thiết bị triển khai."
-            )
-
-        async def _do_upload():
-            try:
-                async with asyncssh.connect(
-                    host=host,
-                    port=port,
-                    username=username,
-                    password=password,
-                    known_hosts=known_hosts,
-                    connect_timeout=10,
-                ) as conn:
-                    async with conn.start_sftp_client() as sftp:
-                        remote_file = f"{remote_path.rstrip('/')}/{Path(filepath).name}"
-                        await sftp.put(filepath, remote_file)
-                        logger.info("Upload sFTP thành công: %s → %s", filepath, remote_file)
-                        return True
-            except Exception as e:
-                logger.error("Upload sFTP thất bại: %s — %s", filepath, e)
-                return False
-
         try:
-            return asyncio.run(_do_upload())
+            ftp = ftplib.FTP()
+            ftp.connect(host=host, port=port, timeout=60)
+            ftp.login(user=username, passwd=password)
+            ftp.set_pasv(True)  # Passive mode — cần cho hầu hết FTP server
+            logger.debug("FTP login successful: %s@%s:%d", username, host, port)
+
+            # Tạo thư mục remote nếu chưa tồn tại (đệ quy)
+            dirs = remote_path.strip("/").split("/")
+            current = ""
+            for d in dirs:
+                if not d:
+                    continue
+                current += "/" + d
+                try:
+                    ftp.mkd(current)
+                except ftplib.error_perm:
+                    pass  # Thư mục đã tồn tại
+
+            remote_file = f"{remote_path.rstrip('/')}/{Path(filepath).name}"
+            with open(filepath, "rb") as f:
+                ftp.storbinary(f"STOR {remote_file}", f)
+
+            ftp.quit()
+            logger.debug("FTP upload successful: %s → %s", filepath, remote_file)
+            return True
+
         except Exception as e:
-            logger.error("Lỗi event loop sFTP: %s", e)
+            logger.error("FTP upload failed: %s — %s", filepath, e)
             return False

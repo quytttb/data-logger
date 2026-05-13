@@ -59,10 +59,21 @@ jobs:
           # Nén tarball
           tar -czvf datalogger-release-${{ github.ref_name }}.tar.gz -C release_package .
 
+      - name: Build .deb package
+        run: |
+          chmod +x scripts/build_deb.sh
+          VERSION="$(cat VERSION | tr -d '[:space:]')"
+          VERSION="${VERSION#v}"
+          ARCH="arm64"
+          scripts/build_deb.sh "$VERSION" "$ARCH"
+          echo "DEB_FILE=datalogger_${VERSION}_${ARCH}.deb" >> "$GITHUB_ENV"
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
         with:
-          files: datalogger-release-${{ github.ref_name }}.tar.gz
+          files: |
+            datalogger-release-${{ github.ref_name }}.tar.gz
+            ${{ env.DEB_FILE }}
           draft: false
           prerelease: false
           generate_release_notes: true

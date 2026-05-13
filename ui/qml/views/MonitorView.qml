@@ -27,8 +27,6 @@ Rectangle {
         anchors.margins: 15
         spacing: 12
 
-        // Điều khiển + trạng thái nằm trên header (DashboardTaskBar.qml trong Main).
-
         // ── Sensor Cards Grid (centered) ─────────────────────────────
         GridView {
             id: sensorGrid
@@ -48,6 +46,12 @@ Rectangle {
                 width: sensorGrid.cellWidth
                 height: sensorGrid.cellHeight
 
+                // Convenience properties at delegate scope
+                readonly property string sType: model.sensorType || "ANALOG"
+                readonly property bool isAnalog: sType === "ANALOG"
+                readonly property bool isDI: sType === "DI"
+                readonly property bool isDO: sType === "DO"
+
                 Rectangle {
                     id: cardBg
                     anchors.fill: parent
@@ -56,15 +60,21 @@ Rectangle {
                     color: Theme.bgPanel
                     border.color: {
                         if (model.isAlarm)  return Theme.statusErr;
-                        if (model.status === "OK")  return Theme.borderOk;
+                        if (model.status === "OK" || model.status === "ON")  return Theme.borderOk;
                         if (model.status === "ERR") return Theme.borderErr;
+                        // DI active state
+                        if (isDI && model.value === "1") return "#42A5F5";
                         return Theme.borderDefault;
                     }
-                    border.width: model.isAlarm ? 3 : (model.status === "OK" ? 2 : 1)
+                    border.width: {
+                        if (model.isAlarm) return 3;
+                        if (model.status === "OK" || model.status === "ON") return 2;
+                        return 1;
+                    }
 
-                    // Alarm pulsing animation
+                    // Alarm pulsing animation (ANALOG only)
                     SequentialAnimation on opacity {
-                        running: model.isAlarm
+                        running: model.isAlarm && isAnalog
                         loops: Animation.Infinite
                         NumberAnimation { to: 0.7; duration: 500 }
                         NumberAnimation { to: 1.0; duration: 500 }
@@ -75,11 +85,25 @@ Rectangle {
                         anchors.margins: 12
                         spacing: 4
 
+                        // ── Header Row: status dot + name + badge/unit ──
                         RowLayout {
                             Layout.fillWidth: true
                             spacing: 8
 
+                            // Type badge for DI/DO
                             Rectangle {
+                                visible: !isAnalog
+                                width: 36; height: 18; radius: 4
+                                color: isDI ? "#1E88E5" : "#C62828"
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: isDI ? "DI" : "DO"
+                                    color: "#FFFFFF"; font.bold: true; font.pixelSize: 10
+                                }
+                            }
+
+                            Rectangle {
+                                visible: isAnalog
                                 width: 10; height: 10; radius: 5
                                 color: {
                                     if (model.isAlarm)  return Theme.statusErr;
@@ -97,9 +121,9 @@ Rectangle {
                                 Layout.fillWidth: true
                             }
 
-                            // Alarm badge — nằm cạnh tên, không che unit
+                            // Alarm badge (ANALOG only)
                             Rectangle {
-                                visible: model.isAlarm
+                                visible: model.isAlarm && isAnalog
                                 color: Theme.statusErr
                                 radius: 4
                                 implicitWidth: alarmLabel.implicitWidth + 8
@@ -115,6 +139,7 @@ Rectangle {
                             }
 
                             Text {
+                                visible: isAnalog
                                 text: model.unit
                                 color: Theme.textOnColoredBtn
                                 font.pixelSize: 13; font.bold: true
@@ -126,11 +151,14 @@ Rectangle {
                             }
                         }
 
+                        // ── Center Content: value / indicator / toggle ──
                         Item {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
 
+                            // ANALOG: Large numeric value
                             Text {
+                                visible: isAnalog
                                 anchors.centerIn: parent
                                 text: model.value
                                 color: model.isAlarm ? Theme.statusErr
@@ -139,21 +167,92 @@ Rectangle {
                                 font.family: "Monospace"
                                 font.bold: true
                             }
+
+                            // DI: Large status indicator circle
+                            Column {
+                                visible: isDI
+                                anchors.centerIn: parent
+                                spacing: 4
+
+                                Rectangle {
+                                    width: 48; height: 48; radius: 24
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    color: model.value === "1" ? "#1565C0" : "#616161"
+                                    border.color: model.value === "1" ? "#42A5F5" : "#9E9E9E"
+                                    border.width: 3
+
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: model.value === "1" ? "ON" : "OFF"
+                                        color: "#FFFFFF"
+                                        font.pixelSize: 13; font.bold: true
+                                    }
+
+                                    // Glow animation when active
+                                    SequentialAnimation on border.width {
+                                        running: model.value === "1"
+                                        loops: Animation.Infinite
+                                        NumberAnimation { to: 5; duration: 800; easing.type: Easing.InOutSine }
+                                        NumberAnimation { to: 3; duration: 800; easing.type: Easing.InOutSine }
+                                    }
+                                }
+
+                                Text {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    text: model.value === "1" ? "INPUT ON" : "INPUT OFF"
+                                    color: model.value === "1" ? "#42A5F5" : Theme.textSecondary
+                                    font.pixelSize: 11; font.bold: true
+                                }
+                            }
+
+                            // DO: Simple ON/OFF status indicator (relay state)
+                            Column {
+                                visible: isDO
+                                anchors.centerIn: parent
+                                spacing: 4
+
+                                Rectangle {
+                                    width: 48; height: 48; radius: 24
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    color: model.value === "1" ? "#C62828" : "#616161"
+                                    border.color: model.value === "1" ? "#EF5350" : "#9E9E9E"
+                                    border.width: 3
+
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: model.value === "1" ? "ON" : "OFF"
+                                        color: "#FFFFFF"
+                                        font.pixelSize: 13; font.bold: true
+                                    }
+                                }
+
+                                Text {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    text: model.value === "1" ? "RELAY ON" : "RELAY OFF"
+                                    color: model.value === "1" ? "#EF5350" : Theme.textSecondary
+                                    font.pixelSize: 11; font.bold: true
+                                }
+                            }
                         }
 
+                        // ── Footer Row: raw value + DI dots + timestamp ──
                         RowLayout {
                             Layout.fillWidth: true
+
+                            // Raw value (ANALOG only)
                             Text {
+                                visible: isAnalog
                                 text: (model.rawValue && model.rawValue !== "---") ? "RAW " + model.rawValue : ""
                                 color: Theme.textOnColoredBtn
                                 font.pixelSize: 10
                                 font.family: "Monospace"
                             }
 
-                            // DI indicator dots — only active DIs shown
+
+                            // DI indicator dots — only active DIs shown (ANALOG only)
                             Row {
                                 spacing: 4
-                                visible: model.diStates && model.diStates.length > 0
+                                visible: isAnalog && model.diStates && model.diStates.length > 0
                                 Layout.leftMargin: 6
 
                                 Repeater {
@@ -162,14 +261,6 @@ Rectangle {
                                     Rectangle {
                                         width: 10; height: 10; radius: 5
                                         color: modelData.color || "#888888"
-
-                                        // Subtle pulsing to draw attention
-                                        SequentialAnimation on opacity {
-                                            running: true
-                                            loops: Animation.Infinite
-                                            NumberAnimation { to: 0.5; duration: 800 }
-                                            NumberAnimation { to: 1.0; duration: 800 }
-                                        }
                                     }
                                 }
 

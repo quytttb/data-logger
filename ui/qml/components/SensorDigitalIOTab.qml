@@ -206,7 +206,6 @@ Rectangle {
 
             ListView {
                 id: dioListView
-                clip: true
                 smooth: false
                 Layout.fillWidth: true; Layout.fillHeight: true
                 clip: true; spacing: 4

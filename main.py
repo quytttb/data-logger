@@ -24,6 +24,7 @@ from core._paths import (
 )
 from core._version import __version__ as _APP_VERSION
 from core.database import init_db
+from core.txt_generator import cleanup_old_report_files
 from ui.controllers.tester_controller import TesterController
 from ui.controllers.settings_controller import SettingsController
 from ui.models.sensor_list_model import SensorListModel
@@ -55,11 +56,13 @@ def _window_icon(path: Path) -> QIcon:
 def main():
     """Hàm chính khởi động ứng dụng."""
     logger.info("=" * 60)
-    logger.info("Data Logger — Khởi động")
+    logger.info("Data Logger — Starting")
     logger.info("=" * 60)
 
     init_db()
     logger.info("Database initialized.")
+
+    cleanup_old_report_files()
 
     # Material theme cho tất cả QQC2 controls (CheckBox, ComboBox, SpinBox, etc.)
     _conf = QML_DIR / "qtquickcontrols2.conf"
@@ -124,7 +127,7 @@ def main():
 
     roots = engine.rootObjects()
     if not roots:
-        logger.error("Không thể load Main.qml — thoát.")
+        logger.error("Failed to load Main.qml — exiting.")
         sys.exit(1)
 
     # Load sensor list from DB → triggers countChanged → updates Monitor + History
@@ -163,7 +166,7 @@ def main():
                 logger.info("FTP auto-started (server_active=True).")
             _s.close()
         except Exception as _e:
-            logger.warning("Không thể auto-start FTP: %s", _e)
+            logger.warning("Could not auto-start FTP: %s", _e)
 
     def _restart_ftp_on_save():
         report_controller.stop_reporting()
@@ -172,10 +175,13 @@ def main():
     _start_ftp_if_active()
     settings_controller.configSaved.connect(_restart_ftp_on_save)
 
+    # Tự động start monitoring khi khởi động app
+    QTimer.singleShot(1000, monitor_controller.start_polling)
+
     app.aboutToQuit.connect(monitor_controller.stop_polling_sync)
     app.aboutToQuit.connect(report_controller.stop_reporting)
 
-    logger.info("QML loaded thành công. App đang chạy.")
+    logger.info("QML loaded successfully. Application running.")
     sys.exit(app.exec())
 
 

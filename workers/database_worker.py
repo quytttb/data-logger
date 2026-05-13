@@ -53,7 +53,7 @@ class DatabaseWorker(QObject):
         self._is_running = True
         batch: list[SensorData] = []
 
-        logger.info("DatabaseWorker đã khởi động.")
+        logger.info("DatabaseWorker started.")
 
         try:
             last_heartbeat = time.monotonic()
@@ -85,7 +85,7 @@ class DatabaseWorker(QObject):
                         batch.clear()
 
                 except Exception as e:
-                    error_msg = f"DatabaseWorker lỗi: {e}"
+                    error_msg = f"DatabaseWorker error: {e}"
                     logger.error(error_msg, exc_info=True)
                     self.db_error.emit(error_msg)
 
@@ -93,7 +93,7 @@ class DatabaseWorker(QObject):
                 self._batch_insert(batch)
                 batch.clear()
 
-            logger.info("DatabaseWorker đã dừng.")
+            logger.info("DatabaseWorker stopped.")
         except Exception as e:
             logger.critical("DatabaseWorker crashed: %s", e, exc_info=True)
         finally:
@@ -110,13 +110,13 @@ class DatabaseWorker(QObject):
         from alembic.config import Config
         from core._paths import ROOT_DIR
         try:
-            logger.info("Chạy Alembic migration (upgrade head)...")
+            logger.info("Running Alembic migration (upgrade head)...")
             alembic_cfg = Config(f"{ROOT_DIR}/alembic.ini")
             alembic_cfg.set_main_option("script_location", f"{ROOT_DIR}/migrations")
             command.upgrade(alembic_cfg, "head")
-            logger.info("Alembic migration hoàn tất.")
+            logger.info("Alembic migration completed.")
         except Exception as e:
-            logger.error(f"Lỗi khi chạy migration: {e}")
+            logger.error(f"Migration error: {e}")
 
     def _batch_insert(self, batch: list[SensorData]) -> None:
         """Ghi batch bản ghi vào DB trong 1 transaction."""
@@ -133,10 +133,10 @@ class DatabaseWorker(QObject):
             count = len(batch)
             duration = (time.perf_counter() - start_t) * 1000
             self.records_saved.emit(count)
-            logger.info(f"Batch insert {count} records in {duration:.2f}ms")
+            logger.debug(f"Batch insert {count} records in {duration:.2f}ms")
 
         except Exception as e:
-            error_msg = f"Lỗi batch INSERT: {e}"
+            error_msg = f"Batch INSERT error: {e}"
             logger.error(error_msg, exc_info=True)
             self.db_error.emit(error_msg)
             if session is not None:

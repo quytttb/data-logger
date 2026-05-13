@@ -6,6 +6,7 @@ MonitorController: Quản lý QThread cho ModbusWorker + DatabaseWorker,
 """
 
 import logging
+from collections import deque
 from datetime import datetime
 from typing import Any
 
@@ -25,8 +26,7 @@ from sqlmodel import select
 from core.database import get_session
 from core.exporters.base import Exporter
 from models.app_config import AppConfig
-from models.digital_io import DigitalIO
-from models.sensor import Sensor
+from models.sensor import Sensor, SensorType
 from workers.database_worker import DatabaseWorker
 from workers.modbus_worker import ModbusWorker
 
@@ -57,6 +57,7 @@ _DASH_ROLES = {
     Qt.UserRole + 8: b"isAlarm",
     Qt.UserRole + 9: b"alarmType",
     Qt.UserRole + 10: b"diStates",
+    Qt.UserRole + 11: b"sensorType",
 }
 
 _DASH_FIELD = {
@@ -70,6 +71,7 @@ _DASH_FIELD = {
     b"isAlarm": "is_alarm",
     b"alarmType": "alarm_type",
     b"diStates": "di_states",
+    b"sensorType": "sensor_type",
 }
 
 
@@ -107,6 +109,7 @@ class MonitorModel(QAbstractListModel):
                 "sensor_id": s.id,
                 "name": s.name,
                 "unit": s.unit,
+                "sensor_type": s.sensor_type.value if hasattr(s.sensor_type, "value") else s.sensor_type,
                 "value": "---",
                 "raw_value": "---",
                 "status": "WAIT",
@@ -186,6 +189,11 @@ class MonitorController(QObject):
     recordsCommitted = Signal(int)
     watchdogChanged = Signal()
     watchdogAlert = Signal(str)
+    # Real-time trending — emitted on every analog poll
+    # Args: sensor_id (int), timestamp_ms (float, epoch ms), value (float)
+    newDataPoint = Signal(int, float, float)
+    # Emitted when the set of analog sensors changes (start/stop polling, refresh)
+    analogSensorsListChanged = Signal()
 
     def __init__(self, monitor_model: MonitorModel, tester_controller=None, parent=None):
         super().__init__(parent)
@@ -198,6 +206,15 @@ class MonitorController(QObject):
         self._error_count = 0
         self._di_legend: list[dict] = []       # [{"label": ..., "color": ...}, ...]
         self._di_label_to_color: dict[str, str] = {}  # label → hex color
+
+        # Rolling trend buffer for the Trending tab — last N points per analog sensor.
+        # Each entry: deque[(timestamp_ms: float, value: float)]
+        # Rolling trend buffer (per sensor) — points shown when opening Trending / scrolling chart.
+        # Larger N = longer visible history at typical poll intervals (memory: O(sensors × N)).
+        self._trend_buffer_size = 2000
+        self._trend_buffers: dict[int, deque] = {}
+        # Cached analog sensor metadata exposed to QML: {id, name, unit, color}
+        self._analog_sensors: list[dict] = []
 
         self._modbus_worker: ModbusWorker | None = None
         self._db_worker: DatabaseWorker | None = None
@@ -278,9 +295,14 @@ class MonitorController(QObject):
         session = get_session()
         try:
             sensors = list(
-                session.exec(select(Sensor).where(Sensor.active)).all()
+                session.exec(
+                    select(Sensor)
+                    .where(Sensor.active)
+                    .where(Sensor.parent_id == None)  # noqa: E711 — top-level only
+                ).all()
             )
             self._model.load_sensors(sensors)
+            self._reset_trend_buffers(sensors)
             self.activeSensorsChanged.emit()
         except Exception as e:
             logger.error("refresh_sensors error: %s", e)
@@ -297,6 +319,78 @@ class MonitorController(QObject):
         if worker_name in self._last_heartbeat_time:
             self._last_heartbeat_time[worker_name] = time.monotonic()
             self._heartbeats[worker_name] = 0
+
+    @Slot(int, bool)
+    def write_do(self, sensor_id: int, value: bool):
+        """Manual toggle for a Standalone DO — send write_coil via ModbusWorker."""
+        if not self._is_polling or not self._modbus_worker:
+            logger.warning("write_do ignored: not polling")
+            return
+        self._modbus_worker.write_single_coil(sensor_id, value)
+
+    # ── Trending buffer API ────────────────────────────────────────────────
+
+    @Property("QVariant", notify=analogSensorsListChanged)
+    def analogSensors(self):
+        """Top-level sensors shown in Trending (analog + standalone DI/DO).
+
+        Each item: {id, name, unit, color, sensorType}.
+        """
+        return self._analog_sensors
+
+    @Slot(int, result="QVariant")
+    def getTrendBuffer(self, sensor_id: int):
+        """Return the recent points for a sensor as a list of {x, y}.
+
+        x is epoch milliseconds (suitable for QtCharts DateTimeAxis), y is the
+        scaled value. Returns [] if the sensor is not tracked.
+        """
+        buf = self._trend_buffers.get(int(sensor_id))
+        if not buf:
+            return []
+        return [{"x": ts, "y": val} for ts, val in buf]
+
+    def _reset_trend_buffers(self, sensors: list[Sensor]) -> None:
+        """Initialise trend buffers + metadata for QML Trending (legend + series).
+
+        Expects **top-level** sensors only (``parent_id is None``): analog points and
+        standalone DI/DO. Child DI/DO attached to an analog parent are excluded so
+        labels like alarm/aux states do not appear as separate trending series.
+        """
+        palette = [
+            "#558dff", "#7dffa2", "#ff6666", "#d4a62d",
+            "#b0c6ff", "#ff9933", "#cc66ff", "#66cccc",
+        ]
+        self._trend_buffers = {}
+        self._analog_sensors = []
+        for idx, s in enumerate(sensors):
+            st = s.sensor_type.value if hasattr(s.sensor_type, "value") else s.sensor_type
+            self._trend_buffers[s.id] = deque(maxlen=self._trend_buffer_size)
+            self._analog_sensors.append({
+                "id": s.id,
+                "name": s.name,
+                "unit": s.unit or "",
+                "color": palette[idx % len(palette)],
+                "sensorType": st,
+            })
+        self.analogSensorsListChanged.emit()
+
+    def _push_trend_point(self, sensor_id: int, recorded_at: str, value: float) -> None:
+        """Append a point to the rolling buffer and emit newDataPoint."""
+        buf = self._trend_buffers.get(sensor_id)
+        if buf is None:
+            return
+        try:
+            dt = datetime.fromisoformat(recorded_at)
+            ts_ms = dt.timestamp() * 1000.0
+        except Exception:
+            ts_ms = datetime.now().timestamp() * 1000.0
+        try:
+            v = float(value)
+        except (TypeError, ValueError):
+            return
+        buf.append((ts_ms, v))
+        self.newDataPoint.emit(int(sensor_id), float(ts_ms), v)
 
     def _init_exporter(self):
         """Initialize Cloud Exporter if enabled in config.toml."""
@@ -338,10 +432,16 @@ class MonitorController(QObject):
         now = time.monotonic()
         misses = []
         for worker, last_time in self._last_heartbeat_time.items():
-            if last_time > 0 and (now - last_time) > 6.0:  # Allow 6s for 5s heartbeat
+            if worker in ("ModbusWorker", "DatabaseWorker") and (not self._is_polling or self._is_stopping):
+                continue
+
+            limit = 120.0 if worker == "FtpWorker" else 6.0
+            if last_time > 0 and (now - last_time) > limit:
                 self._heartbeats[worker] += 1
                 if self._heartbeats[worker] > 3:  # >3 continuous misses
                     misses.append(worker)
+            else:
+                self._heartbeats[worker] = 0  # Reset counter if heartbeat received
             
         if misses:
             self._watchdog_status = f"ERR: {','.join(misses)}"
@@ -375,8 +475,13 @@ class MonitorController(QObject):
                 )
                 return
 
+            # Load only top-level active sensors (Analog + System-wide DI/DO)
             sensors = list(
-                session.exec(select(Sensor).where(Sensor.active)).all()
+                session.exec(
+                    select(Sensor)
+                    .where(Sensor.active)
+                    .where(Sensor.parent_id == None)  # noqa: E711
+                ).all()
             )
             if not sensors:
                 self.messageSent.emit(
@@ -399,34 +504,38 @@ class MonitorController(QObject):
                     "poll_interval": s.poll_interval,
                     "min_threshold": s.min_threshold,
                     "max_threshold": s.max_threshold,
+                    "sensor_type": s.sensor_type.value if hasattr(s.sensor_type, "value") else s.sensor_type,
                 }
                 for s in sensors
             ]
 
-            # Load Digital I/O configs grouped by sensor_id (only from active sensors)
+            # Load child DI/DO sensors grouped by parent_id
             active_sensor_ids = [s.id for s in sensors]
-            all_ios = list(session.exec(
-                select(DigitalIO)
-                .where(DigitalIO.active)
-                .where(DigitalIO.sensor_id.in_(active_sensor_ids))
+            all_child_ios = list(session.exec(
+                select(Sensor)
+                .where(Sensor.active)
+                .where(Sensor.parent_id.in_(active_sensor_ids))
             ).all())
             digital_io_map: dict[int, list[dict]] = {}
-            for io in all_ios:
+            for io in all_child_ios:
                 dio_dict = {
                     "id": io.id,
-                    "io_type": io.io_type,
-                    "label": io.label,
+                    "io_type": io.sensor_type,
+                    "label": io.name,
                     "di_type": io.di_type,
                     "slave_id": io.slave_id,
-                    "address": io.address,
+                    "address": io.register_address,
                     "trigger_on_max": io.trigger_on_max,
                     "trigger_on_min": io.trigger_on_min,
                     "active": io.active,
                 }
-                digital_io_map.setdefault(io.sensor_id, []).append(dio_dict)
+                digital_io_map.setdefault(io.parent_id, []).append(dio_dict)
 
             # Build DI legend — assign a unique color to each distinct DI label
-            self._build_di_legend(all_ios)
+            self._build_di_legend(all_child_ios)
+
+            # Trending: chỉ top-level (ANALOG + DI/DO độc lập). Không thêm DI/DO con attach analog.
+            self._reset_trend_buffers(sensors)
 
             # DatabaseWorker thread
             self._db_worker = DatabaseWorker()
@@ -555,10 +664,14 @@ class MonitorController(QObject):
             self._db_worker.stop()
         if self._modbus_thread and self._modbus_thread.isRunning():
             self._modbus_thread.quit()
-            self._modbus_thread.wait(5000)
+            if not self._modbus_thread.wait(3000):
+                self._modbus_thread.terminate()
+                self._modbus_thread.wait()
         if self._db_thread and self._db_thread.isRunning():
             self._db_thread.quit()
-            self._db_thread.wait(5000)
+            if not self._db_thread.wait(3000):
+                self._db_thread.terminate()
+                self._db_thread.wait()
         self._is_polling = False
         self._is_stopping = False
         logger.info("Polling stopped (sync shutdown).")
@@ -587,6 +700,16 @@ class MonitorController(QObject):
             alarm_type=payload.get("alarm_type", ""),
             di_states=colored_di,
         )
+
+        # Push analog points to the rolling trend buffer for the Trending tab
+        try:
+            self._push_trend_point(
+                int(payload["sensor_id"]),
+                payload.get("recorded_at", ""),
+                payload.get("value"),
+            )
+        except Exception:
+            pass
         if self._db_worker:
             self._db_worker.enqueue(payload)
             
@@ -675,8 +798,11 @@ class MonitorController(QObject):
         """Assign a unique color to each distinct DI label across all sensors."""
         seen_labels: list[str] = []
         for io in all_ios:
-            if io.io_type == "DI" and io.label not in seen_labels:
-                seen_labels.append(io.label)
+            # io can be a Sensor object (child DI)
+            io_type = getattr(io, "sensor_type", None) or getattr(io, "io_type", None)
+            label = getattr(io, "name", None) or getattr(io, "label", "")
+            if io_type == SensorType.DI and label not in seen_labels:
+                seen_labels.append(label)
 
         self._di_label_to_color = {}
         self._di_legend = []

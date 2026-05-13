@@ -118,7 +118,7 @@ check("Seeded config + 2 sensors + 20 data records", True)
 # ═══════════════════════════════════════════════════════════════
 section("1. TxtGenerator")
 
-from core.txt_generator import generate_report, REPORT_DIR
+from core.txt_generator import cleanup_old_report_files, generate_report, REPORT_DIR
 
 records = [
     {"sensor_id": sensor_id_1, "value": 25.5, "recorded_at": datetime(2026, 4, 8, 10, 0, 0)},
@@ -161,6 +161,18 @@ check("pH sensor lines present", len(ph_lines) == 1, f"pH lines: {len(ph_lines)}
 
 # Cleanup test file
 Path(filepath).unlink(missing_ok=True)
+
+# Retention: mtime-based purge
+old_path = REPORT_DIR / "_retention_test_old.txt"
+old_path.write_text("old", encoding="utf-8")
+old_mtime = (datetime.now() - timedelta(days=2)).timestamp()
+os.utime(old_path, (old_mtime, old_mtime))
+new_path = REPORT_DIR / "_retention_test_new.txt"
+new_path.write_text("new", encoding="utf-8")
+removed = cleanup_old_report_files(max_age_days=1)
+check("retention removed old file", not old_path.exists(), f"removed count={removed}")
+check("retention kept recent file", new_path.exists())
+new_path.unlink(missing_ok=True)
 
 # ═══════════════════════════════════════════════════════════════
 #  2. ReportLog model

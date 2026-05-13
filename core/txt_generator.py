@@ -5,7 +5,7 @@ Format file TXT (5 trường mỗi dòng):
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from core._paths import DATA_DIR
 
@@ -13,12 +13,46 @@ logger = logging.getLogger("datalogger.txt_generator")
 REPORT_DIR = DATA_DIR / "reports"
 REPORT_DIR.mkdir(parents=True, exist_ok=True)
 
+# Giữ file báo cáo trên đĩa tối đa bao nhiêu ngày (theo mtime).
+REPORT_RETENTION_DAYS = 60
+
+
+def cleanup_old_report_files(max_age_days: int = REPORT_RETENTION_DAYS) -> int:
+    """Xóa file *.txt trong thư mục báo cáo có thời điểm sửa (mtime) cũ hơn max_age_days.
+
+    Returns:
+        Số file đã xóa.
+    """
+    if max_age_days <= 0 or not REPORT_DIR.is_dir():
+        return 0
+
+    cutoff_ts = (datetime.now() - timedelta(days=max_age_days)).timestamp()
+    removed = 0
+    for path in REPORT_DIR.glob("*.txt"):
+        try:
+            if path.stat().st_mtime < cutoff_ts:
+                path.unlink()
+                removed += 1
+                logger.debug("Removed report past retention: %s", path.name)
+        except OSError as e:
+            logger.warning("Retention cleanup skip %s: %s", path, e)
+
+    if removed:
+        logger.info(
+            "Report retention: deleted %d file(s) older than %d day(s).",
+            removed,
+            max_age_days,
+        )
+    return removed
+
 
 def generate_report(
     records: list[dict],
     sensor_order: list[dict],
     station_code: str,
     report_time: datetime | None = None,
+    prefix: str = "",
+    suffix_format: str = "yyyyMMddHHmmss",
 ) -> str:
     """Sinh file TXT báo cáo theo format Phụ lục 15.
 
@@ -29,6 +63,8 @@ def generate_report(
             Mỗi dict: {"id": int, "name": str, "unit": str, "report_index": int}
         station_code: Mã trạm (VD: "TRAM-BD-001").
         report_time: Thời điểm báo cáo, mặc định là datetime.now().
+        prefix: Tiền tố tên file (VD: "TH_BSON_KHILO2__").
+        suffix_format: Hậu tố thời gian (VD: "yyyyMMddHHmmss").
 
     Returns:
         Đường dẫn tuyệt đối đến file TXT đã tạo.
@@ -36,8 +72,16 @@ def generate_report(
     if report_time is None:
         report_time = datetime.now()
 
-    # Định dạng tên file: TenTinh_TenCoso_TenTram_yyyyMMddhhmmss.txt
-    filename = f"{station_code}_{report_time.strftime('%Y%m%d%H%M%S')}.txt"
+    # Chuyển đổi định dạng thời gian từ QML sang Python strftime
+    suffix_fmt_python = suffix_format.replace("yyyy", "%Y").replace("MM", "%m").replace("dd", "%d").replace("HH", "%H").replace("mm", "%M").replace("ss", "%S")
+    time_str = report_time.strftime(suffix_fmt_python)
+    
+    # Định dạng tên file: {prefix}{time_str}.txt
+    filename = f"{prefix}{time_str}.txt"
+    # Fallback to default if prefix is empty and suffix is empty
+    if not filename.replace(".txt", ""):
+        filename = f"{station_code}_{report_time.strftime('%Y%m%d%H%M%S')}.txt"
+        
     filepath = REPORT_DIR / filename
 
     sensor_map = {s["id"]: s for s in sensor_order}
@@ -66,5 +110,5 @@ def generate_report(
     content = "\n".join(lines)
     filepath.write_text(content, encoding="utf-8")
 
-    logger.info("Đã tạo file báo cáo: %s (%d dòng)", filename, len(lines))
+    logger.debug("Generated report file: %s (%d lines)", filename, len(lines))
     return str(filepath)

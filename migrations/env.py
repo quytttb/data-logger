@@ -22,7 +22,6 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 from sqlmodel import SQLModel  # noqa: E402
 # Ensure models are loaded
 import models.app_config  # noqa
-import models.digital_io  # noqa
 import models.report_log  # noqa
 import models.sensor      # noqa
 import models.sensor_data # noqa

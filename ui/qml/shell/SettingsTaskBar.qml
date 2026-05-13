@@ -13,6 +13,7 @@ Item {
     property bool isAddMode: true // true for Add sensor, false for Edit sensor
     property int sensorSubTabIndex: 0
     property bool hasSelectedDio: false
+    property string sensorType: "ANALOG"   // Current sensor type being edited
 
     signal tabSelected(int idx)
     signal sensorSubTabSelected(int idx)
@@ -96,11 +97,12 @@ Item {
                 TabButton {
                     text: "Scaling && Alarms"
                     width: implicitWidth + 30
+                    visible: root.sensorType === "ANALOG"
                 }
                 TabButton {
                     text: "Digital I/O"
                     width: implicitWidth + 30
-                    visible: !root.isAddMode
+                    visible: !root.isAddMode && root.sensorType === "ANALOG"
                 }
             }
         }

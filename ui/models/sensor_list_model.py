@@ -18,8 +18,7 @@ from PySide6.QtCore import (
 from sqlmodel import select
 
 from core.database import get_session
-from models.digital_io import DigitalIO
-from models.sensor import Sensor
+from models.sensor import Sensor, SensorType
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +37,7 @@ _ROLE_NAMES = {
     Qt.UserRole + 12: b"pollInterval",
     Qt.UserRole + 13: b"minThreshold",
     Qt.UserRole + 14: b"maxThreshold",
+    Qt.UserRole + 15: b"sensorType",
 }
 
 _FIELD_MAP = {
@@ -55,6 +55,7 @@ _FIELD_MAP = {
     b"pollInterval": "poll_interval",
     b"minThreshold": "min_threshold",
     b"maxThreshold": "max_threshold",
+    b"sensorType": "sensor_type",
 }
 
 
@@ -78,8 +79,8 @@ class SensorListModel(QAbstractListModel):
         role_name = _ROLE_NAMES.get(role)
         if role_name is None:
             return None
-        field = _FIELD_MAP[role_name]
-        return getattr(sensor, field)
+        val = getattr(sensor, field)
+        return val.value if hasattr(val, "value") else val
 
     def roleNames(self):
         return {k: QByteArray(v) for k, v in _ROLE_NAMES.items()}
@@ -91,7 +92,12 @@ class SensorListModel(QAbstractListModel):
         session = get_session()
         try:
             self.beginResetModel()
-            self._sensors = list(session.exec(select(Sensor).order_by(Sensor.id)).all())
+            # Only show top-level sensors (parent_id is NULL) — Attached DI/DO are children
+            self._sensors = list(session.exec(
+                select(Sensor)
+                .where(Sensor.parent_id == None)  # noqa: E711
+                .order_by(Sensor.id)
+            ).all())
             session.expunge_all()
             self.endResetModel()
             self.countChanged.emit()
@@ -115,9 +121,23 @@ class SensorListModel(QAbstractListModel):
             )
             return
 
+        # Auto-detect sensor_type from register_type
+        reg_lower = register_type.lower().strip()
+        if reg_lower in ("discrete_input", "discrete input", "discrete inputs", "di", "inputs"):
+            sensor_type = SensorType.DI
+            is_system_wide = True
+        elif reg_lower in ("coil", "coils"):
+            sensor_type = SensorType.DO
+            is_system_wide = True
+        else:
+            sensor_type = SensorType.ANALOG
+            is_system_wide = False
+
         session = get_session()
         try:
             sensor = Sensor(
+                sensor_type=sensor_type,
+                is_system_wide=is_system_wide,
                 name=name.strip(), unit=unit.strip(), slave_id=slave_id,
                 register_address=register_address, register_type=register_type,
                 data_type=data_type, data_format=data_format,
@@ -139,7 +159,7 @@ class SensorListModel(QAbstractListModel):
                 "Success",
                 "Added sensor '{0}'.".format(name),
             )
-            logger.info("Sensor added: %s", name)
+            logger.info("Sensor added: %s (type=%s)", name, sensor_type)
         except Exception as e:
             session.rollback()
             logger.error("add_sensor error: %s", e)
@@ -178,6 +198,18 @@ class SensorListModel(QAbstractListModel):
             sensor.register_type = register_type
             sensor.data_type = data_type
             sensor.data_format = data_format
+
+            # Auto-detect sensor_type from register_type
+            reg_lower = register_type.lower().strip()
+            if reg_lower in ("discrete_input", "discrete input", "discrete inputs", "di", "inputs"):
+                sensor.sensor_type = SensorType.DI
+                sensor.is_system_wide = True
+            elif reg_lower in ("coil", "coils"):
+                sensor.sensor_type = SensorType.DO
+                sensor.is_system_wide = True
+            else:
+                sensor.sensor_type = SensorType.ANALOG
+                sensor.is_system_wide = False
             sensor.coefficient = coefficient.strip() or "{}"
             sensor.poll_interval = max(1, poll_interval)
             sensor.report_index = report_index
@@ -215,6 +247,13 @@ class SensorListModel(QAbstractListModel):
         try:
             sensor = session.get(Sensor, sensor_id)
             if sensor:
+                # Also remove child DI/DO sensors
+                children = list(session.exec(
+                    select(Sensor).where(Sensor.parent_id == sensor_id)
+                ).all())
+                for child in children:
+                    session.delete(child)
+
                 session.delete(sensor)
                 session.commit()
                 for idx, s in enumerate(self._sensors):
@@ -256,6 +295,7 @@ class SensorListModel(QAbstractListModel):
                 "reportIndex": s.report_index, "active": s.active,
                 "minThreshold": s.min_threshold if s.min_threshold is not None else "",
                 "maxThreshold": s.max_threshold if s.max_threshold is not None else "",
+                "sensorType": s.sensor_type,
             }
         return {}
 
@@ -263,8 +303,6 @@ class SensorListModel(QAbstractListModel):
         errors: list[str] = []
         if not name.strip():
             errors.append("Sensor name cannot be empty.")
-        if not unit.strip():
-            errors.append("Unit cannot be empty.")
         if slave_id < 1 or slave_id > 247:
             errors.append("Slave ID must be between 1 and 247.")
         if register_address < 0 or register_address > 65535:
@@ -282,26 +320,26 @@ class SensorListModel(QAbstractListModel):
         except ValueError:
             return None
 
-    # ── Digital I/O CRUD ───────────────────────────────────────────────────
+    # ── Digital I/O CRUD (now uses Sensor with parent_id) ──────────────────
 
     @Slot(int, result="QVariant")
     def get_digital_ios(self, sensor_id: int):
-        """Return list of DI/DO dicts for a sensor."""
+        """Return list of DI/DO dicts for a sensor (children with parent_id == sensor_id)."""
         session = get_session()
         try:
             ios = list(session.exec(
-                select(DigitalIO)
-                .where(DigitalIO.sensor_id == sensor_id)
-                .order_by(DigitalIO.id)
+                select(Sensor)
+                .where(Sensor.parent_id == sensor_id)
+                .order_by(Sensor.id)
             ).all())
             return [
                 {
                     "id": io.id,
-                    "ioType": io.io_type,
-                    "label": io.label,
+                    "ioType": io.sensor_type,
+                    "label": io.name,
                     "diType": io.di_type or "",
                     "slaveId": io.slave_id,
-                    "address": io.address,
+                    "address": io.register_address,
                     "triggerOnMax": io.trigger_on_max,
                     "triggerOnMin": io.trigger_on_min,
                     "active": io.active,
@@ -319,14 +357,14 @@ class SensorListModel(QAbstractListModel):
                        slave_id: int, address: int,
                        trigger_on_max: bool, trigger_on_min: bool,
                        active: bool):
-        """Add a new DI/DO channel to a sensor."""
+        """Add a new DI/DO channel as a child Sensor."""
         session = get_session()
         try:
             # Check limit: max 5 DI and 5 DO per sensor
             existing = list(session.exec(
-                select(DigitalIO)
-                .where(DigitalIO.sensor_id == sensor_id)
-                .where(DigitalIO.io_type == io_type)
+                select(Sensor)
+                .where(Sensor.parent_id == sensor_id)
+                .where(Sensor.sensor_type == io_type)
             ).all())
             if len(existing) >= 5:
                 self.messageSent.emit(
@@ -335,13 +373,15 @@ class SensorListModel(QAbstractListModel):
                 )
                 return
 
-            dio = DigitalIO(
-                sensor_id=sensor_id,
-                io_type=io_type,
-                label=label.strip() or f"{io_type} {len(existing) + 1}",
+            dio = Sensor(
+                sensor_type=io_type,
+                parent_id=sensor_id,
+                is_system_wide=False,
+                name=label.strip() or f"{io_type} {len(existing) + 1}",
                 di_type=di_type.strip() if di_type and io_type == "DI" else None,
                 slave_id=slave_id,
-                address=address,
+                register_address=address,
+                register_type="discrete_input" if io_type == "DI" else "coil",
                 trigger_on_max=trigger_on_max,
                 trigger_on_min=trigger_on_min,
                 active=active,
@@ -350,9 +390,9 @@ class SensorListModel(QAbstractListModel):
             session.commit()
             self.messageSent.emit(
                 "Success",
-                f"Added {io_type} '{dio.label}'.",
+                f"Added {io_type} '{dio.name}'.",
             )
-            logger.info("DigitalIO added: %s for sensor %d", dio.label, sensor_id)
+            logger.info("Digital I/O added: %s for sensor %d", dio.name, sensor_id)
         except Exception as e:
             session.rollback()
             logger.error("add_digital_io error: %s", e)
@@ -362,16 +402,16 @@ class SensorListModel(QAbstractListModel):
 
     @Slot(int)
     def remove_digital_io(self, dio_id: int):
-        """Remove a DI/DO channel by its ID."""
+        """Remove a DI/DO channel by its ID (it's a Sensor row with parent_id set)."""
         session = get_session()
         try:
-            dio = session.get(DigitalIO, dio_id)
-            if dio:
+            dio = session.get(Sensor, dio_id)
+            if dio and dio.parent_id is not None:
                 session.delete(dio)
                 session.commit()
                 self.messageSent.emit(
                     "Success",
-                    f"Removed {dio.io_type} '{dio.label}'.",
+                    f"Removed {dio.sensor_type} '{dio.name}'.",
                 )
             else:
                 self.messageSent.emit("Error", "Digital I/O not found.")

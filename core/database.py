@@ -42,7 +42,7 @@ def _set_sqlite_pragma(dbapi_connection, connection_record):
 
 def init_db() -> None:
     """Tạo toàn bộ bảng nếu chưa tồn tại."""
-    from models import app_config, digital_io, report_log, sensor, sensor_data  # noqa: F401
+    from models import app_config, report_log, sensor, sensor_data  # noqa: F401
 
     SQLModel.metadata.create_all(engine)
     _migrate()
@@ -99,6 +99,8 @@ def _migrate() -> None:
                 ("server_base_folder", "VARCHAR DEFAULT ''"),
                 ("server_time_folder", "VARCHAR DEFAULT 'yyyy/MM/dd'"),
                 ("server_file_suffix", "VARCHAR DEFAULT 'yyyyMMddHHmmss'"),
+                # Phase 4: Protocol selector
+                ("ftp_protocol", "VARCHAR DEFAULT 'sftp'"),
             ]
             for col_name, col_type in app_config_adds:
                 if col_name not in acols:
@@ -108,11 +110,6 @@ def _migrate() -> None:
                     conn.commit()
                     acols.add(col_name)
 
-            if "digital_io" in inspector.get_table_names():
-                dicols = {c["name"] for c in inspector.get_columns("digital_io")}
-                if "di_type" not in dicols:
-                    conn.execute(text("ALTER TABLE digital_io ADD COLUMN di_type VARCHAR DEFAULT NULL"))
-                    conn.commit()
 
             if "sensor_data" in inspector.get_table_names():
                 sdcols = {c["name"] for c in inspector.get_columns("sensor_data")}

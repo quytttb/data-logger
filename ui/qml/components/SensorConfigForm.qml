@@ -17,6 +17,11 @@ Item {
     property int editSensorId: -1
     property int sensorSubTabIndex: 0
 
+    // Sensor type for the form (controls visibility of tabs and fields)
+    readonly property string sensorType: basicTab.sensorType
+    readonly property bool isAnalog: sensorType === "ANALOG"
+    readonly property bool isDigital: sensorType === "DI" || sensorType === "DO"
+
     // Expose for parent to connect Digital I/O adding/removing
     signal addDioFormSubmitted(string ioType, string label, string diType, int slave, int addr, bool trigMax, bool trigMin)
     signal removeDioRequested(int dioId)
@@ -32,6 +37,7 @@ Item {
     property alias pollInterval: basicTab.dPollInterval
     property alias reportIndex: basicTab.dReportIdx
     property alias activeSwitch: basicTab.dActive
+    property alias diType: basicTab.dDiType
 
     property alias scalingMode: scalingTab.dScalingMode
     property alias linearA: scalingTab.dLinearA
@@ -62,14 +68,15 @@ Item {
         scalingTab.dCoeffJson.text = "{}"
         basicTab.dPollInterval.value = 3; basicTab.dReportIdx.value = 0; basicTab.dActive.checked = true
         scalingTab.dMinThreshold.text = ""; scalingTab.dMaxThreshold.text = ""
+        basicTab.dDiType.currentIndex = 0
     }
 
     function loadData(s, uiState) {
         basicTab.dName.text = s.name
         // Set unit ComboBox: try to find in list, otherwise set editText
-        var unitIdx = basicTab.dUnit.find(s.unit)
+        var unitIdx = basicTab.dUnit.find(s.unit || "")
         if (unitIdx >= 0) basicTab.dUnit.currentIndex = unitIdx
-        else basicTab.dUnit.editText = s.unit
+        else basicTab.dUnit.editText = s.unit || ""
 
         basicTab.dSlave.value = s.slaveId; basicTab.dAddr.value = s.registerAddress
         basicTab.dRegType.currentIndex = basicTab.dRegType.model.indexOf(s.registerType)
@@ -94,13 +101,13 @@ Item {
     function getFormData() {
         return {
             name: basicTab.dName.text,
-            unit: basicTab.dUnit.editText,
+            unit: isAnalog ? basicTab.dUnit.editText : "",
             slaveId: basicTab.dSlave.value,
             registerAddress: basicTab.dAddr.value,
             registerType: basicTab.dRegType.currentText,
-            dataType: basicTab.dDataType.currentText,
-            dataFormat: basicTab.dDataFmt.currentText,
-            scalingModeIndex: scalingTab.dScalingMode.currentIndex,
+            dataType: isAnalog ? basicTab.dDataType.currentText : "int16",
+            dataFormat: isAnalog ? basicTab.dDataFmt.currentText : "AB",
+            scalingModeIndex: isAnalog ? scalingTab.dScalingMode.currentIndex : 0,
             linearA: scalingTab.dLinearA.text,
             linearB: scalingTab.dLinearB.text,
             rawMin: scalingTab.dRawMin.text,
@@ -109,35 +116,43 @@ Item {
             scaleMax: scalingTab.dScaleMax.text,
             coeffJson: scalingTab.dCoeffJson.text,
             pollInterval: basicTab.dPollInterval.value,
-            reportIndex: basicTab.dReportIdx.value,
+            reportIndex: isAnalog ? basicTab.dReportIdx.value : 0,
             active: basicTab.dActive.checked,
-            minThreshold: scalingTab.dMinThreshold.text,
-            maxThreshold: scalingTab.dMaxThreshold.text
+            minThreshold: isAnalog ? scalingTab.dMinThreshold.text : "",
+            maxThreshold: isAnalog ? scalingTab.dMaxThreshold.text : "",
+            sensorType: root.sensorType
         }
     }
 
     // ── UI ──
-    StackLayout {
-        id: formStack
+    ColumnLayout {
         anchors.fill: parent
-        currentIndex: root.sensorSubTabIndex
+        spacing: 0
 
-        SensorBasicTab {
-            id: basicTab
-            isTesterMode: root.isTesterMode
-        }
+        // Sub-tab content
+        StackLayout {
+            id: formStack
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            currentIndex: root.sensorSubTabIndex
 
-        SensorScalingTab {
-            id: scalingTab
-        }
-
-        SensorDigitalIOTab {
-            id: dioTab
-            onAddDioFormSubmitted: function(ioType, label, diType, slave, addr, trigMax, trigMin) {
-                root.addDioFormSubmitted(ioType, label, diType, slave, addr, trigMax, trigMin)
+            SensorBasicTab {
+                id: basicTab
+                isTesterMode: root.isTesterMode
             }
-            onRemoveDioRequested: function(dioId) {
-                root.removeDioRequested(dioId)
+
+            SensorScalingTab {
+                id: scalingTab
+            }
+
+            SensorDigitalIOTab {
+                id: dioTab
+                onAddDioFormSubmitted: function(ioType, label, diType, slave, addr, trigMax, trigMin) {
+                    root.addDioFormSubmitted(ioType, label, diType, slave, addr, trigMax, trigMin)
+                }
+                onRemoveDioRequested: function(dioId) {
+                    root.removeDioRequested(dioId)
+                }
             }
         }
     }

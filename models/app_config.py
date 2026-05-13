@@ -46,7 +46,7 @@ class AppConfig(SQLModel, table=True):
 
     # === Cấu hình FTP ===
     ftp_address: str = Field(default="", description="Địa chỉ FTP Server")
-    ftp_port: int = Field(default=22, description="Cổng kết nối (22 cho sFTP)")
+    ftp_port: int = Field(default=21, description="Cổng kết nối FTP (mặc định 21)")
     ftp_username: str = Field(default="", description="Tài khoản đăng nhập")
     ftp_password: str = Field(
         default="",

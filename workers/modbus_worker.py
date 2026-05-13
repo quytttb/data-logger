@@ -84,13 +84,62 @@ class ModbusWorker(QObject):
 
     def set_sensors(self, sensors: list[dict]) -> None:
         self._sensors = sensors
-        logger.info("Cập nhật danh sách cảm biến: %d sensors", len(sensors))
+        logger.info("Updated sensor list: %d sensors", len(sensors))
 
     def set_digital_ios(self, digital_ios: dict[int, list[dict]]) -> None:
         """Set DI/DO configuration grouped by sensor_id."""
         self._digital_ios = digital_ios
         total = sum(len(v) for v in digital_ios.values())
         logger.info("Digital I/O configured: %d channels across %d sensors", total, len(digital_ios))
+
+    def write_single_coil(self, sensor_id: int, value: bool) -> None:
+        """Write a coil value for a Standalone DO sensor (manual control from UI).
+
+        Looks up the sensor config by id, then writes to its register_address.
+        Thread-safe: called from main thread but runs in ModbusWorker thread context.
+        """
+        if not self._client or not self._client.connected:
+            logger.warning("write_single_coil: client not connected")
+            return
+
+        sensor_cfg = None
+        for s in self._sensors:
+            if s["id"] == sensor_id:
+                sensor_cfg = s
+                break
+        if sensor_cfg is None:
+            logger.warning("write_single_coil: sensor_id %d not found", sensor_id)
+            return
+
+        try:
+            kw = self._slave_kwarg("write_coil", sensor_cfg["slave_id"])
+            result = self._client.write_coil(
+                address=sensor_cfg["register_address"], value=value, **kw
+            )
+            if result.isError():
+                logger.warning(
+                    "Manual DO write error: id=%d addr=%d value=%s",
+                    sensor_id, sensor_cfg["register_address"], value,
+                )
+            else:
+                logger.info(
+                    "Manual DO %s: id=%d addr=%d",
+                    "ON" if value else "OFF",
+                    sensor_id, sensor_cfg["register_address"],
+                )
+                # Emit data_ready so the UI card updates immediately
+                self.data_ready.emit({
+                    "sensor_id": sensor_id,
+                    "raw_value": 1 if value else 0,
+                    "value": 1 if value else 0,
+                    "status": "ON" if value else "OFF",
+                    "recorded_at": datetime.now().isoformat(),
+                    "is_alarm": False,
+                    "alarm_type": "",
+                    "di_states": [],
+                })
+        except Exception as e:
+            logger.error("Manual DO write exception: id=%d err=%s", sensor_id, e)
 
     def run(self) -> None:
         """Vòng lặp chính — được gọi khi QThread.start()."""
@@ -116,7 +165,7 @@ class ModbusWorker(QObject):
 
                 if not self._client or not self._client.connected:
                     self.connection_changed.emit(False)
-                    self.modbus_error.emit(f"Mất kết nối {self._port}, thử lại sau {backoff:.0f}s...")
+                    self.modbus_error.emit(f"Connection lost {self._port}, retrying in {backoff:.0f}s...")
                     time.sleep(backoff)
                     backoff = min(backoff * _BACKOFF_FACTOR, _BACKOFF_MAX)
 
@@ -148,7 +197,7 @@ class ModbusWorker(QObject):
 
             if self._client:
                 self._client.close()
-            logger.info("ModbusWorker đã dừng.")
+            logger.info("ModbusWorker stopped.")
         except Exception as e:
             logger.critical("ModbusWorker crashed: %s", e, exc_info=True)
         finally:
@@ -176,16 +225,30 @@ class ModbusWorker(QObject):
         )
 
         if self._client.connect():
-            logger.info("Kết nối Modbus thành công: %s @ %d baud", self._port, self._baudrate)
+            logger.info("Modbus connected successfully: %s @ %d baud", self._port, self._baudrate)
             self.connection_changed.emit(True)
             return True
 
-        self.modbus_error.emit(f"Không thể kết nối cổng {self._port}")
+        self.modbus_error.emit(f"Could not connect to port {self._port}")
         self.connection_changed.emit(False)
         self._is_running = False
         return False
 
     def _poll_single(self, sensor_cfg: dict) -> None:
+        sensor_type = sensor_cfg.get("sensor_type", "ANALOG")
+
+        # Route to specialised handlers based on sensor_type
+        if sensor_type == "DI":
+            self._poll_standalone_di(sensor_cfg)
+        elif sensor_type == "DO":
+            self._poll_standalone_do(sensor_cfg)
+        else:
+            self._poll_analog(sensor_cfg)
+
+    # ── Analog Sensor Polling ──────────────────────────────────────────────
+
+    def _poll_analog(self, sensor_cfg: dict) -> None:
+        """Poll an ANALOG sensor: read value, check alarms, read child DIs, drive child DOs."""
         sensor_id = sensor_cfg["id"]
         slave_id = sensor_cfg["slave_id"]
         register_address = sensor_cfg["register_address"]
@@ -229,13 +292,13 @@ class ModbusWorker(QObject):
                     "is_alarm": is_alarm,
                     "alarm_type": alarm_type,
                 })
-                # Drive DO relays on alarm state transition
+                # Drive attached DO relays on alarm state transition
                 self._drive_do_relays(sensor_id, is_alarm, alarm_type)
 
-            # --- Read DI states ---
+            # --- Read attached DI states ---
             di_states = self._read_di_states(sensor_id)
 
-            # --- Status code resolution ---
+            # --- Status code resolution (priority: 02 > 03 > 01) ---
             current_status = "00"
             for di in di_states:
                 if di.get("state") is True:
@@ -243,12 +306,12 @@ class ModbusWorker(QObject):
                     if dt:
                         if dt == "02":
                             current_status = "02"
-                            break  # Highest priority
+                            break  # Highest priority — stop immediately
                         elif dt == "03" and current_status not in ["02"]:
                             current_status = "03"
                         elif dt == "01" and current_status not in ["02", "03"]:
                             current_status = "01"
-                        elif current_status == "00": # Handle custom status
+                        elif current_status == "00":  # Handle custom status
                             current_status = dt
 
             payload = {
@@ -274,8 +337,86 @@ class ModbusWorker(QObject):
             self.modbus_error.emit(error_msg)
 
         except Exception as e:
-            error_msg = f"Lỗi không xác định — Sensor ID {sensor_id}: {e}"
+            error_msg = f"Unknown error — Sensor ID {sensor_id}: {e}"
             logger.error(error_msg, exc_info=True)
+            self.modbus_error.emit(error_msg)
+
+    # ── Standalone DI Polling ──────────────────────────────────────────────
+
+    def _poll_standalone_di(self, sensor_cfg: dict) -> None:
+        """Poll a system-wide Standalone DI: read discrete input, emit status payload."""
+        sensor_id = sensor_cfg["id"]
+        slave_id = sensor_cfg["slave_id"]
+        address = sensor_cfg["register_address"]
+
+        try:
+            kw = self._slave_kwarg("read_discrete_inputs", slave_id)
+            resp = self._client.read_discrete_inputs(address=address, count=1, **kw)
+            if resp.isError():
+                self.modbus_error.emit(
+                    f"Standalone DI read error: id={sensor_id} slave={slave_id} addr={address}"
+                )
+                return
+
+            state = resp.bits[0]
+            di_type = sensor_cfg.get("di_type") or "00"
+            status = di_type if state else "00"
+
+            payload = {
+                "sensor_id": sensor_id,
+                "raw_value": 1 if state else 0,
+                "value": 1 if state else 0,
+                "status": status,
+                "recorded_at": datetime.now().isoformat(),
+                "is_alarm": False,
+                "alarm_type": "",
+                "di_states": [],
+            }
+            self.data_ready.emit(payload)
+            logger.debug("Standalone DI %d: state=%s status=%s", sensor_id, state, status)
+
+        except Exception as e:
+            error_msg = f"Standalone DI error — ID {sensor_id}: {e}"
+            logger.warning(error_msg)
+            self.modbus_error.emit(error_msg)
+
+    def _poll_standalone_do(self, sensor_cfg: dict) -> None:
+        """Poll a Standalone DO: read current coil state, emit payload.
+
+        Standalone DOs share the same slave_id + address as attached DOs,
+        so when alarm logic drives the relay, this read reflects the actual state.
+        """
+        sensor_id = sensor_cfg["id"]
+        slave_id = sensor_cfg["slave_id"]
+        address = sensor_cfg["register_address"]
+
+        try:
+            kw = self._slave_kwarg("read_coils", slave_id)
+            resp = self._client.read_coils(address=address, count=1, **kw)
+            if resp.isError():
+                self.modbus_error.emit(
+                    f"Standalone DO read error: id={sensor_id} slave={slave_id} addr={address}"
+                )
+                return
+
+            state = resp.bits[0]
+
+            payload = {
+                "sensor_id": sensor_id,
+                "raw_value": 1 if state else 0,
+                "value": 1 if state else 0,
+                "status": "ON" if state else "OFF",
+                "recorded_at": datetime.now().isoformat(),
+                "is_alarm": False,
+                "alarm_type": "",
+                "di_states": [],
+            }
+            self.data_ready.emit(payload)
+            logger.debug("Standalone DO %d: state=%s", sensor_id, state)
+
+        except Exception as e:
+            error_msg = f"Standalone DO error — ID {sensor_id}: {e}"
+            logger.warning(error_msg)
             self.modbus_error.emit(error_msg)
 
     def _slave_kwarg(self, func_name: str, slave_id: int) -> dict:
@@ -341,9 +482,9 @@ class ModbusWorker(QObject):
         return ModbusBase.decode_data(result.registers, data_type, data_format)
 
     def _read_di_states(self, sensor_id: int) -> list[dict]:
-        """Read all DI channels associated with a sensor.
+        """Read all attached DI channels for an analog sensor.
 
-        Returns list of {id, label, state: bool}.
+        Returns list of {id, label, di_type, slave_id, register_address, state: bool}.
         """
         ios = self._digital_ios.get(sensor_id, [])
         di_channels = [io for io in ios if io.get("io_type") == "DI" and io.get("active", True)]
@@ -352,26 +493,28 @@ class ModbusWorker(QObject):
 
         results = []
         for ch in di_channels:
+            addr = ch.get("address") or ch.get("register_address", 0)
+            label = ch.get("label") or ch.get("name", "")
             try:
                 kw = self._slave_kwarg("read_discrete_inputs", ch["slave_id"])
                 resp = self._client.read_discrete_inputs(
-                    address=ch["address"], count=1, **kw
+                    address=addr, count=1, **kw
                 )
                 if resp.isError():
                     logger.warning(
                         "DI read error: sensor=%d slave=%d addr=%d",
-                        sensor_id, ch["slave_id"], ch["address"],
+                        sensor_id, ch["slave_id"], addr,
                     )
-                    results.append({"id": ch["id"], "label": ch["label"], "di_type": ch.get("di_type"), "state": None})
+                    results.append({"id": ch["id"], "label": label, "di_type": ch.get("di_type"), "state": None})
                 else:
-                    results.append({"id": ch["id"], "label": ch["label"], "di_type": ch.get("di_type"), "state": resp.bits[0]})
+                    results.append({"id": ch["id"], "label": label, "di_type": ch.get("di_type"), "state": resp.bits[0]})
             except Exception as e:
                 logger.warning("DI read exception: %s", e)
-                results.append({"id": ch["id"], "label": ch["label"], "di_type": ch.get("di_type"), "state": None})
+                results.append({"id": ch["id"], "label": label, "di_type": ch.get("di_type"), "state": None})
         return results
 
     def _drive_do_relays(self, sensor_id: int, is_alarm: bool, alarm_type: str) -> None:
-        """Write DO coils on alarm state transition.
+        """Write attached DO coils on alarm state transition.
 
         When alarm activates: set matching DO coils to ON.
         When alarm clears: set all DO coils for this sensor to OFF.
@@ -382,6 +525,7 @@ class ModbusWorker(QObject):
             return
 
         for ch in do_channels:
+            addr = ch.get("address") or ch.get("register_address", 0)
             # Determine if this specific DO should fire
             if is_alarm:
                 should_activate = False
@@ -397,18 +541,18 @@ class ModbusWorker(QObject):
             try:
                 kw = self._slave_kwarg("write_coil", ch["slave_id"])
                 result = self._client.write_coil(
-                    address=ch["address"], value=coil_value, **kw
+                    address=addr, value=coil_value, **kw
                 )
                 if result.isError():
                     logger.warning(
                         "DO write error: sensor=%d slave=%d addr=%d value=%s",
-                        sensor_id, ch["slave_id"], ch["address"], coil_value,
+                        sensor_id, ch["slave_id"], addr, coil_value,
                     )
                 else:
                     logger.info(
                         "DO relay %s: sensor=%d slave=%d addr=%d → %s",
                         "ON" if coil_value else "OFF",
-                        sensor_id, ch["slave_id"], ch["address"], coil_value,
+                        sensor_id, ch["slave_id"], addr, coil_value,
                     )
             except Exception as e:
                 logger.warning("DO write exception: sensor=%d err=%s", sensor_id, e)

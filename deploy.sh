@@ -50,49 +50,69 @@ SYS
 }
 
 run_ota() {
-    TAR_FILE=$1
-    if [ -z "$TAR_FILE" ] || [ ! -f "$TAR_FILE" ]; then
-        echo "[Lỗi] File không tồn tại: $TAR_FILE"
+    PKG_FILE=$1
+    if [ -z "$PKG_FILE" ] || [ ! -f "$PKG_FILE" ]; then
+        echo "[Lỗi] File không tồn tại: $PKG_FILE"
         return 1
     fi
-    
-    echo "[OTA] Đang tiến hành cài đặt bản cập nhật từ $TAR_FILE..."
-    
-    # 1. Dừng service an toàn
+
+    echo "[OTA] Đang tiến hành cài đặt bản cập nhật từ $PKG_FILE..."
+
+    case "$PKG_FILE" in
+        *.deb)
+            echo "[OTA] Nhận diện gói Debian (.deb). Cài qua apt/dpkg..."
+            ABS_PKG="$(readlink -f "$PKG_FILE")"
+            if command -v apt >/dev/null 2>&1; then
+                sudo apt install -y "$ABS_PKG" || {
+                    echo "[OTA] apt install thất bại, fallback dpkg + apt -f install..."
+                    sudo dpkg -i "$ABS_PKG" || true
+                    sudo apt -f install -y
+                }
+            else
+                sudo dpkg -i "$ABS_PKG" || true
+            fi
+            echo "[OTA] Cập nhật .deb hoàn tất (postinst đã reload+restart service)."
+            show_version
+            return 0
+            ;;
+        *.tar.gz|*.tgz)
+            echo "[OTA] Nhận diện tarball (.tar.gz). Dùng pipeline cũ làm fallback."
+            ;;
+        *)
+            echo "[Lỗi] Định dạng không hỗ trợ: $PKG_FILE (chỉ .deb hoặc .tar.gz)"
+            return 1
+            ;;
+    esac
+
+    # ── Fallback path: legacy .tar.gz OTA ──────────────────────────────────
     echo "[OTA] Dừng dịch vụ $SERVICE_NAME..."
     sudo systemctl stop $SERVICE_NAME || echo "[OTA] Service chưa tồn tại hoặc đã dừng sẵn."
-    
-    # 2. Giải nén vào thư mục dùng một lần
+
     echo "[OTA] Giải nén file thiết lập mới..."
     mkdir -p /tmp/datalogger_ota
-    tar -xzf "$TAR_FILE" -C /tmp/datalogger_ota
+    tar -xzf "$PKG_FILE" -C /tmp/datalogger_ota
 
-    # 3. Đồng bộ (rsync)
     echo "[OTA] Cập nhật file..."
-    # Không sync đè các file cấu hình và database
     rsync -av --progress /tmp/datalogger_ota/ $APP_DIR/ \
       --exclude 'config' \
       --exclude 'var' \
       --exclude 'logs' \
       --exclude '.venv' \
       --exclude '*.db'
-      
+
     chmod +x $APP_DIR/deploy.sh
     chmod +x $APP_DIR/datalogger || true
-    
-    # Kéo file VERSION (nếu rsync thiếu xót)
+
     if [ -f /tmp/datalogger_ota/VERSION ]; then
         cp /tmp/datalogger_ota/VERSION $APP_DIR/VERSION
     fi
-    
-    # Dọn dẹp
+
     rm -rf /tmp/datalogger_ota
-    
-    # 4. Start lại service
+
     echo "[OTA] Start lại SystemD Service..."
     sudo systemctl daemon-reload
     sudo systemctl start $SERVICE_NAME
-    
+
     echo "[OTA] Cập nhật thành công. Hệ thống đang chạy:"
     show_version
 }

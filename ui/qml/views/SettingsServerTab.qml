@@ -7,12 +7,19 @@ import "../components"
 Item {
     id: root
     property bool configChanged: false
+    property int _pathVersion: 0
+
+    Connections {
+        target: settingsController
+        function onConfigLoaded() { root._pathVersion++ }
+        function onConfigSaved() { root._pathVersion++ }
+    }
 
     Flickable {
         id: flick
         anchors.fill: parent
         contentWidth: width
-        contentHeight: formContent.implicitHeight + 40
+        contentHeight: formContent.implicitHeight + remotePath.height + 60
         clip: true; boundsBehavior: Flickable.StopAtBounds
 
         Rectangle {
@@ -21,8 +28,83 @@ Item {
             border.color: Theme.borderDefault; border.width: 1
 
             RowLayout {
+                id: remotePath
+                anchors.top: parent.top
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.margins: 20
+                height: 40
+                spacing: 15
+
+                Text {
+                    text: "Remote path:"
+                    color: Theme.accentText
+                    font.bold: true
+                    font.pixelSize: Theme.fontLabelSize
+                    Layout.alignment: Qt.AlignVCenter
+                }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 40
+                    color: Theme.bgSeparator
+                    radius: Theme.radiusTiny
+                    border.color: Theme.accent
+                    border.width: 1
+
+                    Text {
+                        anchors.fill: parent
+                        anchors.leftMargin: 12
+                        anchors.rightMargin: 12
+                        verticalAlignment: Text.AlignVCenter
+                        color: Theme.accent
+                        font.pixelSize: 13
+                        font.bold: true
+                        elide: Text.ElideRight
+                        text: {
+                            void(root._pathVersion)  // trigger re-evaluation
+                            if (!settingsController) return ""
+                            var base = settingsController.serverBaseFolder || ""
+                            var tFolder = settingsController.serverTimeFolder || ""
+                            var prefix = settingsController.ftpPrefix || ""
+                            var suffix = settingsController.serverFileSuffix || ""
+
+                            var dir = ""
+                            if (base) {
+                                dir = base.startsWith("/") ? base : "/" + base
+                            }
+                            if (tFolder) {
+                                if (dir && !dir.endsWith("/")) dir += "/"
+                                dir += tFolder
+                            }
+                            if (dir && !dir.endsWith("/")) dir += "/"
+
+                            return dir + prefix + suffix + ".txt"
+                        }
+                    }
+                }
+            }
+
+            Rectangle {
+                id: divider
+                anchors.top: remotePath.bottom
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.topMargin: 10
+                anchors.leftMargin: 20
+                anchors.rightMargin: 20
+                height: 1
+                color: Theme.borderDefault
+            }
+
+            RowLayout {
                 id: formContent
-                anchors.fill: parent; anchors.margins: 20
+                anchors.top: divider.bottom
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                anchors.margins: 20
+                anchors.topMargin: 10
                 spacing: 25
 
                 // ── COLUMN 1: General ──
@@ -114,12 +196,6 @@ Item {
                         onTextEdited: { settingsController.ftpPassword = text; root.configChanged = true }
                     }
 
-                    Text { text: "Remote path:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
-                    TextField {
-                        Layout.fillWidth: true
-                        text: settingsController ? settingsController.ftpRemotePath : ""
-                        onTextEdited: { settingsController.ftpRemotePath = text; root.configChanged = true }
-                    }
                 }
 
                 // ── COLUMN 3: File & Folder Naming ──
@@ -133,7 +209,7 @@ Item {
                     TextField {
                         Layout.fillWidth: true
                         text: settingsController ? settingsController.serverBaseFolder : ""
-                        onTextEdited: { settingsController.serverBaseFolder = text; root.configChanged = true }
+                        onTextEdited: { settingsController.serverBaseFolder = text; root.configChanged = true; root._pathVersion++ }
                     }
 
                     Text { text: "Time folder:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
@@ -144,14 +220,14 @@ Item {
                             var v = settingsController ? settingsController.serverTimeFolder : "yyyy/MM/dd"
                             return Math.max(0, model.indexOf(v))
                         }
-                        onActivated: { settingsController.serverTimeFolder = currentText; root.configChanged = true }
+                        onActivated: { settingsController.serverTimeFolder = currentText; root.configChanged = true; root._pathVersion++ }
                     }
 
                     Text { text: "File prefix:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
                     TextField {
                         Layout.fillWidth: true
                         text: settingsController ? settingsController.ftpPrefix : ""
-                        onTextEdited: { settingsController.ftpPrefix = text; root.configChanged = true }
+                        onTextEdited: { settingsController.ftpPrefix = text; root.configChanged = true; root._pathVersion++ }
                     }
 
                     Text { text: "File suffix:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
@@ -162,7 +238,7 @@ Item {
                             var v = settingsController ? settingsController.serverFileSuffix : "yyyyMMddHHmmss"
                             return Math.max(0, model.indexOf(v))
                         }
-                        onActivated: { settingsController.serverFileSuffix = currentText; root.configChanged = true }
+                        onActivated: { settingsController.serverFileSuffix = currentText; root.configChanged = true; root._pathVersion++ }
                     }
                 }
             }

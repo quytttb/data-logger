@@ -154,29 +154,29 @@ class TesterController(QObject):
     def read_single(self, reg_type: str, addr: int, count: int, slave: int,
                     data_type: str, data_format: str = "ABCD") -> str:
         if not self._is_connected:
-            return "ERR: Chưa kết nối"
+            return "ERR: Not connected"
         try:
             val = self.modbus.read(reg_type, addr, count, slave, data_type, data_format)
             return str(val)
         except Exception as e:
-            logger.error("Lỗi đọc Modbus: %s", e)
+            logger.error("Modbus read error: %s", e)
             return f"ERR: {e}"
 
     @Slot(str, int, str, int, str, result=str)
     def write_single(self, reg_type: str, addr: int, value_str: str, slave: int, data_type: str) -> str:
         if not self._is_connected:
-            return "ERR: Chưa kết nối"
+            return "ERR: Not connected"
         try:
             # Các kiểu integer parse thành int, kiểu float parse thành float
             int_types = ("int16", "uint16", "int32", "uint32", "decimal")
             val = int(value_str) if data_type.lower() in int_types else float(value_str)
         except ValueError:
-            return "ERR: Giá trị không hợp lệ"
+            return "ERR: Invalid value"
         try:
             self.modbus.write(reg_type, addr, val, slave, data_type)
             return "SUCCESS"
         except Exception as e:
-            logger.error("Lỗi ghi Modbus: %s", e)
+            logger.error("Modbus write error: %s", e)
             return f"ERR: {e}"
 
     @Slot(int, int, int, str, str, int, str)

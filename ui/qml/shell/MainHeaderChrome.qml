@@ -13,9 +13,40 @@ ColumnLayout {
     property var appRoot: null
 
     property alias modbusTbLoader: modbusTbLoader
+    property var _lastSettingsTaskBar: null
+
+    function connectSettings() {
+        if (settingsTbLoader.item && tabContent.loaderSettings.item) {
+            var item = settingsTbLoader.item;
+            var view = tabContent.loaderSettings.item;
+            
+            if (headerChromeRoot._lastSettingsTaskBar === item) return;
+            headerChromeRoot._lastSettingsTaskBar = item;
+            
+            item.settingsTabIndex = Qt.binding(function() { return view.settingsTabIndex })
+            item.isConfigChanged = Qt.binding(function() { return view.isConfigChanged })
+            item.hasSelectedSensor = Qt.binding(function() { return view.hasSelectedSensor })
+            item.isAddMode = Qt.binding(function() { return view.isAddMode })
+            item.sensorSubTabIndex = Qt.binding(function() { return view.sensorSubTabIndex })
+            item.hasSelectedDio = Qt.binding(function() { return view.hasSelectedDio })
+            item.sensorType = Qt.binding(function() { return view.sensorType || "ANALOG" })
+
+            item.tabSelected.connect(function(idx) { view.settingsTabIndex = idx })
+            item.sensorSubTabSelected.connect(function(idx) { view.sensorSubTabIndex = idx })
+            item.saveConfig.connect(function() { view.saveConfig() })
+            item.cancelConfig.connect(function() { view.cancelConfig() })
+            item.addSensor.connect(function() { view.openAddSensor() })
+            item.editSelectedSensor.connect(function() { view.editSelectedSensor() })
+            item.deleteSelectedSensor.connect(function() { view.deleteSelectedSensor() })
+            item.saveSensorForm.connect(function() { view.saveSensorForm() })
+            item.cancelSensorForm.connect(function() { view.closeSensorForm() })
+            item.editSelectedDio.connect(function() { view.editSelectedDio() })
+            item.deleteSelectedDio.connect(function() { view.deleteSelectedDio() })
+        }
+    }
 
     Layout.fillWidth: true
-    Layout.preferredHeight: 64 + 1 + ((currentTab === 3 && testerController.isScanning) ? 10 : 0)
+    Layout.preferredHeight: 64 + 1 + ((currentTab === 4 && testerController.isScanning) ? 10 : 0)
     Layout.maximumHeight: Layout.preferredHeight
     spacing: 0
 
@@ -68,10 +99,10 @@ ColumnLayout {
 
                 Loader {
                     id: modbusTbLoader
-                    Layout.fillWidth: headerChromeRoot.currentTab === 3
+                    Layout.fillWidth: headerChromeRoot.currentTab === 4
                     Layout.fillHeight: true
-                    active: headerChromeRoot.currentTab === 3
-                    visible: headerChromeRoot.currentTab === 3
+                    active: headerChromeRoot.currentTab === 4
+                    visible: headerChromeRoot.currentTab === 4
                     source: "ModbusTesterTaskBar.qml"
                     onLoaded: {
                         if (appRoot)
@@ -94,35 +125,17 @@ ColumnLayout {
 
                 Loader {
                     id: settingsTbLoader
-                    Layout.fillWidth: headerChromeRoot.currentTab === 2
+                    Layout.fillWidth: headerChromeRoot.currentTab === 3
                     Layout.fillHeight: true
-                    active: headerChromeRoot.currentTab === 2
-                    visible: headerChromeRoot.currentTab === 2
+                    active: headerChromeRoot.currentTab === 3
+                    visible: headerChromeRoot.currentTab === 3
                     source: "SettingsTaskBar.qml"
-                    onLoaded: {
-                        if (item && tabContent.loaderSettings.item) {
-                            var view = tabContent.loaderSettings.item;
-                            
-                            item.settingsTabIndex = Qt.binding(function() { return view.settingsTabIndex })
-                            item.isConfigChanged = Qt.binding(function() { return view.isConfigChanged })
-                            item.hasSelectedSensor = Qt.binding(function() { return view.hasSelectedSensor })
-                            item.isAddMode = Qt.binding(function() { return view.isAddMode })
-                            item.sensorSubTabIndex = Qt.binding(function() { return view.sensorSubTabIndex })
-                            item.hasSelectedDio = Qt.binding(function() { return view.hasSelectedDio })
-
-                            item.tabSelected.connect(function(idx) { view.settingsTabIndex = idx })
-                            item.sensorSubTabSelected.connect(function(idx) { view.sensorSubTabIndex = idx })
-                            item.saveConfig.connect(function() { view.saveConfig() })
-                            item.cancelConfig.connect(function() { view.cancelConfig() })
-                            item.addSensor.connect(function() { view.openAddSensor() })
-                            item.editSelectedSensor.connect(function() { view.editSelectedSensor() })
-                            item.deleteSelectedSensor.connect(function() { view.deleteSelectedSensor() })
-                            item.saveSensorForm.connect(function() { view.saveSensorForm() })
-                            item.cancelSensorForm.connect(function() { view.closeSensorForm() })
-                            item.editSelectedDio.connect(function() { view.editSelectedDio() })
-                            item.deleteSelectedDio.connect(function() { view.deleteSelectedDio() })
-                        }
-                    }
+                    onLoaded: headerChromeRoot.connectSettings()
+                }
+                
+                Connections {
+                    target: tabContent.loaderSettings
+                    function onLoaded() { headerChromeRoot.connectSettings() }
                 }
 
                 Loader {
@@ -130,6 +143,14 @@ ColumnLayout {
                     Layout.fillHeight: true
                     active: headerChromeRoot.currentTab === 1
                     source: "HistoryTaskBar.qml"
+                }
+
+                Loader {
+                    Layout.fillWidth: headerChromeRoot.currentTab === 2
+                    Layout.fillHeight: true
+                    active: headerChromeRoot.currentTab === 2
+                    visible: headerChromeRoot.currentTab === 2
+                    source: "TrendingTaskBar.qml"
                 }
             }
         }
@@ -143,7 +164,7 @@ ColumnLayout {
 
     RowLayout {
         Layout.fillWidth: true
-        Layout.preferredHeight: (headerChromeRoot.currentTab === 3 && testerController.isScanning) ? 10 : 0
+        Layout.preferredHeight: (headerChromeRoot.currentTab === 4 && testerController.isScanning) ? 10 : 0
         Layout.maximumHeight: Layout.preferredHeight
         visible: Layout.preferredHeight > 0
         spacing: 0

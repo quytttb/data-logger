@@ -27,7 +27,7 @@ Rectangle {
             color: Theme.bgSeparator; radius: Theme.radiusTiny
             RowLayout {
                 anchors.fill: parent; anchors.leftMargin: 15; anchors.rightMargin: 15; spacing: 5
-                Text { text: "Name";     color: Theme.accent; font.bold: true; font.pixelSize: 13; Layout.preferredWidth: 130 }
+                Text { text: "Name";     color: Theme.accent; font.bold: true; font.pixelSize: 13; Layout.preferredWidth: 120 }
                 Text { text: "Unit";     color: Theme.accent; font.bold: true; font.pixelSize: 13; Layout.preferredWidth: 50 }
                 Text { text: "Slave";    color: Theme.accent; font.bold: true; font.pixelSize: 13; Layout.preferredWidth: 45; horizontalAlignment: Text.AlignHCenter }
                 Text { text: "Addr";     color: Theme.accent; font.bold: true; font.pixelSize: 13; Layout.preferredWidth: 45; horizontalAlignment: Text.AlignHCenter }
@@ -35,7 +35,6 @@ Rectangle {
                 Text { text: "Type";     color: Theme.accent; font.bold: true; font.pixelSize: 13; Layout.preferredWidth: 65; horizontalAlignment: Text.AlignHCenter }
                 Text { text: "Format";   color: Theme.accent; font.bold: true; font.pixelSize: 13; Layout.preferredWidth: 55; horizontalAlignment: Text.AlignHCenter }
                 Text { text: "Intv";     color: Theme.accent; font.bold: true; font.pixelSize: 13; Layout.preferredWidth: 45; horizontalAlignment: Text.AlignHCenter }
-                Text { text: "Idx";      color: Theme.accent; font.bold: true; font.pixelSize: 13; Layout.preferredWidth: 40; horizontalAlignment: Text.AlignHCenter }
                 Text { text: "Thresholds"; color: Theme.accent; font.bold: true; font.pixelSize: 13; Layout.fillWidth: true; horizontalAlignment: Text.AlignHCenter }
                 Text { text: "Active";   color: Theme.accent; font.bold: true; font.pixelSize: 13; Layout.preferredWidth: 50; horizontalAlignment: Text.AlignHCenter }
             }
@@ -47,7 +46,6 @@ Rectangle {
             clip: true
             smooth: false
             Layout.fillWidth: true; Layout.fillHeight: true
-            clip: true
             model: sensorModel
             boundsBehavior: Flickable.StopAtBounds
             
@@ -67,7 +65,7 @@ Rectangle {
 
                 RowLayout {
                     anchors.fill: parent; anchors.leftMargin: 15; anchors.rightMargin: 15; spacing: 5
-                    Text { text: name; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; font.bold: true; Layout.preferredWidth: 130; elide: Text.ElideRight }
+                    Text { text: name; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; font.bold: true; Layout.preferredWidth: 120; elide: Text.ElideRight }
                     Text { text: unit; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; Layout.preferredWidth: 50; elide: Text.ElideRight }
                     Text { text: slaveId; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; Layout.preferredWidth: 45; horizontalAlignment: Text.AlignHCenter }
                     Text { text: registerAddress; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; Layout.preferredWidth: 45; horizontalAlignment: Text.AlignHCenter }
@@ -83,12 +81,37 @@ Rectangle {
                         }
                         color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; Layout.preferredWidth: 50; horizontalAlignment: Text.AlignHCenter 
                     }
-                    Text { text: dataType; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; Layout.preferredWidth: 65; horizontalAlignment: Text.AlignHCenter }
-                    Text { text: dataFormat; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; Layout.preferredWidth: 55; horizontalAlignment: Text.AlignHCenter }
-                    Text { text: pollInterval + "s"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; Layout.preferredWidth: 45; horizontalAlignment: Text.AlignHCenter }
-                    Text { text: reportIndex; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; Layout.preferredWidth: 40; horizontalAlignment: Text.AlignHCenter }
+                    Text {
+                        readonly property bool isBool: {
+                            var t = String(registerType).toLowerCase().trim()
+                            return t.indexOf("coil") >= 0 || t.indexOf("discrete") >= 0
+                        }
+                        text: isBool ? "" : dataType
+                        color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; Layout.preferredWidth: 65; horizontalAlignment: Text.AlignHCenter
+                    }
+                    Text {
+                        readonly property bool isBool: {
+                            var t = String(registerType).toLowerCase().trim()
+                            return t.indexOf("coil") >= 0 || t.indexOf("discrete") >= 0
+                        }
+                        text: isBool ? "" : dataFormat
+                        color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; Layout.preferredWidth: 55; horizontalAlignment: Text.AlignHCenter
+                    }
+                    Text {
+                        readonly property bool isBool: {
+                            var t = String(registerType).toLowerCase().trim()
+                            return t.indexOf("coil") >= 0 || t.indexOf("discrete") >= 0
+                        }
+                        text: isBool ? "" : (pollInterval + "s")
+                        color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; Layout.preferredWidth: 45; horizontalAlignment: Text.AlignHCenter
+                    }
                     Text { 
-                        text: (minThreshold !== undefined && minThreshold !== "" ? minThreshold : "-") + "  →  " + (maxThreshold !== undefined && maxThreshold !== "" ? maxThreshold : "-")
+                        text: {
+                            var t = String(registerType).toLowerCase().trim()
+                            var isBool = t.indexOf("coil") >= 0 || t.indexOf("discrete") >= 0
+                            if (isBool) return ""
+                            return (minThreshold !== undefined && minThreshold !== "" ? minThreshold : "-") + "  →  " + (maxThreshold !== undefined && maxThreshold !== "" ? maxThreshold : "-")
+                        }
                         color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; Layout.fillWidth: true; elide: Text.ElideRight; horizontalAlignment: Text.AlignHCenter
                     }
                     Item {

@@ -19,6 +19,7 @@ Rectangle {
     property int sensorSubTabIndex: 0
     property int returnMainTab: -1  // -1 = stay in Settings; >=0 = navigate to that main tab after Save/Cancel
     property bool hasSelectedDio: sensorForm.hasSelectedDio
+    property string sensorType: sensorForm.sensorType
 
     signal requestMainTabChange(int tabIndex)
 

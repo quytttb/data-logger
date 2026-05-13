@@ -4,12 +4,25 @@ import QtQuick.Layouts
 import ".."
 
 // TAB 0: Basic Info & Modbus Settings
+// When sensorType is "DI" or "DO", analog-specific fields are hidden.
 Rectangle {
     id: root
     color: Theme.bgPanel; radius: Theme.radiusCard
     border.color: Theme.borderDefault; border.width: 1
 
     property bool isTesterMode: false
+    readonly property string sensorType: {
+        var r = dRegType.currentText;
+        if (r === "Discrete Inputs") return "DI";
+        if (r === "Coils") return "DO";
+        return "ANALOG";
+    }
+
+    // Convenience flags
+    readonly property bool isAnalog: sensorType === "ANALOG"
+    readonly property bool isDI: sensorType === "DI"
+    readonly property bool isDO: sensorType === "DO"
+    readonly property bool isDigital: isDI || isDO
 
     // ── Expose form fields ──
     property alias dActive: dActive
@@ -22,6 +35,8 @@ Rectangle {
     property alias dRegType: dRegType
     property alias dDataType: dDataType
     property alias dDataFmt: dDataFmt
+    property alias dDiType: dDiType
+
 
     RowLayout {
         anchors.fill: parent; anchors.margins: 20
@@ -42,9 +57,10 @@ Rectangle {
             Text { text: "Name:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
             TextField { id: dName; Layout.fillWidth: true }
 
-            Text { text: "Unit:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
+            // Unit — hidden for DI/DO
+            Text { text: "Unit:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; visible: isAnalog }
             ComboBox {
-                id: dUnit; Layout.fillWidth: true
+                id: dUnit; Layout.fillWidth: true; visible: isAnalog
                 editable: true
                 model: [
                     "°C", "°F", "%", "%RH",
@@ -58,11 +74,26 @@ Rectangle {
                 ]
             }
 
-            Text { text: "Poll interval (s):"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; visible: !root.isTesterMode }
-            SpinBox { id: dPollInterval; from: 1; to: 3600; value: 3; Layout.fillWidth: true; visible: !root.isTesterMode }
+            // DI-specific: Status code (di_type)
+            Text { text: "Status Code (di_type):"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; visible: isDI }
+            ComboBox {
+                id: dDiType; Layout.fillWidth: true; visible: isDI
+                editable: true
+                model: ["00 — Monitoring", "01 — Calibrating", "02 — Error", "03 — Maintenance"]
+                property string diTypeValue: {
+                    var t = currentText.trim()
+                    if (t.indexOf("—") >= 0) return t.split("—")[0].trim()
+                    return t
+                }
+            }
 
-            Text { text: "Report column index:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; visible: !root.isTesterMode }
-            SpinBox { id: dReportIdx; from: 0; to: 99; value: 0; Layout.fillWidth: true; visible: !root.isTesterMode }
+            // Poll interval — hidden for DI/DO
+            Text { text: "Poll interval (s):"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; visible: !root.isTesterMode && isAnalog }
+            SpinBox { id: dPollInterval; from: 1; to: 3600; value: 3; Layout.fillWidth: true; visible: !root.isTesterMode && isAnalog }
+
+            // Report column index — hidden for DI/DO
+            Text { text: "Report column index:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; visible: !root.isTesterMode && isAnalog }
+            SpinBox { id: dReportIdx; from: 0; to: 99; value: 0; Layout.fillWidth: true; visible: !root.isTesterMode && isAnalog }
         }
 
         // ── COLUMN 2: Modbus Settings ──
@@ -84,13 +115,17 @@ Rectangle {
             }
 
             Text { text: "Register type:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
-            ComboBox { id: dRegType; model: ["Invalid", "Discrete Inputs", "Coils", "Input Registers", "Holding Registers"]; Layout.fillWidth: true }
+            ComboBox {
+                id: dRegType; Layout.fillWidth: true
+                model: ["Invalid", "Discrete Inputs", "Coils", "Input Registers", "Holding Registers"]
+            }
 
-            Text { text: "Data type:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
-            ComboBox { id: dDataType; model: ["int16", "uint16", "int32", "uint32", "float32"]; Layout.fillWidth: true }
+            // Data type & format — hidden for DI/DO (always bool/1-bit)
+            Text { text: "Data type:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; visible: isAnalog }
+            ComboBox { id: dDataType; model: ["int16", "uint16", "int32", "uint32", "float32"]; Layout.fillWidth: true; visible: isAnalog }
 
-            Text { text: "Endian format:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
-            ComboBox { id: dDataFmt; model: ["AB", "BA", "ABCD", "CDAB"]; Layout.fillWidth: true }
+            Text { text: "Endian format:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; visible: isAnalog }
+            ComboBox { id: dDataFmt; model: ["AB", "BA", "ABCD", "CDAB"]; Layout.fillWidth: true; visible: isAnalog }
         }
     }
 }

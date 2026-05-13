@@ -1,17 +1,12 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import QtCharts
 import ".."
 import "../components"
 
 Rectangle {
     id: histRoot
     color: "transparent"
-
-    readonly property var chartColors: Theme.chartSeriesColors
-    // Hai điểm liên tiếp cách nhau hơn ngưỡng (ms) → tách LineSeries để không vẽ đường nối qua lúc không đo
-    readonly property int chartGapBreakMs: 3 * 60 * 1000
 
     MessagePopup {
         id: histPopup
@@ -22,115 +17,24 @@ Rectangle {
         function onMessageSent(t, m) { histPopup.showMessage(t, m) }
     }
 
-    // ── Chart data refresh ────────────────────────────────────────────────
-    Connections {
-        target: historyController
-        function onChartDataChanged() {
-            if (viewStack.currentIndex === 1)
-                histRoot.refreshChart();
-        }
-    }
-
-    function refreshChart() {
-        chartView.removeAllSeries();
-
-        var data = historyController.chartData;
-        if (!data || data.length === 0) return;
-
-        var xMin = Number.MAX_VALUE, xMax = -Number.MAX_VALUE;
-        var yMin = Number.MAX_VALUE, yMax = -Number.MAX_VALUE;
-
-        for (var i = 0; i < data.length; i++) {
-            var points = data[i].points;
-            if (!points || points.length === 0)
-                continue;
-
-            var segStart = 0;
-            var segIndex = 0;
-            for (var j = 1; j <= points.length; j++) {
-                var atEnd = (j === points.length);
-                var bigGap = false;
-                if (!atEnd)
-                    bigGap = (points[j].x - points[j - 1].x > histRoot.chartGapBreakMs);
-                if (!atEnd && !bigGap)
-                    continue;
-
-                var segLen = j - segStart;
-                if (segLen > 0) {
-                    var legendName = (segIndex === 0) ? data[i].name : "";
-                    var series = chartView.createSeries(
-                        ChartView.SeriesTypeLine, legendName, axisX, axisY
-                    );
-                    series.color = chartColors[i % chartColors.length];
-                    series.width = 2;
-                    series.pointsVisible = (points.length <= 60);
-
-                    for (var k = segStart; k < j; k++) {
-                        series.append(points[k].x, points[k].y);
-                        xMin = Math.min(xMin, points[k].x);
-                        xMax = Math.max(xMax, points[k].x);
-                        yMin = Math.min(yMin, points[k].y);
-                        yMax = Math.max(yMax, points[k].y);
-                    }
-                    segIndex++;
-                }
-                segStart = j;
-            }
-        }
-
-        if (xMin < xMax) {
-            axisX.min = new Date(xMin);
-            axisX.max = new Date(xMax);
-        }
-        if (yMin <= yMax) {
-            var margin = (yMax - yMin) * 0.1;
-            if (margin === 0) margin = 1;
-            var lo = yMin - margin;
-            var hi = yMax + margin;
-            // Bao gồm 0 trong khoảng trục để luôn có thể thấy mốc 0 khi dữ liệu cho phép
-            axisY.min = Math.min(lo, 0);
-            axisY.max = Math.max(hi, 0);
-        }
-    }
-
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 15
-        spacing: 12
+        spacing: 0
 
-        // ── View toggle: List / Chart ─────────────────────────────────────
-        TabBar {
-            id: viewTabBar
-            Layout.alignment: Qt.AlignLeft
-            currentIndex: viewStack.currentIndex
-
-            TabButton { 
-                text: "List"
-                icon.source: "../../../assets/icons/list.svg"
-                width: implicitWidth + 60
-                onClicked: viewStack.currentIndex = 0
-            }
-            TabButton { 
-                text: "Chart"
-                icon.source: "../../../assets/icons/chart.svg"
-                width: implicitWidth + 60
-                onClicked: {
-                    viewStack.currentIndex = 1;
-                    histRoot.refreshChart();
-                }
-            }
-        }
-
-        // ── Content stack ─────────────────────────────────────────────────
-        StackLayout {
-            id: viewStack
+        // ── Card container (matches Settings form style) ─────────────────
+        Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            currentIndex: 0
+            color: Theme.bgPanel
+            radius: Theme.radiusCard
+            border.color: Theme.borderDefault
+            border.width: 1
 
-            // ═══ Tab 0: List ══════════════════════════════════════════════
             ColumnLayout {
-                spacing: 0
+                anchors.fill: parent
+                anchors.margins: 20
+                spacing: 12
 
                 // Table header
                 Rectangle {
@@ -152,7 +56,13 @@ Rectangle {
                     }
                 }
 
-                // Data rows
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 1
+                    color: Theme.borderDefault
+                }
+
+                // Data rows — fill remaining space
                 ListView {
                     id: historyList
                     clip: true
@@ -160,7 +70,6 @@ Rectangle {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     model: historyModel
-                    clip: true
                     spacing: 1
                     boundsBehavior: Flickable.StopAtBounds
 
@@ -193,54 +102,6 @@ Rectangle {
                         wrapMode: Text.WordWrap
                         width: Math.min(400, parent.width - 32)
                     }
-                }
-            }
-
-            // ═══ Tab 1: Chart ═════════════════════════════════════════════
-            Item {
-                ChartView {
-                    id: chartView
-                    anchors.fill: parent
-                    backgroundColor: Theme.bgPanel
-                    plotAreaColor: Theme.bgDeep
-                    antialiasing: true
-
-                    legend.visible: true
-                    legend.alignment: Qt.AlignBottom
-                    legend.labelColor: Theme.textSecondary
-                    legend.font.pixelSize: 12
-                    legend.font.bold: true
-
-                    DateTimeAxis {
-                        id: axisX
-                        format: "dd/MM HH:mm"
-                        labelsColor: Theme.textSecondary
-                        gridLineColor: Theme.bgSeparator
-                        color: Theme.bgSeparator
-                        labelsFont.pixelSize: 11
-                        tickCount: 6
-                    }
-
-                    ValueAxis {
-                        id: axisY
-                        tickCount: 7
-                        labelFormat: "%.1f"
-                        labelsColor: Theme.textSecondary
-                        gridLineColor: Theme.bgSeparator
-                        color: Theme.bgSeparator
-                        labelsFont.pixelSize: 11
-                    }
-                }
-
-                // Empty state overlay
-                Label {
-                    anchors.centerIn: parent
-                    visible: historyController.recordCount === 0 && !historyController.isLoading
-                    text: "No data.\nSearch first to display the chart."
-                    color: Theme.textSecondary
-                    font.pixelSize: 16
-                    horizontalAlignment: Text.AlignHCenter
-                    wrapMode: Text.WordWrap
                 }
             }
         }

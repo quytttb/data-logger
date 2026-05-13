@@ -16,8 +16,8 @@ Item {
     Loader {
         id: loaderTester
         anchors.fill: parent
-        active: tabContentRoot.currentTab === 3 || loaderTester.item !== null
-        visible: tabContentRoot.currentTab === 3
+        active: tabContentRoot.currentTab === 4 || loaderTester.item !== null
+        visible: tabContentRoot.currentTab === 4
         source: "views/TesterView.qml"
     }
 
@@ -38,10 +38,18 @@ Item {
     }
 
     Loader {
+        id: loaderTrending
+        anchors.fill: parent
+        active: tabContentRoot.currentTab === 2 || loaderTrending.item !== null
+        visible: tabContentRoot.currentTab === 2
+        source: "views/TrendingView.qml"
+    }
+
+    Loader {
         id: loaderSettings
         anchors.fill: parent
-        active: tabContentRoot.currentTab === 2 || loaderSettings.item !== null
-        visible: tabContentRoot.currentTab === 2
+        active: tabContentRoot.currentTab === 3 || loaderSettings.item !== null
+        visible: tabContentRoot.currentTab === 3
         source: "views/SettingsView.qml"
     }
 }
