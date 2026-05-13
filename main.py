@@ -10,6 +10,10 @@ import os
 import sys
 from pathlib import Path
 
+from core.qt_qml_bootstrap import ensure_qt_qml_import_path
+
+ensure_qt_qml_import_path()
+
 from PySide6.QtCore import Qt, QTimer, QUrl
 from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtWidgets import QApplication
