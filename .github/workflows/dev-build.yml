@@ -1,0 +1,84 @@
+name: Dev Build
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '**.py'
+      - '**.qml'
+      - '**.sh'
+      - '**.toml'
+      - '**.ini'
+      - 'scripts/**'
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  build-dev:
+    name: Build & Package (Dev)
+    runs-on: [self-hosted, linux, ARM64]
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v6
+
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y patchelf
+
+      - name: Setup Virtual Environment & Verify Python
+        run: |
+          python3 -m venv venv-build
+          venv-build/bin/python --version
+          venv-build/bin/pip install --upgrade pip
+
+      - name: Install dependencies
+        run: |
+          venv-build/bin/pip install -e .
+          venv-build/bin/pip install nuitka
+
+      - name: Build Standalone Binary with Nuitka
+        run: |
+          venv-build/bin/python -m nuitka --standalone --onefile \
+            --include-data-dir=config=config \
+            --include-data-dir=ui/qml=ui/qml \
+            --plugin-enable=pyside6 \
+            --output-filename=datalogger \
+            main.py
+
+      - name: Generate VERSION file & Package
+        run: |
+          mkdir -p release_package
+          
+          # Sinh VERSION và gắn mác dev cùng hash của commit
+          PYTHONPATH=. venv-build/bin/python -c "import core._version as v; print(v.__version__)" > VERSION.tmp
+          echo "v$(cat VERSION.tmp)-dev-${GITHUB_SHA::7}" > VERSION
+          
+          # Copy các file cần thiết
+          cp VERSION deploy.sh release_package/
+          cp datalogger release_package/ || cp main.bin release_package/datalogger
+          cp -r config ui release_package/
+          
+          # Nén tarball
+          tar -czvf datalogger-dev-snapshot.tar.gz -C release_package .
+
+      - name: Build .deb package
+        run: |
+          chmod +x scripts/build_deb.sh
+          VERSION="$(cat VERSION | tr -d '[:space:]')"
+          VERSION="${VERSION#v}"
+          ARCH="arm64"
+          scripts/build_deb.sh "$VERSION" "$ARCH"
+          echo "DEB_FILE=datalogger_${VERSION}_${ARCH}.deb" >> "$GITHUB_ENV"
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: datalogger-dev-build
+          path: |
+            datalogger-dev-snapshot.tar.gz
+            *.deb
+          retention-days: 7
