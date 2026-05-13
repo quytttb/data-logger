@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "data-logger"
 dynamic = ["version"]
-description = "Ứng dụng Data Logger — Giám sát cảm biến Modbus, lưu trữ SQLite, gửi báo cáo sFTP"
+description = "Data Logger — Modbus sensor monitoring, SQLite storage, scheduled sFTP reports"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

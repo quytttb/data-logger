@@ -1,6 +1,6 @@
 [Unit]
-Description=IoT Data Logger — Giám sát cảm biến Modbus, ghi SQLite, gửi sFTP
-Documentation=https://github.com/your-org/data-logger
+Description=IoT Data Logger — Modbus, SQLite, sFTP
+Documentation=https://github.com/quytttb/data-logger
 After=network.target
 Wants=network.target
 
@@ -8,33 +8,19 @@ Wants=network.target
 Type=simple
 User=pi
 Group=dialout
+WorkingDirectory=/opt/datalogger
+ExecStart=/opt/datalogger/datalogger
 
-; ============================================================
-; CHỌN 1 TRONG 2 CHẾ ĐỘ (comment dòng kia lại):
-;
-; [A] Chạy Python source trực tiếp (nhanh, dùng khi dev/test):
-;ExecStart=/home/pi/data-logger/data-logger/.venv/bin/python main.py
-;WorkingDirectory=/home/pi/data-logger/data-logger
-;
-; [B] Chạy binary Nuitka compiled (production, dùng sau khi build):
-ExecStart=/home/pi/data-logger/data-logger/dist/DataLogger.dist/DataLogger
-WorkingDirectory=/home/pi/data-logger/data-logger/dist/DataLogger.dist
-; ============================================================
+Environment="DATALOGGER_DATA_DIR=/opt/datalogger/var/data"
+Environment="DATALOGGER_CONFIG_DIR=/opt/datalogger/config"
+Environment="DATALOGGER_LOG_DIR=/opt/datalogger/var/logs"
 
-; Đường dẫn persistent data (tách biệt khỏi dist/, không bị ghi đè khi deploy)
-Environment="DATALOGGER_DATA_DIR=/home/pi/data-logger/var/data"
-Environment="DATALOGGER_CONFIG_DIR=/home/pi/data-logger/var/config"
-Environment="DATALOGGER_LOG_DIR=/home/pi/data-logger/var/logs"
-
-; Hiển thị GUI trên màn hình RPi
 Environment="DISPLAY=:0"
 Environment="XAUTHORITY=/home/pi/.Xauthority"
 
-; Tự động restart nếu crash
 Restart=always
 RestartSec=5
 
-; Giới hạn log tránh đầy disk
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=datalogger

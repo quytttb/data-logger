@@ -12,13 +12,13 @@ show_version() {
     if [ -f "$APP_DIR/VERSION" ]; then
         cat "$APP_DIR/VERSION"
     else
-        echo "Unknown (Không tìm thấy file VERSION)"
+        echo "Unknown (VERSION file not found)"
     fi
 }
 
 install_service() {
-    echo "[Service] Đang tạo SystemD service..."
-    # Tạo file cấu hình service
+    echo "[systemd] Creating datalogger.service..."
+    # Write unit file
     cat <<SYS > /tmp/$SERVICE_NAME.service
 [Unit]
 Description=Data Logger App
@@ -37,12 +37,12 @@ StandardError=append:$APP_DIR/var/logs/service_err.log
 [Install]
 WantedBy=graphical.target
 SYS
-    # Copy vào systemd
+    # Install unit under /etc/systemd/system
     sudo mv /tmp/$SERVICE_NAME.service /etc/systemd/system/
     sudo systemctl daemon-reload
     sudo systemctl enable $SERVICE_NAME
     sudo systemctl start $SERVICE_NAME
-    echo "[Service] Đã cài đặt và khởi động service '$SERVICE_NAME' thành công."
+    echo "[systemd] Installed and started '$SERVICE_NAME' successfully."
     
     if [ ! -f "$APP_DIR/VERSION" ]; then
         echo "v1.0.0" > "$APP_DIR/VERSION"

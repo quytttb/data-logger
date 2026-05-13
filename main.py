@@ -4,11 +4,16 @@ Khởi tạo QGuiApplication, Database và load Main.qml.
 Giao diện QML được thiết kế theo triết lý "Precision Brutalism"
 tối ưu màn hình công nghiệp 1024x600.
 """
+# ruff: noqa: E402
 
 import logging
 import os
 import sys
 from pathlib import Path
+
+from core.qt_qml_bootstrap import ensure_qt_qml_import_path
+
+ensure_qt_qml_import_path()
 
 from PySide6.QtCore import Qt, QTimer, QUrl
 from PySide6.QtGui import QIcon, QPixmap

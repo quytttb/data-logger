@@ -37,10 +37,17 @@ jobs:
 
       - name: Build Standalone Binary with Nuitka
         run: |
+          set -euo pipefail
+          PYSIDE_QML="$(venv-build/bin/python -c 'import os, PySide6; print(os.path.join(PySide6.__path__[0], "Qt", "qml"))')"
+          echo "PySide6 QML imports dir: ${PYSIDE_QML}"
+          test -d "${PYSIDE_QML}/QtQuick" || { echo "::error::PySide6 QML directory missing"; exit 1; }
           venv-build/bin/python -m nuitka --standalone --onefile \
             --include-data-dir=config=config \
             --include-data-dir=ui/qml=ui/qml \
+            --include-data-dir=assets=assets \
+            --include-data-dir="${PYSIDE_QML}=PySide6/Qt/qml" \
             --plugin-enable=pyside6 \
+            --include-qt-plugins=all \
             --output-filename=datalogger \
             main.py
 

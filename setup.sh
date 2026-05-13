@@ -115,9 +115,9 @@ run_step() {
 }
 
 install_service() {
-    header "Đăng ký systemd service"
+    header "Register systemd service"
     if [ "$EUID" -ne 0 ]; then
-        error "Cần quyền root để tạo systemd service. Chạy: sudo ./setup.sh --service"
+        error "Root required to install systemd unit. Run: sudo ./setup.sh --service"
         exit 1
     fi
 
@@ -148,9 +148,9 @@ EOF
 
     systemctl daemon-reload
     systemctl enable "$SERVICE_NAME"
-    ok "Service '$SERVICE_NAME' đã được đăng ký và enable."
-    info "Để khởi động ngay: sudo systemctl start $SERVICE_NAME"
-    info "Xem log:           sudo journalctl -u $SERVICE_NAME -f"
+    ok "Service '$SERVICE_NAME' registered and enabled."
+    info "Start now:     sudo systemctl start $SERVICE_NAME"
+    info "Follow logs:   sudo journalctl -u $SERVICE_NAME -f"
 }
 
 optimize_pi() {
