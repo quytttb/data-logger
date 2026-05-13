@@ -30,8 +30,21 @@ jobs:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Enable auto-merge (patch / minor)
+      - name: Verify PR checks passed (patch / minor)
+        id: verify-checks
         if: steps.meta.outputs.update-type == 'version-update:semver-patch' || steps.meta.outputs.update-type == 'version-update:semver-minor'
+        run: |
+          state="$(gh api "/repos/${GITHUB_REPOSITORY}/commits/${PR_HEAD_SHA}/status" --jq '.state')"
+          if [ "$state" != "success" ]; then
+            echo "Refusing to enable auto-merge because PR checks are not successful. Current combined status: $state"
+            exit 1
+          fi
+        env:
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Enable auto-merge (patch / minor)
+        if: (steps.meta.outputs.update-type == 'version-update:semver-patch' || steps.meta.outputs.update-type == 'version-update:semver-minor') && steps.verify-checks.conclusion == 'success'
         run: gh pr merge --auto --squash "$PR_URL"
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
