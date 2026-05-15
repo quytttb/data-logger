@@ -7,6 +7,8 @@ import "../components"
 Item {
     id: root
     property bool configChanged: false
+    /** Set from SettingsView — shared MessagePopup for firmware confirm. */
+    property var settingsMessagePopup: null
 
     Flickable {
         id: flick
@@ -25,7 +27,7 @@ Item {
                 anchors.fill: parent; anchors.margins: 20
                 spacing: 25
 
-                // ── COLUMN 1: Device Information ──
+                // ── COLUMN 1: Device + Firmware ──
                 ColumnLayout {
                     Layout.fillWidth: true; Layout.alignment: Qt.AlignTop; spacing: 8
 
@@ -48,9 +50,62 @@ Item {
 
                     Text { text: "Poll interval (s):"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
                     SpinBox {
-                        from: 1; to: 3600; Layout.fillWidth: true
+                        id: pollSpin
+                        from: 1; to: 3600; stepSize: 1; Layout.fillWidth: true
+                        editable: true
+                        validator: IntValidator { bottom: 1; top: 3600 }
+                        textFromValue: function(value) { return String(Math.round(value)) }
+                        valueFromText: function(text) {
+                            var n = parseInt(text, 10)
+                            if (isNaN(n)) return 1
+                            return Math.min(3600, Math.max(1, n))
+                        }
                         value: settingsController ? settingsController.pollInterval : 3
-                        onValueModified: { settingsController.pollInterval = value; root.configChanged = true }
+                        Connections {
+                            target: settingsController
+                            function onConfigLoaded() {
+                                pollSpin.value = settingsController.pollInterval
+                            }
+                        }
+                        onValueModified: {
+                            settingsController.pollInterval = Math.round(value)
+                            root.configChanged = true
+                        }
+                    }
+
+                    Item { Layout.preferredHeight: 8 }
+
+                    Text { text: "Firmware update"; color: Theme.accentText; font.bold: true; font.pixelSize: 15 }
+                    Rectangle { Layout.fillWidth: true; height: 1; color: Theme.borderDefault }
+
+                    Button {
+                        text: "Check for updates"
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 40
+                        onClicked: {
+                            if (settingsMessagePopup) {
+                                settingsMessagePopup.showConfirm(
+                                    "Firmware update",
+                                    "The application will contact GitHub to check for updates. " +
+                                    "If a newer build is available, it will be downloaded and applied; the app may restart.\n\nContinue?",
+                                    function() { settingsController.checkUpdates() },
+                                    "Continue",
+                                    Theme.accent
+                                )
+                            } else {
+                                settingsController.checkUpdates()
+                            }
+                        }
+                        background: Rectangle {
+                            color: Theme.accent
+                            radius: Theme.radiusMedium
+                        }
+                        contentItem: Text {
+                            text: parent.text
+                            color: Theme.textOnColoredBtn
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                        }
                     }
                 }
 
@@ -103,30 +158,6 @@ Item {
                     Switch {
                         checked: settingsController ? settingsController.autoSyncTime : false
                         onToggled: { settingsController.autoSyncTime = checked; root.configChanged = true }
-                    }
-                    
-                    Item { Layout.preferredHeight: 15 }
-                    
-                    Text { text: "Firmware Update"; color: Theme.accentText; font.bold: true; font.pixelSize: 15 }
-                    Rectangle { Layout.fillWidth: true; height: 1; color: Theme.borderDefault }
-                    
-                    Button {
-                        text: "Check Updates"
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 40
-                        onClicked: {
-                            settingsController.checkUpdates()
-                        }
-                        background: Rectangle {
-                            color: Theme.accent
-                            radius: Theme.radiusMedium
-                        }
-                        contentItem: Text {
-                            text: parent.text
-                            color: Theme.textOnColoredBtn
-                            horizontalAlignment: Text.AlignHCenter
-                            verticalAlignment: Text.AlignVCenter
-                        }
                     }
                 }
             }

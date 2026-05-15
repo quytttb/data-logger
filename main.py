@@ -29,6 +29,8 @@ from core._paths import (
 )
 from core._version import __version__ as _APP_VERSION
 from core.database import init_db
+from core.modbus_tcp_server import ModbusTcpServerService
+from core.rest_server_service import RestServerService
 from core.txt_generator import cleanup_old_report_files
 from ui.controllers.tester_controller import TesterController
 from ui.controllers.settings_controller import SettingsController
@@ -104,7 +106,9 @@ def main():
     tester_controller = TesterController()
     sensor_model = SensorListModel()
     monitor_model = MonitorModel()
-    monitor_controller = MonitorController(monitor_model, tester_controller)
+    modbus_tcp_service = ModbusTcpServerService()
+    rest_api_service = RestServerService()
+    monitor_controller = MonitorController(monitor_model, tester_controller, modbus_tcp_service)
     history_model = HistoryModel()
     history_controller = HistoryController(history_model)
     history_controller.attach_monitor(monitor_controller)
@@ -118,6 +122,8 @@ def main():
 
     engine.rootContext().setContextProperty("testerController", tester_controller)
     engine.rootContext().setContextProperty("settingsController", settings_controller)
+    engine.rootContext().setContextProperty("modbusTcpService", modbus_tcp_service)
+    engine.rootContext().setContextProperty("restApiService", rest_api_service)
     engine.rootContext().setContextProperty("sensorModel", sensor_model)
     engine.rootContext().setContextProperty("monitorModel", monitor_model)
     engine.rootContext().setContextProperty("monitorController", monitor_controller)
@@ -158,6 +164,89 @@ def main():
 
         QTimer.singleShot(0, _reapply_icons)
 
+    # Auto-start Modbus TCP server nếu được bật trong DB
+    def _start_mbtcp_if_enabled():
+        try:
+            from sqlmodel import select as _sel
+            from core.database import get_session as _gs
+            from models.app_config import AppConfig as _AC
+            _s = _gs()
+            _cfg = _s.exec(_sel(_AC)).first()
+            if _cfg and _cfg.modbus_tcp_enabled:
+                modbus_tcp_service.start(
+                    bind=_cfg.modbus_tcp_bind,
+                    port=_cfg.modbus_tcp_port,
+                    unit_id=_cfg.modbus_tcp_unit_id,
+                )
+                logger.info(
+                    "Modbus TCP service auto-started: %s:%d (unit=%d)",
+                    _cfg.modbus_tcp_bind, _cfg.modbus_tcp_port, _cfg.modbus_tcp_unit_id,
+                )
+            else:
+                modbus_tcp_service.stop()
+            _s.close()
+        except Exception as _e:
+            logger.warning("Could not auto-start Modbus TCP service: %s", _e)
+
+    def _restart_mbtcp_on_save():
+        modbus_tcp_service.stop()
+        QTimer.singleShot(500, _start_mbtcp_if_enabled)
+
+    _start_mbtcp_if_enabled()
+    settings_controller.configSaved.connect(_restart_mbtcp_on_save)
+
+    # Auto-start REST API server nếu được bật trong DB (cấu hình từ xa cho Central)
+    def _start_rest_if_enabled():
+        try:
+            from sqlmodel import select as _sel
+            from core.database import get_session as _gs
+            from models.app_config import AppConfig as _AC
+            from core.rest_api import generate_token as _gen_token
+            _s = _gs()
+            _cfg = _s.exec(_sel(_AC)).first()
+            if _cfg and _cfg.rest_api_enabled:
+                if not (_cfg.rest_api_token or "").strip():
+                    _cfg.rest_api_token = _gen_token()
+                    _s.add(_cfg)
+                    _s.commit()
+                    _s.refresh(_cfg)
+                    logger.info("REST API token auto-generated on first start.")
+                rest_api_service.start(
+                    bind=_cfg.rest_api_bind,
+                    port=_cfg.rest_api_port,
+                    token=_cfg.rest_api_token,
+                )
+                logger.info(
+                    "REST API service auto-started: %s:%d",
+                    _cfg.rest_api_bind, _cfg.rest_api_port,
+                )
+            else:
+                rest_api_service.stop()
+            _s.close()
+        except Exception as _e:
+            logger.warning("Could not auto-start REST API service: %s", _e)
+
+    def _restart_rest_on_save():
+        rest_api_service.stop()
+        QTimer.singleShot(500, _start_rest_if_enabled)
+
+    def _on_remote_config_applied(revision: int) -> None:
+        """REST POST /config thành công → reload SettingsController + restart polling
+        + restart Modbus TCP nếu liên quan. Chạy trên Qt main thread (queued signal).
+        """
+        logger.info("Remote config applied (revision=%d) — reloading + restarting workers.", revision)
+        settings_controller.load_config()
+        sensor_model.refresh()
+        was_polling = monitor_controller.isPolling
+        if was_polling:
+            monitor_controller.stop_polling()
+            QTimer.singleShot(800, monitor_controller.start_polling)
+        _restart_mbtcp_on_save()
+
+    rest_api_service.configApplied.connect(_on_remote_config_applied)
+    _start_rest_if_enabled()
+    settings_controller.configSaved.connect(_restart_rest_on_save)
+
     # Auto-start FTP worker nếu server_active = True trong DB
     def _start_ftp_if_active():
         try:
@@ -185,6 +274,8 @@ def main():
 
     app.aboutToQuit.connect(monitor_controller.stop_polling_sync)
     app.aboutToQuit.connect(report_controller.stop_reporting)
+    app.aboutToQuit.connect(modbus_tcp_service.stop)
+    app.aboutToQuit.connect(rest_api_service.stop)
 
     logger.info("QML loaded successfully. Application running.")
     sys.exit(app.exec())

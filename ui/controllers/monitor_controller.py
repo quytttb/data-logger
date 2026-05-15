@@ -25,6 +25,7 @@ from sqlmodel import select
 
 from core.database import get_session
 from core.exporters.base import Exporter
+from core.modbus_tcp_server import ModbusTcpServerService
 from models.app_config import AppConfig
 from models.sensor import Sensor, SensorType
 from workers.database_worker import DatabaseWorker
@@ -195,10 +196,13 @@ class MonitorController(QObject):
     # Emitted when the set of analog sensors changes (start/stop polling, refresh)
     analogSensorsListChanged = Signal()
 
-    def __init__(self, monitor_model: MonitorModel, tester_controller=None, parent=None):
+    def __init__(self, monitor_model: MonitorModel, tester_controller=None,
+                 modbus_tcp_service: ModbusTcpServerService | None = None,
+                 parent=None):
         super().__init__(parent)
         self._model = monitor_model
         self._tester = tester_controller
+        self._mbtcp = modbus_tcp_service
         self._is_polling = False
         self._is_stopping = False
         self._status_tag = "ready"
@@ -573,6 +577,14 @@ class MonitorController(QObject):
             if getattr(self, "_exporter", None):
                 self._exporter.connect()
 
+            if self._mbtcp is not None:
+                analog_ids = [
+                    s.id for s in sensors
+                    if (s.sensor_type.value if hasattr(s.sensor_type, "value") else s.sensor_type) == "ANALOG"
+                ]
+                self._mbtcp.set_sensor_map(analog_ids)
+                self._mbtcp.set_logger_status(polling=True, rtu_connected=False)
+
             self._db_thread.start()
             self._modbus_thread.start()
 
@@ -642,6 +654,8 @@ class MonitorController(QObject):
 
         self._is_polling = False
         self._is_stopping = False
+        if self._mbtcp is not None:
+            self._mbtcp.set_logger_status(polling=False, rtu_connected=False)
         self._apply_status("stopped", self.STATUS_IDLE)
         self.pollingChanged.emit()
         self.stoppingChanged.emit()
@@ -674,6 +688,8 @@ class MonitorController(QObject):
                 self._db_thread.wait()
         self._is_polling = False
         self._is_stopping = False
+        if self._mbtcp is not None:
+            self._mbtcp.set_logger_status(polling=False, rtu_connected=False)
         logger.info("Polling stopped (sync shutdown).")
 
     # ── Internal signal handlers ───────────────────────────────────────────
@@ -712,7 +728,17 @@ class MonitorController(QObject):
             pass
         if self._db_worker:
             self._db_worker.enqueue(payload)
-            
+
+        if self._mbtcp is not None:
+            try:
+                self._mbtcp.update_value(
+                    int(payload["sensor_id"]),
+                    float(payload.get("value", 0.0)),
+                    bool(payload.get("is_alarm", False)),
+                )
+            except (TypeError, ValueError):
+                pass
+
         # Cloud Exporter Skeleton
         if self._exporter:
             # Here we could enhance the code to also support HTTP REST endpoints.
@@ -739,6 +765,8 @@ class MonitorController(QObject):
         logger.warning("Modbus error #%d: %s", self._error_count, msg)
 
     def _on_connection_changed(self, connected: bool) -> None:
+        if self._mbtcp is not None:
+            self._mbtcp.set_logger_status(polling=self._is_polling, rtu_connected=connected)
         if self._is_stopping:
             return
         if connected:

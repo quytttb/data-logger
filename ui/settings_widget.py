@@ -182,7 +182,7 @@ class SettingsWidget(QWidget):
                 self._sensor_table.setItem(row, 3, QTableWidgetItem(str(s.register_address)))
                 self._set_combo(row, 4, ["holding", "input"], s.register_type)
                 self._set_combo(row, 5, ["int16", "uint16", "float32"], s.data_type)
-                self._set_combo(row, 6, ["AB", "BA", "ABCD", "CDAB"], s.data_format)
+                self._set_combo(row, 6, ["AB", "BA", "ABCD", "CDAB", "BADC", "DCBA"], s.data_format)
                 self._sensor_table.setItem(row, 7, QTableWidgetItem(s.coefficient or "{}"))
                 self._sensor_table.setItem(row, 8, QTableWidgetItem(str(s.report_index)))
         finally:
@@ -199,7 +199,7 @@ class SettingsWidget(QWidget):
         self._sensor_table.insertRow(row)
         self._set_combo(row, 4, ["holding", "input"], "holding")
         self._set_combo(row, 5, ["int16", "uint16", "float32"], "int16")
-        self._set_combo(row, 6, ["AB", "BA", "ABCD", "CDAB"], "AB")
+        self._set_combo(row, 6, ["AB", "BA", "ABCD", "CDAB", "BADC", "DCBA"], "AB")
         self._sensor_table.setItem(row, 7, QTableWidgetItem("{}"))
         self._sensor_table.setItem(row, 8, QTableWidgetItem("0"))
 

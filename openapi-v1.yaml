@@ -1,0 +1,422 @@
+openapi: "3.1.0"
+info:
+  title: "Data Logger Remote Config API"
+  description: "REST API nội bộ cho Central App (LAN) — đọc/ghi cấu hình logger."
+  version: "1.0.0"
+paths:
+  /api/v1/health:
+    get:
+      summary: "Health"
+      operationId: "health_api_v1_health_get"
+      responses:
+        200:
+          description: "Successful Response"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+  /api/v1/config:
+    get:
+      summary: "Get Config"
+      operationId: "get_config_api_v1_config_get"
+      responses:
+        200:
+          description: "Successful Response"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConfigSnapshot"
+    post:
+      summary: "Post Config"
+      operationId: "post_config_api_v1_config_post"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConfigRequest"
+        required: true
+      responses:
+        200:
+          description: "Successful Response"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConfigResponse"
+        422:
+          description: "Validation Error"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+components:
+  schemas:
+    ConfigBody:
+      properties:
+        station_code:
+          anyOf:
+            -
+              type: "string"
+            -
+              type: "null"
+          title: "Station Code"
+        station_name:
+          anyOf:
+            -
+              type: "string"
+            -
+              type: "null"
+          title: "Station Name"
+        poll_interval:
+          anyOf:
+            -
+              type: "integer"
+              maximum: 3600.0
+              minimum: 1.0
+            -
+              type: "null"
+          title: "Poll Interval"
+        serial_port:
+          anyOf:
+            -
+              type: "string"
+            -
+              type: "null"
+          title: "Serial Port"
+        serial_baudrate:
+          anyOf:
+            -
+              type: "integer"
+              maximum: 921600.0
+              minimum: 1200.0
+            -
+              type: "null"
+          title: "Serial Baudrate"
+        serial_bytesize:
+          anyOf:
+            -
+              type: "integer"
+              maximum: 8.0
+              minimum: 5.0
+            -
+              type: "null"
+          title: "Serial Bytesize"
+        serial_parity:
+          anyOf:
+            -
+              type: "string"
+            -
+              type: "null"
+          title: "Serial Parity"
+        serial_stopbits:
+          anyOf:
+            -
+              type: "integer"
+              maximum: 2.0
+              minimum: 1.0
+            -
+              type: "null"
+          title: "Serial Stopbits"
+        modbus_tcp_enabled:
+          anyOf:
+            -
+              type: "boolean"
+            -
+              type: "null"
+          title: "Modbus Tcp Enabled"
+        modbus_tcp_port:
+          anyOf:
+            -
+              type: "integer"
+              maximum: 65535.0
+              minimum: 1.0
+            -
+              type: "null"
+          title: "Modbus Tcp Port"
+        modbus_tcp_bind:
+          anyOf:
+            -
+              type: "string"
+            -
+              type: "null"
+          title: "Modbus Tcp Bind"
+        modbus_tcp_unit_id:
+          anyOf:
+            -
+              type: "integer"
+              maximum: 247.0
+              minimum: 1.0
+            -
+              type: "null"
+          title: "Modbus Tcp Unit Id"
+        sensors:
+          anyOf:
+            -
+              items:
+                $ref: "#/components/schemas/SensorPayload"
+              type: "array"
+              maxItems: 512
+            -
+              type: "null"
+          title: "Sensors"
+          description: "Nếu có, REPLACE toàn bộ bảng sensor (atomic)."
+      additionalProperties: false
+      type: "object"
+      title: "ConfigBody"
+      description: "Object `config` trong request — partial root, sensors[] replace full."
+    ConfigRequest:
+      properties:
+        api_version:
+          type: "integer"
+          title: "Api Version"
+          description: "Phải khớp API_VERSION hiện tại (=1)"
+        request_id:
+          type: "string"
+          maxLength: 128
+          minLength: 1
+          title: "Request Id"
+          description: "UUID/string trace từ Central"
+        expected_revision:
+          type: "integer"
+          minimum: 0.0
+          title: "Expected Revision"
+          description: "Revision Central kỳ vọng — phải khớp DB hiện tại"
+        config:
+          $ref: "#/components/schemas/ConfigBody"
+      additionalProperties: false
+      type: "object"
+      required:
+        - "api_version"
+        - "request_id"
+        - "expected_revision"
+        - "config"
+      title: "ConfigRequest"
+    ConfigResponse:
+      properties:
+        ok:
+          type: "boolean"
+          title: "Ok"
+        request_id:
+          type: "string"
+          title: "Request Id"
+        applied_revision:
+          type: "integer"
+          title: "Applied Revision"
+        errors:
+          items:
+            $ref: "#/components/schemas/FieldError"
+          type: "array"
+          title: "Errors"
+        message:
+          anyOf:
+            -
+              type: "string"
+            -
+              type: "null"
+          title: "Message"
+      type: "object"
+      required:
+        - "ok"
+        - "request_id"
+        - "applied_revision"
+      title: "ConfigResponse"
+    ConfigSnapshot:
+      properties:
+        api_version:
+          type: "integer"
+          title: "Api Version"
+        revision:
+          type: "integer"
+          title: "Revision"
+        config:
+          additionalProperties: true
+          type: "object"
+          title: "Config"
+        sensors:
+          items:
+            additionalProperties: true
+            type: "object"
+          type: "array"
+          title: "Sensors"
+      type: "object"
+      required:
+        - "api_version"
+        - "revision"
+        - "config"
+        - "sensors"
+      title: "ConfigSnapshot"
+      description: "Trả về từ GET /config — full snapshot read-only."
+    FieldError:
+      properties:
+        field:
+          type: "string"
+          title: "Field"
+        message:
+          type: "string"
+          title: "Message"
+      type: "object"
+      required:
+        - "field"
+        - "message"
+      title: "FieldError"
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: "#/components/schemas/ValidationError"
+          type: "array"
+          title: "Detail"
+      type: "object"
+      title: "HTTPValidationError"
+    HealthResponse:
+      properties:
+        ok:
+          type: "boolean"
+          title: "Ok"
+        api_version:
+          type: "integer"
+          title: "Api Version"
+        revision:
+          type: "integer"
+          title: "Revision"
+      type: "object"
+      required:
+        - "ok"
+        - "api_version"
+        - "revision"
+      title: "HealthResponse"
+    SensorPayload:
+      properties:
+        sensor_type:
+          type: "string"
+          title: "Sensor Type"
+          description: "ANALOG | DI | DO"
+        name:
+          type: "string"
+          title: "Name"
+        unit:
+          type: "string"
+          title: "Unit"
+          default: ""
+        slave_id:
+          type: "integer"
+          maximum: 247.0
+          minimum: 1.0
+          title: "Slave Id"
+        register_address:
+          type: "integer"
+          maximum: 65535.0
+          minimum: 0.0
+          title: "Register Address"
+        register_type:
+          type: "string"
+          title: "Register Type"
+          description: "holding | input"
+          default: "holding"
+        data_type:
+          type: "string"
+          title: "Data Type"
+          default: "int16"
+        data_format:
+          type: "string"
+          title: "Data Format"
+          default: "AB"
+        coefficient:
+          anyOf:
+            -
+              type: "string"
+            -
+              type: "null"
+          title: "Coefficient"
+          default: "{}"
+        min_threshold:
+          anyOf:
+            -
+              type: "number"
+            -
+              type: "null"
+          title: "Min Threshold"
+        max_threshold:
+          anyOf:
+            -
+              type: "number"
+            -
+              type: "null"
+          title: "Max Threshold"
+        poll_interval:
+          type: "integer"
+          maximum: 3600.0
+          minimum: 1.0
+          title: "Poll Interval"
+          default: 3
+        report_index:
+          type: "integer"
+          minimum: 0.0
+          title: "Report Index"
+          default: 0
+        parent_id:
+          anyOf:
+            -
+              type: "integer"
+            -
+              type: "null"
+          title: "Parent Id"
+        is_system_wide:
+          type: "boolean"
+          title: "Is System Wide"
+          default: false
+        di_type:
+          anyOf:
+            -
+              type: "string"
+            -
+              type: "null"
+          title: "Di Type"
+        trigger_on_max:
+          type: "boolean"
+          title: "Trigger On Max"
+          default: true
+        trigger_on_min:
+          type: "boolean"
+          title: "Trigger On Min"
+          default: true
+        active:
+          type: "boolean"
+          title: "Active"
+          default: true
+      additionalProperties: false
+      type: "object"
+      required:
+        - "sensor_type"
+        - "name"
+        - "slave_id"
+        - "register_address"
+      title: "SensorPayload"
+      description: "Cấu hình 1 cảm biến (Analog/DI/DO) gửi từ Central."
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+              -
+                type: "string"
+              -
+                type: "integer"
+          type: "array"
+          title: "Location"
+        msg:
+          type: "string"
+          title: "Message"
+        type:
+          type: "string"
+          title: "Error Type"
+        input:
+          title: "Input"
+        ctx:
+          type: "object"
+          title: "Context"
+      type: "object"
+      required:
+        - "loc"
+        - "msg"
+        - "type"
+      title: "ValidationError"

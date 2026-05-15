@@ -37,10 +37,10 @@ class SettingsController(QObject):
         self._updater.progressChanged.connect(self._on_update_progress)
 
     def _on_update_complete(self, success, msg):
-        self.messageSent.emit("OTA Update", msg)
+        self.messageSent.emit("OTA update", msg)
         
     def _on_update_progress(self, pct, msg):
-        self.messageSent.emit("OTA Progress", f"{pct}%: {msg}")
+        self.messageSent.emit("OTA progress", f"{pct}%: {msg}")
 
     @Slot()
     def checkUpdates(self):
@@ -160,6 +160,99 @@ class SettingsController(QObject):
     @serialStopbits.setter
     def serialStopbits(self, v):
         self._cfg.serial_stopbits = v
+
+    # ── Modbus TCP Server Properties ───────────────────────────────────────
+
+    @Property(bool, notify=configLoaded)
+    def modbusTcpEnabled(self):
+        return self._cfg.modbus_tcp_enabled
+
+    @modbusTcpEnabled.setter
+    def modbusTcpEnabled(self, v):
+        self._cfg.modbus_tcp_enabled = bool(v)
+
+    @Property(int, notify=configLoaded)
+    def modbusTcpPort(self):
+        return self._cfg.modbus_tcp_port
+
+    @modbusTcpPort.setter
+    def modbusTcpPort(self, v):
+        self._cfg.modbus_tcp_port = int(v)
+
+    @Property(str, notify=configLoaded)
+    def modbusTcpBind(self):
+        return self._cfg.modbus_tcp_bind
+
+    @modbusTcpBind.setter
+    def modbusTcpBind(self, v):
+        self._cfg.modbus_tcp_bind = v
+
+    @Property(int, notify=configLoaded)
+    def modbusTcpUnitId(self):
+        return self._cfg.modbus_tcp_unit_id
+
+    @modbusTcpUnitId.setter
+    def modbusTcpUnitId(self, v):
+        self._cfg.modbus_tcp_unit_id = int(v)
+
+    # ── REST API (Remote Config) Properties ────────────────────────────────
+
+    @Property(bool, notify=configLoaded)
+    def restApiEnabled(self):
+        return self._cfg.rest_api_enabled
+
+    @restApiEnabled.setter
+    def restApiEnabled(self, v):
+        self._cfg.rest_api_enabled = bool(v)
+
+    @Property(int, notify=configLoaded)
+    def restApiPort(self):
+        return self._cfg.rest_api_port
+
+    @restApiPort.setter
+    def restApiPort(self, v):
+        self._cfg.rest_api_port = int(v)
+
+    @Property(str, notify=configLoaded)
+    def restApiBind(self):
+        return self._cfg.rest_api_bind
+
+    @restApiBind.setter
+    def restApiBind(self, v):
+        self._cfg.rest_api_bind = v
+
+    @Property(str, notify=configLoaded)
+    def restApiToken(self):
+        return self._cfg.rest_api_token
+
+    @Property(int, notify=configLoaded)
+    def configRevision(self):
+        return self._cfg.config_revision
+
+    @Slot()
+    def regenerate_rest_token(self):
+        """Sinh token mới, persist ngay vào DB (không cần Save Settings)."""
+        from core.rest_api import generate_token
+        session = get_session()
+        try:
+            cfg = session.exec(select(AppConfig)).first()
+            if cfg is None:
+                cfg = AppConfig()
+                session.add(cfg)
+            cfg.rest_api_token = generate_token()
+            session.commit()
+            session.refresh(cfg)
+            self._cfg = cfg
+            self.configLoaded.emit()
+            self.configSaved.emit()
+            self.messageSent.emit("REST API", "New token generated.")
+            logger.info("REST API token regenerated.")
+        except Exception as e:
+            session.rollback()
+            logger.error("regenerate_rest_token error: %s", e)
+            self.messageSent.emit("Error", "Failed to regenerate token: {0}".format(e))
+        finally:
+            session.close()
 
     # ── General Properties ─────────────────────────────────────────────────
 
@@ -346,6 +439,17 @@ class SettingsController(QObject):
             cfg.server_base_folder = self._cfg.server_base_folder
             cfg.server_time_folder = self._cfg.server_time_folder
             cfg.server_file_suffix = self._cfg.server_file_suffix
+            cfg.modbus_tcp_enabled = self._cfg.modbus_tcp_enabled
+            cfg.modbus_tcp_port = self._cfg.modbus_tcp_port
+            cfg.modbus_tcp_bind = self._cfg.modbus_tcp_bind
+            cfg.modbus_tcp_unit_id = self._cfg.modbus_tcp_unit_id
+            cfg.rest_api_enabled = self._cfg.rest_api_enabled
+            cfg.rest_api_port = self._cfg.rest_api_port
+            cfg.rest_api_bind = self._cfg.rest_api_bind
+            if self._cfg.rest_api_enabled and not (cfg.rest_api_token or "").strip():
+                from core.rest_api import generate_token
+                cfg.rest_api_token = generate_token()
+                logger.info("REST API token auto-generated on first enable.")
             session.commit()
             session.refresh(cfg)
             self._cfg = cfg
@@ -409,6 +513,24 @@ class SettingsController(QObject):
             errors.append("Poll interval must be at least 1 second.")
         if self._cfg.ftp_port < 1 or self._cfg.ftp_port > 65535:
             errors.append("FTP port must be between 1 and 65535.")
+        if self._cfg.modbus_tcp_port < 1 or self._cfg.modbus_tcp_port > 65535:
+            errors.append("Modbus TCP port must be between 1 and 65535.")
+        if self._cfg.modbus_tcp_unit_id < 1 or self._cfg.modbus_tcp_unit_id > 247:
+            errors.append("Modbus TCP Unit ID must be between 1 and 247.")
+        bind = (self._cfg.modbus_tcp_bind or "").strip()
+        if not bind:
+            errors.append("Modbus TCP bind address is required (use 0.0.0.0 for all interfaces).")
+        if self._cfg.rest_api_port < 1 or self._cfg.rest_api_port > 65535:
+            errors.append("REST API port must be between 1 and 65535.")
+        rest_bind = (self._cfg.rest_api_bind or "").strip()
+        if not rest_bind:
+            errors.append("REST API bind address is required (use 0.0.0.0 for all interfaces).")
+        if (
+            self._cfg.rest_api_enabled
+            and self._cfg.modbus_tcp_enabled
+            and self._cfg.rest_api_port == self._cfg.modbus_tcp_port
+        ):
+            errors.append("REST API port must differ from Modbus TCP port.")
         return errors
 
     # ── Sensor coefficient (scaling) helpers for QML ───────────────────────

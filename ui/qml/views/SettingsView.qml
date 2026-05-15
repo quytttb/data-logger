@@ -193,6 +193,7 @@ Rectangle {
             SettingsGeneralTab {
                 id: generalTab
                 Layout.fillWidth: true; Layout.fillHeight: true
+                settingsMessagePopup: settingsPopup
                 onConfigChangedChanged: { if (configChanged) settingsRoot.isConfigChanged = true }
             }
 

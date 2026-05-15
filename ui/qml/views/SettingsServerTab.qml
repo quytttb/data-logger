@@ -114,10 +114,18 @@ Item {
                     Text { text: "General"; color: Theme.accentText; font.bold: true; font.pixelSize: 15 }
                     Rectangle { Layout.fillWidth: true; height: 1; color: Theme.borderDefault }
 
-                    Text { text: "Active:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
-                    Switch {
-                        checked: settingsController ? settingsController.serverActive : false
-                        onToggled: { settingsController.serverActive = checked; root.configChanged = true }
+                    RowLayout {
+                        Layout.fillWidth: true; spacing: 10
+                        Text {
+                            text: "Active"
+                            color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize
+                            Layout.alignment: Qt.AlignVCenter
+                        }
+                        Switch {
+                            checked: settingsController ? settingsController.serverActive : false
+                            onToggled: { settingsController.serverActive = checked; root.configChanged = true }
+                        }
+                        Item { Layout.fillWidth: true }
                     }
 
                     Text { text: "Device type:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; visible: false }

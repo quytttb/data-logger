@@ -87,7 +87,7 @@ Item {
             ComboBox {
                 id: dataFormatCombo
                 Layout.fillWidth: true
-                model: ["AB", "BA", "ABCD", "CDAB"]
+                model: ["AB", "BA", "ABCD", "CDAB", "BADC", "DCBA"]
                 currentIndex: 0
                 visible: !isBooleanType
             }
