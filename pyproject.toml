@@ -14,7 +14,7 @@ dependencies = [
     "alembic>=1.18.4",
     "pymodbus[serial]>=3.13.0",
     "pyserial>=3.5",
-    "asyncssh>=2.17",
+    "asyncssh>=2.23.0",
     "cryptography>=48.0.0",
     "paho-mqtt>=2.1.0",
 ]
