@@ -1,5 +1,5 @@
 [build-system]
-requires = ["hatchling>=1.24"]
+requires = ["hatchling>=1.29.0"]
 build-backend = "hatchling.build"
 
 [project]
@@ -9,12 +9,12 @@ description = "Data Logger — Modbus sensor monitoring, SQLite storage, schedul
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "pyside6>=6.7",
-    "sqlmodel>=0.0.22",
+    "pyside6>=6.11.1",
+    "sqlmodel>=0.0.38",
     "alembic>=1.18.4",
     "pymodbus[serial]>=3.13.0",
     "pyserial>=3.5",
-    "asyncssh>=2.17",
+    "asyncssh>=2.23.0",
     "cryptography>=48.0.0",
     "paho-mqtt>=2.1.0",
     "fastapi>=0.115.0",
@@ -25,7 +25,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=9.0.3",
-    "ruff>=0.8.0",
+    "ruff>=0.15.13",
     "build>=1.5.0",
     "pyzbar>=0.1.9",
     "pillow>=10.0",
