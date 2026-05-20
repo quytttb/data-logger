@@ -48,7 +48,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ~/.cache/Nuitka
-          key: nuitka-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pyproject.toml', 'scripts/build_nuitka.sh', 'scripts/stage_pyside_qml.sh') }}
+          key: nuitka-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pyproject.toml', 'scripts/build_nuitka.sh', 'scripts/strip_pyside_qml_static.sh') }}
           restore-keys: |
             nuitka-${{ runner.os }}-${{ runner.arch }}-
 
@@ -65,7 +65,7 @@ jobs:
 
       - name: Build Standalone Binary with Nuitka
         run: |
-          chmod +x scripts/build_nuitka.sh scripts/stage_pyside_qml.sh
+          chmod +x scripts/build_nuitka.sh scripts/strip_pyside_qml_static.sh
           PYTHON="${{ github.workspace }}/venv-build/bin/python" scripts/build_nuitka.sh
 
       - name: Generate VERSION file & Package
