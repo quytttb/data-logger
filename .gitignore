@@ -1,6 +1,16 @@
 .venv/
+venv-build/
 dist/
+build/
 *.egg-info/
+
+# Nuitka / packaging artifacts
+datalogger
+main.bin
+main.build/
+main.dist/
+main.onefile-build/
+*.deb
 __pycache__/
 *.py[cod]
 .pytest_cache/
