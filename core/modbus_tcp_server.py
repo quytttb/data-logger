@@ -54,7 +54,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import socket
 import struct
 import threading
 import time
