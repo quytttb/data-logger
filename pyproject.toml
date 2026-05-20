@@ -17,6 +17,9 @@ dependencies = [
     "asyncssh>=2.23.0",
     "cryptography>=48.0.0",
     "paho-mqtt>=2.1.0",
+    "fastapi>=0.115.0",
+    "uvicorn>=0.30.0",
+    "segno>=1.6",
 ]
 
 [project.optional-dependencies]
@@ -24,6 +27,8 @@ dev = [
     "pytest>=9.0.3",
     "ruff>=0.15.13",
     "build>=1.5.0",
+    "pyzbar>=0.1.9",
+    "pillow>=10.0",
 ]
 
 [tool.hatch.version]

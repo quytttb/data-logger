@@ -49,7 +49,7 @@ class Sensor(SQLModel, table=True):
     )
     data_format: str = Field(
         default="AB",
-        description="Thứ tự byte (Endianness): AB / BA / ABCD / CDAB",
+        description="Thứ tự byte (Endianness): AB / BA / ABCD / CDAB / BADC / DCBA",
     )
 
     # === Công thức quy đổi (ANALOG only) ===

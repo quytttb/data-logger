@@ -125,7 +125,7 @@ Rectangle {
             ComboBox { id: dDataType; model: ["int16", "uint16", "int32", "uint32", "float32"]; Layout.fillWidth: true; visible: isAnalog }
 
             Text { text: "Endian format:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; visible: isAnalog }
-            ComboBox { id: dDataFmt; model: ["AB", "BA", "ABCD", "CDAB"]; Layout.fillWidth: true; visible: isAnalog }
+            ComboBox { id: dDataFmt; model: ["AB", "BA", "ABCD", "CDAB", "BADC", "DCBA"]; Layout.fillWidth: true; visible: isAnalog }
         }
     }
 }

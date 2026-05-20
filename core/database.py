@@ -101,6 +101,12 @@ def _migrate() -> None:
                 ("server_file_suffix", "VARCHAR DEFAULT 'yyyyMMddHHmmss'"),
                 # Phase 4: Protocol selector
                 ("ftp_protocol", "VARCHAR DEFAULT 'sftp'"),
+                # Phase 5: REST API cho Central App (cấu hình từ xa LAN)
+                ("rest_api_enabled", "BOOLEAN NOT NULL DEFAULT 0"),
+                ("rest_api_port", "INTEGER NOT NULL DEFAULT 8080"),
+                ("rest_api_bind", "VARCHAR NOT NULL DEFAULT '0.0.0.0'"),
+                ("rest_api_token", "VARCHAR NOT NULL DEFAULT ''"),
+                ("config_revision", "INTEGER NOT NULL DEFAULT 1"),
             ]
             for col_name, col_type in app_config_adds:
                 if col_name not in acols:

@@ -123,6 +123,46 @@ class AppConfig(SQLModel, table=True):
         description="Stop bits (1 hoặc 2)",
     )
 
+    # === Modbus TCP Server (xuất dữ liệu cho hệ tập trung / SCADA) ===
+    modbus_tcp_enabled: bool = Field(
+        default=False,
+        description="Bật Modbus TCP Server để app tập trung đọc realtime",
+    )
+    modbus_tcp_port: int = Field(
+        default=5020,
+        description="Cổng lắng nghe TCP (mặc định 5020 để tránh privileged 502 trên Linux)",
+    )
+    modbus_tcp_bind: str = Field(
+        default="0.0.0.0",
+        description="Địa chỉ bind (0.0.0.0 = mọi interface)",
+    )
+    modbus_tcp_unit_id: int = Field(
+        default=1,
+        description="Unit ID (Slave ID ảo) trả về cho TCP client",
+    )
+
+    # === REST API (cấu hình từ xa cho Central App qua LAN) ===
+    rest_api_enabled: bool = Field(
+        default=False,
+        description="Bật HTTP REST API để Central App đọc/ghi cấu hình từ xa",
+    )
+    rest_api_port: int = Field(
+        default=8080,
+        description="Cổng HTTP REST (mặc định 8080)",
+    )
+    rest_api_bind: str = Field(
+        default="0.0.0.0",
+        description="Địa chỉ bind REST API (0.0.0.0 = mọi interface)",
+    )
+    rest_api_token: str = Field(
+        default="",
+        description="Bearer token dùng cho REST API (rỗng = tự sinh khi bật lần đầu)",
+    )
+    config_revision: int = Field(
+        default=1,
+        description="Số revision cấu hình; tăng mỗi lần POST /config thành công (optimistic concurrency)",
+    )
+
     # Giao diện
     ui_locale: str = Field(
         default="vi",
