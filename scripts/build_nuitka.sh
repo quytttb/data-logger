@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Build standalone onefile binary with Nuitka (CI / local on Linux ARM64).
-# QML: --include-qt-plugins=qml (after stripping *.a from PySide6 Qt/qml).
+# QML: --include-qt-plugins=qml (after stripping *.a/*.prl/*.debug from PySide6 Qt/qml).
 # Do not bundle PySide6 QML via --include-data-dir (avoids duplicate warnings).
 
 set -euo pipefail

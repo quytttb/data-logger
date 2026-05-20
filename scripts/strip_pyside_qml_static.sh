@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Remove static archives (*.a) from PySide6 Qt/qml before Nuitka --include-qt-plugins=qml.
-# Nuitka treats non-.qml files as DLLs and runs patchelf on them; *.a are not ELF.
+# Remove non-ELF Qt/QML build artifacts before Nuitka --include-qt-plugins=qml.
+# Nuitka treats non-data suffix files as DLLs and runs patchelf/readelf on them.
 
 set -euo pipefail
 
@@ -19,23 +19,36 @@ if [ ! -d "${PYSIDE_QML}" ]; then
     exit 1
 fi
 
-mapfile -t A_FILES < <(find "${PYSIDE_QML}" -name '*.a' 2>/dev/null || true)
-count="${#A_FILES[@]}"
+# Suffixes that are not shared libraries but get picked up as "QML plugin DLLs".
+STRIP_SUFFIXES=(a prl debug)
 
-if [ "${count}" -eq 0 ]; then
-    echo "[strip_pyside_qml_static] No *.a under ${PYSIDE_QML}"
-    exit 0
-fi
-
-for f in "${A_FILES[@]}"; do
-    rm -f "${f}"
-    echo "[strip_pyside_qml_static]   removed ${f}"
+total=0
+for suffix in "${STRIP_SUFFIXES[@]}"; do
+    mapfile -t files < <(find "${PYSIDE_QML}" -name "*.${suffix}" 2>/dev/null || true)
+    for f in "${files[@]}"; do
+        rm -f "${f}"
+        echo "[strip_pyside_qml_static]   removed ${f}"
+        total=$((total + 1))
+    done
 done
 
-remaining="$(find "${PYSIDE_QML}" -name '*.a' 2>/dev/null | wc -l | tr -d ' ')"
-if [ "${remaining}" != "0" ]; then
-    echo "[strip_pyside_qml_static] ERROR: ${remaining} *.a file(s) still present" >&2
-    exit 1
+for suffix in "${STRIP_SUFFIXES[@]}"; do
+    remaining="$(find "${PYSIDE_QML}" -name "*.${suffix}" 2>/dev/null | wc -l | tr -d ' ')"
+    if [ "${remaining}" != "0" ]; then
+        echo "[strip_pyside_qml_static] ERROR: ${remaining} *.${suffix} file(s) still present" >&2
+        exit 1
+    fi
+done
+
+if [ "${total}" -eq 0 ]; then
+    echo "[strip_pyside_qml_static] No *.a/*.prl/*.debug under ${PYSIDE_QML}"
+else
+    echo "[strip_pyside_qml_static] DONE: removed ${total} non-ELF artifact(s)"
 fi
 
-echo "[strip_pyside_qml_static] DONE: removed ${count} static archive(s)"
+# App does not use Qt/labs QML; assetdownloader ships .a/.prl that break Nuitka.
+ASSET_DOWNLOADER="${PYSIDE_QML}/Qt/labs/assetdownloader"
+if [ -d "${ASSET_DOWNLOADER}" ]; then
+    rm -rf "${ASSET_DOWNLOADER}"
+    echo "[strip_pyside_qml_static]   removed unused ${ASSET_DOWNLOADER}"
+fi
