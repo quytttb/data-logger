@@ -9,9 +9,10 @@
 #    scripts/build_deb.sh 2.0.3 arm64
 #
 #  Yêu cầu sẵn có trong thư mục gốc repo:
-#    - ./datalogger              (binary Nuitka --onefile)
+#    - ./datalogger              (binary Nuitka --onefile; gồm segno + provision QR)
 #    - ./config/                 (config mẫu)
-#    - ./ui/qml/                 (assets QML)
+#    - ./ui/qml/                 (assets QML, gồm ProvisionQrPopup.qml)
+#    - ./docs/                   (provision-qr-v1.md — tuỳ chọn)
 #    - ./migrations/             (alembic migrations)
 #    - ./alembic.ini
 #    - ./scripts/datalogger.service  (tuỳ chọn; nếu thiếu sẽ sinh template)
@@ -79,6 +80,10 @@ if [ -f "${REPO_ROOT}/alembic.ini" ]; then
 fi
 if [ -d "${REPO_ROOT}/assets" ]; then
     cp -a "${REPO_ROOT}/assets" "${STAGE_DIR}${INSTALL_PREFIX}/assets"
+fi
+
+if [ -d "${REPO_ROOT}/docs" ]; then
+    cp -a "${REPO_ROOT}/docs" "${STAGE_DIR}${INSTALL_PREFIX}/docs"
 fi
 
 # ── Desktop entry + icon (system menus & Alt-Tab) ───────────────────────────
@@ -197,6 +202,8 @@ Suggests: qt6-qpa-plugins, qml6-module-qtquick, qml6-module-qtquick-controls, qm
 Description: IoT Data Logger
  Modbus polling, SQLite storage and sFTP report uploader,
  packaged as a Nuitka standalone binary with systemd integration.
+ Includes HTTP REST remote config and LAN provisioning QR (central-logger-provision/v1).
+ Schema reference: /opt/datalogger/docs/provision-qr-v1.md when docs are shipped.
 CONTROL
 
 # ── DEBIAN/postinst ─────────────────────────────────────────────────────────

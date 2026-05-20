@@ -7,6 +7,8 @@ Contract:
       GET  /api/v1/health   — liveness + revision (auth-free, dùng để Central ping)
       GET  /api/v1/config   — đọc full snapshot cấu hình (auth bắt buộc)
       POST /api/v1/config   — apply cấu hình (auth + optimistic concurrency)
+      GET  /api/v1/readings — snapshot giá trị live (auth, top-level sensors)
+      GET  /api/v1/reports/latest — tải file báo cáo TXT mới nhất (auth)
   - HTTP status (REST chuẩn):
       200 OK            — apply / đọc thành công
       400 Bad Request   — payload không hợp lệ (Pydantic / business validation)
@@ -28,10 +30,11 @@ from __future__ import annotations
 import hmac
 import logging
 import secrets
+from pathlib import Path
 from typing import Any, Callable, Optional
 
 from fastapi import Depends, FastAPI, HTTPException, Request, status
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlmodel import select
 
@@ -151,7 +154,49 @@ class ConfigSnapshot(BaseModel):
     sensors: list[dict[str, Any]]
 
 
+class ReadingItem(BaseModel):
+    sensor_id: int
+    sensor_type: str
+    value: Optional[float] = None
+    status: str = "WAIT"
+    is_alarm: bool = False
+    alarm_type: str = ""
+    valid: bool = False
+    recorded_at: str = ""
+
+
+class ReadingsSnapshot(BaseModel):
+    ok: bool = True
+    polling: bool = False
+    rtu_connected: bool = False
+    sensors: list[ReadingItem] = Field(default_factory=list)
+
+
 # ── Helpers ──────────────────────────────────────────────────────────────
+
+
+def _find_latest_report_path() -> Path | None:
+    """Newest TXT in REPORT_DIR (mtime), else newest ReportLog row."""
+    from core.txt_generator import REPORT_DIR
+    from models.report_log import ReportLog
+
+    if REPORT_DIR.is_dir():
+        files = list(REPORT_DIR.glob("*.txt"))
+        if files:
+            return max(files, key=lambda p: p.stat().st_mtime)
+
+    session = get_session()
+    try:
+        row = session.exec(
+            select(ReportLog).order_by(ReportLog.created_at.desc())  # type: ignore[arg-type]
+        ).first()
+        if row:
+            path = REPORT_DIR / row.filename
+            if path.is_file():
+                return path
+    finally:
+        session.close()
+    return None
 
 
 def _read_app_config(session) -> AppConfig:
@@ -213,6 +258,7 @@ def _serialize_config(cfg: AppConfig) -> dict[str, Any]:
 def create_app(
     token_provider: Callable[[], str],
     on_applied: Optional[Callable[[int], None]] = None,
+    readings_provider: Optional[Callable[[], dict[str, Any]]] = None,
 ) -> FastAPI:
     """Build FastAPI app.
 
@@ -221,6 +267,7 @@ def create_app(
             Dùng callable để token có thể xoay mà không cần restart server.
         on_applied: callback (revision) gọi sau khi POST /config thành công —
             `RestServerService` dùng để emit signal vào Qt main thread.
+        readings_provider: callable trả về snapshot readings (Monitor cache).
     """
     app = FastAPI(
         title="Data Logger Remote Config API",
@@ -281,6 +328,55 @@ def create_app(
             )
         finally:
             session.close()
+
+    @app.get(
+        "/api/v1/readings",
+        response_model=ReadingsSnapshot,
+        dependencies=[Depends(_check_auth)],
+    )
+    def get_readings() -> ReadingsSnapshot:
+        if readings_provider is None:
+            return ReadingsSnapshot(ok=True, polling=False, rtu_connected=False, sensors=[])
+        try:
+            raw = readings_provider()
+        except Exception:
+            logger.exception("readings_provider failed")
+            raise HTTPException(
+                status.HTTP_503_SERVICE_UNAVAILABLE,
+                "Readings snapshot unavailable",
+            )
+        if not isinstance(raw, dict):
+            raw = {}
+        sensors_raw = raw.get("sensors") or []
+        items: list[ReadingItem] = []
+        if isinstance(sensors_raw, list):
+            for s in sensors_raw:
+                if isinstance(s, dict) and s.get("sensor_id") is not None:
+                    try:
+                        items.append(ReadingItem(**s))
+                    except Exception:
+                        continue
+        return ReadingsSnapshot(
+            ok=bool(raw.get("ok", True)),
+            polling=bool(raw.get("polling", False)),
+            rtu_connected=bool(raw.get("rtu_connected", False)),
+            sensors=items,
+        )
+
+    @app.get(
+        "/api/v1/reports/latest",
+        dependencies=[Depends(_check_auth)],
+    )
+    def get_latest_report() -> FileResponse:
+        path = _find_latest_report_path()
+        if path is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "No report file available")
+        return FileResponse(
+            path,
+            media_type="text/plain",
+            filename=path.name,
+            headers={"Content-Disposition": f'attachment; filename="{path.name}"'},
+        )
 
     @app.post(
         "/api/v1/config",

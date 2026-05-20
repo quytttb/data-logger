@@ -13,11 +13,13 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import socket
 import threading
+from collections.abc import Callable
+from typing import Any
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
 
+from core.lan_ip import get_primary_lan_ip
 from core.rest_api import create_app
 
 logger = logging.getLogger("datalogger.rest_server")
@@ -47,6 +49,14 @@ class RestServerService(QObject):
         self._uvicorn_server = None  # uvicorn.Server
         self._state = self.STATE_STOPPED
         self._last_error = ""
+        self._readings_provider: Callable[[], dict[str, Any]] | None = None
+
+    def set_readings_provider(
+        self, provider: Callable[[], dict[str, Any]] | None
+    ) -> None:
+        """MonitorController.readings_snapshot — callable từ REST worker thread."""
+        with self._lock:
+            self._readings_provider = provider
 
     # ── Qt properties ─────────────────────────────────────────────────────
 
@@ -71,19 +81,7 @@ class RestServerService(QObject):
     @Slot(result=str)
     def primaryIp(self) -> str:
         """IP LAN gần đúng (best-effort) — hiển thị URL trên QML."""
-        try:
-            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            s.settimeout(0.2)
-            try:
-                s.connect(("8.8.8.8", 80))
-                return s.getsockname()[0]
-            finally:
-                s.close()
-        except Exception:
-            try:
-                return socket.gethostbyname(socket.gethostname())
-            except Exception:
-                return ""
+        return get_primary_lan_ip()
 
     # ── Token provider (đọc tại request time để hỗ trợ xoay token) ────────
 
@@ -156,9 +154,12 @@ class RestServerService(QObject):
     async def _serve(self) -> None:
         import uvicorn
 
+        with self._lock:
+            readings_provider = self._readings_provider
         app = create_app(
             token_provider=self._current_token,
             on_applied=lambda rev: self.configApplied.emit(int(rev)),
+            readings_provider=readings_provider,
         )
         config = uvicorn.Config(
             app=app,

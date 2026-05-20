@@ -62,9 +62,9 @@ Kênh **độc lập** với Modbus TCP — chỉ dùng cho **chỉnh cấu hìn
 Central App  ──(HTTP REST / JSON, LAN)──▶  Data Logger  ──(SQLite)──▶  Workers (Modbus / Reports)
 ```
 
-Bật trong **Settings → Connection → Network Services → HTTP REST Server** (toggle Active, Bind, Port, Bearer token, Config revision).
+Bật trong **Settings → Connection → Network Services → HTTP REST Server** (toggle Active, Bind, Port, API token).
 
-**Mặc định**: port `8080`, bind `0.0.0.0`. Bearer token được sinh tự động lần đầu khi bật (xem ô "Bearer token" trong UI, có nút **Regenerate**).
+**Mặc định**: port `8080`, bind `0.0.0.0`. API token được sinh tự động lần đầu khi bật (xem ô **API token** trong UI, có nút **Regenerate**).
 
 ### Endpoints (API v1)
 
@@ -121,6 +121,29 @@ python tools/dump_openapi.py
 TOKEN="<bearer-token-từ-UI>"
 curl http://<ip_logger>:8080/api/v1/health
 curl -H "Authorization: Bearer $TOKEN" http://<ip_logger>:8080/api/v1/config
+```
+
+### Provisioning QR (ghép Central App qua LAN)
+
+Trong **Settings → Connection → Network Services → HTTP REST Server**, khi REST **Active** và đã có **API token**:
+
+- Nút **QR** (icon, cạnh Regenerate) — mở dialog QR chứa JSON schema `central-logger-provision/v1` (token + host LAN + cổng REST/Modbus + mã trạm).
+
+Sau **Regenerate** token, quét lại QR (caption trong dialog). Token **không** có trong `GET /api/v1/config` và **không** ghi log.
+
+Chi tiết schema: [`docs/provision-qr-v1.md`](docs/provision-qr-v1.md). Mẫu JSON cố định: [`tests/fixtures/provision-qr-sample.json`](tests/fixtures/provision-qr-sample.json).
+
+```bash
+# Kiểm tra token từ QR (thay host/port/token từ JSON sau khi decode)
+curl -s -H "Authorization: Bearer <api_token>" "http://<host>:<api_port>/api/v1/health"
+```
+
+Test unit QR (cần `libzbar0` trên Linux cho decode round-trip):
+
+```bash
+uv sync --extra dev
+sudo apt install libzbar0   # Debian/Ubuntu (có thể là gói libzbar0t64)
+uv run pytest tests/test_provision_qr.py -v
 ```
 
 ---

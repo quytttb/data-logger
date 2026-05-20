@@ -166,19 +166,9 @@ class ModbusTcpServerService(QObject):
     @Slot(result=str)
     def primaryIp(self) -> str:
         """Trả về IP LAN gần đúng (best effort) để hiển thị trên UI."""
-        try:
-            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            s.settimeout(0.2)
-            try:
-                s.connect(("8.8.8.8", 80))
-                return s.getsockname()[0]
-            finally:
-                s.close()
-        except Exception:
-            try:
-                return socket.gethostbyname(socket.gethostname())
-            except Exception:
-                return ""
+        from core.lan_ip import get_primary_lan_ip
+
+        return get_primary_lan_ip()
 
     # ── Lifecycle ──────────────────────────────────────────────────────────
 

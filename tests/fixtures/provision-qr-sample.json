@@ -1,0 +1,1 @@
+{"schema":"central-logger-provision/v1","api_token":"SAMPLE-TOKEN-FOR-CENTRAL-DECODER-TEST-ONLY","host":"192.168.1.100","api_port":8080,"modbus_port":5020,"modbus_unit_id":1,"station_code":"TRAM-XXX","station_name":"Tên trạm mẫu"}

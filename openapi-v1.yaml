@@ -15,6 +15,31 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthResponse"
+  /api/v1/readings:
+    get:
+      summary: "Get live readings snapshot"
+      operationId: "get_readings_api_v1_readings_get"
+      responses:
+        200:
+          description: "Successful Response"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadingsSnapshot"
+  /api/v1/reports/latest:
+    get:
+      summary: "Download latest TXT report"
+      operationId: "get_latest_report_api_v1_reports_latest_get"
+      responses:
+        200:
+          description: "Report file"
+          content:
+            text/plain:
+              schema:
+                type: "string"
+                format: "binary"
+        404:
+          description: "No report available"
   /api/v1/config:
     get:
       summary: "Get Config"

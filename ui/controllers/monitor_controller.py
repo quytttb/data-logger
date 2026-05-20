@@ -6,6 +6,7 @@ MonitorController: Quản lý QThread cho ModbusWorker + DatabaseWorker,
 """
 
 import logging
+import threading
 from collections import deque
 from datetime import datetime
 from typing import Any
@@ -252,6 +253,11 @@ class MonitorController(QObject):
             "FtpWorker": 0
         }
 
+        # Thread-safe cache for REST GET /api/v1/readings (Central App).
+        self._readings_lock = threading.Lock()
+        self._readings_cache: dict[int, dict[str, Any]] = {}
+        self._rtu_connected = False
+
     # ── Properties ─────────────────────────────────────────────────────────
 
     @Property(bool, notify=pollingChanged)
@@ -495,6 +501,8 @@ class MonitorController(QObject):
                 return
 
             self._model.load_sensors(sensors)
+            self._clear_readings_cache()
+            self._rtu_connected = False
 
             sensor_dicts = [
                 {
@@ -692,6 +700,73 @@ class MonitorController(QObject):
             self._mbtcp.set_logger_status(polling=False, rtu_connected=False)
         logger.info("Polling stopped (sync shutdown).")
 
+    def readings_snapshot(self) -> dict[str, Any]:
+        """Snapshot top-level sensor values for REST GET /readings."""
+        with self._readings_lock:
+            cache = {k: dict(v) for k, v in self._readings_cache.items()}
+        sensors: list[dict[str, Any]] = []
+        for item in self._model._items:  # noqa: SLF001
+            sid = int(item["sensor_id"])
+            if sid in cache:
+                sensors.append(cache[sid])
+            else:
+                sensors.append({
+                    "sensor_id": sid,
+                    "sensor_type": item.get("sensor_type", "ANALOG"),
+                    "value": None,
+                    "status": "WAIT",
+                    "is_alarm": False,
+                    "alarm_type": "",
+                    "valid": False,
+                    "recorded_at": "",
+                })
+        return {
+            "ok": True,
+            "polling": self._is_polling,
+            "rtu_connected": self._rtu_connected,
+            "sensors": sensors,
+        }
+
+    def _cache_reading_from_payload(self, payload: dict) -> None:
+        sid = int(payload["sensor_id"])
+        row = self._model._id_to_row.get(sid)  # noqa: SLF001
+        if row is None:
+            return
+        item = self._model._items[row]  # noqa: SLF001
+        sensor_type = item.get("sensor_type", "ANALOG")
+        try:
+            fval = float(payload.get("value")) if payload.get("value") is not None else None
+        except (TypeError, ValueError):
+            fval = None
+        is_alarm = bool(payload.get("is_alarm", False))
+        if sensor_type in ("DI", "DO"):
+            status = "ON" if fval is not None and fval >= 0.5 else "OFF"
+        else:
+            status = "ALARM" if is_alarm else item.get("status", "OK")
+        entry = {
+            "sensor_id": sid,
+            "sensor_type": sensor_type,
+            "value": fval,
+            "status": status,
+            "is_alarm": is_alarm,
+            "alarm_type": str(payload.get("alarm_type", "")),
+            "valid": True,
+            "recorded_at": str(payload.get("recorded_at", "")),
+        }
+        with self._readings_lock:
+            self._readings_cache[sid] = entry
+
+    def _mark_readings_cache_err(self) -> None:
+        with self._readings_lock:
+            for sid, ent in list(self._readings_cache.items()):
+                updated = dict(ent)
+                updated["status"] = "ERR"
+                self._readings_cache[sid] = updated
+
+    def _clear_readings_cache(self) -> None:
+        with self._readings_lock:
+            self._readings_cache.clear()
+
     # ── Internal signal handlers ───────────────────────────────────────────
 
     def _on_data_ready(self, payload: dict) -> None:
@@ -716,6 +791,7 @@ class MonitorController(QObject):
             alarm_type=payload.get("alarm_type", ""),
             di_states=colored_di,
         )
+        self._cache_reading_from_payload(payload)
 
         # Push analog points to the rolling trend buffer for the Trending tab
         try:
@@ -765,6 +841,7 @@ class MonitorController(QObject):
         logger.warning("Modbus error #%d: %s", self._error_count, msg)
 
     def _on_connection_changed(self, connected: bool) -> None:
+        self._rtu_connected = bool(connected)
         if self._mbtcp is not None:
             self._mbtcp.set_logger_status(polling=self._is_polling, rtu_connected=connected)
         if self._is_stopping:
@@ -774,6 +851,7 @@ class MonitorController(QObject):
         else:
             self._apply_status("connection_lost", self.STATUS_ERR)
             self._model.set_all_status("ERR")
+            self._mark_readings_cache_err()
 
     def _on_modbus_stopped(self) -> None:
         if self._modbus_thread and self._modbus_thread.isRunning():

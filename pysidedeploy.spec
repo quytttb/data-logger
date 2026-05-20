@@ -13,7 +13,7 @@ icon = assets/app-icon.svg
 
 [python]
 ; Các package thuần-Python cần include (Nuitka không tự detect dynamic import)
-packages = asyncssh,cryptography,pymodbus,sqlmodel,sqlalchemy,serial,bcrypt
+packages = asyncssh,cryptography,pymodbus,sqlmodel,sqlalchemy,serial,bcrypt,segno
 
 [qt]
 ; Tất cả file QML (đường dẫn tương đối từ main.py)
@@ -41,5 +41,9 @@ extra_args = --noinclude-qt-translations
              --include-package=models
              --include-package=ui
              --include-package=workers
+             --include-package=segno
+             --include-module=core.provision_qr
+             --include-module=core.lan_ip
              --include-data-dir=ui/qml=ui/qml
              --include-data-dir=assets=assets
+             --include-data-dir=docs=docs

@@ -31,6 +31,7 @@ from core._version import __version__ as _APP_VERSION
 from core.database import init_db
 from core.modbus_tcp_server import ModbusTcpServerService
 from core.rest_server_service import RestServerService
+import core.provision_qr  # noqa: F401 — segno QR pairing; ensure Nuitka .deb bundle
 from core.txt_generator import cleanup_old_report_files
 from ui.controllers.tester_controller import TesterController
 from ui.controllers.settings_controller import SettingsController
@@ -109,6 +110,7 @@ def main():
     modbus_tcp_service = ModbusTcpServerService()
     rest_api_service = RestServerService()
     monitor_controller = MonitorController(monitor_model, tester_controller, modbus_tcp_service)
+    rest_api_service.set_readings_provider(monitor_controller.readings_snapshot)
     history_model = HistoryModel()
     history_controller = HistoryController(history_model)
     history_controller.attach_monitor(monitor_controller)

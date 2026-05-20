@@ -27,9 +27,44 @@ TOKEN = "test-bearer-token-xyz"
 HDR = {"Authorization": f"Bearer {TOKEN}"}
 
 
-def _client() -> TestClient:
+def _sample_readings() -> dict:
+    return {
+        "ok": True,
+        "polling": True,
+        "rtu_connected": True,
+        "sensors": [
+            {
+                "sensor_id": 1,
+                "sensor_type": "ANALOG",
+                "value": 25.5,
+                "status": "OK",
+                "is_alarm": False,
+                "alarm_type": "",
+                "valid": True,
+                "recorded_at": "2026-05-19T10:00:00",
+            },
+            {
+                "sensor_id": 3,
+                "sensor_type": "DI",
+                "value": 1.0,
+                "status": "ON",
+                "is_alarm": False,
+                "alarm_type": "",
+                "valid": True,
+                "recorded_at": "2026-05-19T10:00:00",
+            },
+        ],
+    }
+
+
+def _client(readings_provider=None) -> TestClient:
     init_db()
-    return TestClient(create_app(token_provider=lambda: TOKEN))
+    return TestClient(
+        create_app(
+            token_provider=lambda: TOKEN,
+            readings_provider=readings_provider,
+        )
+    )
 
 
 def test_health_no_auth():
@@ -145,6 +180,46 @@ def test_post_config_sensors_replace():
     print("  POST /config sensors[] replace OK ✓")
 
 
+def test_get_readings_from_provider():
+    c = _client(readings_provider=_sample_readings)
+    r = c.get("/api/v1/readings", headers=HDR)
+    assert r.status_code == 200
+    body = r.json()
+    assert body["polling"] is True
+    assert len(body["sensors"]) == 2
+    assert body["sensors"][1]["status"] == "ON"
+    print("  GET /readings OK ✓")
+
+
+def test_get_readings_empty_without_provider():
+    c = _client()
+    r = c.get("/api/v1/readings", headers=HDR)
+    assert r.status_code == 200
+    assert r.json()["sensors"] == []
+    print("  GET /readings empty provider OK ✓")
+
+
+def test_get_latest_report_404_when_missing():
+    c = _client()
+    r = c.get("/api/v1/reports/latest", headers=HDR)
+    assert r.status_code == 404
+    print("  GET /reports/latest 404 OK ✓")
+
+
+def test_get_latest_report_download():
+    from core.txt_generator import REPORT_DIR
+
+    REPORT_DIR.mkdir(parents=True, exist_ok=True)
+    path = REPORT_DIR / "TEST_STATION_20260519120000.txt"
+    path.write_text("line1\nline2\n", encoding="utf-8")
+    c = _client()
+    r = c.get("/api/v1/reports/latest", headers=HDR)
+    assert r.status_code == 200
+    assert b"line1" in r.content
+    assert "attachment" in r.headers.get("content-disposition", "").lower()
+    print("  GET /reports/latest download OK ✓")
+
+
 def test_post_config_wrong_api_version():
     c = _client()
     cur = c.get("/api/v1/health").json()["revision"]
@@ -167,5 +242,9 @@ if __name__ == "__main__":
     test_post_config_apply_increments_revision()
     test_post_config_validation_400()
     test_post_config_sensors_replace()
+    test_get_readings_from_provider()
+    test_get_readings_empty_without_provider()
+    test_get_latest_report_404_when_missing()
+    test_get_latest_report_download()
     test_post_config_wrong_api_version()
     print("All REST API tests passed ✓")

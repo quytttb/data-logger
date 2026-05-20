@@ -73,6 +73,9 @@ jobs:
             --include-data-dir=ui/qml=ui/qml \
             --include-data-dir=assets=assets \
             --include-data-dir="${PYSIDE_QML}=PySide6/Qt/qml" \
+            --include-package=segno \
+            --include-module=core.provision_qr \
+            --include-module=core.lan_ip \
             --plugin-enable=pyside6 \
             --include-qt-plugins=all \
             --output-filename=datalogger \
@@ -96,6 +99,7 @@ jobs:
             exit 1
           fi
           cp -r config ui release_package/
+          [ -d docs ] && cp -r docs release_package/
 
           # Nén tarball
           tar -czvf datalogger-dev-snapshot.tar.gz -C release_package .

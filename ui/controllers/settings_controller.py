@@ -9,6 +9,7 @@ Python tạo JSON `coefficient` tương thích `core/formula.apply_formula`.
 
 from __future__ import annotations
 
+import base64
 import json
 import logging
 import math
@@ -28,10 +29,12 @@ class SettingsController(QObject):
     configLoaded = Signal()
     configSaved = Signal()
     messageSent = Signal(str, str)
+    provisionQrStaleChanged = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self._cfg = AppConfig()
+        self._provision_qr_stale = False
         self._updater = AppUpdater(parent=self)
         self._updater.updateComplete.connect(self._on_update_complete)
         self._updater.progressChanged.connect(self._on_update_progress)
@@ -229,6 +232,36 @@ class SettingsController(QObject):
     def configRevision(self):
         return self._cfg.config_revision
 
+    @Property(bool, notify=configLoaded)
+    def provisionQrAvailable(self):
+        return bool(self._cfg.rest_api_enabled and (self._cfg.rest_api_token or "").strip())
+
+    @Property(bool, notify=provisionQrStaleChanged)
+    def provisionQrStale(self):
+        return self._provision_qr_stale
+
+    def _clear_provision_qr_stale(self):
+        if self._provision_qr_stale:
+            self._provision_qr_stale = False
+            self.provisionQrStaleChanged.emit()
+
+    def _provision_png_bytes(self) -> bytes | None:
+        if not self.provisionQrAvailable:
+            return None
+        from core.provision_qr import provision_qr_png_for_config
+
+        _, png = provision_qr_png_for_config(self._cfg)
+        return png
+
+    @Slot(result=str)
+    def get_provision_qr_base64(self) -> str:
+        """PNG base64 (no data-URL prefix) for QML Image."""
+        png = self._provision_png_bytes()
+        if png is None:
+            return ""
+        self._clear_provision_qr_stale()
+        return base64.standard_b64encode(png).decode("ascii")
+
     @Slot()
     def regenerate_rest_token(self):
         """Sinh token mới, persist ngay vào DB (không cần Save Settings)."""
@@ -243,9 +276,11 @@ class SettingsController(QObject):
             session.commit()
             session.refresh(cfg)
             self._cfg = cfg
+            self._provision_qr_stale = True
+            self.provisionQrStaleChanged.emit()
             self.configLoaded.emit()
             self.configSaved.emit()
-            self.messageSent.emit("REST API", "New token generated.")
+            self.messageSent.emit("REST API", "Token changed — scan QR again in Central App.")
             logger.info("REST API token regenerated.")
         except Exception as e:
             session.rollback()

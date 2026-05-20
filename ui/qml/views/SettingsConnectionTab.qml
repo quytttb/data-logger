@@ -8,6 +8,16 @@ Item {
     id: root
     property bool configChanged: false
 
+    ProvisionQrPopup { id: provisionQrPopup }
+
+    Connections {
+        target: settingsController
+        function onConfigLoaded() {
+            if (provisionQrPopup.visible)
+                provisionQrPopup.refresh()
+        }
+    }
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
@@ -395,7 +405,7 @@ Item {
                                     }
                                 }
 
-                                Text { text: "Bearer token:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
+                                Text { text: "API token:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
                                 RowLayout {
                                     Layout.fillWidth: true; spacing: 6
                                     TextField {
@@ -405,7 +415,6 @@ Item {
                                         selectByMouse: true
                                         echoMode: tokenShow.checked ? TextInput.Normal : TextInput.Password
                                         text: settingsController.restApiToken
-                                        placeholderText: "(empty — toggle Active + Save to generate)"
                                         Connections {
                                             target: settingsController
                                             function onConfigLoaded() {
@@ -424,12 +433,17 @@ Item {
                                         font.pixelSize: Theme.fontLabelSize - 1
                                         onClicked: settingsController.regenerate_rest_token()
                                     }
-                                }
-
-                                Text {
-                                    text: "Config revision: " + settingsController.configRevision
-                                    color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize - 1
-                                    Layout.fillWidth: true
+                                    ToolButton {
+                                        enabled: settingsController.provisionQrAvailable
+                                        icon.source: "../../../assets/icons/qr.svg"
+                                        icon.color: Theme.accentText
+                                        icon.width: 18
+                                        icon.height: 18
+                                        onClicked: {
+                                            provisionQrPopup.refresh()
+                                            provisionQrPopup.open()
+                                        }
+                                    }
                                 }
 
                                 Text {
