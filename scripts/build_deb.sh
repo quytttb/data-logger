@@ -198,7 +198,7 @@ Architecture: ${ARCH}
 Maintainer: Data Logger Team <ops@example.com>
 Installed-Size: ${INSTALLED_SIZE}
 Depends: libc6, systemd
-Suggests: qt6-qpa-plugins, qml6-module-qtquick, qml6-module-qtquick-controls, qml6-module-qtquick-layouts, qml6-module-qtquick-window
+Suggests: qt6-qpa-plugins, qml6-module-qtquick, qml6-module-qtquick-controls, qml6-module-qtquick-layouts, qml6-module-qtquick-window, qml6-module-qtquick-dialogs, qml6-module-qtcharts
 Description: IoT Data Logger
  Modbus polling, SQLite storage and sFTP report uploader,
  packaged as a Nuitka standalone binary with systemd integration.
