@@ -48,48 +48,112 @@ def init_db() -> None:
     _migrate()
 
 
+def _add_columns(
+    conn,
+    table: str,
+    adds: list[tuple[str, str]],
+    existing: set[str],
+) -> None:
+    """ALTER TABLE ADD COLUMN cho từng cột chưa có (idempotent)."""
+    from sqlalchemy import text
+
+    for col_name, col_type in adds:
+        if col_name not in existing:
+            conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col_name} {col_type}"))
+            conn.commit()
+            existing.add(col_name)
+
+
+def _migrate_digital_io(conn, inspector) -> None:
+    """Gộp bảng digital_io cũ vào sensor (migration a1b2c3d4e5f6)."""
+    from sqlalchemy import text
+
+    if "digital_io" not in inspector.get_table_names():
+        return
+    if "sensor_type" not in {c["name"] for c in inspector.get_columns("sensor")}:
+        return
+
+    conn.execute(text("""
+        INSERT INTO sensor (
+            sensor_type, name, unit, slave_id, register_address,
+            register_type, data_type, data_format, coefficient,
+            poll_interval, report_index,
+            parent_id, is_system_wide, di_type,
+            trigger_on_max, trigger_on_min,
+            active, created_at
+        )
+        SELECT
+            io_type,
+            label,
+            '',
+            slave_id,
+            address,
+            CASE WHEN io_type = 'DI' THEN 'discrete_input' ELSE 'coil' END,
+            'int16',
+            'AB',
+            '{}',
+            3,
+            0,
+            sensor_id,
+            0,
+            di_type,
+            trigger_on_max,
+            trigger_on_min,
+            active,
+            created_at
+        FROM digital_io
+    """))
+    conn.execute(text("DROP TABLE digital_io"))
+    conn.commit()
+
+
 def _migrate() -> None:
-    """Thêm cột mới cho bảng cũ (không dùng Alembic)."""
+    """Thêm cột mới cho bảng cũ (không dùng Alembic).
+
+    Bổ sung các cột tương đương Alembic revisions a1/b2/c3 để DB dev/cũ
+    trên Pi hoạt động sau khi nâng cấp .deb mà không cần sửa tay.
+    """
     from sqlalchemy import inspect as sa_inspect, text
 
     with engine.connect() as conn:
         inspector = sa_inspect(engine)
-        cols = {c["name"] for c in inspector.get_columns("sensor")}
-        if "poll_interval" not in cols:
-            conn.execute(text(
-                "ALTER TABLE sensor ADD COLUMN poll_interval INTEGER DEFAULT 3"
-            ))
-            conn.commit()
 
-        # Phase 1: alarm thresholds
-        if "min_threshold" not in cols:
-            conn.execute(text(
-                "ALTER TABLE sensor ADD COLUMN min_threshold REAL DEFAULT NULL"
-            ))
-            conn.commit()
-        if "max_threshold" not in cols:
-            conn.execute(text(
-                "ALTER TABLE sensor ADD COLUMN max_threshold REAL DEFAULT NULL"
-            ))
-            conn.commit()
+        if inspector.has_table("sensor"):
+            scols = {c["name"] for c in inspector.get_columns("sensor")}
+            _add_columns(conn, "sensor", [
+                ("poll_interval", "INTEGER DEFAULT 3"),
+                ("min_threshold", "REAL DEFAULT NULL"),
+                ("max_threshold", "REAL DEFAULT NULL"),
+                # Single Table Inheritance (a1b2c3d4e5f6)
+                ("sensor_type", "VARCHAR NOT NULL DEFAULT 'ANALOG'"),
+                ("parent_id", "INTEGER DEFAULT NULL"),
+                ("is_system_wide", "BOOLEAN NOT NULL DEFAULT 0"),
+                ("di_type", "VARCHAR DEFAULT NULL"),
+                ("trigger_on_max", "BOOLEAN NOT NULL DEFAULT 1"),
+                ("trigger_on_min", "BOOLEAN NOT NULL DEFAULT 1"),
+            ], scols)
+            if "sensor_type" in scols:
+                conn.execute(text(
+                    "UPDATE sensor SET sensor_type = 'ANALOG' "
+                    "WHERE sensor_type IS NULL OR sensor_type = ''"
+                ))
+                conn.commit()
+            _migrate_digital_io(conn, inspector)
 
         if inspector.has_table("app_config"):
             acols = {c["name"] for c in inspector.get_columns("app_config")}
-            # Thêm cột mới theo từng phiên bản model (DB cũ / file sqlite trong repo).
-            app_config_adds: list[tuple[str, str]] = [
+            _add_columns(conn, "app_config", [
                 ("ui_locale", "VARCHAR(8) DEFAULT 'vi'"),
                 ("serial_port", "VARCHAR DEFAULT '/dev/ttyUSB0'"),
                 ("serial_baudrate", "INTEGER DEFAULT 9600"),
                 ("serial_bytesize", "INTEGER DEFAULT 8"),
                 ("serial_parity", "VARCHAR DEFAULT 'N'"),
                 ("serial_stopbits", "INTEGER DEFAULT 1"),
-                # Phase 3: General config
                 ("time_format", "VARCHAR DEFAULT 'HH:mm:ss'"),
                 ("date_format", "VARCHAR DEFAULT 'dd/MM/yyyy'"),
                 ("timezone", "VARCHAR DEFAULT 'UTC+7'"),
                 ("auto_sync_time", "BOOLEAN DEFAULT 0"),
                 ("buzzer_enable", "BOOLEAN DEFAULT 0"),
-                # Phase 3: Server / Transmission config
                 ("ftp_prefix", "VARCHAR DEFAULT ''"),
                 ("server_active", "BOOLEAN DEFAULT 0"),
                 ("server_device_type", "VARCHAR DEFAULT 'Standard'"),
@@ -99,29 +163,25 @@ def _migrate() -> None:
                 ("server_base_folder", "VARCHAR DEFAULT ''"),
                 ("server_time_folder", "VARCHAR DEFAULT 'yyyy/MM/dd'"),
                 ("server_file_suffix", "VARCHAR DEFAULT 'yyyyMMddHHmmss'"),
-                # Phase 4: Protocol selector
                 ("ftp_protocol", "VARCHAR DEFAULT 'sftp'"),
-                # Phase 5: REST API cho Central App (cấu hình từ xa LAN)
+                # Modbus TCP server (b2c3d4e5f6a7)
+                ("modbus_tcp_enabled", "BOOLEAN NOT NULL DEFAULT 0"),
+                ("modbus_tcp_port", "INTEGER NOT NULL DEFAULT 5020"),
+                ("modbus_tcp_bind", "VARCHAR NOT NULL DEFAULT '0.0.0.0'"),
+                ("modbus_tcp_unit_id", "INTEGER NOT NULL DEFAULT 1"),
+                # REST API / remote config (c3d4e5f6a7b8)
                 ("rest_api_enabled", "BOOLEAN NOT NULL DEFAULT 0"),
                 ("rest_api_port", "INTEGER NOT NULL DEFAULT 8080"),
                 ("rest_api_bind", "VARCHAR NOT NULL DEFAULT '0.0.0.0'"),
                 ("rest_api_token", "VARCHAR NOT NULL DEFAULT ''"),
                 ("config_revision", "INTEGER NOT NULL DEFAULT 1"),
-            ]
-            for col_name, col_type in app_config_adds:
-                if col_name not in acols:
-                    conn.execute(
-                        text(f"ALTER TABLE app_config ADD COLUMN {col_name} {col_type}")
-                    )
-                    conn.commit()
-                    acols.add(col_name)
-
+            ], acols)
 
             if "sensor_data" in inspector.get_table_names():
                 sdcols = {c["name"] for c in inspector.get_columns("sensor_data")}
-                if "status" not in sdcols:
-                    conn.execute(text("ALTER TABLE sensor_data ADD COLUMN status VARCHAR DEFAULT NULL"))
-                    conn.commit()
+                _add_columns(conn, "sensor_data", [
+                    ("status", "VARCHAR DEFAULT NULL"),
+                ], sdcols)
 
 
 def get_session() -> Session:
