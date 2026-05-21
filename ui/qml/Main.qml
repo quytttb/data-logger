@@ -31,7 +31,7 @@ ApplicationWindow {
     color: Theme.bgDeep
     // Toàn màn hình khi mở: che taskbar + không thanh tiêu đề (decoration)
     // Tạm thời tắt — bật lại: bỏ comment dòng dưới
-    // visibility: Window.FullScreen
+    visibility: Window.FullScreen
 
     // ── Navigation state ─────────────────────────────────────────────────
     property int currentTab: 0
