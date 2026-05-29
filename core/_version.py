@@ -3,4 +3,4 @@
 Đồng bộ với Hatch (`pyproject.toml` → `[tool.hatch.version]`) và `QGuiApplication.setApplicationVersion`.
 """
 
-__version__ = "2.0.7"
+__version__ = "2.0.8"
