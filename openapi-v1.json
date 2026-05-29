@@ -77,6 +77,40 @@
           }
         }
       }
+    },
+    "/api/v1/readings": {
+      "get": {
+        "summary": "Get Readings",
+        "operationId": "get_readings_api_v1_readings_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadingsSnapshot"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reports/latest": {
+      "get": {
+        "summary": "Get Latest Report",
+        "operationId": "get_latest_report_api_v1_reports_latest_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -412,6 +446,88 @@
         ],
         "title": "HealthResponse"
       },
+      "ReadingItem": {
+        "properties": {
+          "sensor_id": {
+            "type": "integer",
+            "title": "Sensor Id"
+          },
+          "sensor_type": {
+            "type": "string",
+            "title": "Sensor Type"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "default": "WAIT"
+          },
+          "is_alarm": {
+            "type": "boolean",
+            "title": "Is Alarm",
+            "default": false
+          },
+          "alarm_type": {
+            "type": "string",
+            "title": "Alarm Type",
+            "default": ""
+          },
+          "valid": {
+            "type": "boolean",
+            "title": "Valid",
+            "default": false
+          },
+          "recorded_at": {
+            "type": "string",
+            "title": "Recorded At",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "sensor_id",
+          "sensor_type"
+        ],
+        "title": "ReadingItem"
+      },
+      "ReadingsSnapshot": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok",
+            "default": true
+          },
+          "polling": {
+            "type": "boolean",
+            "title": "Polling",
+            "default": false
+          },
+          "rtu_connected": {
+            "type": "boolean",
+            "title": "Rtu Connected",
+            "default": false
+          },
+          "sensors": {
+            "items": {
+              "$ref": "#/components/schemas/ReadingItem"
+            },
+            "type": "array",
+            "title": "Sensors"
+          }
+        },
+        "type": "object",
+        "title": "ReadingsSnapshot"
+      },
       "SensorPayload": {
         "properties": {
           "sensor_type": {
@@ -443,7 +559,7 @@
           "register_type": {
             "type": "string",
             "title": "Register Type",
-            "description": "holding | input",
+            "description": "holding | input | discrete_input | coil",
             "default": "holding"
           },
           "data_type": {
@@ -502,43 +618,6 @@
             "minimum": 0.0,
             "title": "Report Index",
             "default": 0
-          },
-          "parent_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Parent Id"
-          },
-          "is_system_wide": {
-            "type": "boolean",
-            "title": "Is System Wide",
-            "default": false
-          },
-          "di_type": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Di Type"
-          },
-          "trigger_on_max": {
-            "type": "boolean",
-            "title": "Trigger On Max",
-            "default": true
-          },
-          "trigger_on_min": {
-            "type": "boolean",
-            "title": "Trigger On Min",
-            "default": true
           },
           "active": {
             "type": "boolean",

@@ -236,12 +236,14 @@ class MainWindow(QMainWindow):
         self._modbus_worker.modbus_error.connect(self._on_modbus_error)
         self._thread_modbus.start()
 
-        self._thread_ftp = QThread()
-        self._ftp_worker = FtpWorker(interval_minutes=5)
-        self._ftp_worker.moveToThread(self._thread_ftp)
-        self._thread_ftp.started.connect(self._ftp_worker.run)
-        self._ftp_worker.ftp_status.connect(self._on_ftp_status)
-        self._thread_ftp.start()
+        if config.server_active:
+            interval = max(1, config.server_send_interval or 5)
+            self._thread_ftp = QThread()
+            self._ftp_worker = FtpWorker(interval_minutes=interval)
+            self._ftp_worker.moveToThread(self._thread_ftp)
+            self._thread_ftp.started.connect(self._ftp_worker.run)
+            self._ftp_worker.ftp_status.connect(self._on_ftp_status)
+            self._thread_ftp.start()
 
         self._set_status("SYSTEM OK", "#7dffa2")
 

@@ -32,7 +32,6 @@ Item {
     signal cancelSensorForm()
 
     // Actions for Digital I/O
-    signal editSelectedDio()
     signal deleteSelectedDio()
 
     RowLayout {
@@ -203,7 +202,7 @@ Item {
             visible: root.settingsTabIndex === 4
             spacing: 8
 
-            // DIO Edit/Delete buttons (visible only on Digital I/O sub-tab)
+            // Detach linked DI/DO (Digital I/O sub-tab)
             Button {
                 visible: root.sensorSubTabIndex === 2 && root.hasSelectedDio
                 Layout.preferredWidth: 44
@@ -220,24 +219,8 @@ Item {
                 onClicked: root.deleteSelectedDio()
             }
 
-            Button {
-                visible: root.sensorSubTabIndex === 2 && root.hasSelectedDio
-                Layout.preferredWidth: 44
-                Layout.preferredHeight: 44
-                icon.source: "../../../assets/icons/edit.svg"
-                icon.color: Theme.textOnColoredBtn
-                icon.width: 18
-                icon.height: 18
-                background: Rectangle {
-                    radius: Theme.radiusSmall
-                    color: Theme.accent
-                    opacity: parent.pressed ? 0.75 : 1.0
-                }
-                onClicked: root.editSelectedDio()
-            }
-
             Rectangle { width: 1; height: 28; color: Theme.borderDefault; Layout.alignment: Qt.AlignVCenter; visible: root.sensorSubTabIndex === 2 && root.hasSelectedDio }
-            
+
             Button {
                 text: "Cancel"
                 font.bold: true

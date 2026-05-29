@@ -42,7 +42,7 @@ def _set_sqlite_pragma(dbapi_connection, connection_record):
 
 def init_db() -> None:
     """Tạo toàn bộ bảng nếu chưa tồn tại."""
-    from models import app_config, report_log, sensor, sensor_data  # noqa: F401
+    from models import analog_digital_link, app_config, report_log, sensor, sensor_data  # noqa: F401
 
     SQLModel.metadata.create_all(engine)
     _migrate()
@@ -73,37 +73,63 @@ def _migrate_digital_io(conn, inspector) -> None:
     if "sensor_type" not in {c["name"] for c in inspector.get_columns("sensor")}:
         return
 
-    conn.execute(text("""
-        INSERT INTO sensor (
-            sensor_type, name, unit, slave_id, register_address,
-            register_type, data_type, data_format, coefficient,
-            poll_interval, report_index,
-            parent_id, is_system_wide, di_type,
-            trigger_on_max, trigger_on_min,
-            active, created_at
-        )
-        SELECT
-            io_type,
-            label,
-            '',
-            slave_id,
-            address,
-            CASE WHEN io_type = 'DI' THEN 'discrete_input' ELSE 'coil' END,
-            'int16',
-            'AB',
-            '{}',
-            3,
-            0,
-            sensor_id,
-            0,
-            di_type,
-            trigger_on_max,
-            trigger_on_min,
-            active,
-            created_at
-        FROM digital_io
-    """))
+    sensor_cols = {c["name"] for c in inspector.get_columns("sensor")}
+    if "parent_id" in sensor_cols:
+        conn.execute(text("""
+            INSERT INTO sensor (
+                sensor_type, name, unit, slave_id, register_address,
+                register_type, data_type, data_format, coefficient,
+                poll_interval, report_index,
+                parent_id, di_type,
+                trigger_on_max, trigger_on_min,
+                active, created_at
+            )
+            SELECT
+                io_type, label, '',
+                slave_id, address,
+                CASE WHEN io_type = 'DI' THEN 'discrete_input' ELSE 'coil' END,
+                'int16', 'AB', '{}', 3, 0,
+                sensor_id, di_type,
+                trigger_on_max, trigger_on_min,
+                active, created_at
+            FROM digital_io
+        """))
     conn.execute(text("DROP TABLE digital_io"))
+    conn.commit()
+
+
+def _migrate_analog_digital_link(conn, inspector) -> None:
+    """Migrate child DI/DO sensors (parent_id IS NOT NULL) → analog_digital_link rows (d5e6f7a8b9c0)."""
+    from sqlalchemy import text
+
+    if "analog_digital_link" not in inspector.get_table_names():
+        return
+
+    sensor_cols = {c["name"] for c in inspector.get_columns("sensor")}
+    if "parent_id" not in sensor_cols:
+        return
+
+    rows = conn.execute(text(
+        "SELECT id, parent_id, sensor_type, di_type, trigger_on_max, trigger_on_min "
+        "FROM sensor WHERE parent_id IS NOT NULL"
+    )).fetchall()
+
+    for row in rows:
+        sensor_id, parent_id, sensor_type, di_type, trig_max, trig_min = row
+        if sensor_type not in ("DI", "DO"):
+            continue
+        existing = conn.execute(text(
+            "SELECT id FROM analog_digital_link WHERE analog_sensor_id=:a AND digital_sensor_id=:d"
+        ), {"a": parent_id, "d": sensor_id}).fetchone()
+        if not existing:
+            conn.execute(text(
+                "INSERT INTO analog_digital_link "
+                "(analog_sensor_id, digital_sensor_id, di_type, trigger_on_max, trigger_on_min, created_at) "
+                "VALUES (:a, :d, :dt, :tm, :tmin, datetime('now'))"
+            ), {"a": parent_id, "d": sensor_id, "dt": di_type,
+                "tm": bool(trig_max), "tmin": bool(trig_min)})
+
+    conn.execute(text("UPDATE sensor SET parent_id = NULL WHERE parent_id IS NOT NULL"))
     conn.commit()
 
 
@@ -124,13 +150,11 @@ def _migrate() -> None:
                 ("poll_interval", "INTEGER DEFAULT 3"),
                 ("min_threshold", "REAL DEFAULT NULL"),
                 ("max_threshold", "REAL DEFAULT NULL"),
-                # Single Table Inheritance (a1b2c3d4e5f6)
                 ("sensor_type", "VARCHAR NOT NULL DEFAULT 'ANALOG'"),
+                ("di_type", "VARCHAR DEFAULT NULL"),
+                # Legacy columns for _migrate_analog_digital_link on old DBs
                 ("parent_id", "INTEGER DEFAULT NULL"),
                 ("is_system_wide", "BOOLEAN NOT NULL DEFAULT 0"),
-                ("di_type", "VARCHAR DEFAULT NULL"),
-                ("trigger_on_max", "BOOLEAN NOT NULL DEFAULT 1"),
-                ("trigger_on_min", "BOOLEAN NOT NULL DEFAULT 1"),
             ], scols)
             if "sensor_type" in scols:
                 conn.execute(text(
@@ -139,6 +163,7 @@ def _migrate() -> None:
                 ))
                 conn.commit()
             _migrate_digital_io(conn, inspector)
+            _migrate_analog_digital_link(conn, inspector)
 
         if inspector.has_table("app_config"):
             acols = {c["name"] for c in inspector.get_columns("app_config")}

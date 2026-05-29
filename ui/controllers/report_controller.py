@@ -10,6 +10,7 @@ from PySide6.QtCore import QObject, QThread, Property, Signal, Slot
 from sqlmodel import select
 
 from core.database import get_session
+from models.app_config import AppConfig
 from models.report_log import ReportLog
 from workers.ftp_worker import FtpWorker
 
@@ -54,17 +55,19 @@ class ReportController(QObject):
         if self._is_running:
             return
 
-        # Đọc interval từ cấu hình DB
+        # Đọc interval và trạng thái Server (Active) từ DB
         interval = 5
         try:
-            from models.app_config import AppConfig
             session = get_session()
             config = session.exec(select(AppConfig)).first()
-            if config and config.server_send_interval:
+            if not config or not config.server_active:
+                logger.info("FTP reporting skipped (server_active=False).")
+                return
+            if config.server_send_interval:
                 interval = max(1, config.server_send_interval)
             session.close()
         except Exception as e:
-            logger.warning("Could not read interval from DB, using default %d min: %s", interval, e)
+            logger.warning("Could not read config from DB, using default %d min: %s", interval, e)
 
         self._worker = FtpWorker(interval_minutes=interval)
         self._thread = QThread()

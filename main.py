@@ -249,7 +249,7 @@ def main():
     _start_rest_if_enabled()
     settings_controller.configSaved.connect(_restart_rest_on_save)
 
-    # Auto-start FTP worker nếu server_active = True trong DB
+    # Auto-start FTP worker chỉ khi Server Active trong Settings (server_active=True)
     def _start_ftp_if_active():
         try:
             from sqlmodel import select as _sel
@@ -260,9 +260,16 @@ def main():
             if _cfg and _cfg.server_active:
                 report_controller.start_reporting()
                 logger.info("FTP auto-started (server_active=True).")
+            else:
+                report_controller.stop_reporting()
+                logger.info("FTP not started (server_active=False).")
             _s.close()
         except Exception as _e:
             logger.warning("Could not auto-start FTP: %s", _e)
+
+    def _stop_ftp_if_server_inactive():
+        if not settings_controller.serverActive:
+            report_controller.stop_reporting()
 
     def _restart_ftp_on_save():
         report_controller.stop_reporting()
@@ -270,6 +277,7 @@ def main():
 
     _start_ftp_if_active()
     settings_controller.configSaved.connect(_restart_ftp_on_save)
+    settings_controller.serverActiveChanged.connect(_stop_ftp_if_server_inactive)
 
     # Tự động start monitoring khi khởi động app
     QTimer.singleShot(1000, monitor_controller.start_polling)

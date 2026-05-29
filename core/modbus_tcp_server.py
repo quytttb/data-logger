@@ -21,7 +21,9 @@ Bản đồ thanh ghi (register map v1) — Holding Registers, Big-endian / ABCD
                  bit1 = RTU connected
                  bit2 = any alarm
     HR 2..3  : unix timestamp lần cập nhật cuối (uint32)
-    HR 4     : sensor count đang map
+    HR 4     : sensor count (ANALOG only — DI/DO không nằm trong block HR 10+)
+    HR 5     : số kênh DI (FC02 quantity tối đa = Ndi)
+    HR 6     : số kênh DO (FC01 quantity tối đa = Ndo)
     HR 10 + i*8 + 0 : sensor_id (uint16)
     HR 10 + i*8 + 1 : per-sensor flags
                        bit0 = valid (đã có giá trị thật)
@@ -29,6 +31,11 @@ Bản đồ thanh ghi (register map v1) — Holding Registers, Big-endian / ABCD
                        bit2 = stale (polling không chạy)
     HR 10 + i*8 + 2..3 : value (float32, ABCD)
     HR 10 + i*8 + 4..7 : reserved
+
+Bản đồ bit (bit map v1):
+
+    HR 5 (Ndi) / HR 6 (Ndo) = max(register_address)+1 trên DI/DO (bit index = register_address).
+    FC02 / FC01: bit N = trạng thái sensor có register_address == N (contract Central App).
 
 Sensor được sắp theo `id` tăng dần (chỉ ANALOG/top-level). Map cố định trong
 phiên polling — đổi danh sách cảm biến cần restart polling.
@@ -48,6 +55,8 @@ Implementation:
     action patch `current_registers` từ `self._registers`. Không có vòng push.
   - pymodbus 3.13 dùng SimData/SimDevice (API mới); ModbusTcpServer được khởi
     tạo với snapshot hiện tại làm giá trị ban đầu.
+  - DI/DO blocks được pre-allocate với _DI_DO_BLOCK_BITS cố định để tránh lỗi
+    ILLEGAL_ADDRESS khi TCP server khởi động trước khi set_di_do_map được gọi.
 """
 
 from __future__ import annotations
@@ -59,6 +68,8 @@ import threading
 import time
 
 from PySide6.QtCore import QObject, Property, Signal, Slot
+
+from pymodbus.constants import ExcCodes
 from pymodbus.server import ModbusTcpServer
 from pymodbus.simulator import DataType, SimData, SimDevice
 
@@ -72,6 +83,8 @@ HR_STATUS = 1
 HR_TS_HI = 2
 HR_TS_LO = 3
 HR_SENSOR_COUNT = 4
+HR_NDI = 5
+HR_NDO = 6
 SENSOR_BASE = 10
 SENSOR_STRIDE = 8
 
@@ -88,6 +101,11 @@ SF_STALE = 1 << 2
 # Function code 3 = Read Holding Registers (cùng block với write fc=6/16 trong
 # pymodbus SimRuntime _fx_mapper).
 _FC_HOLDING = 3
+
+# Pre-allocated size for DI/DO bit blocks. Must be a multiple of 16 (pymodbus
+# requirement). Fixed at startup so the SimDevice is large enough regardless of
+# when set_di_do_map is called relative to server start.
+_DI_DO_BLOCK_BITS = 256
 
 
 def _uint16_wire_to_pymodbus_int(v: int) -> int:
@@ -141,6 +159,11 @@ class ModbusTcpServerService(QObject):
 
         # sensor_id -> slot index (0..N-1)
         self._sensor_slots: dict[int, int] = {}
+
+        self._di_map: dict[int, int] = {}  # sensor_id -> FC02 bit index (= register_address)
+        self._do_map: dict[int, int] = {}  # sensor_id -> FC01 bit index (= register_address)
+        self._di_bits: list[bool] = []
+        self._do_bits: list[bool] = []
 
     # ── QML-facing properties ──────────────────────────────────────────────
 
@@ -224,10 +247,15 @@ class ModbusTcpServerService(QObject):
         try:
             with self._lock:
                 initial = [_uint16_wire_to_pymodbus_int(x) for x in self._registers]
-            sd = SimData(address=0, values=initial, datatype=DataType.REGISTERS)
+
+            coils_data = [SimData(address=0, values=False, datatype=DataType.BITS, count=_DI_DO_BLOCK_BITS)]
+            discrete_data = [SimData(address=0, values=False, datatype=DataType.BITS, count=_DI_DO_BLOCK_BITS)]
+            holding_data = [SimData(address=0, values=initial, datatype=DataType.REGISTERS, count=HR_TOTAL)]
+            input_data = [SimData(address=0, values=0, datatype=DataType.REGISTERS, count=16)]
+
             dev = SimDevice(
                 id=self._unit_id,
-                simdata=sd,
+                simdata=(coils_data, discrete_data, holding_data, input_data),
                 action=self._sim_action,
             )
             self._server = ModbusTcpServer(
@@ -258,16 +286,12 @@ class ModbusTcpServerService(QObject):
         slots: dict[int, int] = {int(sid): idx for idx, sid in enumerate(sensor_ids)}
         with self._lock:
             self._sensor_slots = slots
-            # Zero whole sensor block
             for i in range(SENSOR_BASE, HR_TOTAL):
                 self._registers[i] = 0
             for sid, idx in slots.items():
                 base = SENSOR_BASE + idx * SENSOR_STRIDE
                 self._registers[base] = sid & 0xFFFF
             self._registers[HR_SENSOR_COUNT] = len(slots) & 0xFFFF
-        # Đẩy nguyên block sensor + HR_SENSOR_COUNT lên server (nếu đang chạy)
-        self._push_block(HR_SENSOR_COUNT, [self._registers[HR_SENSOR_COUNT]])
-        self._push_block(SENSOR_BASE, self._registers[SENSOR_BASE:HR_TOTAL])
 
     def clear_sensor_map(self) -> None:
         """Polling dừng — xóa map, giữ version & status flags."""
@@ -276,8 +300,32 @@ class ModbusTcpServerService(QObject):
             for i in range(SENSOR_BASE, HR_TOTAL):
                 self._registers[i] = 0
             self._registers[HR_SENSOR_COUNT] = 0
-        self._push_block(HR_SENSOR_COUNT, [0])
-        self._push_block(SENSOR_BASE, [0] * (HR_TOTAL - SENSOR_BASE))
+
+    def set_di_do_map(self, di_map: dict[int, int], do_map: dict[int, int]) -> None:
+        """Map sensor_id -> FC bit index (= register_address); HR_NDI/NDO = max index + 1."""
+        with self._lock:
+            self._di_map = {int(sid): int(addr) for sid, addr in di_map.items()}
+            self._do_map = {int(sid): int(addr) for sid, addr in do_map.items()}
+            ndi = max(self._di_map.values()) + 1 if self._di_map else 0
+            ndo = max(self._do_map.values()) + 1 if self._do_map else 0
+            self._registers[HR_NDI] = ndi & 0xFFFF
+            self._registers[HR_NDO] = ndo & 0xFFFF
+            self._di_bits = [False] * ndi
+            self._do_bits = [False] * ndo
+
+    def update_di(self, sensor_id: int, state: bool) -> None:
+        with self._lock:
+            idx = self._di_map.get(int(sensor_id))
+            if idx is None or idx >= len(self._di_bits):
+                return
+            self._di_bits[idx] = bool(state)
+
+    def update_do(self, sensor_id: int, state: bool) -> None:
+        with self._lock:
+            idx = self._do_map.get(int(sensor_id))
+            if idx is None or idx >= len(self._do_bits):
+                return
+            self._do_bits[idx] = bool(state)
 
     def update_value(self, sensor_id: int, value: float, is_alarm: bool) -> None:
         """Ghi giá trị 1 sensor + cập nhật timestamp + bit any_alarm tổng."""
@@ -299,11 +347,6 @@ class ModbusTcpServerService(QObject):
             self._registers[HR_TS_HI] = ts_hi
             self._registers[HR_TS_LO] = ts_lo
             self._refresh_any_alarm_bit()
-            status_val = self._registers[HR_STATUS]
-
-        self._push_block(base + 1, [flags, hi, lo])
-        self._push_block(HR_TS_HI, [ts_hi, ts_lo])
-        self._push_block(HR_STATUS, [status_val])
 
     def _refresh_any_alarm_bit(self) -> None:
         """(Phải gọi khi đã cầm self._lock)."""
@@ -328,14 +371,6 @@ class ModbusTcpServerService(QObject):
             self._registers[HR_STATUS] = new
             if not polling:
                 self._mark_all_stale()
-            stale_writes = [
-                (SENSOR_BASE + idx * SENSOR_STRIDE + 1, self._registers[SENSOR_BASE + idx * SENSOR_STRIDE + 1])
-                for idx in self._sensor_slots.values()
-            ] if not polling else []
-            new_val = new
-        self._push_block(HR_STATUS, [new_val])
-        for addr, val in stale_writes:
-            self._push_block(addr, [val])
 
     def _mark_all_stale(self) -> None:
         """(Phải gọi khi đã cầm self._lock)."""
@@ -355,11 +390,6 @@ class ModbusTcpServerService(QObject):
 
     # ── Internal ───────────────────────────────────────────────────────────
 
-    def _push_block(self, address: int, values: list[int]) -> None:
-        """Giữ lại để không vỡ API nội bộ; với action-based read không cần đẩy SimData."""
-        _ = (address, values)
-        return
-
     async def _sim_action(
         self,
         function_code: int,
@@ -377,22 +407,76 @@ class ModbusTcpServerService(QObject):
           chính là dạng SimData lưu nội bộ sau khi đã được constructor chuyển từ
           signed `h` về unsigned qua `bytesToRegisters`. Nếu ghi signed (âm), bước
           đóng gói response của pymodbus dùng `struct.pack(">H", v)` sẽ raise.
+        - Read Discrete Inputs (FC=2) & Read Coils (FC=1): đồng bộ mảng bit trạng thái
+          chuyển đổi qua SimUtils.bitsToRegisters vào current_registers.
         - Write (FC=6/16): bỏ qua — map v1 read-only.
         """
-        if set_values is not None or function_code != _FC_HOLDING:
+        if set_values is not None:
             return None
-        offset = address - start_address
-        if offset < 0 or count <= 0:
+
+        if function_code == _FC_HOLDING:
+            offset = address - start_address
+            if offset < 0 or count <= 0:
+                return None
+            end_src = min(address + count, HR_TOTAL)
+            src_count = max(0, end_src - address)
+            if src_count <= 0:
+                return None
+            with self._lock:
+                slice_vals = [int(v) & 0xFFFF for v in self._registers[address:address + src_count]]
+            end_dst = min(offset + src_count, len(current_registers))
+            for i in range(end_dst - offset):
+                current_registers[offset + i] = slice_vals[i]
             return None
-        end_src = min(address + count, HR_TOTAL)
-        src_count = max(0, end_src - address)
-        if src_count <= 0:
-            return None
+
+        if function_code == 2:  # FC02: Read Discrete Inputs
+            return self._read_bit_block(
+                address, count, current_registers, self._di_bits,
+            )
+
+        if function_code == 1:  # FC01: Read Coils
+            return self._read_bit_block(
+                address, count, current_registers, self._do_bits,
+            )
+
+        return None
+
+    def _read_bit_block(
+        self,
+        address: int,
+        count: int,
+        current_registers: list[int],
+        bit_states: list[bool],
+    ):
+        """Serve FC01/FC02.
+
+        pymodbus `get_bit_block` passes `count = int(bit_count/16)+1` (register units)
+        and `current_registers` = the FULL device block. After our action returns, pymodbus
+        reads `registers[0:reg_count]` and converts to bits via `registersToBits`.
+        Therefore we must write PACKED words (16 bits per register, LSB-first) to
+        `current_registers[0..]`, NOT one-entry-per-bit.
+        """
+        from pymodbus.simulator.simutils import SimUtils
+
         with self._lock:
-            slice_vals = [int(v) & 0xFFFF for v in self._registers[address:address + src_count]]
-        end_dst = min(offset + src_count, len(current_registers))
-        for i in range(end_dst - offset):
-            current_registers[offset + i] = slice_vals[i]
+            n = len(bit_states)
+        if n == 0 or address >= n or count <= 0:
+            return ExcCodes.ILLEGAL_ADDRESS
+
+        num_bits = min(n - address, count * 16)
+        if num_bits <= 0:
+            return ExcCodes.ILLEGAL_ADDRESS
+
+        for i in range(len(current_registers)):
+            current_registers[i] = 0
+
+        slice_bits = [bool(bit_states[address + i]) for i in range(num_bits)]
+        pad = (16 - (len(slice_bits) % 16)) % 16
+        slice_bits.extend([False] * pad)
+        regs = SimUtils.bitsToRegisters(slice_bits)
+        end_dst = min(len(regs), len(current_registers))
+        for i in range(end_dst):
+            current_registers[i] = regs[i]
         return None
 
     def _set_state(self, state: str, err: str) -> None:

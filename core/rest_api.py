@@ -39,6 +39,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlmodel import select
 
 from core.database import get_session
+from models.analog_digital_link import AnalogDigitalLink
 from models.app_config import AppConfig
 from models.sensor import Sensor, SensorType
 
@@ -61,7 +62,7 @@ class SensorPayload(BaseModel):
     unit: str = ""
     slave_id: int = Field(ge=1, le=247)
     register_address: int = Field(ge=0, le=65535)
-    register_type: str = Field(default="holding", description="holding | input")
+    register_type: str = Field(default="holding", description="holding | input | discrete_input | coil")
     data_type: str = Field(default="int16")
     data_format: str = Field(default="AB")
     coefficient: Optional[str] = Field(default="{}")
@@ -69,11 +70,6 @@ class SensorPayload(BaseModel):
     max_threshold: Optional[float] = None
     poll_interval: int = Field(default=3, ge=1, le=3600)
     report_index: int = Field(default=0, ge=0)
-    parent_id: Optional[int] = None
-    is_system_wide: bool = False
-    di_type: Optional[str] = None
-    trigger_on_max: bool = True
-    trigger_on_min: bool = True
     active: bool = True
 
     @field_validator("sensor_type")
@@ -209,8 +205,13 @@ def _read_app_config(session) -> AppConfig:
     return cfg
 
 
-def _serialize_sensor(s: Sensor) -> dict[str, Any]:
-    return {
+def _serialize_sensor(
+    s: Sensor,
+    *,
+    parent_id: int | None = None,
+    di_type: str | None = None,
+) -> dict[str, Any]:
+    row: dict[str, Any] = {
         "id": s.id,
         "sensor_type": s.sensor_type.value if hasattr(s.sensor_type, "value") else s.sensor_type,
         "name": s.name,
@@ -225,13 +226,38 @@ def _serialize_sensor(s: Sensor) -> dict[str, Any]:
         "max_threshold": s.max_threshold,
         "poll_interval": s.poll_interval,
         "report_index": s.report_index,
-        "parent_id": s.parent_id,
-        "is_system_wide": s.is_system_wide,
-        "di_type": s.di_type,
-        "trigger_on_max": s.trigger_on_max,
-        "trigger_on_min": s.trigger_on_min,
         "active": s.active,
     }
+    if parent_id is not None:
+        row["parent_id"] = parent_id
+    if di_type:
+        row["di_type"] = di_type
+    return row
+
+
+def _serialize_sensors_with_links(session, sensors: list[Sensor]) -> list[dict[str, Any]]:
+    """Include analog_digital_link fields Central needs for attach-DI badges."""
+    out: list[dict[str, Any]] = []
+    for s in sensors:
+        parent_id: int | None = None
+        di_type: str | None = None
+        links = list(
+            session.exec(
+                select(AnalogDigitalLink).where(
+                    AnalogDigitalLink.digital_sensor_id == s.id
+                )
+            ).all()
+        )
+        if links:
+            parent_id = links[0].analog_sensor_id
+            if s.sensor_type == SensorType.DI:
+                for lk in links:
+                    if lk.di_type:
+                        di_type = lk.di_type
+                        parent_id = lk.analog_sensor_id
+                        break
+        out.append(_serialize_sensor(s, parent_id=parent_id, di_type=di_type))
+    return out
 
 
 def _serialize_config(cfg: AppConfig) -> dict[str, Any]:
@@ -324,7 +350,7 @@ def create_app(
                 api_version=API_VERSION,
                 revision=cfg.config_revision,
                 config=_serialize_config(cfg),
-                sensors=[_serialize_sensor(s) for s in sensors],
+                sensors=_serialize_sensors_with_links(session, sensors),
             )
         finally:
             session.close()
@@ -510,11 +536,6 @@ def _apply_config_atomic(session, cfg: AppConfig, body: ConfigBody) -> list[Fiel
                     max_threshold=sp.max_threshold,
                     poll_interval=sp.poll_interval,
                     report_index=sp.report_index,
-                    parent_id=sp.parent_id,
-                    is_system_wide=sp.is_system_wide,
-                    di_type=sp.di_type,
-                    trigger_on_max=sp.trigger_on_max,
-                    trigger_on_min=sp.trigger_on_min,
                     active=sp.active,
                 )
                 session.add(row)

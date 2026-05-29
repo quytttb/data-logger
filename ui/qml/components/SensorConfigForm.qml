@@ -22,9 +22,12 @@ Item {
     readonly property bool isAnalog: sensorType === "ANALOG"
     readonly property bool isDigital: sensorType === "DI" || sensorType === "DO"
 
-    // Expose for parent to connect Digital I/O adding/removing
-    signal addDioFormSubmitted(string ioType, string label, string diType, int slave, int addr, bool trigMax, bool trigMin)
-    signal removeDioRequested(int dioId)
+    // Digital I/O link signals (bubble up from SensorDigitalIOTab)
+    signal attachDiRequested(int diSensorId, string diType)
+    signal attachDoRequested(int doSensorId, bool trigMax, bool trigMin)
+    signal removeDioRequested(int linkId)
+    signal updateLinkDiTypeRequested(int linkId, string diType)
+    signal updateLinkDoTriggersRequested(int linkId, bool trigMax, bool trigMin)
 
     // ── Internal refs (aliases mapped to sub-tabs) ──
     property alias sensorName: basicTab.dName
@@ -37,8 +40,6 @@ Item {
     property alias pollInterval: basicTab.dPollInterval
     property alias reportIndex: basicTab.dReportIdx
     property alias activeSwitch: basicTab.dActive
-    property alias diType: basicTab.dDiType
-
     property alias scalingMode: scalingTab.dScalingMode
     property alias linearA: scalingTab.dLinearA
     property alias linearB: scalingTab.dLinearB
@@ -54,8 +55,6 @@ Item {
 
     // Exposed DIO functions for TaskBar buttons
     property bool hasSelectedDio: dioTab.hasSelectedDio
-    function getSelectedDioId() { return dioTab.getSelectedDioId() }
-    function editSelectedDio() { dioTab.editSelectedDio() }
     function deleteSelectedDio() { dioTab.deleteSelectedDio() }
 
     // ── Public functions ──
@@ -68,21 +67,24 @@ Item {
         scalingTab.dCoeffJson.text = "{}"
         basicTab.dPollInterval.value = 3; basicTab.dReportIdx.value = 0; basicTab.dActive.checked = true
         scalingTab.dMinThreshold.text = ""; scalingTab.dMaxThreshold.text = ""
-        basicTab.dDiType.currentIndex = 0
     }
 
     function loadData(s, uiState) {
         basicTab.dName.text = s.name
-        // Set unit ComboBox: try to find in list, otherwise set editText
         var unitIdx = basicTab.dUnit.find(s.unit || "")
         if (unitIdx >= 0) basicTab.dUnit.currentIndex = unitIdx
         else basicTab.dUnit.editText = s.unit || ""
 
         basicTab.dSlave.value = s.slaveId; basicTab.dAddr.value = s.registerAddress
-        basicTab.dRegType.currentIndex = basicTab.dRegType.model.indexOf(s.registerType)
+        var regLabel = s.registerType
+        if (s.sensorType === "DI") regLabel = "Discrete Inputs"
+        else if (s.sensorType === "DO") regLabel = "Coils"
+        var rtIdx = basicTab.dRegType.model.indexOf(regLabel)
+        if (rtIdx < 0) rtIdx = basicTab.dRegType.model.indexOf(s.registerType)
+        if (rtIdx >= 0) basicTab.dRegType.currentIndex = rtIdx
         basicTab.dDataType.currentIndex = basicTab.dDataType.model.indexOf(s.dataType)
         basicTab.dDataFmt.currentIndex = basicTab.dDataFmt.model.indexOf(s.dataFormat)
-        
+
         scalingTab.dScalingMode.currentIndex = Math.min(uiState.mode, scalingTab.dScalingMode.count - 1)
         scalingTab.dLinearA.text = uiState.linearA !== undefined ? String(uiState.linearA) : "1"
         scalingTab.dLinearB.text = uiState.linearB !== undefined ? String(uiState.linearB) : "0"
@@ -91,11 +93,19 @@ Item {
         scalingTab.dScaleMin.text = uiState.scaleMin !== undefined ? String(uiState.scaleMin) : "4"
         scalingTab.dScaleMax.text = uiState.scaleMax !== undefined ? String(uiState.scaleMax) : "20"
         scalingTab.dCoeffJson.text = uiState.legacyJson !== undefined ? String(uiState.legacyJson) : "{}"
-        
+
         basicTab.dPollInterval.value = s.pollInterval || 3
         basicTab.dReportIdx.value = s.reportIndex; basicTab.dActive.checked = s.active
         scalingTab.dMinThreshold.text = s.minThreshold !== undefined && s.minThreshold !== "" ? String(s.minThreshold) : ""
         scalingTab.dMaxThreshold.text = s.maxThreshold !== undefined && s.maxThreshold !== "" ? String(s.maxThreshold) : ""
+    }
+
+    // Load link list + available DI/DO dropdowns for the Digital I/O tab.
+    // Called by SettingsView when entering edit mode for an ANALOG sensor.
+    function loadLinks(diSensors, doSensors) {
+        dioTab.diSensors = diSensors || []
+        dioTab.doSensors = doSensors || []
+        dioTab.clearSelection()
     }
 
     function getFormData() {
@@ -147,11 +157,20 @@ Item {
 
             SensorDigitalIOTab {
                 id: dioTab
-                onAddDioFormSubmitted: function(ioType, label, diType, slave, addr, trigMax, trigMin) {
-                    root.addDioFormSubmitted(ioType, label, diType, slave, addr, trigMax, trigMin)
+                onAttachDiRequested: function(diSensorId, diType) {
+                    root.attachDiRequested(diSensorId, diType)
                 }
-                onRemoveDioRequested: function(dioId) {
-                    root.removeDioRequested(dioId)
+                onAttachDoRequested: function(doSensorId, trigMax, trigMin) {
+                    root.attachDoRequested(doSensorId, trigMax, trigMin)
+                }
+                onRemoveDioRequested: function(linkId) {
+                    root.removeDioRequested(linkId)
+                }
+                onUpdateLinkDiTypeRequested: function(linkId, diType) {
+                    root.updateLinkDiTypeRequested(linkId, diType)
+                }
+                onUpdateLinkDoTriggersRequested: function(linkId, trigMax, trigMin) {
+                    root.updateLinkDoTriggersRequested(linkId, trigMax, trigMin)
                 }
             }
         }

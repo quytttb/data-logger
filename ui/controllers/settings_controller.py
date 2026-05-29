@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 class SettingsController(QObject):
     configLoaded = Signal()
     configSaved = Signal()
+    serverActiveChanged = Signal()
     messageSent = Signal(str, str)
     provisionQrStaleChanged = Signal()
 
@@ -339,7 +340,10 @@ class SettingsController(QObject):
 
     @serverActive.setter
     def serverActive(self, v):
-        self._cfg.server_active = v
+        active = bool(v)
+        if self._cfg.server_active != active:
+            self._cfg.server_active = active
+            self.serverActiveChanged.emit()
 
     @Property(str, notify=configLoaded)
     def serverDeviceType(self):

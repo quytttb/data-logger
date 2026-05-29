@@ -187,14 +187,6 @@ Rectangle {
                                         color: "#FFFFFF"
                                         font.pixelSize: 13; font.bold: true
                                     }
-
-                                    // Glow animation when active
-                                    SequentialAnimation on border.width {
-                                        running: model.value === "1"
-                                        loops: Animation.Infinite
-                                        NumberAnimation { to: 5; duration: 800; easing.type: Easing.InOutSine }
-                                        NumberAnimation { to: 3; duration: 800; easing.type: Easing.InOutSine }
-                                    }
                                 }
 
                                 Text {

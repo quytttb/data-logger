@@ -9,6 +9,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from pymodbus.constants import ExcCodes
+
 from core.modbus_tcp_server import (
     FLAG_ANY_ALARM,
     FLAG_POLLING,
@@ -17,6 +19,8 @@ from core.modbus_tcp_server import (
     HR_STATUS,
     HR_TS_HI,
     HR_VERSION,
+    HR_NDI,
+    HR_NDO,
     MAP_VERSION,
     SENSOR_BASE,
     SENSOR_STRIDE,
@@ -122,6 +126,85 @@ def test_clear_sensor_map():
     print("  clear_sensor_map zeros block OK ✓")
 
 
+def test_di_do_map_and_updates():
+    svc = ModbusTcpServerService()
+    di_map = {101: 0, 102: 2}
+    do_map = {201: 1}
+    svc.set_di_do_map(di_map, do_map)
+
+    assert _read(svc, HR_NDI)[0] == 3
+    assert _read(svc, HR_NDO)[0] == 2
+
+    svc.update_di(101, True)
+    svc.update_di(102, False)
+    svc.update_do(201, True)
+
+    assert svc._di_bits[0] is True
+    assert svc._di_bits[2] is False
+    assert svc._do_bits[1] is True
+
+    svc.update_di(999, True)
+
+    # Test _sim_action for FC02 (Discrete Inputs)
+    current_regs_di = [0, 0]
+    import asyncio
+    async def run_action_di():
+        await svc._sim_action(
+            function_code=2,
+            start_address=0,
+            address=0,
+            count=1,
+            current_registers=current_regs_di,
+            set_values=None
+        )
+    asyncio.run(run_action_di())
+    assert current_regs_di[0] == 1  # only bit 0 is True -> 1
+
+    async def run_action_di_oversize():
+        return await svc._sim_action(
+            function_code=2,
+            start_address=0,
+            address=3,
+            count=1,
+            current_registers=[0],
+            set_values=None,
+        )
+    assert asyncio.run(run_action_di_oversize()) == ExcCodes.ILLEGAL_ADDRESS
+
+    # pymodbus passes reg_count=1 for a 12-bit FC02 read; bit 10 must appear in word
+    svc2 = ModbusTcpServerService()
+    svc2.set_di_do_map({16: 10, 17: 11}, {14: 0})
+    svc2.update_di(16, True)
+    current_sparse = [0]
+    async def run_action_di_sparse():
+        await svc2._sim_action(
+            function_code=2,
+            start_address=0,
+            address=0,
+            count=1,
+            current_registers=current_sparse,
+            set_values=None,
+        )
+    asyncio.run(run_action_di_sparse())
+    assert current_sparse[0] == 1024
+
+    # Test _sim_action for FC01 (Coils)
+    current_regs_do2 = [0, 0]
+    async def run_action_do():
+        return await svc._sim_action(
+            function_code=1,
+            start_address=0,
+            address=0,
+            count=2,
+            current_registers=current_regs_do2,
+            set_values=None
+        )
+    asyncio.run(run_action_do())
+    assert current_regs_do2[0] == 2  # packed: bit1=True → reg0 = 0b10 = 2
+
+    print("  di_do_map + updates + sim_action OK ✓")
+
+
 if __name__ == "__main__":
     print("=== Modbus TCP Server tests ===")
     test_encode_float32_abcd()
@@ -131,4 +214,5 @@ if __name__ == "__main__":
     test_logger_status_and_stale()
     test_unknown_sensor_id_is_noop()
     test_clear_sensor_map()
+    test_di_do_map_and_updates()
     print("All Modbus TCP Server tests passed ✓")

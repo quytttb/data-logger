@@ -11,20 +11,19 @@ Rectangle {
     border.color: Theme.borderDefault; border.width: 1
 
     property bool isTesterMode: false
+
     readonly property string sensorType: {
-        var r = dRegType.currentText;
-        if (r === "Discrete Inputs") return "DI";
-        if (r === "Coils") return "DO";
-        return "ANALOG";
+        var r = dRegType.currentText
+        if (r === "Discrete Inputs") return "DI"
+        if (r === "Coils") return "DO"
+        return "ANALOG"
     }
 
-    // Convenience flags
     readonly property bool isAnalog: sensorType === "ANALOG"
     readonly property bool isDI: sensorType === "DI"
     readonly property bool isDO: sensorType === "DO"
     readonly property bool isDigital: isDI || isDO
 
-    // ── Expose form fields ──
     property alias dActive: dActive
     property alias dName: dName
     property alias dUnit: dUnit
@@ -35,7 +34,6 @@ Rectangle {
     property alias dRegType: dRegType
     property alias dDataType: dDataType
     property alias dDataFmt: dDataFmt
-    property alias dDiType: dDiType
 
 
     RowLayout {
@@ -72,19 +70,6 @@ Rectangle {
                     "dB", "dBA", "lux",
                     "ppm", "ppb", "mg/m³"
                 ]
-            }
-
-            // DI-specific: Status code (di_type)
-            Text { text: "Status Code (di_type):"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; visible: isDI }
-            ComboBox {
-                id: dDiType; Layout.fillWidth: true; visible: isDI
-                editable: true
-                model: ["00 — Monitoring", "01 — Calibrating", "02 — Error", "03 — Maintenance"]
-                property string diTypeValue: {
-                    var t = currentText.trim()
-                    if (t.indexOf("—") >= 0) return t.split("—")[0].trim()
-                    return t
-                }
             }
 
             // Poll interval — hidden for DI/DO

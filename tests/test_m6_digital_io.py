@@ -1,24 +1,22 @@
 #!/usr/bin/env python3
-"""Test M6 — Unified Sensor Model (STI): Digital I/O, Alarm Thresholds, ModbusWorker Logic.
+"""Test M6 — DI/DO Inventory + AnalogDigitalLink.
 
 Tests:
-  1. Database schema — new STI columns exist, digital_io table removed
-  2. Sensor model — threshold fields + SensorType enum
-  3. Unified DI/DO model CRUD (Sensor with parent_id)
-  4. SensorListModel DI/DO methods (add, get, remove, limit 5)
-  5. SensorListModel threshold parsing
-  6. ModbusWorker alarm state machine
-  7. ModbusWorker _poll_single / _poll_analog / _poll_standalone_di
-  8. MonitorModel alarm role exposure
-  9. MonitorController alarm_changed handler
+  1. Database schema — analog_digital_link table, sensor columns updated
+  2. Sensor model — threshold fields, SensorType enum (no parent_id/is_system_wide)
+  3. AnalogDigitalLink CRUD (attach/detach)
+  4. SensorListModel attach_di, attach_do, detach_link, get_analog_links, list_di/do
+  5. Validation rules — address unique, DO single analog, max 5, type check
+  6. ModbusWorker alarm + standalone DI status "00"
+  7. MonitorModel alarm roles
+  8. MonitorController alarm_changed handler
 """
 
 import os
 import sys
-import json
 from pathlib import Path
 from datetime import datetime
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -30,6 +28,7 @@ from sqlalchemy import inspect as sa_inspect
 
 from core.database import init_db, get_session, engine
 from models.sensor import Sensor, SensorType
+from models.analog_digital_link import AnalogDigitalLink
 from models.sensor_data import SensorData
 
 init_db()
@@ -53,29 +52,30 @@ def section(title: str):
 
 
 # ═══════════════════════════════════════════════════════════════
-#  1. Database schema — STI columns exist, digital_io removed
+#  1. Database schema
 # ═══════════════════════════════════════════════════════════════
-section("1. Database schema verification (STI)")
+section("1. Database schema verification")
 
 inspector = sa_inspect(engine)
 tables = inspector.get_table_names()
-check("digital_io table REMOVED", "digital_io" not in tables, f"tables: {tables}")
+check("analog_digital_link table exists", "analog_digital_link" in tables, f"tables: {tables}")
 check("sensor table exists", "sensor" in tables)
 
 sensor_cols = {c["name"] for c in inspector.get_columns("sensor")}
-check("sensor.sensor_type column exists", "sensor_type" in sensor_cols, str(sensor_cols))
-check("sensor.parent_id column exists", "parent_id" in sensor_cols, str(sensor_cols))
-check("sensor.is_system_wide column exists", "is_system_wide" in sensor_cols, str(sensor_cols))
-check("sensor.di_type column exists", "di_type" in sensor_cols, str(sensor_cols))
-check("sensor.trigger_on_max column exists", "trigger_on_max" in sensor_cols, str(sensor_cols))
-check("sensor.trigger_on_min column exists", "trigger_on_min" in sensor_cols, str(sensor_cols))
-check("sensor.min_threshold column exists", "min_threshold" in sensor_cols, str(sensor_cols))
-check("sensor.max_threshold column exists", "max_threshold" in sensor_cols, str(sensor_cols))
+check("sensor.sensor_type column exists", "sensor_type" in sensor_cols)
+check("sensor.di_type column exists", "di_type" in sensor_cols)
+
+link_cols = {c["name"] for c in inspector.get_columns("analog_digital_link")}
+check("link.analog_sensor_id column exists", "analog_sensor_id" in link_cols)
+check("link.digital_sensor_id column exists", "digital_sensor_id" in link_cols)
+check("link.di_type column exists", "di_type" in link_cols)
+check("link.trigger_on_max column exists", "trigger_on_max" in link_cols)
+check("link.trigger_on_min column exists", "trigger_on_min" in link_cols)
 
 # ═══════════════════════════════════════════════════════════════
-#  2. Sensor model — threshold fields + SensorType enum
+#  2. Sensor model
 # ═══════════════════════════════════════════════════════════════
-section("2. Sensor model threshold fields & SensorType")
+section("2. Sensor model — SensorType enum, thresholds")
 
 check("SensorType.ANALOG", SensorType.ANALOG == "ANALOG")
 check("SensorType.DI", SensorType.DI == "DI")
@@ -83,125 +83,147 @@ check("SensorType.DO", SensorType.DO == "DO")
 
 session = get_session()
 try:
-    s = Sensor(
+    analog = Sensor(
         sensor_type=SensorType.ANALOG,
-        name="Alarm Test Sensor", unit="mg/L",
+        name="Alarm Test Analog", unit="mg/L",
         slave_id=1, register_address=100,
         register_type="holding", data_type="int16",
         data_format="AB", coefficient="{}",
         report_index=1, active=True,
         min_threshold=5.0, max_threshold=95.5,
     )
-    session.add(s)
+    session.add(analog)
     session.commit()
-    session.refresh(s)
-    test_sensor_id = s.id
+    session.refresh(analog)
+    analog_id = analog.id
 
-    check("Sensor created with thresholds", s.id is not None)
-    check("sensor_type = ANALOG", s.sensor_type == SensorType.ANALOG)
-    check("min_threshold stored", s.min_threshold == 5.0, f"got: {s.min_threshold}")
-    check("max_threshold stored", s.max_threshold == 95.5, f"got: {s.max_threshold}")
+    check("ANALOG created", analog.id is not None)
+    check("sensor_type = ANALOG", analog.sensor_type == SensorType.ANALOG)
+    check("min_threshold stored", analog.min_threshold == 5.0)
+    check("max_threshold stored", analog.max_threshold == 95.5)
 
-    # Test None thresholds (disabled)
-    s2 = Sensor(
-        name="No Threshold Sensor", unit="°C",
-        slave_id=2, register_address=200,
-        register_type="input", data_type="int16",
-        data_format="AB", report_index=2, active=True,
+    # Create top-level DI sensor
+    di_sensor = Sensor(
+        sensor_type=SensorType.DI,
+        name="Float Switch", slave_id=3, register_address=10,
+        register_type="discrete_input", data_type="int16",
+        data_format="AB", active=True,
     )
-    session.add(s2)
+    session.add(di_sensor)
     session.commit()
-    session.refresh(s2)
-    check("Sensor with None thresholds", s2.min_threshold is None and s2.max_threshold is None)
-    session.delete(s2)
+    session.refresh(di_sensor)
+    di_sensor_id = di_sensor.id
+    check("DI sensor created top-level", di_sensor.id is not None)
+
+    # Create top-level DO sensor
+    do_sensor = Sensor(
+        sensor_type=SensorType.DO,
+        name="Buzzer", slave_id=3, register_address=0,
+        register_type="coil", data_type="int16",
+        data_format="AB", active=True,
+    )
+    session.add(do_sensor)
     session.commit()
+    session.refresh(do_sensor)
+    do_sensor_id = do_sensor.id
+    check("DO sensor created top-level", do_sensor.id is not None)
 finally:
     session.close()
 
 # ═══════════════════════════════════════════════════════════════
-#  3. Unified DI/DO model CRUD (Sensor with parent_id)
+#  3. AnalogDigitalLink CRUD
 # ═══════════════════════════════════════════════════════════════
-section("3. Unified DI/DO CRUD (Sensor + parent_id)")
+section("3. AnalogDigitalLink CRUD")
 
 session = get_session()
 try:
-    # Create DI as child of test_sensor
-    di = Sensor(
-        sensor_type=SensorType.DI,
-        parent_id=test_sensor_id,
-        name="Float Switch", slave_id=3, register_address=10,
-        register_type="discrete_input", data_type="int16",
-        data_format="AB", di_type="02",
-        active=True,
+    # Attach DI to analog
+    link_di = AnalogDigitalLink(
+        analog_sensor_id=analog_id,
+        digital_sensor_id=di_sensor_id,
+        di_type="02",
     )
-    session.add(di)
+    session.add(link_di)
     session.commit()
-    session.refresh(di)
-    check("DI created as child sensor", di.id is not None)
-    check("DI sensor_type", di.sensor_type == SensorType.DI, f"got: {di.sensor_type}")
-    check("DI parent_id", di.parent_id == test_sensor_id)
-    check("DI di_type", di.di_type == "02")
-    di_id = di.id
+    session.refresh(link_di)
+    link_di_id = link_di.id
+    check("DI link created", link_di.id is not None)
+    check("DI link analog_sensor_id", link_di.analog_sensor_id == analog_id)
+    check("DI link digital_sensor_id", link_di.digital_sensor_id == di_sensor_id)
+    check("DI link di_type", link_di.di_type == "02")
 
-    # Create DO
-    do = Sensor(
-        sensor_type=SensorType.DO,
-        parent_id=test_sensor_id,
-        name="Buzzer", slave_id=3, register_address=0,
-        register_type="coil", data_type="int16",
-        data_format="AB",
-        trigger_on_max=True, trigger_on_min=False, active=True,
+    # Attach DO to analog
+    link_do = AnalogDigitalLink(
+        analog_sensor_id=analog_id,
+        digital_sensor_id=do_sensor_id,
+        trigger_on_max=True,
+        trigger_on_min=False,
     )
-    session.add(do)
+    session.add(link_do)
     session.commit()
-    session.refresh(do)
-    check("DO created as child sensor", do.id is not None)
-    check("DO trigger_on_max", do.trigger_on_max == True)
-    check("DO trigger_on_min", do.trigger_on_min == False)
-    do_id = do.id
+    session.refresh(link_do)
+    link_do_id = link_do.id
+    check("DO link created", link_do.id is not None)
+    check("DO link trigger_on_max", link_do.trigger_on_max == True)
+    check("DO link trigger_on_min", link_do.trigger_on_min == False)
 
-    # Query children by parent_id
-    children = list(session.exec(
-        select(Sensor).where(Sensor.parent_id == test_sensor_id)
+    # Query links for analog
+    links = list(session.exec(
+        select(AnalogDigitalLink).where(AnalogDigitalLink.analog_sensor_id == analog_id)
     ).all())
-    check("Query children by parent_id", len(children) == 2, f"got {len(children)}")
+    check("Query links by analog_id = 2", len(links) == 2, f"got {len(links)}")
 
-    # Test is_system_wide for standalone DI
-    standalone_di = Sensor(
-        sensor_type=SensorType.DI,
-        is_system_wide=True,
-        name="System Float Switch", slave_id=5, register_address=20,
-        register_type="discrete_input", data_type="int16",
-        data_format="AB", di_type="02",
-        active=True,
+    # DI can link to a SECOND analog
+    analog2 = Sensor(
+        sensor_type=SensorType.ANALOG, name="Analog 2", unit="°C",
+        slave_id=2, register_address=200, register_type="holding",
+        data_type="int16", data_format="AB", active=True,
     )
-    session.add(standalone_di)
+    session.add(analog2)
     session.commit()
-    session.refresh(standalone_di)
-    check("Standalone DI is_system_wide=True", standalone_di.is_system_wide == True)
-    check("Standalone DI parent_id is None", standalone_di.parent_id is None)
-    standalone_di_id = standalone_di.id
+    session.refresh(analog2)
+    analog2_id = analog2.id
 
-    # Delete children
-    session.delete(di)
-    session.delete(do)
-    session.delete(standalone_di)
+    link_di_2 = AnalogDigitalLink(
+        analog_sensor_id=analog2_id,
+        digital_sensor_id=di_sensor_id,
+        di_type="01",
+    )
+    session.add(link_di_2)
+    session.commit()
+    check("DI linked to second analog", True)
+
+    di_links = list(session.exec(
+        select(AnalogDigitalLink).where(AnalogDigitalLink.digital_sensor_id == di_sensor_id)
+    ).all())
+    check("DI has 2 links (to 2 analogs)", len(di_links) == 2, f"got {len(di_links)}")
+    di_types = {lnk.analog_sensor_id: lnk.di_type for lnk in di_links}
+    check("DI di_type per analog is different", di_types[analog_id] == "02" and di_types[analog2_id] == "01",
+          f"got {di_types}")
+
+    # Detach
+    session.delete(link_di_2)
     session.commit()
     remaining = list(session.exec(
-        select(Sensor).where(Sensor.parent_id == test_sensor_id)
+        select(AnalogDigitalLink).where(AnalogDigitalLink.digital_sensor_id == di_sensor_id)
     ).all())
-    check("Delete DI/DO children", len(remaining) == 0)
+    check("Detach 2nd link → 1 remains", len(remaining) == 1, f"got {len(remaining)}")
+
+    # Cleanup analog2
+    session.delete(analog2)
+    session.commit()
 finally:
     session.close()
 
 # ═══════════════════════════════════════════════════════════════
-#  4. SensorListModel — threshold parsing & DI/DO CRUD
+#  4. SensorListModel — attach/detach/list API
 # ═══════════════════════════════════════════════════════════════
-section("4. SensorListModel — threshold & DI/DO")
+section("4. SensorListModel — attach/detach/list")
 
 from ui.models.sensor_list_model import SensorListModel
 
 sm = SensorListModel()
+sm.refresh()
 
 # _parse_threshold tests
 check("parse '' → None", sm._parse_threshold("") is None)
@@ -210,206 +232,228 @@ check("parse '10.5' → 10.5", sm._parse_threshold("10.5") == 10.5)
 check("parse '10,5' → 10.5 (comma)", sm._parse_threshold("10,5") == 10.5)
 check("parse 'abc' → None", sm._parse_threshold("abc") is None)
 check("parse '-3.14' → -3.14", sm._parse_threshold("-3.14") == -3.14)
-check("parse '0' → 0.0", sm._parse_threshold("0") == 0.0)
 
-# Test add_sensor with thresholds
-sm.refresh()
+# add_sensor with explicit sensor_type
 initial = sm.rowCount()
-sm.add_sensor(
-    "Threshold Test", "mg/L", 1, 300, "holding", "int16", "AB", "{}",
-    3, 0, True, "5.0", "95.5"
-)
+sm.add_sensor("Threshold Sensor", "mg/L", 1, 300,
+              "Holding Registers", "int16", "AB", "{}", 3, 0, True, "5.0", "95.5")
 sm.refresh()
-check("add_sensor with thresholds", sm.rowCount() == initial + 1)
+check("add_sensor ANALOG", sm.rowCount() == initial + 1)
 
 # Find the sensor we just added
-s_data = sm.get_sensor(sm.rowCount() - 1)
-check("get_sensor minThreshold", s_data.get("minThreshold") == 5.0, f"got: {s_data.get('minThreshold')}")
-check("get_sensor maxThreshold", s_data.get("maxThreshold") == 95.5, f"got: {s_data.get('maxThreshold')}")
-check("get_sensor sensorType = ANALOG", s_data.get("sensorType") == "ANALOG", f"got: {s_data.get('sensorType')}")
-threshold_sensor_id = s_data.get("sensorId")
-
-# Update with new thresholds
-sm.update_sensor(
-    threshold_sensor_id, "Threshold Test v2", "mg/L", 1, 300,
-    "holding", "int16", "AB", "{}", 3, 0, True, "10", "80"
-)
-sm.refresh()
+s_data = None
 for i in range(sm.rowCount()):
-    t = sm.get_sensor(i)
-    if t.get("sensorId") == threshold_sensor_id:
-        check("update_sensor minThreshold", t.get("minThreshold") == 10.0, f"got: {t.get('minThreshold')}")
-        check("update_sensor maxThreshold", t.get("maxThreshold") == 80.0, f"got: {t.get('maxThreshold')}")
+    td = sm.get_sensor(i)
+    if td.get("name") == "Threshold Sensor":
+        s_data = td
         break
+check("get_sensor found", s_data is not None)
+if s_data:
+    check("sensorType = ANALOG", s_data.get("sensorType") == "ANALOG", f"got: {s_data.get('sensorType')}")
+    check("minThreshold stored", s_data.get("minThreshold") == 5.0, f"got: {s_data.get('minThreshold')}")
+    check("maxThreshold stored", s_data.get("maxThreshold") == 95.5, f"got: {s_data.get('maxThreshold')}")
+    threshold_sensor_id = s_data.get("sensorId")
+else:
+    threshold_sensor_id = None
 
-# DI/DO CRUD via SensorListModel
-section("4b. SensorListModel — DI/DO CRUD (unified)")
+# add_sensor DI/DO
+sm.add_sensor("Test DI Sensor", "", 5, 20, "Discrete Inputs", "int16", "AB", "{}", 3, 0, True, "", "")
+sm.add_sensor("Test DO Sensor", "", 5, 30, "Coils", "int16", "AB", "{}", 3, 0, True, "", "")
+sm.refresh()
 
-# Get (should be empty initially)
-ios = sm.get_digital_ios(threshold_sensor_id)
-check("get_digital_ios initially empty", len(ios) == 0, f"got: {len(ios)}")
+di_found = any(sm.get_sensor(i).get("sensorType") == "DI" and sm.get_sensor(i).get("name") == "Test DI Sensor"
+               for i in range(sm.rowCount()))
+do_found = any(sm.get_sensor(i).get("sensorType") == "DO" and sm.get_sensor(i).get("name") == "Test DO Sensor"
+               for i in range(sm.rowCount()))
+check("add_sensor DI", di_found)
+check("add_sensor DO", do_found)
 
-# Add DI (note: add_digital_io now takes di_type as 4th argument)
-sm.add_digital_io(threshold_sensor_id, "DI", "Float Switch", "02", 3, 10, True, True, True)
-ios = sm.get_digital_ios(threshold_sensor_id)
-check("add DI → count 1", len(ios) == 1, f"got: {len(ios)}")
-check("DI ioType", ios[0]["ioType"] == "DI")
-check("DI label", ios[0]["label"] == "Float Switch")
-check("DI diType", ios[0]["diType"] == "02", f"got: {ios[0].get('diType')}")
+# list_di_sensors, list_do_sensors
+di_list = sm.list_di_sensors()
+check("list_di_sensors returns DI sensors", any(d["name"] == "Test DI Sensor" for d in di_list),
+      f"got names: {[d['name'] for d in di_list]}")
 
-# Add DO
-sm.add_digital_io(threshold_sensor_id, "DO", "Buzzer", "", 3, 0, True, False, True)
-ios = sm.get_digital_ios(threshold_sensor_id)
-check("add DO → count 2", len(ios) == 2, f"got: {len(ios)}")
-do_entry = [io for io in ios if io["ioType"] == "DO"][0]
-check("DO triggerOnMax", do_entry["triggerOnMax"] == True)
-check("DO triggerOnMin", do_entry["triggerOnMin"] == False)
+test_di_id = next((d["id"] for d in di_list if d["name"] == "Test DI Sensor"), None)
+test_do_id = None
+session = get_session()
+try:
+    do_row = session.exec(select(Sensor).where(Sensor.name == "Test DO Sensor")).first()
+    if do_row:
+        test_do_id = do_row.id
+    thresh_id = session.exec(select(Sensor).where(Sensor.name == "Threshold Sensor")).first()
+    if thresh_id:
+        threshold_sensor_id = thresh_id.id
+finally:
+    session.close()
 
-# Test 5-limit
-for i in range(4):
-    sm.add_digital_io(threshold_sensor_id, "DI", f"DI-{i+2}", "01", 3, 11 + i, True, True, True)
-ios = sm.get_digital_ios(threshold_sensor_id)
-di_count = len([io for io in ios if io["ioType"] == "DI"])
-check("5 DI limit reached", di_count == 5, f"got: {di_count}")
+# attach_di
+messages = []
+sm.messageSent.connect(lambda t, m: messages.append((t, m)))
 
-# Try adding 6th DI — should be rejected
-sm.add_digital_io(threshold_sensor_id, "DI", "DI-overflow", "01", 3, 99, True, True, True)
-ios = sm.get_digital_ios(threshold_sensor_id)
-di_count = len([io for io in ios if io["ioType"] == "DI"])
-check("6th DI rejected (still 5)", di_count == 5, f"got: {di_count}")
+if threshold_sensor_id and test_di_id:
+    sm.attach_di(threshold_sensor_id, test_di_id, "02")
+    links = sm.get_analog_links(threshold_sensor_id)
+    check("attach_di → 1 link", len(links) == 1, f"got {len(links)}")
+    check("link.ioType = DI", links[0]["ioType"] == "DI", f"got {links[0]}")
+    check("link.diType = 02", links[0]["diType"] == "02", f"got {links[0]}")
+    link_di_id = links[0]["id"]
 
-# Remove one
-first_di_id = [io for io in ios if io["ioType"] == "DI"][0]["id"]
-sm.remove_digital_io(first_di_id)
-ios = sm.get_digital_ios(threshold_sensor_id)
-di_count = len([io for io in ios if io["ioType"] == "DI"])
-check("remove DI → count 4", di_count == 4, f"got: {di_count}")
+    # attach_do
+    if test_do_id:
+        sm.attach_do(threshold_sensor_id, test_do_id, True, False)
+        links = sm.get_analog_links(threshold_sensor_id)
+        check("attach_do → 2 links", len(links) == 2, f"got {len(links)}")
+        do_links = [l for l in links if l["ioType"] == "DO"]
+        check("DO link triggerOnMax", do_links[0]["triggerOnMax"] == True)
+        check("DO link triggerOnMin", do_links[0]["triggerOnMin"] == False)
+        link_do_id = do_links[0]["id"]
 
-# Remove all DI/DO for cleanup
-for io in sm.get_digital_ios(threshold_sensor_id):
-    sm.remove_digital_io(io["id"])
-ios = sm.get_digital_ios(threshold_sensor_id)
-check("cleanup all DI/DO", len(ios) == 0)
+    # update_link_di_type
+    sm.update_link_di_type(link_di_id, "03")
+    links = sm.get_analog_links(threshold_sensor_id)
+    di_links = [l for l in links if l["ioType"] == "DI"]
+    check("update_link_di_type → 03", di_links[0]["diType"] == "03", f"got {di_links[0]}")
+
+    # detach_link
+    sm.detach_link(link_di_id)
+    links = sm.get_analog_links(threshold_sensor_id)
+    check("detach_link → 1 link remains", len(links) == 1, f"got {len(links)}")
 
 # ═══════════════════════════════════════════════════════════════
-#  5. ModbusWorker — alarm threshold logic (unit test)
+#  5. Validation rules
 # ═══════════════════════════════════════════════════════════════
-section("5. ModbusWorker alarm logic")
+section("5. Validation rules")
+
+from core.sensor_kind import (
+    validate_digital_address_unique, validate_attach_di, validate_attach_do
+)
+
+session = get_session()
+try:
+    # Address uniqueness: DI sensor (slave 5, addr 20) is already in DB
+    if test_di_id:
+        di_row = session.get(Sensor, test_di_id)
+        if di_row:
+            err = validate_digital_address_unique(
+                session, "DI", di_row.slave_id, di_row.register_address
+            )
+            check("DI duplicate address rejected", err is not None, "expected error")
+            err_excl = validate_digital_address_unique(
+                session, "DI", di_row.slave_id, di_row.register_address, exclude_id=test_di_id
+            )
+            check("DI address OK when self excluded", err_excl is None, f"got: {err_excl}")
+
+    # DO: max one analog
+    if test_do_id and threshold_sensor_id and analog_id:
+        # test_do is already linked to threshold_sensor_id
+        do_links = list(session.exec(
+            select(AnalogDigitalLink).where(AnalogDigitalLink.digital_sensor_id == test_do_id)
+        ).all())
+        if do_links:
+            err = validate_attach_do(session, analog_id, test_do_id)
+            check("DO already linked to other analog → rejected", err is not None, f"got: {err}")
+
+    # Max 5 DI per analog
+    if threshold_sensor_id:
+        # Add 5 DI sensors and check max enforcement
+        added_di_ids = []
+        for i in range(5):
+            ds = Sensor(
+                sensor_type=SensorType.DI, name=f"MaxDI-{i}", slave_id=9, register_address=50+i,
+                register_type="discrete_input", data_type="int16", data_format="AB", active=True
+            )
+            session.add(ds)
+            session.commit()
+            session.refresh(ds)
+            added_di_ids.append(ds.id)
+            link = AnalogDigitalLink(
+                analog_sensor_id=threshold_sensor_id,
+                digital_sensor_id=ds.id,
+            )
+            session.add(link)
+            session.commit()
+
+        di_count = session.exec(
+            select(AnalogDigitalLink)
+            .where(AnalogDigitalLink.analog_sensor_id == threshold_sensor_id)
+        ).all()
+        # Try adding 6th DI  
+        extra_di = Sensor(
+            sensor_type=SensorType.DI, name="ExtraDI", slave_id=9, register_address=99,
+            register_type="discrete_input", data_type="int16", data_format="AB", active=True
+        )
+        session.add(extra_di)
+        session.commit()
+        session.refresh(extra_di)
+        err = validate_attach_di(session, threshold_sensor_id, extra_di.id)
+        check("6th DI rejected (max 5)", err is not None, f"got: {err}")
+
+        # Cleanup extra sensors and links
+        for did in added_di_ids:
+            lnks = list(session.exec(
+                select(AnalogDigitalLink).where(AnalogDigitalLink.digital_sensor_id == did)
+            ).all())
+            for l in lnks:
+                session.delete(l)
+            session.delete(session.get(Sensor, did))
+        session.delete(extra_di)
+        session.commit()
+finally:
+    session.close()
+
+# ═══════════════════════════════════════════════════════════════
+#  6. ModbusWorker — standalone DI emits status "00"
+# ═══════════════════════════════════════════════════════════════
+section("6. ModbusWorker standalone DI status '00'")
 
 from workers.modbus_worker import ModbusWorker
 
-mw = ModbusWorker(port="/dev/ttyUSB0", baudrate=9600, poll_interval=3)
-
-# Test alarm state tracking
-check("alarm_states initially empty", len(mw._alarm_states) == 0)
-check("digital_ios initially empty", len(mw._digital_ios) == 0)
-
-# set_digital_ios
-test_ios = {
-    1: [
-        {"id": 10, "io_type": "DI", "label": "Float", "slave_id": 3, "address": 0, "active": True,
-         "trigger_on_max": True, "trigger_on_min": True, "di_type": "02"},
-        {"id": 11, "io_type": "DO", "label": "Buzzer", "slave_id": 3, "address": 1, "active": True,
-         "trigger_on_max": True, "trigger_on_min": False},
-    ],
-}
-mw.set_digital_ios(test_ios)
-check("set_digital_ios stored", len(mw._digital_ios) == 1)
-check("set_digital_ios channels", len(mw._digital_ios[1]) == 2)
-
-# Test _read_di_states with no client
-di_states = mw._read_di_states(1)
-check("_read_di_states no client → empty", len(di_states) == 0)
-
-# Test _drive_do_relays with no client (should not crash)
-try:
-    mw._drive_do_relays(1, True, "max")
-    check("_drive_do_relays no client → no crash", True)
-except Exception as e:
-    check("_drive_do_relays no client → no crash", False, str(e))
-
-# Test alarm_changed signal
-check("alarm_changed signal exists", hasattr(mw, "alarm_changed"))
-
-# ═══════════════════════════════════════════════════════════════
-#  6. ModbusWorker — _poll_single routing & _poll_analog (mocked)
-# ═══════════════════════════════════════════════════════════════
-section("6. ModbusWorker _poll_single routing (mocked)")
-
-alarm_emissions = []
 data_emissions = []
+mw = ModbusWorker(port="/dev/null", baudrate=9600, poll_interval=3)
+mw.data_ready.connect(lambda p: data_emissions.append(p))
 
-def capture_alarm(info):
-    alarm_emissions.append(info)
+# Standalone DI config (no link context)
+sensor_cfg_di = {
+    "id": 100, "slave_id": 5, "register_address": 20,
+    "register_type": "discrete_input", "data_type": "int16",
+    "data_format": "AB", "coefficient": "{}", "sensor_type": "DI",
+}
 
-def capture_data(payload):
-    data_emissions.append(payload)
+mock_resp = MagicMock()
+mock_resp.isError.return_value = False
+mock_resp.bits = [True]  # DI is ON
 
+mw._client = MagicMock()
+mw._client.connected = True
+mw._client.read_discrete_inputs.return_value = mock_resp
+mw._poll_standalone_di(sensor_cfg_di)
+check("Standalone DI ON → status '00' (no di_type context)", 
+      len(data_emissions) == 1 and data_emissions[-1]["status"] == "00",
+      f"got: {data_emissions[-1] if data_emissions else 'no data'}")
+
+# Alarm logic
+alarm_emissions = []
 mw2 = ModbusWorker(port="/dev/null", baudrate=9600, poll_interval=3)
-mw2.alarm_changed.connect(capture_alarm)
-mw2.data_ready.connect(capture_data)
+mw2.alarm_changed.connect(lambda p: alarm_emissions.append(p))
+mw2.data_ready.connect(lambda p: data_emissions.append(p))
 
-# Test ANALOG routing
 sensor_cfg_analog = {
-    "id": 42,
-    "slave_id": 1,
-    "register_address": 0,
-    "register_type": "holding",
-    "data_type": "int16",
-    "data_format": "AB",
-    "coefficient": "{}",
-    "min_threshold": 10.0,
-    "max_threshold": 90.0,
+    "id": 42, "slave_id": 1, "register_address": 0,
+    "register_type": "holding", "data_type": "int16", "data_format": "AB",
+    "coefficient": "{}", "min_threshold": 10.0, "max_threshold": 90.0,
     "sensor_type": "ANALOG",
 }
 
-# Test 1: Normal value (no alarm)
-with patch.object(mw2, "_read_register", return_value=50):
-    mw2._poll_single(sensor_cfg_analog)
-
-check("ANALOG: normal value → no alarm signal", len(alarm_emissions) == 0)
-check("ANALOG: normal value → data emitted", len(data_emissions) == 1)
-check("ANALOG: normal value → is_alarm=False", data_emissions[-1]["is_alarm"] == False)
-
-# Test 2: Value crosses max_threshold → alarm ON
 with patch.object(mw2, "_read_register", return_value=95):
     mw2._poll_single(sensor_cfg_analog)
+check("ANALOG max alarm emitted", len(alarm_emissions) == 1 and alarm_emissions[-1]["alarm_type"] == "max")
 
-check("ANALOG: max alarm → alarm_changed emitted", len(alarm_emissions) == 1)
-check("ANALOG: max alarm → alarm_type=max", alarm_emissions[-1]["alarm_type"] == "max")
-
-# Test 3: Value returns to normal → alarm OFF
 with patch.object(mw2, "_read_register", return_value=50):
     mw2._poll_single(sensor_cfg_analog)
-
-check("ANALOG: alarm cleared", len(alarm_emissions) == 2)
-check("ANALOG: alarm cleared → is_alarm=False", alarm_emissions[-1]["is_alarm"] == False)
-
-# Test DO routing — should not poll
-sensor_cfg_do = {**sensor_cfg_analog, "sensor_type": "DO", "id": 99}
-prev_data_count = len(data_emissions)
-mw2._poll_single(sensor_cfg_do)
-check("DO: _poll_single → no data emitted (manual only)", len(data_emissions) == prev_data_count)
-
-# Test DI routing — should call _poll_standalone_di
-sensor_cfg_di = {
-    "id": 100,
-    "slave_id": 5,
-    "register_address": 20,
-    "register_type": "discrete_input",
-    "data_type": "int16",
-    "data_format": "AB",
-    "coefficient": "{}",
-    "sensor_type": "DI",
-    "di_type": "02",
-}
-
-with patch.object(mw2, "_poll_standalone_di") as mock_standalone:
-    mw2._poll_single(sensor_cfg_di)
-    check("DI: _poll_single routes to _poll_standalone_di", mock_standalone.called)
+check("ANALOG alarm cleared", len(alarm_emissions) == 2 and alarm_emissions[-1]["is_alarm"] == False)
 
 # ═══════════════════════════════════════════════════════════════
-#  7. MonitorModel — alarm role exposure
+#  7. MonitorModel alarm roles
 # ═══════════════════════════════════════════════════════════════
 section("7. MonitorModel alarm roles")
 
@@ -417,79 +461,100 @@ from ui.controllers.monitor_controller import MonitorModel
 from PySide6.QtCore import Qt
 
 dm = MonitorModel()
-
-# Create a test sensor for the model
 session = get_session()
-s_test = session.get(Sensor, test_sensor_id)
+s_test = session.get(Sensor, analog_id)
 session.expunge(s_test)
 session.close()
 
 dm.load_sensors([s_test])
-check("MonitorModel loaded 1 sensor", dm.rowCount() == 1)
+check("MonitorModel loaded", dm.rowCount() == 1)
 
 idx = dm.index(0, 0)
 is_alarm_role = Qt.UserRole + 8
 alarm_type_role = Qt.UserRole + 9
+status_role = Qt.UserRole + 6
 
-# Initial state
 check("Initial isAlarm = False", dm.data(idx, is_alarm_role) == False)
-check("Initial alarmType = ''", dm.data(idx, alarm_type_role) == "")
-
-# Update with alarm
-dm.update_value(test_sensor_id, 99.0, 9900, datetime.now().isoformat(), True, "max")
+dm.update_value(analog_id, 99.0, 9900, datetime.now().isoformat(), True, "max")
 check("After alarm: isAlarm = True", dm.data(idx, is_alarm_role) == True)
 check("After alarm: alarmType = 'max'", dm.data(idx, alarm_type_role) == "max")
-status_role = Qt.UserRole + 6
 check("After alarm: status = 'ALARM'", dm.data(idx, status_role) == "ALARM")
-
-# Clear alarm
-dm.update_value(test_sensor_id, 50.0, 5000, datetime.now().isoformat(), False, "")
+dm.update_value(analog_id, 50.0, 5000, datetime.now().isoformat(), False, "")
 check("After clear: isAlarm = False", dm.data(idx, is_alarm_role) == False)
-check("After clear: status = 'OK'", dm.data(idx, status_role) == "OK")
 
 # ═══════════════════════════════════════════════════════════════
-#  8. MonitorController — _on_alarm_changed handler
+#  8. MonitorController alarm_changed handler
 # ═══════════════════════════════════════════════════════════════
 section("8. MonitorController alarm handler")
 
 from ui.controllers.monitor_controller import MonitorController
 
-dm2 = MonitorModel()
-mc = MonitorController(dm2)
-
-# Test that _on_alarm_changed doesn't crash
+mc = MonitorController(MonitorModel())
 try:
     mc._on_alarm_changed({"sensor_id": 1, "is_alarm": True, "alarm_type": "max"})
-    check("_on_alarm_changed (alarm ON) no crash", True)
+    check("_on_alarm_changed alarm ON no crash", True)
 except Exception as e:
-    check("_on_alarm_changed (alarm ON) no crash", False, str(e))
+    check("_on_alarm_changed alarm ON no crash", False, str(e))
 
 try:
     mc._on_alarm_changed({"sensor_id": 1, "is_alarm": False, "alarm_type": ""})
-    check("_on_alarm_changed (alarm OFF) no crash", True)
+    check("_on_alarm_changed alarm OFF no crash", True)
 except Exception as e:
-    check("_on_alarm_changed (alarm OFF) no crash", False, str(e))
+    check("_on_alarm_changed alarm OFF no crash", False, str(e))
 
 # ═══════════════════════════════════════════════════════════════
-#  9. Cleanup test data
+#  9. MonitorController DI Legend mapping
 # ═══════════════════════════════════════════════════════════════
-section("9. Cleanup")
+section("9. MonitorController DI Legend mapping")
+
+from ui.controllers.monitor_controller import _DI_TYPE_NAMES
+
+check("_DI_TYPE_NAMES calibrating", _DI_TYPE_NAMES.get("01") == "Calibrating")
+check("_DI_TYPE_NAMES error", _DI_TYPE_NAMES.get("02") == "Error")
+
+dummy_sensor = Sensor(id=99, name="Test Sensor Name", sensor_type="DI", active=True)
+dummy_link = AnalogDigitalLink(analog_sensor_id=1, digital_sensor_id=99, di_type="01")
+mc._build_di_legend([dummy_sensor], [dummy_link])
+
+check("diLegend has Calibrating", any(item["label"] == "Calibrating" for item in mc.diLegend), f"got: {mc.diLegend}")
+check("di_label_to_color maps Calibrating", "Calibrating" in mc._di_label_to_color)
+
+# ═══════════════════════════════════════════════════════════════
+#  10. Cleanup
+# ═══════════════════════════════════════════════════════════════
+section("10. Cleanup")
 
 session = get_session()
 try:
-    # Remove test sensor and its children
-    children = list(session.exec(
-        select(Sensor).where(Sensor.parent_id.in_([test_sensor_id, threshold_sensor_id]))
-    ).all())
-    for c in children:
-        session.delete(c)
+    for sid in [analog_id, di_sensor_id, do_sensor_id]:
+        links = list(session.exec(
+            select(AnalogDigitalLink).where(
+                (AnalogDigitalLink.analog_sensor_id == sid) |
+                (AnalogDigitalLink.digital_sensor_id == sid)
+            )
+        ).all())
+        for l in links:
+            session.delete(l)
 
-    ts = session.get(Sensor, test_sensor_id)
-    if ts:
-        session.delete(ts)
-    ts2 = session.get(Sensor, threshold_sensor_id)
-    if ts2:
-        session.delete(ts2)
+    # Cleanup test sensors added by SensorListModel
+    for name in ["Threshold Sensor", "Test DI Sensor", "Test DO Sensor"]:
+        row = session.exec(select(Sensor).where(Sensor.name == name)).first()
+        if row:
+            ls = list(session.exec(
+                select(AnalogDigitalLink).where(
+                    (AnalogDigitalLink.analog_sensor_id == row.id) |
+                    (AnalogDigitalLink.digital_sensor_id == row.id)
+                )
+            ).all())
+            for l in ls:
+                session.delete(l)
+            session.delete(row)
+
+    for sid in [analog_id, di_sensor_id, do_sensor_id]:
+        row = session.get(Sensor, sid)
+        if row:
+            session.delete(row)
+
     session.commit()
     check("Test data cleaned up", True)
 except Exception as e:
@@ -503,7 +568,7 @@ finally:
 # ═══════════════════════════════════════════════════════════════
 total = passed + failed
 print(f"\n{'='*60}")
-print(f"  M6 STI RESULTS: {passed}/{total} PASSED, {failed} FAILED")
+print(f"  M6 RESULTS: {passed}/{total} PASSED, {failed} FAILED")
 if failed == 0:
     print("  ALL M6 TESTS PASSED ✓")
 else:

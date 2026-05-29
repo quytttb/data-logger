@@ -40,7 +40,6 @@ ColumnLayout {
             item.deleteSelectedSensor.connect(function() { view.deleteSelectedSensor() })
             item.saveSensorForm.connect(function() { view.saveSensorForm() })
             item.cancelSensorForm.connect(function() { view.closeSensorForm() })
-            item.editSelectedDio.connect(function() { view.editSelectedDio() })
             item.deleteSelectedDio.connect(function() { view.deleteSelectedDio() })
         }
     }

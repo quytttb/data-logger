@@ -27,8 +27,10 @@ from sqlmodel import select
 from core.database import get_session
 from core.exporters.base import Exporter
 from core.modbus_tcp_server import ModbusTcpServerService
+from core.sensor_kind import is_analog, is_di, is_do, is_digital
+from models.analog_digital_link import AnalogDigitalLink
 from models.app_config import AppConfig
-from models.sensor import Sensor, SensorType
+from models.sensor import Sensor
 from workers.database_worker import DatabaseWorker
 from workers.modbus_worker import ModbusWorker
 
@@ -47,6 +49,13 @@ _DI_PALETTE = [
     "#00ACC1",  # Cyan
     "#F06292",  # Pink
 ]
+
+_DI_TYPE_NAMES = {
+    "00": "Monitoring",
+    "01": "Calibrating",
+    "02": "Error",
+    "03": "Maintenance",
+}
 
 _DASH_ROLES = {
     Qt.UserRole + 1: b"sensorId",
@@ -132,11 +141,20 @@ class MonitorModel(QAbstractListModel):
         if row is None:
             return
         item = self._items[row]
-        item["value"] = str(round(value, 4))
-        item["raw_value"] = str(raw_value)
-        item["status"] = "ALARM" if is_alarm else "OK"
-        item["is_alarm"] = is_alarm
-        item["alarm_type"] = alarm_type
+        sensor_type = item.get("sensor_type", "ANALOG")
+        if sensor_type in ("DI", "DO"):
+            on = float(value) >= 0.5
+            item["value"] = "1" if on else "0"
+            item["raw_value"] = item["value"]
+            item["status"] = "ON" if on else "OFF"
+            item["is_alarm"] = False
+            item["alarm_type"] = ""
+        else:
+            item["value"] = str(round(value, 4))
+            item["raw_value"] = str(raw_value)
+            item["status"] = "ALARM" if is_alarm else "OK"
+            item["is_alarm"] = is_alarm
+            item["alarm_type"] = alarm_type
         if di_states is not None:
             item["di_states"] = di_states
         try:
@@ -306,9 +324,7 @@ class MonitorController(QObject):
         try:
             sensors = list(
                 session.exec(
-                    select(Sensor)
-                    .where(Sensor.active)
-                    .where(Sensor.parent_id == None)  # noqa: E711 — top-level only
+                    select(Sensor).where(Sensor.active)
                 ).all()
             )
             self._model.load_sensors(sensors)
@@ -363,9 +379,9 @@ class MonitorController(QObject):
     def _reset_trend_buffers(self, sensors: list[Sensor]) -> None:
         """Initialise trend buffers + metadata for QML Trending (legend + series).
 
-        Expects **top-level** sensors only (``parent_id is None``): analog points and
-        standalone DI/DO. Child DI/DO attached to an analog parent are excluded so
-        labels like alarm/aux states do not appear as separate trending series.
+        Expects pollable sensors: ANALOG + standalone (unlinked) DI/DO.
+        Linked DI/DO are polled inside _poll_analog and excluded from the trending series
+        to avoid duplicate series in the chart.
         """
         palette = [
             "#558dff", "#7dffa2", "#ff6666", "#d4a62d",
@@ -441,8 +457,22 @@ class MonitorController(QObject):
         from PySide6.QtCore import QTimer
         now = time.monotonic()
         misses = []
+        server_active = True
+        session = None
+        try:
+            session = get_session()
+            cfg = session.exec(select(AppConfig)).first()
+            server_active = bool(cfg and cfg.server_active)
+        except Exception:
+            pass
+        finally:
+            if session is not None:
+                session.close()
+
         for worker, last_time in self._last_heartbeat_time.items():
             if worker in ("ModbusWorker", "DatabaseWorker") and (not self._is_polling or self._is_stopping):
+                continue
+            if worker == "FtpWorker" and not server_active:
                 continue
 
             limit = 120.0 if worker == "FtpWorker" else 6.0
@@ -485,22 +515,58 @@ class MonitorController(QObject):
                 )
                 return
 
-            # Load only top-level active sensors (Analog + System-wide DI/DO)
-            sensors = list(
-                session.exec(
-                    select(Sensor)
-                    .where(Sensor.active)
-                    .where(Sensor.parent_id == None)  # noqa: E711
-                ).all()
+            # Load all active sensors (all are top-level now)
+            all_sensors = list(
+                session.exec(select(Sensor).where(Sensor.active)).all()
             )
-            if not sensors:
+            if not all_sensors:
                 self.messageSent.emit(
                     "Error",
                     "No active sensors. Open Settings to add sensors.",
                 )
                 return
 
-            self._model.load_sensors(sensors)
+            # Build digital_io_map from AnalogDigitalLink
+            all_links = list(session.exec(select(AnalogDigitalLink)).all())
+            digital_sensor_ids_by_link: dict[int, Sensor] = {}
+            for link in all_links:
+                ds = session.get(Sensor, link.digital_sensor_id)
+                if ds:
+                    digital_sensor_ids_by_link[link.digital_sensor_id] = ds
+
+            linked_digital_ids: set[int] = {link.digital_sensor_id for link in all_links}
+            digital_io_map: dict[int, list[dict]] = {}
+            analog_ids = {s.id for s in all_sensors if is_analog(s)}
+
+            for link in all_links:
+                if link.analog_sensor_id not in analog_ids:
+                    continue
+                ds = digital_sensor_ids_by_link.get(link.digital_sensor_id)
+                if not ds or not ds.active:
+                    continue
+                st = ds.sensor_type.value if hasattr(ds.sensor_type, "value") else ds.sensor_type
+                channel = {
+                    "id": ds.id,
+                    "io_type": st,
+                    "label": ds.name,
+                    "di_type": link.di_type,
+                    "slave_id": ds.slave_id,
+                    "address": ds.register_address,
+                    "trigger_on_max": link.trigger_on_max,
+                    "trigger_on_min": link.trigger_on_min,
+                    "active": ds.active,
+                }
+                digital_io_map.setdefault(link.analog_sensor_id, []).append(channel)
+
+            # Monitor cards: every active top-level point (including linked DI/DO).
+            monitor_sensors = all_sensors
+            # Modbus poll loop: analog + standalone DI/DO only (linked DI/DO via analog payload).
+            poll_sensors = [
+                s for s in all_sensors
+                if is_analog(s) or (is_digital(s) and s.id not in linked_digital_ids)
+            ]
+
+            self._model.load_sensors(monitor_sensors)
             self._clear_readings_cache()
             self._rtu_connected = False
 
@@ -518,36 +584,17 @@ class MonitorController(QObject):
                     "max_threshold": s.max_threshold,
                     "sensor_type": s.sensor_type.value if hasattr(s.sensor_type, "value") else s.sensor_type,
                 }
-                for s in sensors
+                for s in poll_sensors
             ]
 
-            # Load child DI/DO sensors grouped by parent_id
-            active_sensor_ids = [s.id for s in sensors]
-            all_child_ios = list(session.exec(
-                select(Sensor)
-                .where(Sensor.active)
-                .where(Sensor.parent_id.in_(active_sensor_ids))
-            ).all())
-            digital_io_map: dict[int, list[dict]] = {}
-            for io in all_child_ios:
-                dio_dict = {
-                    "id": io.id,
-                    "io_type": io.sensor_type,
-                    "label": io.name,
-                    "di_type": io.di_type,
-                    "slave_id": io.slave_id,
-                    "address": io.register_address,
-                    "trigger_on_max": io.trigger_on_max,
-                    "trigger_on_min": io.trigger_on_min,
-                    "active": io.active,
-                }
-                digital_io_map.setdefault(io.parent_id, []).append(dio_dict)
+            # Build DI legend from linked DI channels (for MonitorView dots)
+            linked_di_sensors = [
+                ds for ds in digital_sensor_ids_by_link.values()
+                if is_di(ds) and ds.active
+            ]
+            self._build_di_legend(linked_di_sensors, all_links)
 
-            # Build DI legend — assign a unique color to each distinct DI label
-            self._build_di_legend(all_child_ios)
-
-            # Trending: chỉ top-level (ANALOG + DI/DO độc lập). Không thêm DI/DO con attach analog.
-            self._reset_trend_buffers(sensors)
+            self._reset_trend_buffers(monitor_sensors)
 
             # DatabaseWorker thread
             self._db_worker = DatabaseWorker()
@@ -586,11 +633,14 @@ class MonitorController(QObject):
                 self._exporter.connect()
 
             if self._mbtcp is not None:
-                analog_ids = [
-                    s.id for s in sensors
-                    if (s.sensor_type.value if hasattr(s.sensor_type, "value") else s.sensor_type) == "ANALOG"
-                ]
-                self._mbtcp.set_sensor_map(analog_ids)
+                mbtcp_analog_ids = [s.id for s in poll_sensors if is_analog(s)]
+                self._mbtcp.set_sensor_map(mbtcp_analog_ids)
+
+                # All active DI/DO sensors (both standalone and linked)
+                di_map = {s.id: s.register_address for s in all_sensors if is_di(s)}
+                do_map = {s.id: s.register_address for s in all_sensors if is_do(s)}
+                self._mbtcp.set_di_do_map(di_map, do_map)
+
                 self._mbtcp.set_logger_status(polling=True, rtu_connected=False)
 
             self._db_thread.start()
@@ -606,7 +656,10 @@ class MonitorController(QObject):
             self._apply_status("monitoring", self.STATUS_OK)
             self.pollingChanged.emit()
             self.errorCountChanged.emit()
-            logger.info("Polling started: %d sensors, interval=%ds", len(sensors), cfg.poll_interval)
+            logger.info(
+                "Polling started: %d monitor cards (%d polled), interval=%ds",
+                len(monitor_sensors), len(poll_sensors), cfg.poll_interval,
+            )
 
         except Exception as e:
             logger.error("start_polling error: %s", e, exc_info=True)
@@ -767,6 +820,43 @@ class MonitorController(QObject):
         with self._readings_lock:
             self._readings_cache.clear()
 
+    def _push_digital_card_update(
+        self, sensor_id: int, state: bool, recorded_at: str,
+    ) -> None:
+        """Update a DI/DO monitor card (e.g. linked digital read via parent analog poll)."""
+        if self._model._id_to_row.get(sensor_id) is None:  # noqa: SLF001
+            return
+        val = 1.0 if state else 0.0
+        mini = {
+            "sensor_id": sensor_id,
+            "value": val,
+            "raw_value": 1 if state else 0,
+            "recorded_at": recorded_at,
+            "is_alarm": False,
+            "alarm_type": "",
+        }
+        self._model.update_value(
+            sensor_id=sensor_id,
+            value=val,
+            raw_value=mini["raw_value"],
+            recorded_at=recorded_at,
+        )
+        self._cache_reading_from_payload(mini)
+
+    def _sync_linked_digital_cards(self, payload: dict) -> None:
+        """Refresh linked DI/DO cards from di_states / do_states on an analog payload."""
+        recorded_at = str(payload.get("recorded_at", ""))
+        for di in payload.get("di_states", []):
+            di_id = di.get("id")
+            if di_id is None or di.get("state") is None:
+                continue
+            self._push_digital_card_update(int(di_id), bool(di["state"]), recorded_at)
+        for do in payload.get("do_states", []):
+            do_id = do.get("id")
+            if do_id is None or do.get("state") is None:
+                continue
+            self._push_digital_card_update(int(do_id), bool(do["state"]), recorded_at)
+
     # ── Internal signal handlers ───────────────────────────────────────────
 
     def _on_data_ready(self, payload: dict) -> None:
@@ -778,7 +868,8 @@ class MonitorController(QObject):
         colored_di = []
         for di in raw_di:
             if di.get("state"):
-                label = di.get("label", "")
+                code = di.get("di_type")
+                label = _DI_TYPE_NAMES.get(code, di.get("label", ""))
                 color = self._di_label_to_color.get(label, "#888888")
                 colored_di.append({"label": label, "color": color})
 
@@ -792,6 +883,7 @@ class MonitorController(QObject):
             di_states=colored_di,
         )
         self._cache_reading_from_payload(payload)
+        self._sync_linked_digital_cards(payload)
 
         # Push analog points to the rolling trend buffer for the Trending tab
         try:
@@ -812,8 +904,31 @@ class MonitorController(QObject):
                     float(payload.get("value", 0.0)),
                     bool(payload.get("is_alarm", False)),
                 )
-            except (TypeError, ValueError):
-                pass
+
+                # 1. Cập nhật DI từ Attached DIs
+                for di in payload.get("di_states", []):
+                    if di.get("state") is not None:
+                        self._mbtcp.update_di(di["id"], di["state"])
+
+                # 2. Cập nhật DO từ Attached DOs
+                for do in payload.get("do_states", []):
+                    if do.get("state") is not None:
+                        self._mbtcp.update_do(do["id"], do["state"])
+
+                # 3. Nếu bản thân sensor là Standalone DI / DO
+                sid = int(payload["sensor_id"])
+                row = self._model._id_to_row.get(sid)
+                if row is not None:
+                    item = self._model._items[row]
+                    sensor_type = item.get("sensor_type", "ANALOG")
+                    if sensor_type == "DI":
+                        state_val = float(payload.get("value", 0.0)) >= 0.5
+                        self._mbtcp.update_di(sid, state_val)
+                    elif sensor_type == "DO":
+                        state_val = float(payload.get("value", 0.0)) >= 0.5
+                        self._mbtcp.update_do(sid, state_val)
+            except (TypeError, ValueError) as e:
+                logger.error("Error updating Modbus TCP DI/DO states: %s", e)
 
         # Cloud Exporter Skeleton
         if self._exporter:
@@ -900,14 +1015,19 @@ class MonitorController(QObject):
             self._status_mode = mode
         self.statusChanged.emit()
 
-    def _build_di_legend(self, all_ios: list) -> None:
-        """Assign a unique color to each distinct DI label across all sensors."""
+    def _build_di_legend(self, di_sensors: list, links: list) -> None:
+        """Assign a unique color to each distinct DI sensor state description (linked DIs only)."""
+        # Create map of digital_sensor_id -> di_type
+        di_type_map = {}
+        for link in links:
+            if link.digital_sensor_id not in di_type_map and link.di_type:
+                di_type_map[link.digital_sensor_id] = link.di_type
+
         seen_labels: list[str] = []
-        for io in all_ios:
-            # io can be a Sensor object (child DI)
-            io_type = getattr(io, "sensor_type", None) or getattr(io, "io_type", None)
-            label = getattr(io, "name", None) or getattr(io, "label", "")
-            if io_type == SensorType.DI and label not in seen_labels:
+        for s in di_sensors:
+            code = di_type_map.get(s.id)
+            label = _DI_TYPE_NAMES.get(code, s.name)
+            if label and label not in seen_labels:
                 seen_labels.append(label)
 
         self._di_label_to_color = {}

@@ -34,7 +34,7 @@ Chuỗi UTF-8 **một dòng** (compact, không URL-encode), ví dụ:
 1. Add Logger → Scan QR (ảnh PNG/JPG hoặc camera)
 2. Parse JSON, kiểm tra `schema`
 3. Lưu `api_token`, kết nối `http://{host}:{api_port}/api/v1/...` với header `Authorization: Bearer <api_token>`
-4. Poll Modbus tại `{host}:{modbus_port}`, unit `modbus_unit_id`
+4. Poll Modbus tại `{host}:{modbus_port}`, unit `modbus_unit_id` — FC03 analog + FC02 DI + FC01 DO (xem `docs/contracts/modbus-map-v1.md` trên Central)
 
 ## Xác minh
 

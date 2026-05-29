@@ -76,7 +76,8 @@ else:
     cfg.station_code = "TEST-001"
     cfg.ftp_address = "127.0.0.1"
     cfg.ftp_port = 2222
-    session.commit()
+cfg.server_active = True
+session.commit()
 
 # Seed sensor
 sensor = session.exec(select(Sensor)).first()

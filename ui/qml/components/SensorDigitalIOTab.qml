@@ -3,202 +3,315 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import ".."
 
-// TAB 2: Digital I/O
+// TAB 2: Digital I/O — attach DI/DO sensors to an analog; edit link on list selection.
 Rectangle {
     id: root
     color: Theme.bgPanel; radius: Theme.radiusCard
     border.color: Theme.borderDefault; border.width: 1
 
-    signal addDioFormSubmitted(string ioType, string label, string diType, int slave, int addr, bool trigMax, bool trigMin)
-    signal removeDioRequested(int dioId)
+    signal attachDiRequested(int diSensorId, string diType)
+    signal attachDoRequested(int doSensorId, bool trigMax, bool trigMin)
+    signal removeDioRequested(int linkId)
+    signal updateLinkDiTypeRequested(int linkId, string diType)
+    signal updateLinkDoTriggersRequested(int linkId, bool trigMax, bool trigMin)
 
     property alias dioRepeaterRef: dioRepeater
+    property var diSensors: []
+    property var doSensors: []
 
-    property var diTypeMap: {
-        "Monitoring": "00",
-        "Calibrating": "01",
-        "Error": "02",
-        "Maintenance": "03"
+    function sensorOptionLabel(s) {
+        return s.name + " (Slave " + s.slaveId + "; Addr " + s.address + ")"
+    }
+
+    function diTypeName(code) {
+        if (!code) return "—"
+        if (code === "00") return "Monitoring"
+        if (code === "01") return "Calibrating"
+        if (code === "02") return "Error"
+        if (code === "03") return "Maintenance"
+        return code
+    }
+
+    function diTypeCodeFromComboText(text) {
+        var t = (text || "").trim()
+        return t.indexOf("—") >= 0 ? t.split("—")[0].trim() : t
+    }
+
+    readonly property var selectedLink: {
+        if (dioListView.currentIndex < 0 || !dioRepeater.model
+                || dioListView.currentIndex >= dioRepeater.model.length)
+            return null
+        return dioRepeater.model[dioListView.currentIndex]
+    }
+
+    property bool hasSelectedDio: dioListView.currentIndex >= 0
+
+    function clearSelection() {
+        dioListView.currentIndex = -1
+    }
+
+    function deleteSelectedDio() {
+        if (!selectedLink) return
+        var link = selectedLink
+        dioDeletePopup.showConfirm(
+            "Confirm detach",
+            "Detach " + link.ioType + " \"" + link.label + "\" (Slave " + link.slaveId + "; Addr " + link.address + ")?",
+            function() {
+                root.removeDioRequested(link.id)
+                dioListView.currentIndex = -1
+            },
+            "Detach",
+            Theme.btnStop
+        )
     }
 
     onVisibleChanged: {
-        if (visible) {
+        if (visible)
             dioListView.currentIndex = -1
-            _cancelDioEdit()
+    }
+
+    function syncEditPanelFromSelection() {
+        if (!selectedLink) return
+        if (selectedLink.ioType === "DI") {
+            var codes = ["00", "01", "02", "03"]
+            var idx = codes.indexOf(selectedLink.diType || "00")
+            editDiTypeCombo.currentIndex = idx >= 0 ? idx : 0
+        } else if (selectedLink.ioType === "DO") {
+            editDoTrigMax.checked = selectedLink.triggerOnMax
+            editDoTrigMin.checked = selectedLink.triggerOnMin
         }
     }
 
-    // Confirm delete popup
-    MessagePopup {
-        id: dioDeletePopup
+    Connections {
+        target: dioListView
+        function onCurrentIndexChanged() { root.syncEditPanelFromSelection() }
     }
+
+    MessagePopup { id: dioDeletePopup }
 
     RowLayout {
         anchors.fill: parent; anchors.margins: 20
         spacing: 20
 
-        // ── LEFT: Add/Edit Form ──
+        // ── LEFT: Attach or edit selected link ────────────────────────────
         ColumnLayout {
             Layout.fillHeight: true
             Layout.fillWidth: true
             Layout.preferredWidth: 1
             spacing: 12
 
-            // DI / DO Tab selector
-            TabBar {
-                id: dioTypeTabBar
+            // —— Edit selected link ——
+            ColumnLayout {
+                visible: root.selectedLink !== null
                 Layout.fillWidth: true
+                spacing: 10
 
-                TabButton {
-                    text: "DI"
-                    width: implicitWidth + 30
+                Text {
+                    text: "Edit attachment"
+                    color: Theme.accentText; font.bold: true; font.pixelSize: 14
                 }
-                TabButton {
-                    text: "DO"
-                    width: implicitWidth + 30
+                Rectangle { Layout.fillWidth: true; height: 1; color: Theme.borderDefault }
+
+                Text {
+                    text: root.selectedLink ? root.selectedLink.label : ""
+                    color: Theme.textPrimary; font.pixelSize: 14; font.bold: true
+                    Layout.fillWidth: true; elide: Text.ElideRight
+                }
+                Text {
+                    visible: root.selectedLink !== null
+                    text: root.selectedLink
+                        ? "Slave " + root.selectedLink.slaveId + " · Addr " + root.selectedLink.address
+                        : ""
+                    color: Theme.textSecondary; font.pixelSize: 12
+                }
+
+                ColumnLayout {
+                    visible: root.selectedLink && root.selectedLink.ioType === "DI"
+                    Layout.fillWidth: true; spacing: 8
+                    Text { text: "Status code:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
+                    ComboBox {
+                        id: editDiTypeCombo
+                        Layout.fillWidth: true
+                        model: ["00 — Monitoring", "01 — Calibrating", "02 — Error", "03 — Maintenance"]
+                        onActivated: {
+                            if (!root.selectedLink) return
+                            root.updateLinkDiTypeRequested(
+                                root.selectedLink.id,
+                                root.diTypeCodeFromComboText(currentText))
+                        }
+                    }
+                }
+
+                ColumnLayout {
+                    visible: root.selectedLink && root.selectedLink.ioType === "DO"
+                    Layout.fillWidth: true; spacing: 8
+                    Text { text: "Alarm triggers:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        CheckBox {
+                            id: editDoTrigMax
+                            text: "Trigger on Max"
+                            onToggled: {
+                                if (!root.selectedLink || root.selectedLink.ioType !== "DO") return
+                                root.updateLinkDoTriggersRequested(
+                                    root.selectedLink.id, checked, editDoTrigMin.checked)
+                            }
+                        }
+                        CheckBox {
+                            id: editDoTrigMin
+                            text: "Trigger on Min"
+                            onToggled: {
+                                if (!root.selectedLink || root.selectedLink.ioType !== "DO") return
+                                root.updateLinkDoTriggersRequested(
+                                    root.selectedLink.id, editDoTrigMax.checked, checked)
+                            }
+                        }
+                    }
+                }
+
+                Button {
+                    text: "Back to attach"
+                    flat: true
+                    Layout.fillWidth: true
+                    onClicked: dioListView.currentIndex = -1
                 }
             }
 
-            GridLayout {
-                columns: 2; Layout.fillWidth: true; columnSpacing: 10; rowSpacing: 10
-
-                Text { text: "Label:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
-                ComboBox {
-                    id: newDioLabelPreset
-                    model: ["Monitoring", "Calibrating", "Error", "Maintenance", "Custom"]
-                    Layout.fillWidth: true
-                }
-
-                Text {
-                    text: "Custom label:"
-                    color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize
-                    visible: newDioLabelPreset.currentText === "Custom"
-                }
-                AppTextField {
-                    id: newDioLabelCustom
-                    Layout.fillWidth: true
-                    placeholderText: "Enter custom label"
-                    visible: newDioLabelPreset.currentText === "Custom"
-                }
-
-                Text {
-                    text: "Label ID:"
-                    color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize
-                    visible: dioTypeTabBar.currentIndex === 0 && newDioLabelPreset.currentText === "Custom" // Only show for Custom DI
-                }
-                AppTextField {
-                    id: newDioTypeCustom
-                    Layout.fillWidth: true
-                    placeholderText: "Exclude 00, 01, 02, 03"
-                    visible: dioTypeTabBar.currentIndex === 0 && newDioLabelPreset.currentText === "Custom"
-                    validator: RegularExpressionValidator { regularExpression: /^[0-9]+$/ }
-                }
-
-                Text { text: "Slave ID:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
-                SpinBox { id: newDioSlave; from: 1; to: 247; value: 1; Layout.fillWidth: true; editable: true }
-
-                Text { text: "Address:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
-                SpinBox { id: newDioAddr; from: 0; to: 65535; value: 0; Layout.fillWidth: true; editable: true }
-
-                Text { text: "Trigger on Max:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; visible: dioTypeTabBar.currentIndex === 1 }
-                Switch { id: newDioTrigMax; checked: true; visible: dioTypeTabBar.currentIndex === 1 }
-
-                Text { text: "Trigger on Min:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; visible: dioTypeTabBar.currentIndex === 1 }
-                Switch { id: newDioTrigMin; checked: true; visible: dioTypeTabBar.currentIndex === 1 }
-            }
-
-            Item { Layout.fillHeight: true }
-
-            // ADD button (normal mode) — blue accent
-            Button {
-                visible: !root._dioEditMode
-                text: "ADD " + (dioTypeTabBar.currentIndex === 0 ? "DI" : "DO")
+            // —— Attach new link ——
+            ColumnLayout {
+                visible: root.selectedLink === null
                 Layout.fillWidth: true
-                Layout.preferredHeight: 40
-                font.bold: true
-                background: Rectangle {
-                    radius: Theme.radiusSmall
-                    color: Theme.accent
-                    opacity: parent.pressed ? 0.75 : 1.0
+                spacing: 12
+
+                TabBar {
+                    id: attachTypeBar
+                    Layout.fillWidth: true
+                    TabButton { text: "DI"; width: implicitWidth + 30 }
+                    TabButton { text: "DO"; width: implicitWidth + 30 }
                 }
-                contentItem: Text {
-                    text: parent.text; font: parent.font
-                    color: Theme.textOnColoredBtn
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                }
-                onClicked: {
-                    var presetText = newDioLabelPreset.currentText
-                    var label = presetText === "Custom"
-                        ? newDioLabelCustom.text.trim()
-                        : presetText
-                    if (label === "") return
-                    
-                    var ioType = dioTypeTabBar.currentIndex === 0 ? "DI" : "DO"
-                    var diType = "" // Only for DI
-                    if (ioType === "DI") {
-                        if (presetText === "Custom") {
-                            diType = newDioTypeCustom.text.trim()
-                        } else {
-                            diType = root.diTypeMap[presetText] !== undefined ? root.diTypeMap[presetText] : ""
+
+                ColumnLayout {
+                    visible: attachTypeBar.currentIndex === 0
+                    Layout.fillWidth: true; spacing: 10
+
+                    ColumnLayout {
+                        visible: root.diSensors.length === 0
+                        Layout.fillWidth: true; spacing: 8
+                        Text {
+                            text: "No Digital Input sensors configured."
+                            color: Theme.textFaint; font.pixelSize: 13
+                            wrapMode: Text.WordWrap; Layout.fillWidth: true
+                        }
+                        Text {
+                            text: "Go to the Sensors tab and add a sensor with register type Discrete Inputs."
+                            color: Theme.textFaint; font.pixelSize: 12
+                            wrapMode: Text.WordWrap; Layout.fillWidth: true
                         }
                     }
 
-                    root.addDioFormSubmitted(ioType, label, diType, newDioSlave.value, newDioAddr.value, newDioTrigMax.checked, newDioTrigMin.checked)
-                    root._resetDioForm()
+                    ColumnLayout {
+                        visible: root.diSensors.length > 0
+                        Layout.fillWidth: true; spacing: 8
+
+                        Text { text: "DI sensor:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
+                        ComboBox {
+                            id: diSensorCombo
+                            Layout.fillWidth: true
+                            model: root.diSensors.map(function(s) { return root.sensorOptionLabel(s) })
+                        }
+
+                        Text { text: "Status code:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
+                        ComboBox {
+                            id: diTypeCombo
+                            Layout.fillWidth: true
+                            model: ["00 — Monitoring", "01 — Calibrating", "02 — Error", "03 — Maintenance"]
+                        }
+
+                        Button {
+                            text: "Attach DI"
+                            Layout.fillWidth: true
+                            enabled: diSensorCombo.currentIndex >= 0
+                            onClicked: {
+                                var idx = diSensorCombo.currentIndex
+                                if (idx < 0 || idx >= root.diSensors.length) return
+                                root.attachDiRequested(
+                                    root.diSensors[idx].id,
+                                    root.diTypeCodeFromComboText(diTypeCombo.currentText))
+                            }
+                        }
+                    }
+                }
+
+                ColumnLayout {
+                    visible: attachTypeBar.currentIndex === 1
+                    Layout.fillWidth: true; spacing: 10
+
+                    ColumnLayout {
+                        visible: root.doSensors.length === 0
+                        Layout.fillWidth: true; spacing: 8
+                        Text {
+                            text: "No Digital Output sensors available."
+                            color: Theme.textFaint; font.pixelSize: 13
+                            wrapMode: Text.WordWrap; Layout.fillWidth: true
+                        }
+                        Text {
+                            text: "Add a Coils sensor in the Sensors tab, or all DOs are linked to other analogs."
+                            color: Theme.textFaint; font.pixelSize: 12
+                            wrapMode: Text.WordWrap; Layout.fillWidth: true
+                        }
+                    }
+
+                    ColumnLayout {
+                        visible: root.doSensors.length > 0
+                        Layout.fillWidth: true; spacing: 8
+
+                        Text { text: "DO sensor:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
+                        ComboBox {
+                            id: doSensorCombo
+                            Layout.fillWidth: true
+                            model: root.doSensors.map(function(s) { return root.sensorOptionLabel(s) })
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            CheckBox { id: doTrigMax; text: "Trigger on Max"; checked: true }
+                            CheckBox { id: doTrigMin; text: "Trigger on Min"; checked: true }
+                        }
+
+                        Button {
+                            text: "Attach DO"
+                            Layout.fillWidth: true
+                            enabled: doSensorCombo.currentIndex >= 0
+                            onClicked: {
+                                var idx = doSensorCombo.currentIndex
+                                if (idx < 0 || idx >= root.doSensors.length) return
+                                root.attachDoRequested(
+                                    root.doSensors[idx].id, doTrigMax.checked, doTrigMin.checked)
+                            }
+                        }
+                    }
                 }
             }
 
-            // SAVE + CANCEL buttons (edit mode)
-            RowLayout {
-                visible: root._dioEditMode
-                Layout.fillWidth: true
-                spacing: 8
-
-                Button {
-                    text: "CANCEL"
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 40
-                    font.bold: true
-                    onClicked: root._cancelDioEdit()
-                }
-
-                Button {
-                    text: "SAVE"
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 40
-                    font.bold: true
-                    background: Rectangle {
-                        radius: Theme.radiusSmall
-                        color: Theme.btnStart
-                        opacity: parent.pressed ? 0.75 : 1.0
-                    }
-                    contentItem: Text {
-                        text: parent.text; font: parent.font
-                        color: Theme.textOnColoredBtn
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                    }
-                    onClicked: root._saveDioEdit()
-                }
-            }
+            Item { Layout.fillHeight: true }
         }
 
-        // Divider
-        Rectangle { width: 1; Layout.fillHeight: true; color: Theme.borderDefault }
-
-        // ── RIGHT: List ──
+        // ── RIGHT: Attached links (compact rows) ───────────────────────────
         ColumnLayout {
             Layout.fillHeight: true
             Layout.fillWidth: true
             Layout.preferredWidth: 1
-            spacing: 12
+            spacing: 8
 
             RowLayout {
                 Layout.fillWidth: true
-                Text { text: "Configured I/O"; color: Theme.accentText; font.bold: true; font.pixelSize: 15; Layout.fillWidth: true }
                 Text {
-                    text: dioRepeater.count > 0 ? dioRepeater.count + " item(s)" : ""
+                    text: "Attached sensors"
+                    color: Theme.accentText; font.bold: true; font.pixelSize: 14
+                }
+                Item { Layout.fillWidth: true }
+                Text {
+                    text: dioRepeater.count > 0 ? dioRepeater.count + "" : ""
                     color: Theme.textSecondary; font.pixelSize: 13
                 }
             }
@@ -213,153 +326,97 @@ Rectangle {
                 currentIndex: -1
 
                 delegate: Rectangle {
-                    width: dioListView.width; height: 40; radius: 4
+                    width: dioListView.width
+                    height: 48
+                    radius: 4
                     color: modelData.ioType === "DO" ? "#301010" : "#103010"
                     border.color: dioListView.currentIndex === index ? Theme.accent : "transparent"
                     border.width: dioListView.currentIndex === index ? 2 : 0
 
                     MouseArea {
                         anchors.fill: parent
-                        onClicked: {
-                            dioListView.currentIndex = (dioListView.currentIndex === index) ? -1 : index
-                        }
+                        onClicked: dioListView.currentIndex = index
                     }
 
                     RowLayout {
-                        anchors.fill: parent; anchors.margins: 6; spacing: 8
+                        anchors.fill: parent
+                        anchors.leftMargin: 10
+                        anchors.rightMargin: 10
+                        spacing: 12
+
                         Rectangle {
-                            width: 36; height: 24; radius: 4
+                            Layout.preferredWidth: 38
+                            Layout.preferredHeight: 26
+                            Layout.alignment: Qt.AlignVCenter
+                            radius: 4
                             color: modelData.ioType === "DO" ? Theme.btnStop : Theme.btnStart
                             Text {
                                 anchors.centerIn: parent
-                                text: modelData.ioType; color: "#FFF"; font.bold: true; font.pixelSize: 12
+                                text: modelData.ioType
+                                color: "#FFF"
+                                font.bold: true
+                                font.pixelSize: 13
                             }
                         }
-                        Text { text: modelData.label + (modelData.diType ? " (ID: " + modelData.diType + ")" : ""); color: Theme.textPrimary; font.pixelSize: 14; Layout.fillWidth: true; elide: Text.ElideRight }
-                        Text { text: "Slave " + modelData.slaveId + " / Addr " + modelData.address; color: Theme.textSecondary; font.pixelSize: 12 }
+
+                        Text {
+                            text: modelData.label
+                            color: Theme.textPrimary
+                            font.pixelSize: 15
+                            Layout.fillWidth: true
+                            Layout.minimumWidth: 60
+                            elide: Text.ElideRight
+                            verticalAlignment: Text.AlignVCenter
+                        }
+
+                        Text {
+                            visible: modelData.ioType === "DI"
+                            text: root.diTypeName(modelData.diType)
+                            color: Theme.textSecondary
+                            font.pixelSize: Theme.fontLabelSize
+                            Layout.preferredWidth: implicitWidth
+                            Layout.alignment: Qt.AlignVCenter
+                        }
+
+                        Text {
+                            visible: modelData.ioType === "DO"
+                            text: {
+                                var parts = []
+                                if (modelData.triggerOnMax) parts.push("Max")
+                                if (modelData.triggerOnMin) parts.push("Min")
+                                return parts.length ? parts.join(", ") : "—"
+                            }
+                            color: Theme.textSecondary
+                            font.pixelSize: Theme.fontLabelSize
+                            Layout.preferredWidth: implicitWidth
+                            Layout.alignment: Qt.AlignVCenter
+                        }
+
+                        Text {
+                            text: "Slave " + modelData.slaveId + " · Addr " + modelData.address
+                            color: Theme.textSecondary
+                            font.pixelSize: Theme.fontLabelSize
+                            Layout.preferredWidth: implicitWidth
+                            Layout.alignment: Qt.AlignVCenter
+                        }
                     }
                 }
 
-                // Empty state
                 Text {
                     visible: dioListView.count === 0
                     anchors.centerIn: parent
-                    text: "No digital I/O pins configured.\nUse the form on the left to add DI or DO."
+                    width: parent.width - 20
+                    text: "No digital sensors attached.\nSelect DI or DO on the left to attach."
                     color: Theme.textFaint; font.pixelSize: 14
                     horizontalAlignment: Text.AlignHCenter
+                    wrapMode: Text.WordWrap
                 }
             }
         }
     }
 
-    // Hidden Repeater to maintain dioRepeater alias compatibility
     Repeater {
         id: dioRepeater
         delegate: Item { visible: false }
-    }
-
-    // ── DIO edit mode state ──────────────────────────────────────────────
-    property bool _dioEditMode: false
-    property int _dioEditId: -1
-
-    // Expose selected DIO index and data for toolbar buttons
-    property int currentDioIndex: dioListView ? dioListView.currentIndex : -1
-    property bool hasSelectedDio: currentDioIndex >= 0
-
-    function getSelectedDioId() {
-        if (currentDioIndex < 0 || !dioRepeater.model || currentDioIndex >= dioRepeater.model.length)
-            return -1
-        return dioRepeater.model[currentDioIndex].id
-    }
-
-    function editSelectedDio() {
-        if (currentDioIndex < 0 || !dioRepeater.model || currentDioIndex >= dioRepeater.model.length)
-            return
-        var dio = dioRepeater.model[currentDioIndex]
-        _dioEditMode = true
-        _dioEditId = dio.id
-
-        // Populate form with existing data
-        dioTypeTabBar.currentIndex = dio.ioType === "DO" ? 1 : 0
-
-        // Set label preset or custom (detect by label or diType)
-        var presetIdx = newDioLabelPreset.model.indexOf(dio.label)
-        if (presetIdx >= 0 && presetIdx < 4) {
-            newDioLabelPreset.currentIndex = presetIdx
-            newDioLabelCustom.text = ""
-            newDioTypeCustom.text = ""
-        } else {
-            newDioLabelPreset.currentIndex = 4 // Custom
-            newDioLabelCustom.text = dio.label
-            newDioTypeCustom.text = dio.diType || ""
-        }
-
-        newDioSlave.value = dio.slaveId
-        newDioAddr.value = dio.address
-        if (dio.ioType === "DO") {
-            newDioTrigMax.checked = dio.triggerOnMax
-            newDioTrigMin.checked = dio.triggerOnMin
-        }
-    }
-
-    function deleteSelectedDio() {
-        if (currentDioIndex < 0 || !dioRepeater.model || currentDioIndex >= dioRepeater.model.length)
-            return
-        var dio = dioRepeater.model[currentDioIndex]
-        dioDeletePopup.showConfirm(
-            "Confirm delete",
-            "Delete " + dio.ioType + " \"" + dio.label + "\" (Slave " + dio.slaveId + " / Addr " + dio.address + ")?",
-            function() {
-                root.removeDioRequested(dio.id)
-                dioListView.currentIndex = -1
-            },
-            "Delete",
-            Theme.btnStop
-        )
-    }
-
-    function _cancelDioEdit() {
-        _dioEditMode = false
-        _dioEditId = -1
-        _resetDioForm()
-    }
-
-    function _saveDioEdit() {
-        var presetText = newDioLabelPreset.currentText
-        var label = presetText === "Custom"
-            ? newDioLabelCustom.text.trim()
-            : presetText
-        if (label === "") return
-
-        var ioType = dioTypeTabBar.currentIndex === 0 ? "DI" : "DO"
-        var diType = "" // Only for DI
-        if (ioType === "DI") {
-            if (presetText === "Custom") {
-                diType = newDioTypeCustom.text.trim()
-            } else {
-                diType = root.diTypeMap[presetText] !== undefined ? root.diTypeMap[presetText] : ""
-            }
-        }
-
-        // Remove old, add new (update = delete + insert)
-        if (_dioEditId >= 0) {
-            root.removeDioRequested(_dioEditId)
-        }
-        root.addDioFormSubmitted(ioType, label, diType, newDioSlave.value, newDioAddr.value, newDioTrigMax.checked, newDioTrigMin.checked)
-
-        _dioEditMode = false
-        _dioEditId = -1
-        _resetDioForm()
-        dioListView.currentIndex = -1
-    }
-
-    function _resetDioForm() {
-        newDioLabelPreset.currentIndex = 0
-        newDioLabelCustom.text = ""
-        newDioTypeCustom.text = ""
-        newDioSlave.value = 1
-        newDioAddr.value = 0
-        newDioTrigMax.checked = true
-        newDioTrigMin.checked = true
     }
 }

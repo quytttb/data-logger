@@ -78,13 +78,19 @@ Rectangle {
         if (sensorsTab.listView.currentIndex < 0) return
         var s = sensorModel.get_sensor(sensorsTab.listView.currentIndex)
         if (!s || !s.sensorId) return
-        
+
         isAddMode = false
         editSensorId = s.sensorId
         returnMainTab = -1
         var ui = settingsController.coefficientUiState(s.coefficient)
         sensorForm.loadData(s, ui)
-        sensorForm.dioRepeaterRef.model = sensorModel.get_digital_ios(editSensorId)
+        sensorForm.dioRepeaterRef.model = sensorModel.get_analog_links(editSensorId)
+        // Populate DI/DO dropdowns for attach form (only meaningful for ANALOG sensors)
+        if (s.sensorType === "ANALOG") {
+            sensorForm.loadLinks(
+                sensorModel.list_di_sensors(),
+                sensorModel.list_do_sensors(editSensorId))
+        }
         sensorSubTabIndex = 0
         settingsTabIndex = 4
     }
@@ -128,12 +134,15 @@ Rectangle {
         _navigateBack()
     }
 
-    function closeSensorForm() {
-        _navigateBack()
+    function _refreshLinks() {
+        sensorForm.dioRepeaterRef.model = sensorModel.get_analog_links(editSensorId)
+        sensorForm.loadLinks(
+            sensorModel.list_di_sensors(),
+            sensorModel.list_do_sensors(editSensorId))
     }
 
-    function editSelectedDio() {
-        sensorForm.editSelectedDio()
+    function closeSensorForm() {
+        _navigateBack()
     }
 
     function deleteSelectedDio() {
@@ -225,13 +234,23 @@ Rectangle {
                 isAddMode: settingsRoot.isAddMode
                 editSensorId: settingsRoot.editSensorId
                 sensorSubTabIndex: settingsRoot.sensorSubTabIndex
-                onAddDioFormSubmitted: function(ioType, label, diType, slave, addr, trigMax, trigMin) {
-                    sensorModel.add_digital_io(settingsRoot.editSensorId, ioType, label, diType, slave, addr, trigMax, trigMin, true)
-                    sensorForm.dioRepeaterRef.model = sensorModel.get_digital_ios(settingsRoot.editSensorId)
+                onAttachDiRequested: function(diSensorId, diType) {
+                    sensorModel.attach_di(settingsRoot.editSensorId, diSensorId, diType)
+                    settingsRoot._refreshLinks()
                 }
-                onRemoveDioRequested: function(dioId) {
-                    sensorModel.remove_digital_io(dioId)
-                    sensorForm.dioRepeaterRef.model = sensorModel.get_digital_ios(settingsRoot.editSensorId)
+                onAttachDoRequested: function(doSensorId, trigMax, trigMin) {
+                    sensorModel.attach_do(settingsRoot.editSensorId, doSensorId, trigMax, trigMin)
+                    settingsRoot._refreshLinks()
+                }
+                onRemoveDioRequested: function(linkId) {
+                    sensorModel.detach_link(linkId)
+                    settingsRoot._refreshLinks()
+                }
+                onUpdateLinkDiTypeRequested: function(linkId, diType) {
+                    sensorModel.update_link_di_type(linkId, diType)
+                }
+                onUpdateLinkDoTriggersRequested: function(linkId, trigMax, trigMin) {
+                    sensorModel.update_link_do_triggers(linkId, trigMax, trigMin)
                 }
             }
         }

@@ -30,7 +30,7 @@ Item {
             spacing: 12
 
             Text {
-                text: "DI Status Legend"
+                text: "DI Status"
                 font.bold: true; font.pixelSize: 18
                 color: Theme.textPrimary
                 Layout.fillWidth: true

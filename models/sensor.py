@@ -1,9 +1,11 @@
 """Model Sensor — Unified Modbus point: Analog sensor, Digital Input, or Digital Output.
 
-Single Table Inheritance — a single `sensor` table stores all three types:
+All three types are top-level rows (no parent hierarchy):
   - ANALOG: Standard analog sensor (pH, Temp, etc.).
   - DI: Digital Input — reads a discrete status (float switch, door sensor).
-  - DO: Digital Output — writes a relay/buzzer/lamp controlled by alarm logic.
+        Linked to ANALOG sensors via AnalogDigitalLink (one DI → many analogs).
+  - DO: Digital Output — relay/buzzer driven by alarm logic.
+        Linked to at most one ANALOG via AnalogDigitalLink.
 """
 
 from datetime import datetime
@@ -80,31 +82,11 @@ class Sensor(SQLModel, table=True):
         description="Thứ tự cột khi xuất file TXT Phụ lục 15",
     )
 
-    # === Hierarchy (DI/DO → Parent Analog Sensor) ===
-    parent_id: Optional[int] = Field(
-        default=None,
-        foreign_key="sensor.id",
-        description="ID of the parent Analog sensor (NULL = standalone/top-level)",
-    )
-    is_system_wide: bool = Field(
-        default=False,
-        description="True if this is a system-wide DI/DO (not attached to any analog sensor)",
-    )
-
-    # === DI-specific: Status code for TT10 report ===
+    # === DI/DO relationship: managed via AnalogDigitalLink table ===
+    # di_type kept as legacy column (always NULL for new sensors; source of truth = link)
     di_type: Optional[str] = Field(
         default=None,
-        description="Mã trạng thái báo cáo phụ lục (00, 01, 02, 03...). NULL nếu là ANALOG hoặc DO.",
-    )
-
-    # === DO-specific: alarm trigger condition ===
-    trigger_on_max: bool = Field(
-        default=True,
-        description="DO only: activate when sensor value >= max_threshold",
-    )
-    trigger_on_min: bool = Field(
-        default=True,
-        description="DO only: activate when sensor value <= min_threshold",
+        description="Legacy — always NULL for new sensors. di_type per (analog,DI) pair lives in AnalogDigitalLink.",
     )
 
     active: bool = Field(default=True)

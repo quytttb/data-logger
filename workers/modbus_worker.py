@@ -81,6 +81,7 @@ class ModbusWorker(QObject):
         self._digital_ios: dict[int, list[dict]] = {}
         # Alarm state tracking: {sensor_id: bool}
         self._alarm_states: dict[int, bool] = {}
+        self._do_states: dict[int, bool] = {}  # sensor_id -> current DO boolean state
 
     def set_sensors(self, sensors: list[dict]) -> None:
         self._sensors = sensors
@@ -127,6 +128,7 @@ class ModbusWorker(QObject):
                     "ON" if value else "OFF",
                     sensor_id, sensor_cfg["register_address"],
                 )
+                self._do_states[sensor_id] = value
                 # Emit data_ready so the UI card updates immediately
                 self.data_ready.emit({
                     "sensor_id": sensor_id,
@@ -298,6 +300,16 @@ class ModbusWorker(QObject):
             # --- Read attached DI states ---
             di_states = self._read_di_states(sensor_id)
 
+            # --- Read attached DO states ---
+            ios = self._digital_ios.get(sensor_id, [])
+            do_channels = [io for io in ios if io.get("io_type") == "DO" and io.get("active", True)]
+            do_states = []
+            for ch in do_channels:
+                do_states.append({
+                    "id": ch["id"],
+                    "state": self._do_states.get(ch["id"], False)
+                })
+
             # --- Status code resolution (priority: 02 > 03 > 01) ---
             current_status = "00"
             for di in di_states:
@@ -323,6 +335,7 @@ class ModbusWorker(QObject):
                 "is_alarm": is_alarm,
                 "alarm_type": alarm_type,
                 "di_states": di_states,
+                "do_states": do_states,
             }
 
             self.data_ready.emit(payload)
@@ -359,8 +372,8 @@ class ModbusWorker(QObject):
                 return
 
             state = resp.bits[0]
-            di_type = sensor_cfg.get("di_type") or "00"
-            status = di_type if state else "00"
+            # Standalone DI has no link context — status is always "00"
+            status = "00"
 
             payload = {
                 "sensor_id": sensor_id,
@@ -400,6 +413,7 @@ class ModbusWorker(QObject):
                 return
 
             state = resp.bits[0]
+            self._do_states[sensor_id] = state
 
             payload = {
                 "sensor_id": sensor_id,
@@ -554,5 +568,6 @@ class ModbusWorker(QObject):
                         "ON" if coil_value else "OFF",
                         sensor_id, ch["slave_id"], addr, coil_value,
                     )
+                    self._do_states[ch["id"]] = coil_value
             except Exception as e:
                 logger.warning("DO write exception: sensor=%d err=%s", sensor_id, e)
