@@ -109,13 +109,28 @@ def _migrate_analog_digital_link(conn, inspector) -> None:
     if "parent_id" not in sensor_cols:
         return
 
+    has_trig_max = "trigger_on_max" in sensor_cols
+    has_trig_min = "trigger_on_min" in sensor_cols
+
+    select_cols = ["id", "parent_id", "sensor_type", "di_type"]
+    if has_trig_max:
+        select_cols.append("trigger_on_max")
+    if has_trig_min:
+        select_cols.append("trigger_on_min")
+
     rows = conn.execute(text(
-        "SELECT id, parent_id, sensor_type, di_type, trigger_on_max, trigger_on_min "
-        "FROM sensor WHERE parent_id IS NOT NULL"
+        f"SELECT {', '.join(select_cols)} FROM sensor WHERE parent_id IS NOT NULL"
     )).fetchall()
 
     for row in rows:
-        sensor_id, parent_id, sensor_type, di_type, trig_max, trig_min = row
+        row_dict = dict(zip(select_cols, row))
+        sensor_id = row_dict["id"]
+        parent_id = row_dict["parent_id"]
+        sensor_type = row_dict["sensor_type"]
+        di_type = row_dict["di_type"]
+        trig_max = row_dict.get("trigger_on_max", True)
+        trig_min = row_dict.get("trigger_on_min", True)
+
         if sensor_type not in ("DI", "DO"):
             continue
         existing = conn.execute(text(
