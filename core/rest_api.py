@@ -216,6 +216,7 @@ def _serialize_sensor(
     *,
     parent_id: int | None = None,
     di_type: str | None = None,
+    analog_ids: list[int] | None = None,
 ) -> dict[str, Any]:
     row: dict[str, Any] = {
         "id": s.id,
@@ -238,29 +239,45 @@ def _serialize_sensor(
         row["parent_id"] = parent_id
     if di_type:
         row["di_type"] = di_type
+    if analog_ids is not None:
+        row["analog_ids"] = analog_ids
     return row
 
 
 def _serialize_sensors_with_links(session, sensors: list[Sensor]) -> list[dict[str, Any]]:
-    """Include analog_digital_link fields Central needs for attach-DI badges."""
+    """Include analog_digital_link fields Central needs for attach-DI badges.
+
+    Cho DI sensor link nhiều analog, emit ``analog_ids`` = list tất cả
+    ``analog_sensor_id``; ``parent_id`` = analog đầu tiên có di_type (fallback
+    = link đầu tiên). Central đọc ``analog_ids[]`` để áp badge cho TẤT CẢ
+    analog parents, không chỉ một.
+    """
     out: list[dict[str, Any]] = []
     for s in sensors:
         parent_id: int | None = None
         di_type: str | None = None
+        analog_ids: list[int] | None = None
         links = list(
             session.exec(
                 select(AnalogDigitalLink).where(AnalogDigitalLink.digital_sensor_id == s.id)
             ).all()
         )
         if links:
-            parent_id = links[0].analog_sensor_id
             if s.sensor_type == SensorType.DI:
+                # Tất cả analog parents mà DI này đươc gắn vào.
+                analog_ids = [lk.analog_sensor_id for lk in links]
+                # di_type lấy từ link đầu tiên có di_type; fallback link[0].
                 for lk in links:
                     if lk.di_type:
                         di_type = lk.di_type
                         parent_id = lk.analog_sensor_id
                         break
-        out.append(_serialize_sensor(s, parent_id=parent_id, di_type=di_type))
+                if parent_id is None:
+                    parent_id = links[0].analog_sensor_id
+            else:
+                # DO: chỉ một parent, không cần analog_ids.
+                parent_id = links[0].analog_sensor_id
+        out.append(_serialize_sensor(s, parent_id=parent_id, di_type=di_type, analog_ids=analog_ids))
     return out
 
 

@@ -112,8 +112,8 @@ class ModbusSimWindow(QMainWindow):
 
         reg_layout.addWidget(QLabel("Trạng thái (DI 10, DI 11):"), 2, 0)
         di_layout = QHBoxLayout()
-        self.chk_di10 = QCheckBox("DI 10 (Lỗi)")
-        self.chk_di11 = QCheckBox("DI 11 (Bảo trì)")
+        self.chk_di10 = QCheckBox("DI 10")
+        self.chk_di11 = QCheckBox("DI 11")
         self.chk_di10.stateChanged.connect(self.update_values)
         self.chk_di11.stateChanged.connect(self.update_values)
         di_layout.addWidget(self.chk_di10)
