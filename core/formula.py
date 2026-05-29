@@ -42,7 +42,7 @@ def apply_formula(raw_value: int | float, coefficient_json: str) -> float:
     # === Dạng đa thức: y = Σ(aᵢ * xⁱ) ===
     if "coeffs" in coeff:
         coeffs = coeff["coeffs"]
-        result = sum(c * (raw_value ** i) for i, c in enumerate(coeffs))
+        result = sum(c * (raw_value**i) for i, c in enumerate(coeffs))
         return result
 
     # Fallback: trả về nguyên bản nếu không nhận diện được format

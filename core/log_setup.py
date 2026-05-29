@@ -7,20 +7,24 @@ import tomllib
 from pathlib import Path
 from core._paths import ROOT_DIR, LOG_DIR
 
+
 def _namer(default_name: str) -> str:
     """Thêm đuôi .gz cho các file log cũ."""
     return default_name + ".gz"
 
+
 def _rotator(source: str, dest: str) -> None:
     """Nén file log bằng gzip khi xoay vòng (rotate)."""
-    with open(source, 'rb') as f_in:
-        with gzip.open(dest, 'wb') as f_out:
+    with open(source, "rb") as f_in:
+        with gzip.open(dest, "wb") as f_out:
             shutil.copyfileobj(f_in, f_out)
     os.remove(source)
+
 
 def setup_logging() -> None:
     # Đọc config.toml
     from core._paths import CONFIG_DIR
+
     config_path = CONFIG_DIR / "config.toml"
     log_level = logging.INFO
     log_file = LOG_DIR / "app.log"
@@ -61,9 +65,8 @@ def setup_logging() -> None:
         level=log_level,
         format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
         handlers=[file_handler, stream_handler],
-        force=True  # Ghi đè các config có sẵn (cho Python 3.8+)
+        force=True,  # Ghi đè các config có sẵn (cho Python 3.8+)
     )
-    
+
     logger = logging.getLogger("datalogger")
     logger.info("Logging configured. Compressed rotation enabled.")
-

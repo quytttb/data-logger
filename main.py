@@ -94,9 +94,7 @@ def main():
 
     engine = QQmlApplicationEngine()
     app_icon_url = (
-        QUrl.fromLocalFile(str(_icon_file.resolve())).toString()
-        if _icon_file is not None
-        else ""
+        QUrl.fromLocalFile(str(_icon_file.resolve())).toString() if _icon_file is not None else ""
     )
     engine.rootContext().setContextProperty("appIconUrl", app_icon_url)
 
@@ -172,6 +170,7 @@ def main():
             from sqlmodel import select as _sel
             from core.database import get_session as _gs
             from models.app_config import AppConfig as _AC
+
             _s = _gs()
             _cfg = _s.exec(_sel(_AC)).first()
             if _cfg and _cfg.modbus_tcp_enabled:
@@ -182,7 +181,9 @@ def main():
                 )
                 logger.info(
                     "Modbus TCP service auto-started: %s:%d (unit=%d)",
-                    _cfg.modbus_tcp_bind, _cfg.modbus_tcp_port, _cfg.modbus_tcp_unit_id,
+                    _cfg.modbus_tcp_bind,
+                    _cfg.modbus_tcp_port,
+                    _cfg.modbus_tcp_unit_id,
                 )
             else:
                 modbus_tcp_service.stop()
@@ -204,6 +205,7 @@ def main():
             from core.database import get_session as _gs
             from models.app_config import AppConfig as _AC
             from core.rest_api import generate_token as _gen_token
+
             _s = _gs()
             _cfg = _s.exec(_sel(_AC)).first()
             if _cfg and _cfg.rest_api_enabled:
@@ -220,7 +222,8 @@ def main():
                 )
                 logger.info(
                     "REST API service auto-started: %s:%d",
-                    _cfg.rest_api_bind, _cfg.rest_api_port,
+                    _cfg.rest_api_bind,
+                    _cfg.rest_api_port,
                 )
             else:
                 rest_api_service.stop()
@@ -236,7 +239,9 @@ def main():
         """REST POST /config thành công → reload SettingsController + restart polling
         + restart Modbus TCP nếu liên quan. Chạy trên Qt main thread (queued signal).
         """
-        logger.info("Remote config applied (revision=%d) — reloading + restarting workers.", revision)
+        logger.info(
+            "Remote config applied (revision=%d) — reloading + restarting workers.", revision
+        )
         settings_controller.load_config()
         sensor_model.refresh()
         was_polling = monitor_controller.isPolling
@@ -255,6 +260,7 @@ def main():
             from sqlmodel import select as _sel
             from core.database import get_session as _gs
             from models.app_config import AppConfig as _AC
+
             _s = _gs()
             _cfg = _s.exec(_sel(_AC)).first()
             if _cfg and _cfg.server_active:

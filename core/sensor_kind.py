@@ -13,6 +13,7 @@ if TYPE_CHECKING:
 
 # ── Predicates ────────────────────────────────────────────────────────────
 
+
 def _stype(s) -> str:
     """Return the string value of sensor_type regardless of enum vs str."""
     v = s.sensor_type if isinstance(s, dict) else getattr(s, "sensor_type", "ANALOG")
@@ -36,6 +37,7 @@ def is_digital(s) -> bool:
 
 
 # ── Validators ────────────────────────────────────────────────────────────
+
 
 def validate_digital_address_unique(
     session: "Session",
@@ -134,8 +136,7 @@ def validate_attach_do(
 
     # DO can only attach to ONE analog (globally unique)
     existing_link = session.exec(
-        select(AnalogDigitalLink)
-        .where(AnalogDigitalLink.digital_sensor_id == do_sensor_id)
+        select(AnalogDigitalLink).where(AnalogDigitalLink.digital_sensor_id == do_sensor_id)
     ).first()
     if existing_link and existing_link.analog_sensor_id != analog_id:
         owner = session.get(Sensor, existing_link.analog_sensor_id)

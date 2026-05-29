@@ -145,17 +145,11 @@ class SearchWorker(QThread):
     def run(self):
         session = get_session()
         try:
-            sensors = {
-                s.id: s
-                for s in session.exec(select(Sensor)).all()
-            }
+            sensors = {s.id: s for s in session.exec(select(Sensor)).all()}
 
-            stmt = (
-                select(SensorData)
-                .where(
-                    SensorData.recorded_at >= self._from_dt,
-                    SensorData.recorded_at <= self._to_dt,
-                )
+            stmt = select(SensorData).where(
+                SensorData.recorded_at >= self._from_dt,
+                SensorData.recorded_at <= self._to_dt,
             )
             if self._sensor_id > 0:
                 stmt = stmt.where(SensorData.sensor_id == self._sensor_id)
@@ -214,10 +208,7 @@ class IncrementalFetchWorker(QThread):
     def run(self):
         session = get_session()
         try:
-            sensors = {
-                s.id: s
-                for s in session.exec(select(Sensor)).all()
-            }
+            sensors = {s.id: s for s in session.exec(select(Sensor)).all()}
 
             stmt = (
                 select(SensorData)
@@ -515,13 +506,15 @@ class HistoryController(QObject):
                     ]
                 )
                 for item in items:
-                    writer.writerow([
-                        item["recorded_at"],
-                        item["sensor_name"],
-                        item["unit"],
-                        item["value"],
-                        item["raw_value"],
-                    ])
+                    writer.writerow(
+                        [
+                            item["recorded_at"],
+                            item["sensor_name"],
+                            item["unit"],
+                            item["value"],
+                            item["raw_value"],
+                        ]
+                    )
 
             logger.info("CSV exported: %s (%d rows)", path, len(items))
         except Exception as e:

@@ -62,7 +62,9 @@ class SensorPayload(BaseModel):
     unit: str = ""
     slave_id: int = Field(ge=1, le=247)
     register_address: int = Field(ge=0, le=65535)
-    register_type: str = Field(default="holding", description="holding | input | discrete_input | coil")
+    register_type: str = Field(
+        default="holding", description="holding | input | discrete_input | coil"
+    )
     data_type: str = Field(default="int16")
     data_format: str = Field(default="AB")
     coefficient: Optional[str] = Field(default="{}")
@@ -117,8 +119,12 @@ class ConfigRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     api_version: int = Field(description="Phải khớp API_VERSION hiện tại (=1)")
-    request_id: str = Field(min_length=1, max_length=128, description="UUID/string trace từ Central")
-    expected_revision: int = Field(ge=0, description="Revision Central kỳ vọng — phải khớp DB hiện tại")
+    request_id: str = Field(
+        min_length=1, max_length=128, description="UUID/string trace từ Central"
+    )
+    expected_revision: int = Field(
+        ge=0, description="Revision Central kỳ vọng — phải khớp DB hiện tại"
+    )
     config: ConfigBody
 
 
@@ -243,9 +249,7 @@ def _serialize_sensors_with_links(session, sensors: list[Sensor]) -> list[dict[s
         di_type: str | None = None
         links = list(
             session.exec(
-                select(AnalogDigitalLink).where(
-                    AnalogDigitalLink.digital_sensor_id == s.id
-                )
+                select(AnalogDigitalLink).where(AnalogDigitalLink.digital_sensor_id == s.id)
             ).all()
         )
         if links:
@@ -422,7 +426,9 @@ def create_app(
             if body.expected_revision != cfg.config_revision:
                 logger.info(
                     "POST /config conflict: client expected=%d server=%d (request_id=%s)",
-                    body.expected_revision, cfg.config_revision, body.request_id,
+                    body.expected_revision,
+                    cfg.config_revision,
+                    body.request_id,
                 )
                 return JSONResponse(
                     status_code=status.HTTP_409_CONFLICT,
@@ -430,13 +436,15 @@ def create_app(
                         ok=False,
                         request_id=body.request_id,
                         applied_revision=cfg.config_revision,
-                        errors=[FieldError(
-                            field="expected_revision",
-                            message=(
-                                f"Revision conflict: server is at {cfg.config_revision}, "
-                                f"client expected {body.expected_revision}"
-                            ),
-                        )],
+                        errors=[
+                            FieldError(
+                                field="expected_revision",
+                                message=(
+                                    f"Revision conflict: server is at {cfg.config_revision}, "
+                                    f"client expected {body.expected_revision}"
+                                ),
+                            )
+                        ],
                         message="Refresh GET /api/v1/config and retry.",
                     ).model_dump(),
                 )
@@ -462,7 +470,9 @@ def create_app(
             new_revision = cfg.config_revision
             logger.info(
                 "POST /config applied: revision %d → %d (request_id=%s)",
-                body.expected_revision, new_revision, body.request_id,
+                body.expected_revision,
+                new_revision,
+                body.request_id,
             )
             if on_applied is not None:
                 try:
@@ -482,7 +492,9 @@ def create_app(
         except Exception as e:
             session.rollback()
             logger.exception("POST /config server error (request_id=%s): %s", body.request_id, e)
-            raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Internal error applying config")
+            raise HTTPException(
+                status.HTTP_500_INTERNAL_SERVER_ERROR, "Internal error applying config"
+            )
         finally:
             session.close()
 
@@ -497,11 +509,18 @@ def _apply_config_atomic(session, cfg: AppConfig, body: ConfigBody) -> list[Fiel
     errors: list[FieldError] = []
 
     root_fields = (
-        "station_code", "station_name", "poll_interval",
-        "serial_port", "serial_baudrate", "serial_bytesize",
-        "serial_parity", "serial_stopbits",
-        "modbus_tcp_enabled", "modbus_tcp_port",
-        "modbus_tcp_bind", "modbus_tcp_unit_id",
+        "station_code",
+        "station_name",
+        "poll_interval",
+        "serial_port",
+        "serial_baudrate",
+        "serial_bytesize",
+        "serial_parity",
+        "serial_stopbits",
+        "modbus_tcp_enabled",
+        "modbus_tcp_port",
+        "modbus_tcp_bind",
+        "modbus_tcp_unit_id",
     )
     for f in root_fields:
         v = getattr(body, f)
@@ -510,10 +529,12 @@ def _apply_config_atomic(session, cfg: AppConfig, body: ConfigBody) -> list[Fiel
 
     bind = (cfg.modbus_tcp_bind or "").strip()
     if not bind:
-        errors.append(FieldError(
-            field="config.modbus_tcp_bind",
-            message="modbus_tcp_bind is required (use 0.0.0.0 for all interfaces).",
-        ))
+        errors.append(
+            FieldError(
+                field="config.modbus_tcp_bind",
+                message="modbus_tcp_bind is required (use 0.0.0.0 for all interfaces).",
+            )
+        )
 
     if body.sensors is not None:
         for existing in list(session.exec(select(Sensor)).all()):
@@ -540,10 +561,12 @@ def _apply_config_atomic(session, cfg: AppConfig, body: ConfigBody) -> list[Fiel
                 )
                 session.add(row)
             except Exception as e:
-                errors.append(FieldError(
-                    field=f"config.sensors[{idx}]",
-                    message=f"Invalid sensor entry: {e}",
-                ))
+                errors.append(
+                    FieldError(
+                        field=f"config.sensors[{idx}]",
+                        message=f"Invalid sensor entry: {e}",
+                    )
+                )
 
     return errors
 

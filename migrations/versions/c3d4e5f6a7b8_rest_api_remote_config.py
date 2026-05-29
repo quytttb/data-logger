@@ -11,6 +11,7 @@ Cấu hình từ xa cho Central App (LAN nội bộ):
   - rest_api_token (str, bearer token)
   - config_revision (int, optimistic concurrency)
 """
+
 from typing import Sequence, Union
 
 from alembic import op
@@ -32,16 +33,11 @@ def _column_exists(table: str, column: str) -> bool:
 def upgrade() -> None:
     """Add REST API columns (idempotent — safe if upgraded twice)."""
     cols = {
-        "rest_api_enabled":
-            "ALTER TABLE app_config ADD COLUMN rest_api_enabled BOOLEAN NOT NULL DEFAULT 0",
-        "rest_api_port":
-            "ALTER TABLE app_config ADD COLUMN rest_api_port INTEGER NOT NULL DEFAULT 8080",
-        "rest_api_bind":
-            "ALTER TABLE app_config ADD COLUMN rest_api_bind VARCHAR NOT NULL DEFAULT '0.0.0.0'",
-        "rest_api_token":
-            "ALTER TABLE app_config ADD COLUMN rest_api_token VARCHAR NOT NULL DEFAULT ''",
-        "config_revision":
-            "ALTER TABLE app_config ADD COLUMN config_revision INTEGER NOT NULL DEFAULT 1",
+        "rest_api_enabled": "ALTER TABLE app_config ADD COLUMN rest_api_enabled BOOLEAN NOT NULL DEFAULT 0",
+        "rest_api_port": "ALTER TABLE app_config ADD COLUMN rest_api_port INTEGER NOT NULL DEFAULT 8080",
+        "rest_api_bind": "ALTER TABLE app_config ADD COLUMN rest_api_bind VARCHAR NOT NULL DEFAULT '0.0.0.0'",
+        "rest_api_token": "ALTER TABLE app_config ADD COLUMN rest_api_token VARCHAR NOT NULL DEFAULT ''",
+        "config_revision": "ALTER TABLE app_config ADD COLUMN config_revision INTEGER NOT NULL DEFAULT 1",
     }
     for col, sql in cols.items():
         if not _column_exists("app_config", col):

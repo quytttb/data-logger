@@ -116,27 +116,37 @@ class MonitorModel(QAbstractListModel):
         self._items = []
         self._id_to_row = {}
         for i, s in enumerate(sensors):
-            self._items.append({
-                "sensor_id": s.id,
-                "name": s.name,
-                "unit": s.unit,
-                "sensor_type": s.sensor_type.value if hasattr(s.sensor_type, "value") else s.sensor_type,
-                "value": "---",
-                "raw_value": "---",
-                "status": "WAIT",
-                "last_update": "",
-                "is_alarm": False,
-                "alarm_type": "",
-                "di_states": [],
-            })
+            self._items.append(
+                {
+                    "sensor_id": s.id,
+                    "name": s.name,
+                    "unit": s.unit,
+                    "sensor_type": s.sensor_type.value
+                    if hasattr(s.sensor_type, "value")
+                    else s.sensor_type,
+                    "value": "---",
+                    "raw_value": "---",
+                    "status": "WAIT",
+                    "last_update": "",
+                    "is_alarm": False,
+                    "alarm_type": "",
+                    "di_states": [],
+                }
+            )
             self._id_to_row[s.id] = i
         self.endResetModel()
         self.countChanged.emit()
 
-    def update_value(self, sensor_id: int, value: float, raw_value,
-                     recorded_at: str, is_alarm: bool = False,
-                     alarm_type: str = "",
-                     di_states: list | None = None) -> None:
+    def update_value(
+        self,
+        sensor_id: int,
+        value: float,
+        raw_value,
+        recorded_at: str,
+        is_alarm: bool = False,
+        alarm_type: str = "",
+        di_states: list | None = None,
+    ) -> None:
         row = self._id_to_row.get(sensor_id)
         if row is None:
             return
@@ -186,13 +196,14 @@ class MonitorModel(QAbstractListModel):
 
 # ── MonitorController ───────────────────────────────────────────────────
 
+
 class MonitorController(QObject):
     """Điều khiển polling Modbus + ghi DB + cập nhật Monitor realtime."""
 
     # statusMode values (used in QML instead of string matching)
-    STATUS_IDLE = 0   # Not polling / stopped / ready
-    STATUS_OK   = 1   # Polling and connected
-    STATUS_ERR  = 2   # Polling but disconnected / error
+    STATUS_IDLE = 0  # Not polling / stopped / ready
+    STATUS_OK = 1  # Polling and connected
+    STATUS_ERR = 2  # Polling but disconnected / error
 
     pollingChanged = Signal()
     stoppingChanged = Signal()
@@ -202,6 +213,7 @@ class MonitorController(QObject):
     @Property(float, notify=cpuTempChanged)
     def cpuTemp(self):
         return self._cpu_temp
+
     errorCountChanged = Signal()
     activeSensorsChanged = Signal()
     diLegendChanged = Signal()
@@ -215,9 +227,13 @@ class MonitorController(QObject):
     # Emitted when the set of analog sensors changes (start/stop polling, refresh)
     analogSensorsListChanged = Signal()
 
-    def __init__(self, monitor_model: MonitorModel, tester_controller=None,
-                 modbus_tcp_service: ModbusTcpServerService | None = None,
-                 parent=None):
+    def __init__(
+        self,
+        monitor_model: MonitorModel,
+        tester_controller=None,
+        modbus_tcp_service: ModbusTcpServerService | None = None,
+        parent=None,
+    ):
         super().__init__(parent)
         self._model = monitor_model
         self._tester = tester_controller
@@ -227,7 +243,7 @@ class MonitorController(QObject):
         self._status_tag = "ready"
         self._status_mode = self.STATUS_IDLE
         self._error_count = 0
-        self._di_legend: list[dict] = []       # [{"label": ..., "color": ...}, ...]
+        self._di_legend: list[dict] = []  # [{"label": ..., "color": ...}, ...]
         self._di_label_to_color: dict[str, str] = {}  # label → hex color
 
         # Rolling trend buffer for the Trending tab — last N points per analog sensor.
@@ -246,9 +262,10 @@ class MonitorController(QObject):
 
         self._exporter: Exporter | None = None
         self._init_exporter()
-        
+
         self._cpu_temp = 0.0
         from PySide6.QtCore import QTimer
+
         self._sys_timer = QTimer(self)
         self._sys_timer.setInterval(10000)
         self._sys_timer.timeout.connect(self._read_cpu_temp)
@@ -258,18 +275,10 @@ class MonitorController(QObject):
         self._watchdog_timer = QTimer(self)
         self._watchdog_timer.setInterval(5000)
         self._watchdog_timer.timeout.connect(self._check_watchdog)
-        self._heartbeats = {
-            "ModbusWorker": 0,
-            "DatabaseWorker": 0,
-            "FtpWorker": 0
-        }
+        self._heartbeats = {"ModbusWorker": 0, "DatabaseWorker": 0, "FtpWorker": 0}
         self._watchdog_status = "N/A"
         # Track when we last received a heartbeat
-        self._last_heartbeat_time = {
-            "ModbusWorker": 0,
-            "DatabaseWorker": 0,
-            "FtpWorker": 0
-        }
+        self._last_heartbeat_time = {"ModbusWorker": 0, "DatabaseWorker": 0, "FtpWorker": 0}
 
         # Thread-safe cache for REST GET /api/v1/readings (Central App).
         self._readings_lock = threading.Lock()
@@ -322,11 +331,7 @@ class MonitorController(QObject):
             return
         session = get_session()
         try:
-            sensors = list(
-                session.exec(
-                    select(Sensor).where(Sensor.active)
-                ).all()
-            )
+            sensors = list(session.exec(select(Sensor).where(Sensor.active)).all())
             self._model.load_sensors(sensors)
             self._reset_trend_buffers(sensors)
             self.activeSensorsChanged.emit()
@@ -342,6 +347,7 @@ class MonitorController(QObject):
     @Slot(str)
     def register_heartbeat(self, worker_name: str):
         import time
+
         if worker_name in self._last_heartbeat_time:
             self._last_heartbeat_time[worker_name] = time.monotonic()
             self._heartbeats[worker_name] = 0
@@ -384,21 +390,29 @@ class MonitorController(QObject):
         to avoid duplicate series in the chart.
         """
         palette = [
-            "#558dff", "#7dffa2", "#ff6666", "#d4a62d",
-            "#b0c6ff", "#ff9933", "#cc66ff", "#66cccc",
+            "#558dff",
+            "#7dffa2",
+            "#ff6666",
+            "#d4a62d",
+            "#b0c6ff",
+            "#ff9933",
+            "#cc66ff",
+            "#66cccc",
         ]
         self._trend_buffers = {}
         self._analog_sensors = []
         for idx, s in enumerate(sensors):
             st = s.sensor_type.value if hasattr(s.sensor_type, "value") else s.sensor_type
             self._trend_buffers[s.id] = deque(maxlen=self._trend_buffer_size)
-            self._analog_sensors.append({
-                "id": s.id,
-                "name": s.name,
-                "unit": s.unit or "",
-                "color": palette[idx % len(palette)],
-                "sensorType": st,
-            })
+            self._analog_sensors.append(
+                {
+                    "id": s.id,
+                    "name": s.name,
+                    "unit": s.unit or "",
+                    "color": palette[idx % len(palette)],
+                    "sensorType": st,
+                }
+            )
         self.analogSensorsListChanged.emit()
 
     def _push_trend_point(self, sensor_id: int, recorded_at: str, value: float) -> None:
@@ -422,21 +436,23 @@ class MonitorController(QObject):
         """Initialize Cloud Exporter if enabled in config.toml."""
         import tomllib
         from core._paths import CONFIG_DIR
+
         try:
             config_file = CONFIG_DIR / "config.toml"
             if not config_file.exists():
                 logger.debug(f"Config file not found: {config_file}. Exporter will not start.")
                 return
-            
+
             with open(config_file, "rb") as f:
                 cfg = tomllib.load(f)
                 cloud_cfg = cfg.get("cloud", {})
                 if cloud_cfg.get("enable_mqtt", False):
                     from core.exporters.mqtt import MQTTExporter
+
                     self._exporter = MQTTExporter(
                         host=cloud_cfg.get("mqtt_host", "localhost"),
                         port=cloud_cfg.get("mqtt_port", 1883),
-                        topic=cloud_cfg.get("mqtt_topic", "datalogger/telemetry")
+                        topic=cloud_cfg.get("mqtt_topic", "datalogger/telemetry"),
                     )
         except Exception as e:
             logger.error(f"Failed to init exporter: {e}")
@@ -455,6 +471,7 @@ class MonitorController(QObject):
     def _check_watchdog(self):
         import time
         from PySide6.QtCore import QTimer
+
         now = time.monotonic()
         misses = []
         server_active = True
@@ -470,7 +487,9 @@ class MonitorController(QObject):
                 session.close()
 
         for worker, last_time in self._last_heartbeat_time.items():
-            if worker in ("ModbusWorker", "DatabaseWorker") and (not self._is_polling or self._is_stopping):
+            if worker in ("ModbusWorker", "DatabaseWorker") and (
+                not self._is_polling or self._is_stopping
+            ):
                 continue
             if worker == "FtpWorker" and not server_active:
                 continue
@@ -482,7 +501,7 @@ class MonitorController(QObject):
                     misses.append(worker)
             else:
                 self._heartbeats[worker] = 0  # Reset counter if heartbeat received
-            
+
         if misses:
             self._watchdog_status = f"ERR: {','.join(misses)}"
             for m in misses:
@@ -494,7 +513,7 @@ class MonitorController(QObject):
                     QTimer.singleShot(2000, self.start_polling)
         else:
             self._watchdog_status = "OK"
-            
+
         self.watchdogChanged.emit()
 
     @Slot()
@@ -516,9 +535,7 @@ class MonitorController(QObject):
                 return
 
             # Load all active sensors (all are top-level now)
-            all_sensors = list(
-                session.exec(select(Sensor).where(Sensor.active)).all()
-            )
+            all_sensors = list(session.exec(select(Sensor).where(Sensor.active)).all())
             if not all_sensors:
                 self.messageSent.emit(
                     "Error",
@@ -562,7 +579,8 @@ class MonitorController(QObject):
             monitor_sensors = all_sensors
             # Modbus poll loop: analog + standalone DI/DO only (linked DI/DO via analog payload).
             poll_sensors = [
-                s for s in all_sensors
+                s
+                for s in all_sensors
                 if is_analog(s) or (is_digital(s) and s.id not in linked_digital_ids)
             ]
 
@@ -582,15 +600,16 @@ class MonitorController(QObject):
                     "poll_interval": s.poll_interval,
                     "min_threshold": s.min_threshold,
                     "max_threshold": s.max_threshold,
-                    "sensor_type": s.sensor_type.value if hasattr(s.sensor_type, "value") else s.sensor_type,
+                    "sensor_type": s.sensor_type.value
+                    if hasattr(s.sensor_type, "value")
+                    else s.sensor_type,
                 }
                 for s in poll_sensors
             ]
 
             # Build DI legend from linked DI channels (for MonitorView dots)
             linked_di_sensors = [
-                ds for ds in digital_sensor_ids_by_link.values()
-                if is_di(ds) and ds.active
+                ds for ds in digital_sensor_ids_by_link.values() if is_di(ds) and ds.active
             ]
             self._build_di_legend(linked_di_sensors, all_links)
 
@@ -648,6 +667,7 @@ class MonitorController(QObject):
 
             self._watchdog_timer.start()
             import time
+
             for w in self._last_heartbeat_time:
                 self._last_heartbeat_time[w] = time.monotonic()
 
@@ -658,7 +678,9 @@ class MonitorController(QObject):
             self.errorCountChanged.emit()
             logger.info(
                 "Polling started: %d monitor cards (%d polled), interval=%ds",
-                len(monitor_sensors), len(poll_sensors), cfg.poll_interval,
+                len(monitor_sensors),
+                len(poll_sensors),
+                cfg.poll_interval,
             )
 
         except Exception as e:
@@ -675,7 +697,7 @@ class MonitorController(QObject):
         """Request an async (non-blocking) stop of both worker threads."""
         if not self._is_polling or self._is_stopping:
             return
-            
+
         if getattr(self, "_exporter", None):
             self._exporter.disconnect()
 
@@ -705,6 +727,7 @@ class MonitorController(QObject):
             self._finalize_stop()
         else:
             from PySide6.QtCore import QTimer
+
             QTimer.singleShot(50, self._check_threads_finished)
 
     def _finalize_stop(self) -> None:
@@ -728,10 +751,10 @@ class MonitorController(QObject):
         """Synchronous stop — only for app shutdown (aboutToQuit)."""
         if not self._is_polling:
             return
-            
+
         if getattr(self, "_exporter", None):
             self._exporter.disconnect()
-            
+
         self._watchdog_timer.stop()
         if self._modbus_worker:
             self._modbus_worker.stop()
@@ -763,16 +786,18 @@ class MonitorController(QObject):
             if sid in cache:
                 sensors.append(cache[sid])
             else:
-                sensors.append({
-                    "sensor_id": sid,
-                    "sensor_type": item.get("sensor_type", "ANALOG"),
-                    "value": None,
-                    "status": "WAIT",
-                    "is_alarm": False,
-                    "alarm_type": "",
-                    "valid": False,
-                    "recorded_at": "",
-                })
+                sensors.append(
+                    {
+                        "sensor_id": sid,
+                        "sensor_type": item.get("sensor_type", "ANALOG"),
+                        "value": None,
+                        "status": "WAIT",
+                        "is_alarm": False,
+                        "alarm_type": "",
+                        "valid": False,
+                        "recorded_at": "",
+                    }
+                )
         return {
             "ok": True,
             "polling": self._is_polling,
@@ -821,7 +846,10 @@ class MonitorController(QObject):
             self._readings_cache.clear()
 
     def _push_digital_card_update(
-        self, sensor_id: int, state: bool, recorded_at: str,
+        self,
+        sensor_id: int,
+        state: bool,
+        recorded_at: str,
     ) -> None:
         """Update a DI/DO monitor card (e.g. linked digital read via parent analog poll)."""
         if self._model._id_to_row.get(sensor_id) is None:  # noqa: SLF001
@@ -943,7 +971,9 @@ class MonitorController(QObject):
         alarm_type = info.get("alarm_type", "")
         if is_alarm:
             logger.warning(
-                "⚠️ ALARM sensor=%d type=%s", sid, alarm_type,
+                "⚠️ ALARM sensor=%d type=%s",
+                sid,
+                alarm_type,
             )
         else:
             logger.info("✅ Alarm cleared sensor=%d", sid)

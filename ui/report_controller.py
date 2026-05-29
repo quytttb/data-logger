@@ -113,9 +113,7 @@ class ReportController(QObject):
         try:
             count = len(
                 session.exec(
-                    select(ReportLog).where(
-                        ReportLog.status.in_(["pending", "failed"])
-                    )
+                    select(ReportLog).where(ReportLog.status.in_(["pending", "failed"]))
                 ).all()
             )
             self._pending_count = count

@@ -83,15 +83,17 @@ class MonitorModel(QAbstractListModel):
         self._items = []
         self._id_to_row = {}
         for i, s in enumerate(sensors):
-            self._items.append({
-                "sensor_id": s.id,
-                "name": s.name,
-                "unit": s.unit,
-                "value": "---",
-                "raw_value": "---",
-                "status": "WAIT",
-                "last_update": "",
-            })
+            self._items.append(
+                {
+                    "sensor_id": s.id,
+                    "name": s.name,
+                    "unit": s.unit,
+                    "value": "---",
+                    "raw_value": "---",
+                    "status": "WAIT",
+                    "last_update": "",
+                }
+            )
             self._id_to_row[s.id] = i
         self.endResetModel()
         self.countChanged.emit()
@@ -133,13 +135,14 @@ class MonitorModel(QAbstractListModel):
 
 # ── MonitorController ───────────────────────────────────────────────────
 
+
 class MonitorController(QObject):
     """Điều khiển polling Modbus + ghi DB + cập nhật Monitor realtime."""
 
     # statusMode values (used in QML instead of string matching)
-    STATUS_IDLE = 0   # Not polling / stopped / ready
-    STATUS_OK   = 1   # Polling and connected
-    STATUS_ERR  = 2   # Polling but disconnected / error
+    STATUS_IDLE = 0  # Not polling / stopped / ready
+    STATUS_OK = 1  # Polling and connected
+    STATUS_ERR = 2  # Polling but disconnected / error
 
     pollingChanged = Signal()
     stoppingChanged = Signal()
@@ -204,9 +207,7 @@ class MonitorController(QObject):
             return
         session = get_session()
         try:
-            sensors = list(
-                session.exec(select(Sensor).where(Sensor.active)).all()
-            )
+            sensors = list(session.exec(select(Sensor).where(Sensor.active)).all())
             self._model.load_sensors(sensors)
             self.activeSensorsChanged.emit()
         except Exception as e:
@@ -232,9 +233,7 @@ class MonitorController(QObject):
                 )
                 return
 
-            sensors = list(
-                session.exec(select(Sensor).where(Sensor.active)).all()
-            )
+            sensors = list(session.exec(select(Sensor).where(Sensor.active)).all())
             if not sensors:
                 self.messageSent.emit(
                     "Error",
@@ -295,7 +294,9 @@ class MonitorController(QObject):
             self._apply_status("acquiring", self.STATUS_OK)
             self.pollingChanged.emit()
             self.errorCountChanged.emit()
-            logger.info("Polling started: %d sensors, interval=%ds", len(sensors), cfg.poll_interval)
+            logger.info(
+                "Polling started: %d sensors, interval=%ds", len(sensors), cfg.poll_interval
+            )
 
         except Exception as e:
             logger.error("start_polling error: %s", e, exc_info=True)
@@ -337,6 +338,7 @@ class MonitorController(QObject):
             self._finalize_stop()
         else:
             from PySide6.QtCore import QTimer
+
             QTimer.singleShot(50, self._check_threads_finished)
 
     def _finalize_stop(self) -> None:

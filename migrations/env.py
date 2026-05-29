@@ -18,17 +18,20 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 import os  # noqa: E402
 import sys  # noqa: E402
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from sqlmodel import SQLModel  # noqa: E402
+
 # Ensure models are loaded
 import models.app_config  # noqa
 import models.report_log  # noqa
-import models.sensor      # noqa
-import models.sensor_data # noqa
+import models.sensor  # noqa
+import models.sensor_data  # noqa
 
 target_metadata = SQLModel.metadata
 
 from core.database import DATABASE_URL  # noqa: E402
+
 config.set_main_option("sqlalchemy.url", DATABASE_URL)
 
 
@@ -76,9 +79,7 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection, target_metadata=target_metadata
-        )
+        context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():
             context.run_migrations()

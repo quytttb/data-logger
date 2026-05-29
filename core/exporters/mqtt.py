@@ -1,5 +1,6 @@
 import json
 import logging
+
 try:
     import paho.mqtt.client as mqtt
 except ImportError:
@@ -9,9 +10,10 @@ from core.exporters.base import Exporter
 
 logger = logging.getLogger("datalogger.mqtt")
 
+
 class MQTTExporter(Exporter):
     """Giảng khuôn (skeleton) cho việc đẩy dữ liệu lên MQTT Broker."""
-    
+
     def __init__(self, host: str = "localhost", port: int = 1883, topic: str = "sensor/data"):
         self.host = host
         self.port = port
@@ -24,7 +26,7 @@ class MQTTExporter(Exporter):
         if not self.client:
             logger.error("paho-mqtt library not available.")
             return False
-            
+
         try:
             self.client.connect(self.host, self.port, 60)
             self.client.loop_start()
@@ -37,7 +39,7 @@ class MQTTExporter(Exporter):
     def send(self, data: dict) -> bool:
         if not self.client:
             return False
-            
+
         try:
             payload = json.dumps(data)
             self.client.publish(self.topic, payload)

@@ -17,6 +17,7 @@ from sqlmodel import Field, SQLModel
 
 class SensorType(str, Enum):
     """Discriminator for the Sensor model."""
+
     ANALOG = "ANALOG"
     DI = "DI"
     DO = "DO"

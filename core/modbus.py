@@ -3,6 +3,7 @@ Modbus Communication Module — Modbus RTU (serial) only.
 
 Modbus TCP is not supported in this version; it may be added later if needed.
 """
+
 import logging
 import struct
 from abc import ABC, abstractmethod
@@ -29,7 +30,7 @@ _REG_TYPE_ALIASES: dict[str, str] = {
     "inputs": "Discrete Input",
     "discrete_input": "Discrete Input",
     "di": "Discrete Input",
-    "invalid": "Invalid"
+    "invalid": "Invalid",
 }
 
 
@@ -41,27 +42,34 @@ def _normalize_register_type(reg_type: str) -> str:
 
 class ModbusBase(ABC):
     """Abstract base class for Modbus clients."""
-    
+
     def __init__(self):
         self.client = None
-    
+
     @abstractmethod
     def connect(self, **kwargs) -> bool:
         """Connect to the Modbus device."""
         pass
-    
+
     def disconnect(self):
         """Disconnect from the Modbus device."""
         if self.client and self.client.connected:
             self.client.close()
             logger.info("🔴 Disconnected")
-    
+
     def is_connected(self) -> bool:
         """Check if connected to a device."""
         return self.client is not None and self.client.connected
-    
-    def read(self, reg_type: str, addr: int, count: int, slave: int,
-             data_type: str, data_format: str = "ABCD") -> Any:
+
+    def read(
+        self,
+        reg_type: str,
+        addr: int,
+        count: int,
+        slave: int,
+        data_type: str,
+        data_format: str = "ABCD",
+    ) -> Any:
         """Read Modbus data and decode."""
         if not self.is_connected():
             raise ConnectionError("Device not connected")
@@ -72,7 +80,7 @@ class ModbusBase(ABC):
             "Holding Register": "read_holding_registers",
             "Input Register": "read_input_registers",
             "Coil": "read_coils",
-            "Discrete Input": "read_discrete_inputs"
+            "Discrete Input": "read_discrete_inputs",
         }
 
         if reg_type not in func_map:
@@ -83,13 +91,14 @@ class ModbusBase(ABC):
         # 3.0+ uses slave= or device_id= depending on minor version, try inspection
         try:
             import inspect
+
             sig = inspect.signature(getattr(self.client, func_map[reg_type]))
             if "device_id" in sig.parameters:
                 kwargs["device_id"] = slave
             elif "slave" in sig.parameters:
                 kwargs["slave"] = slave
             else:
-                kwargs["unit"] = slave # Fallback for <3.0
+                kwargs["unit"] = slave  # Fallback for <3.0
         except Exception:
             kwargs["slave"] = slave
 
@@ -120,11 +129,14 @@ class ModbusBase(ABC):
         kwargs = {}
         try:
             import inspect
+
             if reg_type == "Coil":
                 func_name = "write_coil"
             else:
                 encoded_preview = self.encode_data(value, data_type)
-                func_name = "write_registers" if isinstance(encoded_preview, list) else "write_register"
+                func_name = (
+                    "write_registers" if isinstance(encoded_preview, list) else "write_register"
+                )
             sig = inspect.signature(getattr(self.client, func_name))
             if "device_id" in sig.parameters:
                 kwargs["device_id"] = slave
@@ -171,8 +183,9 @@ class ModbusBase(ABC):
         return struct.pack(">HH", regs[0], regs[1])
 
     @staticmethod
-    def decode_data(regs: List[int], data_type: str,
-                    data_format: str = "ABCD") -> Union[int, float, List[int]]:
+    def decode_data(
+        regs: List[int], data_type: str, data_format: str = "ABCD"
+    ) -> Union[int, float, List[int]]:
         """Decode register values based on data type and byte order.
 
         Supports both legacy names (Decimal, Float, Swapped Float) for Tester
@@ -240,7 +253,7 @@ class ModbusBase(ABC):
 
 class ModbusRTU(ModbusBase):
     """Modbus RTU (Serial) client."""
-    
+
     def connect(
         self,
         port: str,
@@ -248,11 +261,11 @@ class ModbusRTU(ModbusBase):
         bytesize: int = 8,
         parity: str = "N",
         stopbits: int = 1,
-        timeout: int = 2
+        timeout: int = 2,
     ) -> bool:
         """
         Connect to a Modbus RTU device via serial port.
-        
+
         Args:
             port: Serial port (e.g., /dev/ttyUSB0)
             baudrate: Communication speed (default: 9600)
@@ -260,7 +273,7 @@ class ModbusRTU(ModbusBase):
             parity: Parity check - N/E/O (default: N)
             stopbits: Stop bits (default: 1)
             timeout: Read timeout in seconds (default: 2)
-            
+
         Returns:
             True if connected successfully
         """
@@ -269,6 +282,7 @@ class ModbusRTU(ModbusBase):
 
         # ── Kiểm tra quyền truy cập cổng serial ──
         import os
+
         if os.path.exists(port) and not os.access(port, os.R_OK | os.W_OK):
             logger.warning(f"⚠️ Không có quyền truy cập {port}, đang thử cấp quyền...")
             if not self._try_fix_permission(port):
@@ -285,9 +299,9 @@ class ModbusRTU(ModbusBase):
             bytesize=int(bytesize),
             parity=parity,
             stopbits=int(stopbits),
-            timeout=timeout
+            timeout=timeout,
         )
-        
+
         if self.client.connect():
             logger.info(f"✅ Connected to RTU device at {port}")
             return True
@@ -300,6 +314,7 @@ class ModbusRTU(ModbusBase):
         """Thử cấp quyền truy cập cổng serial qua pkexec (hộp thoại nhập mật khẩu đồ hoạ)."""
         import subprocess
         import shutil
+
         # Ưu tiên pkexec (có GUI prompt), fallback sang gksu/kdesu
         for sudo_gui in ("pkexec", "gksudo", "kdesudo"):
             if shutil.which(sudo_gui):
@@ -312,6 +327,7 @@ class ModbusRTU(ModbusBase):
                         logger.info(f"✅ Đã cấp quyền truy cập {port} thành công")
                         # Thêm user vào nhóm dialout (cho các lần sau)
                         import os
+
                         user = os.environ.get("USER", "")
                         if user:
                             subprocess.run(
@@ -331,6 +347,7 @@ class Modbus(ModbusRTU):
     Legacy Modbus class for backward compatibility.
     Inherits from ModbusRTU to maintain existing behavior.
     """
+
     pass
 
 

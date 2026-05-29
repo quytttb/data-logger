@@ -109,6 +109,7 @@ class DatabaseWorker(QObject):
         from alembic import command
         from alembic.config import Config
         from core._paths import ROOT_DIR
+
         try:
             logger.info("Running Alembic migration (upgrade head)...")
             alembic_cfg = Config(f"{ROOT_DIR}/alembic.ini")
@@ -121,6 +122,7 @@ class DatabaseWorker(QObject):
     def _batch_insert(self, batch: list[SensorData]) -> None:
         """Ghi batch bản ghi vào DB trong 1 transaction."""
         import time
+
         start_t = time.perf_counter()
         session = None
         try:

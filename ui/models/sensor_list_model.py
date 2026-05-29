@@ -120,9 +120,7 @@ class SensorListModel(QAbstractListModel):
         session = get_session()
         try:
             self.beginResetModel()
-            self._sensors = list(session.exec(
-                select(Sensor).order_by(Sensor.id)
-            ).all())
+            self._sensors = list(session.exec(select(Sensor).order_by(Sensor.id)).all())
             session.expunge_all()
             self.endResetModel()
             self.countChanged.emit()
@@ -133,11 +131,22 @@ class SensorListModel(QAbstractListModel):
             session.close()
 
     @Slot(str, str, int, int, str, str, str, str, int, int, bool, str, str)
-    def add_sensor(self, name: str, unit: str, slave_id: int,
-                   register_address: int, register_type: str,
-                   data_type: str, data_format: str, coefficient: str,
-                   poll_interval: int, report_index: int, active: bool,
-                   min_threshold_str: str, max_threshold_str: str):
+    def add_sensor(
+        self,
+        name: str,
+        unit: str,
+        slave_id: int,
+        register_address: int,
+        register_type: str,
+        data_type: str,
+        data_format: str,
+        coefficient: str,
+        poll_interval: int,
+        report_index: int,
+        active: bool,
+        min_threshold_str: str,
+        max_threshold_str: str,
+    ):
         errors = self._validate_fields(name, slave_id, register_address)
         if errors:
             self.messageSent.emit("Validation error", "\n".join(errors))
@@ -157,17 +166,23 @@ class SensorListModel(QAbstractListModel):
 
             sensor = Sensor(
                 sensor_type=resolved_type,
-                name=name.strip(), unit=unit.strip() if resolved_type == "ANALOG" else "",
+                name=name.strip(),
+                unit=unit.strip() if resolved_type == "ANALOG" else "",
                 slave_id=slave_id,
-                register_address=register_address, register_type=register_type,
+                register_address=register_address,
+                register_type=register_type,
                 data_type=data_type if resolved_type == "ANALOG" else "int16",
                 data_format=data_format if resolved_type == "ANALOG" else "AB",
                 coefficient=coefficient.strip() or "{}",
                 poll_interval=max(1, poll_interval),
                 report_index=report_index if resolved_type == "ANALOG" else 0,
                 active=active,
-                min_threshold=self._parse_threshold(min_threshold_str) if resolved_type == "ANALOG" else None,
-                max_threshold=self._parse_threshold(max_threshold_str) if resolved_type == "ANALOG" else None,
+                min_threshold=self._parse_threshold(min_threshold_str)
+                if resolved_type == "ANALOG"
+                else None,
+                max_threshold=self._parse_threshold(max_threshold_str)
+                if resolved_type == "ANALOG"
+                else None,
             )
             session.add(sensor)
             session.commit()
@@ -187,12 +202,23 @@ class SensorListModel(QAbstractListModel):
             session.close()
 
     @Slot(int, str, str, int, int, str, str, str, str, int, int, bool, str, str)
-    def update_sensor(self, sensor_id: int, name: str, unit: str,
-                      slave_id: int, register_address: int,
-                      register_type: str, data_type: str,
-                      data_format: str, coefficient: str,
-                      poll_interval: int, report_index: int, active: bool,
-                      min_threshold_str: str, max_threshold_str: str):
+    def update_sensor(
+        self,
+        sensor_id: int,
+        name: str,
+        unit: str,
+        slave_id: int,
+        register_address: int,
+        register_type: str,
+        data_type: str,
+        data_format: str,
+        coefficient: str,
+        poll_interval: int,
+        report_index: int,
+        active: bool,
+        min_threshold_str: str,
+        max_threshold_str: str,
+    ):
         errors = self._validate_fields(name, slave_id, register_address)
         if errors:
             self.messageSent.emit("Validation error", "\n".join(errors))
@@ -226,8 +252,12 @@ class SensorListModel(QAbstractListModel):
             sensor.poll_interval = max(1, poll_interval)
             sensor.report_index = report_index if resolved_type == "ANALOG" else 0
             sensor.active = active
-            sensor.min_threshold = self._parse_threshold(min_threshold_str) if resolved_type == "ANALOG" else None
-            sensor.max_threshold = self._parse_threshold(max_threshold_str) if resolved_type == "ANALOG" else None
+            sensor.min_threshold = (
+                self._parse_threshold(min_threshold_str) if resolved_type == "ANALOG" else None
+            )
+            sensor.max_threshold = (
+                self._parse_threshold(max_threshold_str) if resolved_type == "ANALOG" else None
+            )
             session.commit()
 
             session.refresh(sensor)
@@ -254,12 +284,14 @@ class SensorListModel(QAbstractListModel):
             sensor = session.get(Sensor, sensor_id)
             if sensor:
                 # Remove all links involving this sensor
-                links = list(session.exec(
-                    select(AnalogDigitalLink).where(
-                        (AnalogDigitalLink.analog_sensor_id == sensor_id) |
-                        (AnalogDigitalLink.digital_sensor_id == sensor_id)
-                    )
-                ).all())
+                links = list(
+                    session.exec(
+                        select(AnalogDigitalLink).where(
+                            (AnalogDigitalLink.analog_sensor_id == sensor_id)
+                            | (AnalogDigitalLink.digital_sensor_id == sensor_id)
+                        )
+                    ).all()
+                )
                 for link in links:
                     session.delete(link)
 
@@ -287,15 +319,23 @@ class SensorListModel(QAbstractListModel):
         if 0 <= index < len(self._sensors):
             s = self._sensors[index]
             return {
-                "sensorId": s.id, "name": s.name, "unit": s.unit,
-                "slaveId": s.slave_id, "registerAddress": s.register_address,
-                "registerType": s.register_type, "dataType": s.data_type,
-                "dataFormat": s.data_format, "coefficient": s.coefficient or "{}",
+                "sensorId": s.id,
+                "name": s.name,
+                "unit": s.unit,
+                "slaveId": s.slave_id,
+                "registerAddress": s.register_address,
+                "registerType": s.register_type,
+                "dataType": s.data_type,
+                "dataFormat": s.data_format,
+                "coefficient": s.coefficient or "{}",
                 "pollInterval": s.poll_interval,
-                "reportIndex": s.report_index, "active": s.active,
+                "reportIndex": s.report_index,
+                "active": s.active,
                 "minThreshold": s.min_threshold if s.min_threshold is not None else "",
                 "maxThreshold": s.max_threshold if s.max_threshold is not None else "",
-                "sensorType": s.sensor_type.value if hasattr(s.sensor_type, "value") else s.sensor_type,
+                "sensorType": s.sensor_type.value
+                if hasattr(s.sensor_type, "value")
+                else s.sensor_type,
             }
         return {}
 
@@ -326,12 +366,14 @@ class SensorListModel(QAbstractListModel):
         """Return all active DI sensors (for attach dropdown)."""
         session = get_session()
         try:
-            sensors = list(session.exec(
-                select(Sensor)
-                .where(Sensor.sensor_type == "DI")
-                .where(Sensor.active)
-                .order_by(Sensor.name)
-            ).all())
+            sensors = list(
+                session.exec(
+                    select(Sensor)
+                    .where(Sensor.sensor_type == "DI")
+                    .where(Sensor.active)
+                    .order_by(Sensor.name)
+                ).all()
+            )
             return [
                 {
                     "id": s.id,
@@ -352,21 +394,26 @@ class SensorListModel(QAbstractListModel):
         """Return DO sensors that are either unlinked or already linked to analog_id."""
         session = get_session()
         try:
-            all_do = list(session.exec(
-                select(Sensor)
-                .where(Sensor.sensor_type == "DO")
-                .where(Sensor.active)
-                .order_by(Sensor.name)
-            ).all())
+            all_do = list(
+                session.exec(
+                    select(Sensor)
+                    .where(Sensor.sensor_type == "DO")
+                    .where(Sensor.active)
+                    .order_by(Sensor.name)
+                ).all()
+            )
 
             # Find DO sensor IDs already linked to other analogs
             linked_to_other: set[int] = set()
             if all_do:
                 do_ids = [s.id for s in all_do]
-                all_links = list(session.exec(
-                    select(AnalogDigitalLink)
-                    .where(AnalogDigitalLink.digital_sensor_id.in_(do_ids))
-                ).all())
+                all_links = list(
+                    session.exec(
+                        select(AnalogDigitalLink).where(
+                            AnalogDigitalLink.digital_sensor_id.in_(do_ids)
+                        )
+                    ).all()
+                )
                 for link in all_links:
                     if link.analog_sensor_id != analog_id:
                         linked_to_other.add(link.digital_sensor_id)
@@ -392,28 +439,32 @@ class SensorListModel(QAbstractListModel):
         """Return link dicts for a given analog sensor."""
         session = get_session()
         try:
-            links = list(session.exec(
-                select(AnalogDigitalLink)
-                .where(AnalogDigitalLink.analog_sensor_id == analog_id)
-                .order_by(AnalogDigitalLink.id)
-            ).all())
+            links = list(
+                session.exec(
+                    select(AnalogDigitalLink)
+                    .where(AnalogDigitalLink.analog_sensor_id == analog_id)
+                    .order_by(AnalogDigitalLink.id)
+                ).all()
+            )
             result = []
             for link in links:
                 ds = session.get(Sensor, link.digital_sensor_id)
                 if not ds:
                     continue
                 st = ds.sensor_type.value if hasattr(ds.sensor_type, "value") else ds.sensor_type
-                result.append({
-                    "id": link.id,
-                    "ioType": st,
-                    "label": ds.name,
-                    "diType": link.di_type or "",
-                    "slaveId": ds.slave_id,
-                    "address": ds.register_address,
-                    "triggerOnMax": link.trigger_on_max,
-                    "triggerOnMin": link.trigger_on_min,
-                    "active": ds.active,
-                })
+                result.append(
+                    {
+                        "id": link.id,
+                        "ioType": st,
+                        "label": ds.name,
+                        "diType": link.di_type or "",
+                        "slaveId": ds.slave_id,
+                        "address": ds.register_address,
+                        "triggerOnMax": link.trigger_on_max,
+                        "triggerOnMin": link.trigger_on_min,
+                        "active": ds.active,
+                    }
+                )
             return result
         except Exception as e:
             logger.error("get_analog_links error: %s", e)
@@ -449,8 +500,9 @@ class SensorListModel(QAbstractListModel):
             session.close()
 
     @Slot(int, int, bool, bool)
-    def attach_do(self, analog_id: int, do_sensor_id: int,
-                  trigger_on_max: bool, trigger_on_min: bool):
+    def attach_do(
+        self, analog_id: int, do_sensor_id: int, trigger_on_max: bool, trigger_on_min: bool
+    ):
         """Create a link between an ANALOG and a DO sensor."""
         session = get_session()
         try:

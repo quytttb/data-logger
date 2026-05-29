@@ -50,7 +50,7 @@ class FtpWorker(QObject):
 
         while self._is_running:
             self.heartbeat.emit("FtpWorker")
-            
+
             try:
                 cleanup_old_report_files()
                 self._generate_and_send()
@@ -196,10 +196,12 @@ class FtpWorker(QObject):
                     break  # Dừng ngay khi worker bị yêu cầu stop
 
                 from core.txt_generator import REPORT_DIR
+
                 filepath = str(REPORT_DIR / log.filename)
 
                 # Bỏ qua file không còn tồn tại trên đĩa
                 import os
+
                 if not os.path.isfile(filepath):
                     log.status = "expired"
                     log.error_message = "File not found on disk"
@@ -227,10 +229,7 @@ class FtpWorker(QObject):
                 else:
                     log.retry_count += 1
                     log.error_message = "Retry failed"
-                    logger.warning(
-                        "Retry failed: %s. Pausing backfill.",
-                        log.filename
-                    )
+                    logger.warning("Retry failed: %s. Pausing backfill.", log.filename)
                     self.ftp_status.emit(f"FAIL: {log.filename} (retry)")
                     session.commit()
                     break  # Break out of loop immediately to prevent blocking

@@ -85,14 +85,14 @@ class HistoryModel(QAbstractListModel):
 
 # ── SearchWorker ───────────────────────────────────────────────────────────
 
+
 class SearchWorker(QThread):
     """Truy vấn sensor_data trên thread riêng (read-only)."""
 
     finished = Signal(list)
     error = Signal(str)
 
-    def __init__(self, from_dt: datetime, to_dt: datetime,
-                 sensor_id: int = 0, parent=None):
+    def __init__(self, from_dt: datetime, to_dt: datetime, sensor_id: int = 0, parent=None):
         super().__init__(parent)
         self._from_dt = from_dt
         self._to_dt = to_dt
@@ -101,17 +101,11 @@ class SearchWorker(QThread):
     def run(self):
         session = get_session()
         try:
-            sensors = {
-                s.id: s
-                for s in session.exec(select(Sensor)).all()
-            }
+            sensors = {s.id: s for s in session.exec(select(Sensor)).all()}
 
-            stmt = (
-                select(SensorData)
-                .where(
-                    SensorData.recorded_at >= self._from_dt,
-                    SensorData.recorded_at <= self._to_dt,
-                )
+            stmt = select(SensorData).where(
+                SensorData.recorded_at >= self._from_dt,
+                SensorData.recorded_at <= self._to_dt,
             )
             if self._sensor_id > 0:
                 stmt = stmt.where(SensorData.sensor_id == self._sensor_id)
@@ -122,13 +116,17 @@ class SearchWorker(QThread):
             items = []
             for r in rows:
                 s = sensors.get(r.sensor_id)
-                items.append({
-                    "recorded_at": r.recorded_at.strftime("%d/%m/%Y %H:%M:%S") if r.recorded_at else "",
-                    "sensor_name": s.name if s else f"ID#{r.sensor_id}",
-                    "unit": s.unit if s else "",
-                    "value": str(round(r.value, 4)) if r.value is not None else "---",
-                    "raw_value": str(r.raw_value) if r.raw_value is not None else "---",
-                })
+                items.append(
+                    {
+                        "recorded_at": r.recorded_at.strftime("%d/%m/%Y %H:%M:%S")
+                        if r.recorded_at
+                        else "",
+                        "sensor_name": s.name if s else f"ID#{r.sensor_id}",
+                        "unit": s.unit if s else "",
+                        "value": str(round(r.value, 4)) if r.value is not None else "---",
+                        "raw_value": str(r.raw_value) if r.raw_value is not None else "---",
+                    }
+                )
 
             self.finished.emit(items)
         except Exception as e:
@@ -139,6 +137,7 @@ class SearchWorker(QThread):
 
 
 # ── HistoryController ──────────────────────────────────────────────────────
+
 
 class HistoryController(QObject):
     """Điều khiển truy vấn lịch sử (xuất CSV chỉ gọi từ API/script, không có UI)."""
@@ -249,13 +248,15 @@ class HistoryController(QObject):
                     ]
                 )
                 for item in items:
-                    writer.writerow([
-                        item["recorded_at"],
-                        item["sensor_name"],
-                        item["unit"],
-                        item["value"],
-                        item["raw_value"],
-                    ])
+                    writer.writerow(
+                        [
+                            item["recorded_at"],
+                            item["sensor_name"],
+                            item["unit"],
+                            item["value"],
+                            item["raw_value"],
+                        ]
+                    )
 
             logger.info("CSV exported: %s (%d rows)", path, len(items))
         except Exception as e:

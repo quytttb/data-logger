@@ -4,6 +4,7 @@ Chạy local sau khi thay đổi schema để Central App regenerate client.
 
     python tools/dump_openapi.py
 """
+
 from __future__ import annotations
 
 import json
@@ -51,7 +52,7 @@ def _to_yaml(obj, indent: int = 0) -> str:
 def _safe_key(k: str) -> bool:
     if not k:
         return False
-    if any(c in k for c in ': #-{}[],&*!|>\'"%@`'):
+    if any(c in k for c in ": #-{}[],&*!|>'\"%@`"):
         return False
     return True
 

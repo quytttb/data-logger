@@ -75,7 +75,9 @@ class MainWindow(QMainWindow):
 
         # Tên app
         brand = QLabel("⬡ DATALOGGER")
-        brand.setStyleSheet("font-size: 18px; font-weight: 900; color: #b0c6ff; letter-spacing: 2px;")
+        brand.setStyleSheet(
+            "font-size: 18px; font-weight: 900; color: #b0c6ff; letter-spacing: 2px;"
+        )
         header_layout.addWidget(brand)
 
         # Tên trạm
@@ -195,11 +197,17 @@ class MainWindow(QMainWindow):
 
             sensor_list = [
                 {
-                    "id": s.id, "name": s.name, "unit": s.unit,
-                    "slave_id": s.slave_id, "register_address": s.register_address,
-                    "register_type": s.register_type, "data_type": s.data_type,
-                    "data_format": s.data_format, "coefficient": s.coefficient,
-                } for s in sensors
+                    "id": s.id,
+                    "name": s.name,
+                    "unit": s.unit,
+                    "slave_id": s.slave_id,
+                    "register_address": s.register_address,
+                    "register_type": s.register_type,
+                    "data_type": s.data_type,
+                    "data_format": s.data_format,
+                    "coefficient": s.coefficient,
+                }
+                for s in sensors
             ]
 
             if sensor_list:

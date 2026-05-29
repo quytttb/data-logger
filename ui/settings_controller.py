@@ -146,7 +146,6 @@ class SettingsController(QObject):
     def serialStopbits(self, v):
         self._cfg.serial_stopbits = v
 
-
     # ── Slots ──────────────────────────────────────────────────────────────
 
     @Slot()
@@ -219,8 +218,9 @@ class SettingsController(QObject):
             session.close()
 
     @Slot(str, int, int, str, int)
-    def save_serial_config(self, port: str, baudrate: int,
-                           bytesize: int, parity: str, stopbits: int):
+    def save_serial_config(
+        self, port: str, baudrate: int, bytesize: int, parity: str, stopbits: int
+    ):
         """Lưu cấu hình serial (từ Tester page) không validate trạm/sFTP."""
         session = get_session()
         try:

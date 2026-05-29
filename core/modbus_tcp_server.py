@@ -248,9 +248,15 @@ class ModbusTcpServerService(QObject):
             with self._lock:
                 initial = [_uint16_wire_to_pymodbus_int(x) for x in self._registers]
 
-            coils_data = [SimData(address=0, values=False, datatype=DataType.BITS, count=_DI_DO_BLOCK_BITS)]
-            discrete_data = [SimData(address=0, values=False, datatype=DataType.BITS, count=_DI_DO_BLOCK_BITS)]
-            holding_data = [SimData(address=0, values=initial, datatype=DataType.REGISTERS, count=HR_TOTAL)]
+            coils_data = [
+                SimData(address=0, values=False, datatype=DataType.BITS, count=_DI_DO_BLOCK_BITS)
+            ]
+            discrete_data = [
+                SimData(address=0, values=False, datatype=DataType.BITS, count=_DI_DO_BLOCK_BITS)
+            ]
+            holding_data = [
+                SimData(address=0, values=initial, datatype=DataType.REGISTERS, count=HR_TOTAL)
+            ]
             input_data = [SimData(address=0, values=0, datatype=DataType.REGISTERS, count=16)]
 
             dev = SimDevice(
@@ -265,7 +271,9 @@ class ModbusTcpServerService(QObject):
             self._set_state(self.STATE_LISTENING, "")
             logger.info(
                 "Modbus TCP server listening %s:%d (unit_id=%d)",
-                self._bind, self._port, self._unit_id,
+                self._bind,
+                self._port,
+                self._unit_id,
             )
             await self._server.serve_forever()
         except OSError as e:
@@ -386,7 +394,7 @@ class ModbusTcpServerService(QObject):
 
     def get_registers(self, addr: int, count: int) -> list[int]:
         with self._lock:
-            return list(self._registers[addr:addr + count])
+            return list(self._registers[addr : addr + count])
 
     # ── Internal ───────────────────────────────────────────────────────────
 
@@ -423,7 +431,9 @@ class ModbusTcpServerService(QObject):
             if src_count <= 0:
                 return None
             with self._lock:
-                slice_vals = [int(v) & 0xFFFF for v in self._registers[address:address + src_count]]
+                slice_vals = [
+                    int(v) & 0xFFFF for v in self._registers[address : address + src_count]
+                ]
             end_dst = min(offset + src_count, len(current_registers))
             for i in range(end_dst - offset):
                 current_registers[offset + i] = slice_vals[i]
@@ -431,12 +441,18 @@ class ModbusTcpServerService(QObject):
 
         if function_code == 2:  # FC02: Read Discrete Inputs
             return self._read_bit_block(
-                address, count, current_registers, self._di_bits,
+                address,
+                count,
+                current_registers,
+                self._di_bits,
             )
 
         if function_code == 1:  # FC01: Read Coils
             return self._read_bit_block(
-                address, count, current_registers, self._do_bits,
+                address,
+                count,
+                current_registers,
+                self._do_bits,
             )
 
         return None

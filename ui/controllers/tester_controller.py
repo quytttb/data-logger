@@ -11,24 +11,28 @@ logger = logging.getLogger(__name__)
 
 class _ConnectWorker(QThread):
     """Chạy modbus.connect() trong background để tránh block UI."""
-    finished = Signal(bool, str)   # (success, port)
-    error    = Signal(str)         # error message
+
+    finished = Signal(bool, str)  # (success, port)
+    error = Signal(str)  # error message
 
     def __init__(self, modbus, port, baudrate, bytesize, parity, stopbits, parent=None):
         super().__init__(parent)
-        self._modbus   = modbus
-        self._port     = port
+        self._modbus = modbus
+        self._port = port
         self._baudrate = baudrate
         self._bytesize = bytesize
-        self._parity   = parity
+        self._parity = parity
         self._stopbits = stopbits
 
     def run(self):
         try:
             ok = self._modbus.connect(
-                port=self._port, baudrate=self._baudrate,
-                bytesize=self._bytesize, parity=self._parity,
-                stopbits=self._stopbits, timeout=1,
+                port=self._port,
+                baudrate=self._baudrate,
+                bytesize=self._bytesize,
+                parity=self._parity,
+                stopbits=self._stopbits,
+                timeout=1,
             )
             self.finished.emit(bool(ok), self._port)
         except Exception as exc:
@@ -37,23 +41,23 @@ class _ConnectWorker(QThread):
 
 
 class TesterController(QObject):
-    connectionChanged  = Signal(bool)
-    connectingChanged  = Signal(bool)
-    scanningChanged    = Signal(bool)
-    stoppingChanged    = Signal()
-    messageReceived    = Signal(str, str, bool)  # title, message, isError → QML: Dialog vs toast
+    connectionChanged = Signal(bool)
+    connectingChanged = Signal(bool)
+    scanningChanged = Signal(bool)
+    stoppingChanged = Signal()
+    messageReceived = Signal(str, str, bool)  # title, message, isError → QML: Dialog vs toast
     scanResultReceived = Signal(int, str)
-    scanProgress       = Signal(int, int)
-    portsChanged       = Signal()
+    scanProgress = Signal(int, int)
+    portsChanged = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.modbus = create_modbus_client()
-        self._is_connected   = False
-        self._is_connecting  = False
-        self._is_scanning    = False
-        self._is_stopping    = False
-        self._scan_worker    = None
+        self._is_connected = False
+        self._is_connecting = False
+        self._is_scanning = False
+        self._is_stopping = False
+        self._scan_worker = None
         self._connect_worker = None
         self._ports: list[str] = []
         self._refresh_ports()
@@ -63,11 +67,12 @@ class TesterController(QObject):
     def _refresh_ports(self):
         try:
             import glob
+
             ports = serial.tools.list_ports.comports()
             # Lọc bỏ các cổng chung chung không khả dụng (ttyS* n/a)
-            valid_ports = [p.device for p in ports if p.description != 'n/a' or "USB" in p.device]
+            valid_ports = [p.device for p in ports if p.description != "n/a" or "USB" in p.device]
             self._ports = sorted(valid_ports)
-            
+
             pts_ports = [p for p in glob.glob("/dev/pts/*") if p != "/dev/pts/ptmx"]
             for p in sorted(pts_ports):
                 if p not in self._ports:
@@ -151,8 +156,15 @@ class TesterController(QObject):
         self.messageReceived.emit("Notice", "Disconnected.", False)
 
     @Slot(str, int, int, int, str, str, result=str)
-    def read_single(self, reg_type: str, addr: int, count: int, slave: int,
-                    data_type: str, data_format: str = "ABCD") -> str:
+    def read_single(
+        self,
+        reg_type: str,
+        addr: int,
+        count: int,
+        slave: int,
+        data_type: str,
+        data_format: str = "ABCD",
+    ) -> str:
         if not self._is_connected:
             return "ERR: Not connected"
         try:
@@ -163,7 +175,9 @@ class TesterController(QObject):
             return f"ERR: {e}"
 
     @Slot(str, int, str, int, str, result=str)
-    def write_single(self, reg_type: str, addr: int, value_str: str, slave: int, data_type: str) -> str:
+    def write_single(
+        self, reg_type: str, addr: int, value_str: str, slave: int, data_type: str
+    ) -> str:
         if not self._is_connected:
             return "ERR: Not connected"
         try:
@@ -180,9 +194,16 @@ class TesterController(QObject):
             return f"ERR: {e}"
 
     @Slot(int, int, int, str, str, int, str)
-    def start_scan(self, start_addr: int, end_addr: int, count: int,
-                   reg_type: str, data_type: str, slave: int,
-                   data_format: str = "ABCD"):
+    def start_scan(
+        self,
+        start_addr: int,
+        end_addr: int,
+        count: int,
+        reg_type: str,
+        data_type: str,
+        slave: int,
+        data_format: str = "ABCD",
+    ):
         if not self._is_connected:
             self.messageReceived.emit("Error", "Not connected to Modbus.", True)
             return
@@ -190,8 +211,7 @@ class TesterController(QObject):
             return
 
         self._scan_worker = ScanWorker(
-            self.modbus, start_addr, end_addr, count,
-            reg_type, data_type, slave, data_format
+            self.modbus, start_addr, end_addr, count, reg_type, data_type, slave, data_format
         )
         self._scan_worker.progress.connect(self.scanProgress)
         self._scan_worker.result.connect(self.scanResultReceived)

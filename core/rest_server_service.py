@@ -51,9 +51,7 @@ class RestServerService(QObject):
         self._last_error = ""
         self._readings_provider: Callable[[], dict[str, Any]] | None = None
 
-    def set_readings_provider(
-        self, provider: Callable[[], dict[str, Any]] | None
-    ) -> None:
+    def set_readings_provider(self, provider: Callable[[], dict[str, Any]] | None) -> None:
         """MonitorController.readings_snapshot — callable từ REST worker thread."""
         with self._lock:
             self._readings_provider = provider

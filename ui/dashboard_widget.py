@@ -35,9 +35,7 @@ class SensorCard(QWidget):
         val_row = QHBoxLayout()
         val_row.setSpacing(8)
         self._lblValue = QLabel("—")
-        self._lblValue.setStyleSheet(
-            "color: #e5e2e1; font-size: 72px; font-weight: 900;"
-        )
+        self._lblValue.setStyleSheet("color: #e5e2e1; font-size: 72px; font-weight: 900;")
         val_row.addWidget(self._lblValue)
 
         self._lblUnit = QLabel(unit)

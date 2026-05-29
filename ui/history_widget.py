@@ -84,9 +84,7 @@ class HistoryWidget(QWidget):
         # === Bảng ===
         self._table = QTableWidget()
         self._table.setColumnCount(5)
-        self._table.setHorizontalHeaderLabels([
-            "THỜI GIAN", "CẢM BIẾN", "GIÁ TRỊ", "ĐƠN VỊ", "RAW"
-        ])
+        self._table.setHorizontalHeaderLabels(["THỜI GIAN", "CẢM BIẾN", "GIÁ TRỊ", "ĐƠN VỊ", "RAW"])
 
         header = self._table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
@@ -156,7 +154,9 @@ class HistoryWidget(QWidget):
             return
 
         filepath, _ = QFileDialog.getSaveFileName(
-            self, "Xuất CSV", f"history_{datetime.now():%Y%m%d_%H%M}.csv",
+            self,
+            "Xuất CSV",
+            f"history_{datetime.now():%Y%m%d_%H%M}.csv",
             "CSV Files (*.csv)",
         )
         if not filepath:

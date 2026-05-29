@@ -5,14 +5,24 @@ import serial
 import struct
 import time
 from PySide6.QtWidgets import (
-    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QLabel, QDoubleSpinBox, QPushButton, QComboBox, QGroupBox, QGridLayout,
-    QCheckBox
+    QApplication,
+    QMainWindow,
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QDoubleSpinBox,
+    QPushButton,
+    QComboBox,
+    QGroupBox,
+    QGridLayout,
+    QCheckBox,
 )
 from PySide6.QtCore import QTimer
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("ModbusSimulator")
+
 
 def calculate_crc(data: bytes) -> bytes:
     crc = 0xFFFF
@@ -26,58 +36,62 @@ def calculate_crc(data: bytes) -> bytes:
                 crc >>= 1
     return struct.pack("<H", crc)
 
+
 class ModbusSimWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Data Logger - Modbus Slave Simulator (Raw Serial)")
         self.resize(500, 400)
-        
+
         self.server_thread = None
         self.is_running = False
-        
+
         self.temp_val = 25.5
         self.hum_val = 60.0
         self.di10_val = False
         self.di11_val = False
         self.do0_val = False
         self.do1_val = False
-        
+
         # UI Setup
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         main_layout = QVBoxLayout(central_widget)
-        
+
         # --- Connection Setup ---
         conn_group = QGroupBox("Cấu hình Cổng Serial (Slave)")
         conn_layout = QHBoxLayout()
-        
+
         import serial.tools.list_ports
         import glob
-        ports = [p.device for p in sorted(serial.tools.list_ports.comports(), key=lambda x: x.device)]
+
+        ports = [
+            p.device for p in sorted(serial.tools.list_ports.comports(), key=lambda x: x.device)
+        ]
         pts_ports = [p for p in glob.glob("/dev/pts/*") if p != "/dev/pts/ptmx"]
         for p in sorted(pts_ports):
             if p not in ports:
                 ports.append(p)
         if not ports:
             ports = ["/dev/pts/2", "/dev/ttyUSB1"]
-            
+
         self.port_input = QComboBox()
         self.port_input.setEditable(True)
         self.port_input.addItems(ports)
         conn_layout.addWidget(QLabel("Port:"))
         conn_layout.addWidget(self.port_input)
-        
+
         self.btn_start = QPushButton("Start Simulator")
         self.btn_start.clicked.connect(self.toggle_server)
         conn_layout.addWidget(self.btn_start)
-        
+
         conn_group.setLayout(conn_layout)
         main_layout.addWidget(conn_group)
-        
+
         # --- Registers Setup ---
         reg_group = QGroupBox("Giả lập Dữ liệu (Slave ID 1)")
         reg_layout = QGridLayout()
-        
+
         reg_layout.addWidget(QLabel("Nhiệt độ (IR 200, Float32):"), 0, 0)
         self.spin_temp = QDoubleSpinBox()
         self.spin_temp.setRange(-100.0, 1000.0)
@@ -95,7 +109,7 @@ class ModbusSimWindow(QMainWindow):
         self.spin_hum.setValue(self.hum_val)
         self.spin_hum.valueChanged.connect(self.update_values)
         reg_layout.addWidget(self.spin_hum, 1, 1)
-        
+
         reg_layout.addWidget(QLabel("Trạng thái (DI 10, DI 11):"), 2, 0)
         di_layout = QHBoxLayout()
         self.chk_di10 = QCheckBox("DI 10 (Lỗi)")
@@ -105,7 +119,7 @@ class ModbusSimWindow(QMainWindow):
         di_layout.addWidget(self.chk_di10)
         di_layout.addWidget(self.chk_di11)
         reg_layout.addLayout(di_layout, 2, 1)
-        
+
         reg_layout.addWidget(QLabel("Đèn báo DO 0 (Coil 0):"), 3, 0)
         self.lbl_coil0 = QLabel("⚫")
         self.lbl_coil0.setStyleSheet("font-size: 32px; color: gray;")
@@ -115,10 +129,10 @@ class ModbusSimWindow(QMainWindow):
         self.lbl_coil1 = QLabel("⚫")
         self.lbl_coil1.setStyleSheet("font-size: 32px; color: gray;")
         reg_layout.addWidget(self.lbl_coil1, 4, 1)
-        
+
         reg_group.setLayout(reg_layout)
         main_layout.addWidget(reg_group)
-        
+
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_ui)
         self.timer.start(500)
@@ -164,8 +178,8 @@ class ModbusSimWindow(QMainWindow):
                 while self.is_running:
                     if ser.in_waiting:
                         buffer.extend(ser.read(ser.in_waiting))
-                        
-                    if len(buffer) >= 8: # Modbus RTU requests are usually 8 bytes
+
+                    if len(buffer) >= 8:  # Modbus RTU requests are usually 8 bytes
                         req = buffer[:8]
                         # Check CRC
                         if calculate_crc(req[:6]) == req[6:8]:
@@ -173,13 +187,13 @@ class ModbusSimWindow(QMainWindow):
                             fc = req[1]
                             addr = struct.unpack(">H", req[2:4])[0]
                             val_count = struct.unpack(">H", req[4:6])[0]
-                            
+
                             response = bytearray()
                             if slave_id == 1:
-                                if fc == 4: # Read Input Registers
+                                if fc == 4:  # Read Input Registers
                                     response.append(slave_id)
                                     response.append(fc)
-                                    response.append(val_count * 2) # Byte count
+                                    response.append(val_count * 2)  # Byte count
                                     # Emulate Float32 at address 200 and 202 (ABCD endian)
                                     b_temp = struct.pack(">f", self.temp_val)
                                     b_hum = struct.pack(">f", self.hum_val)
@@ -198,7 +212,7 @@ class ModbusSimWindow(QMainWindow):
                                     response.extend(calculate_crc(response))
                                     ser.write(response)
 
-                                elif fc == 1: # Read Coils
+                                elif fc == 1:  # Read Coils
                                     response.append(slave_id)
                                     response.append(fc)
                                     byte_count = (val_count + 7) // 8
@@ -211,16 +225,16 @@ class ModbusSimWindow(QMainWindow):
                                             bit_val = self.do0_val
                                         elif cur_addr == 1:
                                             bit_val = self.do1_val
-                                        
+
                                         if bit_val:
                                             byte_idx = i // 8
                                             bit_idx = i % 8
-                                            bytes_arr[byte_idx] |= (1 << bit_idx)
+                                            bytes_arr[byte_idx] |= 1 << bit_idx
                                     response.extend(bytes_arr)
                                     response.extend(calculate_crc(response))
                                     ser.write(response)
-                                    
-                                elif fc == 2: # Read Discrete Inputs
+
+                                elif fc == 2:  # Read Discrete Inputs
                                     response.append(slave_id)
                                     response.append(fc)
                                     byte_count = (val_count + 7) // 8
@@ -233,24 +247,24 @@ class ModbusSimWindow(QMainWindow):
                                             bit_val = self.di10_val
                                         elif cur_addr == 11:
                                             bit_val = self.di11_val
-                                        
+
                                         if bit_val:
                                             byte_idx = i // 8
                                             bit_idx = i % 8
-                                            bytes_arr[byte_idx] |= (1 << bit_idx)
+                                            bytes_arr[byte_idx] |= 1 << bit_idx
                                     response.extend(bytes_arr)
                                     response.extend(calculate_crc(response))
                                     ser.write(response)
-                                    
-                                elif fc == 5: # Write Single Coil
+
+                                elif fc == 5:  # Write Single Coil
                                     # req[4:6] is value (FF00 = ON, 0000 = OFF)
                                     if addr == 0:
-                                        self.do0_val = (val_count == 0xFF00)
+                                        self.do0_val = val_count == 0xFF00
                                     elif addr == 1:
-                                        self.do1_val = (val_count == 0xFF00)
+                                        self.do1_val = val_count == 0xFF00
                                     # Echo back exactly what was received
                                     ser.write(req)
-                        
+
                         # Shift buffer
                         buffer = buffer[8:]
                     elif len(buffer) > 0 and not ser.in_waiting:
@@ -258,11 +272,12 @@ class ModbusSimWindow(QMainWindow):
                         time.sleep(0.05)
                         if not ser.in_waiting:
                             buffer.clear()
-                    
+
                     time.sleep(0.01)
         except Exception as e:
             logger.error(f"Serial error: {e}")
             self.is_running = False
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

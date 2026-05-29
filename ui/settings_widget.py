@@ -119,10 +119,9 @@ class SettingsWidget(QWidget):
 
         self._sensor_table = QTableWidget()
         self._sensor_table.setColumnCount(9)
-        self._sensor_table.setHorizontalHeaderLabels([
-            "Tên", "Đ.Vị", "Slave", "Reg",
-            "Type", "Data", "Endian", "Hệ Số", "TT10"
-        ])
+        self._sensor_table.setHorizontalHeaderLabels(
+            ["Tên", "Đ.Vị", "Slave", "Reg", "Type", "Data", "Endian", "Hệ Số", "TT10"]
+        )
         h = self._sensor_table.horizontalHeader()
         h.setMinimumHeight(36)
         h.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
@@ -229,18 +228,20 @@ class SettingsWidget(QWidget):
                 name = self._cell(row, 0)
                 if not name:
                     continue
-                session.add(Sensor(
-                    name=name,
-                    unit=self._cell(row, 1),
-                    slave_id=int(self._cell(row, 2) or "1"),
-                    register_address=int(self._cell(row, 3) or "0"),
-                    register_type=self._combo(row, 4),
-                    data_type=self._combo(row, 5),
-                    data_format=self._combo(row, 6),
-                    coefficient=self._cell(row, 7) or "{}",
-                    report_index=int(self._cell(row, 8) or "0"),
-                    active=True,
-                ))
+                session.add(
+                    Sensor(
+                        name=name,
+                        unit=self._cell(row, 1),
+                        slave_id=int(self._cell(row, 2) or "1"),
+                        register_address=int(self._cell(row, 3) or "0"),
+                        register_type=self._combo(row, 4),
+                        data_type=self._combo(row, 5),
+                        data_format=self._combo(row, 6),
+                        coefficient=self._cell(row, 7) or "{}",
+                        report_index=int(self._cell(row, 8) or "0"),
+                        active=True,
+                    )
+                )
 
             session.commit()
             QMessageBox.information(self, "OK", "Đã lưu! Khởi động lại app để áp dụng.")

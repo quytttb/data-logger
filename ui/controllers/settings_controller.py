@@ -42,7 +42,7 @@ class SettingsController(QObject):
 
     def _on_update_complete(self, success, msg):
         self.messageSent.emit("OTA update", msg)
-        
+
     def _on_update_progress(self, pct, msg):
         self.messageSent.emit("OTA progress", f"{pct}%: {msg}")
 
@@ -267,6 +267,7 @@ class SettingsController(QObject):
     def regenerate_rest_token(self):
         """Sinh token mới, persist ngay vào DB (không cần Save Settings)."""
         from core.rest_api import generate_token
+
         session = get_session()
         try:
             cfg = session.exec(select(AppConfig)).first()
@@ -409,7 +410,6 @@ class SettingsController(QObject):
     def serverFileSuffix(self, v):
         self._cfg.server_file_suffix = v
 
-
     # ── Slots ──────────────────────────────────────────────────────────────
 
     @Slot()
@@ -487,21 +487,27 @@ class SettingsController(QObject):
             cfg.rest_api_bind = self._cfg.rest_api_bind
             if self._cfg.rest_api_enabled and not (cfg.rest_api_token or "").strip():
                 from core.rest_api import generate_token
+
                 cfg.rest_api_token = generate_token()
                 logger.info("REST API token auto-generated on first enable.")
             session.commit()
             session.refresh(cfg)
             self._cfg = cfg
-            
+
             # Reset retry_count for failed FTP logs to allow backfilling
             try:
                 from models.report_log import ReportLog
-                failed_logs = session.exec(select(ReportLog).where(ReportLog.status == "failed")).all()
+
+                failed_logs = session.exec(
+                    select(ReportLog).where(ReportLog.status == "failed")
+                ).all()
                 if failed_logs:
                     for log in failed_logs:
                         log.retry_count = 0
                     session.commit()
-                    logger.info("Reset retry_count for %d failed records for backfill.", len(failed_logs))
+                    logger.info(
+                        "Reset retry_count for %d failed records for backfill.", len(failed_logs)
+                    )
             except Exception as e:
                 logger.error("Error resetting retry_count: %s", e)
 
@@ -520,8 +526,9 @@ class SettingsController(QObject):
             session.close()
 
     @Slot(str, int, int, str, int)
-    def save_serial_config(self, port: str, baudrate: int,
-                           bytesize: int, parity: str, stopbits: int):
+    def save_serial_config(
+        self, port: str, baudrate: int, bytesize: int, parity: str, stopbits: int
+    ):
         """Lưu cấu hình serial (từ Tester page) không validate trạm/sFTP."""
         session = get_session()
         try:

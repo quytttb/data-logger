@@ -5,6 +5,7 @@ Revises: a1b2c3d4e5f6
 Create Date: 2026-05-13 17:00:00.000000
 
 """
+
 from typing import Sequence, Union
 
 from alembic import op
@@ -26,14 +27,10 @@ def _column_exists(table: str, column: str) -> bool:
 def upgrade() -> None:
     """Add Modbus TCP server columns (idempotent — safe if upgraded twice)."""
     cols = {
-        "modbus_tcp_enabled":
-            "ALTER TABLE app_config ADD COLUMN modbus_tcp_enabled BOOLEAN NOT NULL DEFAULT 0",
-        "modbus_tcp_port":
-            "ALTER TABLE app_config ADD COLUMN modbus_tcp_port INTEGER NOT NULL DEFAULT 5020",
-        "modbus_tcp_bind":
-            "ALTER TABLE app_config ADD COLUMN modbus_tcp_bind VARCHAR NOT NULL DEFAULT '0.0.0.0'",
-        "modbus_tcp_unit_id":
-            "ALTER TABLE app_config ADD COLUMN modbus_tcp_unit_id INTEGER NOT NULL DEFAULT 1",
+        "modbus_tcp_enabled": "ALTER TABLE app_config ADD COLUMN modbus_tcp_enabled BOOLEAN NOT NULL DEFAULT 0",
+        "modbus_tcp_port": "ALTER TABLE app_config ADD COLUMN modbus_tcp_port INTEGER NOT NULL DEFAULT 5020",
+        "modbus_tcp_bind": "ALTER TABLE app_config ADD COLUMN modbus_tcp_bind VARCHAR NOT NULL DEFAULT '0.0.0.0'",
+        "modbus_tcp_unit_id": "ALTER TABLE app_config ADD COLUMN modbus_tcp_unit_id INTEGER NOT NULL DEFAULT 1",
     }
     for col, sql in cols.items():
         if not _column_exists("app_config", col):

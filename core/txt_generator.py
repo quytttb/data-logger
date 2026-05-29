@@ -73,15 +73,22 @@ def generate_report(
         report_time = datetime.now()
 
     # Chuyển đổi định dạng thời gian từ QML sang Python strftime
-    suffix_fmt_python = suffix_format.replace("yyyy", "%Y").replace("MM", "%m").replace("dd", "%d").replace("HH", "%H").replace("mm", "%M").replace("ss", "%S")
+    suffix_fmt_python = (
+        suffix_format.replace("yyyy", "%Y")
+        .replace("MM", "%m")
+        .replace("dd", "%d")
+        .replace("HH", "%H")
+        .replace("mm", "%M")
+        .replace("ss", "%S")
+    )
     time_str = report_time.strftime(suffix_fmt_python)
-    
+
     # Định dạng tên file: {prefix}{time_str}.txt
     filename = f"{prefix}{time_str}.txt"
     # Fallback to default if prefix is empty and suffix is empty
     if not filename.replace(".txt", ""):
         filename = f"{station_code}_{report_time.strftime('%Y%m%d%H%M%S')}.txt"
-        
+
     filepath = REPORT_DIR / filename
 
     sensor_map = {s["id"]: s for s in sensor_order}
@@ -99,12 +106,12 @@ def generate_report(
         val_str = f"{val:.4f}" if val is not None else ""
         ts = record["recorded_at"]
         ts_str = ts.strftime("%Y%m%d%H%M%S") if isinstance(ts, datetime) else str(ts)
-        
+
         # Xác định trạng thái báo cáo phụ lục thiết bị
         status_code = record.get("status")
         if status_code is None:
             status_code = "00" if val is not None else "02"
-            
+
         lines.append(f"{name}\t{val_str}\t{unit}\t{ts_str}\t{status_code}")
 
     content = "\n".join(lines)

@@ -75,7 +75,13 @@ def _migrate_digital_io(conn, inspector) -> None:
 
     sensor_cols = {c["name"] for c in inspector.get_columns("sensor")}
     if "parent_id" in sensor_cols:
-        conn.execute(text("""
+        if "trigger_on_max" not in sensor_cols:
+            conn.execute(text("ALTER TABLE sensor ADD COLUMN trigger_on_max INTEGER DEFAULT 1"))
+        if "trigger_on_min" not in sensor_cols:
+            conn.execute(text("ALTER TABLE sensor ADD COLUMN trigger_on_min INTEGER DEFAULT 1"))
+
+        conn.execute(
+            text("""
             INSERT INTO sensor (
                 sensor_type, name, unit, slave_id, register_address,
                 register_type, data_type, data_format, coefficient,
@@ -93,7 +99,8 @@ def _migrate_digital_io(conn, inspector) -> None:
                 trigger_on_max, trigger_on_min,
                 active, created_at
             FROM digital_io
-        """))
+        """)
+        )
     conn.execute(text("DROP TABLE digital_io"))
     conn.commit()
 
@@ -118,9 +125,9 @@ def _migrate_analog_digital_link(conn, inspector) -> None:
     if has_trig_min:
         select_cols.append("trigger_on_min")
 
-    rows = conn.execute(text(
-        f"SELECT {', '.join(select_cols)} FROM sensor WHERE parent_id IS NOT NULL"
-    )).fetchall()
+    rows = conn.execute(
+        text(f"SELECT {', '.join(select_cols)} FROM sensor WHERE parent_id IS NOT NULL")
+    ).fetchall()
 
     for row in rows:
         row_dict = dict(zip(select_cols, row))
@@ -133,16 +140,27 @@ def _migrate_analog_digital_link(conn, inspector) -> None:
 
         if sensor_type not in ("DI", "DO"):
             continue
-        existing = conn.execute(text(
-            "SELECT id FROM analog_digital_link WHERE analog_sensor_id=:a AND digital_sensor_id=:d"
-        ), {"a": parent_id, "d": sensor_id}).fetchone()
+        existing = conn.execute(
+            text(
+                "SELECT id FROM analog_digital_link WHERE analog_sensor_id=:a AND digital_sensor_id=:d"
+            ),
+            {"a": parent_id, "d": sensor_id},
+        ).fetchone()
         if not existing:
-            conn.execute(text(
-                "INSERT INTO analog_digital_link "
-                "(analog_sensor_id, digital_sensor_id, di_type, trigger_on_max, trigger_on_min, created_at) "
-                "VALUES (:a, :d, :dt, :tm, :tmin, datetime('now'))"
-            ), {"a": parent_id, "d": sensor_id, "dt": di_type,
-                "tm": bool(trig_max), "tmin": bool(trig_min)})
+            conn.execute(
+                text(
+                    "INSERT INTO analog_digital_link "
+                    "(analog_sensor_id, digital_sensor_id, di_type, trigger_on_max, trigger_on_min, created_at) "
+                    "VALUES (:a, :d, :dt, :tm, :tmin, datetime('now'))"
+                ),
+                {
+                    "a": parent_id,
+                    "d": sensor_id,
+                    "dt": di_type,
+                    "tm": bool(trig_max),
+                    "tmin": bool(trig_min),
+                },
+            )
 
     conn.execute(text("UPDATE sensor SET parent_id = NULL WHERE parent_id IS NOT NULL"))
     conn.commit()
@@ -161,67 +179,84 @@ def _migrate() -> None:
 
         if inspector.has_table("sensor"):
             scols = {c["name"] for c in inspector.get_columns("sensor")}
-            _add_columns(conn, "sensor", [
-                ("poll_interval", "INTEGER DEFAULT 3"),
-                ("min_threshold", "REAL DEFAULT NULL"),
-                ("max_threshold", "REAL DEFAULT NULL"),
-                ("sensor_type", "VARCHAR NOT NULL DEFAULT 'ANALOG'"),
-                ("di_type", "VARCHAR DEFAULT NULL"),
-                # Legacy columns for _migrate_analog_digital_link on old DBs
-                ("parent_id", "INTEGER DEFAULT NULL"),
-                ("is_system_wide", "BOOLEAN NOT NULL DEFAULT 0"),
-            ], scols)
+            _add_columns(
+                conn,
+                "sensor",
+                [
+                    ("poll_interval", "INTEGER DEFAULT 3"),
+                    ("min_threshold", "REAL DEFAULT NULL"),
+                    ("max_threshold", "REAL DEFAULT NULL"),
+                    ("sensor_type", "VARCHAR NOT NULL DEFAULT 'ANALOG'"),
+                    ("di_type", "VARCHAR DEFAULT NULL"),
+                    # Legacy columns for _migrate_analog_digital_link on old DBs
+                    ("parent_id", "INTEGER DEFAULT NULL"),
+                    ("is_system_wide", "BOOLEAN NOT NULL DEFAULT 0"),
+                ],
+                scols,
+            )
             if "sensor_type" in scols:
-                conn.execute(text(
-                    "UPDATE sensor SET sensor_type = 'ANALOG' "
-                    "WHERE sensor_type IS NULL OR sensor_type = ''"
-                ))
+                conn.execute(
+                    text(
+                        "UPDATE sensor SET sensor_type = 'ANALOG' "
+                        "WHERE sensor_type IS NULL OR sensor_type = ''"
+                    )
+                )
                 conn.commit()
             _migrate_digital_io(conn, inspector)
             _migrate_analog_digital_link(conn, inspector)
 
         if inspector.has_table("app_config"):
             acols = {c["name"] for c in inspector.get_columns("app_config")}
-            _add_columns(conn, "app_config", [
-                ("ui_locale", "VARCHAR(8) DEFAULT 'vi'"),
-                ("serial_port", "VARCHAR DEFAULT '/dev/ttyUSB0'"),
-                ("serial_baudrate", "INTEGER DEFAULT 9600"),
-                ("serial_bytesize", "INTEGER DEFAULT 8"),
-                ("serial_parity", "VARCHAR DEFAULT 'N'"),
-                ("serial_stopbits", "INTEGER DEFAULT 1"),
-                ("time_format", "VARCHAR DEFAULT 'HH:mm:ss'"),
-                ("date_format", "VARCHAR DEFAULT 'dd/MM/yyyy'"),
-                ("timezone", "VARCHAR DEFAULT 'UTC+7'"),
-                ("auto_sync_time", "BOOLEAN DEFAULT 0"),
-                ("buzzer_enable", "BOOLEAN DEFAULT 0"),
-                ("ftp_prefix", "VARCHAR DEFAULT ''"),
-                ("server_active", "BOOLEAN DEFAULT 0"),
-                ("server_device_type", "VARCHAR DEFAULT 'Standard'"),
-                ("server_name", "VARCHAR DEFAULT ''"),
-                ("server_send_interval", "INTEGER DEFAULT 5"),
-                ("server_start_time", "VARCHAR DEFAULT '00:00'"),
-                ("server_base_folder", "VARCHAR DEFAULT ''"),
-                ("server_time_folder", "VARCHAR DEFAULT 'yyyy/MM/dd'"),
-                ("server_file_suffix", "VARCHAR DEFAULT 'yyyyMMddHHmmss'"),
-                ("ftp_protocol", "VARCHAR DEFAULT 'sftp'"),
-                # Modbus TCP server (b2c3d4e5f6a7)
-                ("modbus_tcp_enabled", "BOOLEAN NOT NULL DEFAULT 0"),
-                ("modbus_tcp_port", "INTEGER NOT NULL DEFAULT 5020"),
-                ("modbus_tcp_bind", "VARCHAR NOT NULL DEFAULT '0.0.0.0'"),
-                ("modbus_tcp_unit_id", "INTEGER NOT NULL DEFAULT 1"),
-                # REST API / remote config (c3d4e5f6a7b8)
-                ("rest_api_enabled", "BOOLEAN NOT NULL DEFAULT 0"),
-                ("rest_api_port", "INTEGER NOT NULL DEFAULT 8080"),
-                ("rest_api_bind", "VARCHAR NOT NULL DEFAULT '0.0.0.0'"),
-                ("rest_api_token", "VARCHAR NOT NULL DEFAULT ''"),
-                ("config_revision", "INTEGER NOT NULL DEFAULT 1"),
-            ], acols)
+            _add_columns(
+                conn,
+                "app_config",
+                [
+                    ("ui_locale", "VARCHAR(8) DEFAULT 'vi'"),
+                    ("serial_port", "VARCHAR DEFAULT '/dev/ttyUSB0'"),
+                    ("serial_baudrate", "INTEGER DEFAULT 9600"),
+                    ("serial_bytesize", "INTEGER DEFAULT 8"),
+                    ("serial_parity", "VARCHAR DEFAULT 'N'"),
+                    ("serial_stopbits", "INTEGER DEFAULT 1"),
+                    ("time_format", "VARCHAR DEFAULT 'HH:mm:ss'"),
+                    ("date_format", "VARCHAR DEFAULT 'dd/MM/yyyy'"),
+                    ("timezone", "VARCHAR DEFAULT 'UTC+7'"),
+                    ("auto_sync_time", "BOOLEAN DEFAULT 0"),
+                    ("buzzer_enable", "BOOLEAN DEFAULT 0"),
+                    ("ftp_prefix", "VARCHAR DEFAULT ''"),
+                    ("server_active", "BOOLEAN DEFAULT 0"),
+                    ("server_device_type", "VARCHAR DEFAULT 'Standard'"),
+                    ("server_name", "VARCHAR DEFAULT ''"),
+                    ("server_send_interval", "INTEGER DEFAULT 5"),
+                    ("server_start_time", "VARCHAR DEFAULT '00:00'"),
+                    ("server_base_folder", "VARCHAR DEFAULT ''"),
+                    ("server_time_folder", "VARCHAR DEFAULT 'yyyy/MM/dd'"),
+                    ("server_file_suffix", "VARCHAR DEFAULT 'yyyyMMddHHmmss'"),
+                    ("ftp_protocol", "VARCHAR DEFAULT 'sftp'"),
+                    # Modbus TCP server (b2c3d4e5f6a7)
+                    ("modbus_tcp_enabled", "BOOLEAN NOT NULL DEFAULT 0"),
+                    ("modbus_tcp_port", "INTEGER NOT NULL DEFAULT 5020"),
+                    ("modbus_tcp_bind", "VARCHAR NOT NULL DEFAULT '0.0.0.0'"),
+                    ("modbus_tcp_unit_id", "INTEGER NOT NULL DEFAULT 1"),
+                    # REST API / remote config (c3d4e5f6a7b8)
+                    ("rest_api_enabled", "BOOLEAN NOT NULL DEFAULT 0"),
+                    ("rest_api_port", "INTEGER NOT NULL DEFAULT 8080"),
+                    ("rest_api_bind", "VARCHAR NOT NULL DEFAULT '0.0.0.0'"),
+                    ("rest_api_token", "VARCHAR NOT NULL DEFAULT ''"),
+                    ("config_revision", "INTEGER NOT NULL DEFAULT 1"),
+                ],
+                acols,
+            )
 
             if "sensor_data" in inspector.get_table_names():
                 sdcols = {c["name"] for c in inspector.get_columns("sensor_data")}
-                _add_columns(conn, "sensor_data", [
-                    ("status", "VARCHAR DEFAULT NULL"),
-                ], sdcols)
+                _add_columns(
+                    conn,
+                    "sensor_data",
+                    [
+                        ("status", "VARCHAR DEFAULT NULL"),
+                    ],
+                    sdcols,
+                )
 
 
 def get_session() -> Session:

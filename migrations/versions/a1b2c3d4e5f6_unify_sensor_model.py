@@ -5,6 +5,7 @@ Revises: 6277b5544943
 Create Date: 2026-05-12 09:00:00.000000
 
 """
+
 from typing import Sequence, Union
 
 from alembic import op
@@ -12,8 +13,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'a1b2c3d4e5f6'
-down_revision: Union[str, Sequence[str], None] = '6277b5544943'
+revision: str = "a1b2c3d4e5f6"
+down_revision: Union[str, Sequence[str], None] = "6277b5544943"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -43,11 +44,15 @@ def upgrade() -> None:
             op.execute(sql)
 
     # 2. Set existing sensors as ANALOG
-    op.execute("UPDATE sensor SET sensor_type = 'ANALOG' WHERE sensor_type = 'ANALOG' OR sensor_type IS NULL")
+    op.execute(
+        "UPDATE sensor SET sensor_type = 'ANALOG' WHERE sensor_type = 'ANALOG' OR sensor_type IS NULL"
+    )
 
     # 3. Check if digital_io table exists before migrating
     conn = op.get_bind()
-    tables = [r[0] for r in conn.execute(sa.text("SELECT name FROM sqlite_master WHERE type='table'"))]
+    tables = [
+        r[0] for r in conn.execute(sa.text("SELECT name FROM sqlite_master WHERE type='table'"))
+    ]
     if "digital_io" in tables:
         # Migrate data from digital_io into sensor
         op.execute("""
@@ -82,7 +87,7 @@ def upgrade() -> None:
         """)
 
         # 4. Drop the old digital_io table
-        op.drop_table('digital_io')
+        op.drop_table("digital_io")
 
 
 def downgrade() -> None:
@@ -90,18 +95,18 @@ def downgrade() -> None:
 
     # 1. Recreate digital_io table
     op.create_table(
-        'digital_io',
-        sa.Column('id', sa.Integer(), primary_key=True, autoincrement=True),
-        sa.Column('sensor_id', sa.Integer(), nullable=False),
-        sa.Column('io_type', sa.String(), nullable=False),
-        sa.Column('label', sa.String(), server_default=''),
-        sa.Column('slave_id', sa.Integer(), nullable=False),
-        sa.Column('address', sa.Integer(), nullable=False),
-        sa.Column('di_type', sa.String(), nullable=True),
-        sa.Column('trigger_on_max', sa.Boolean(), server_default=sa.text('1'), nullable=False),
-        sa.Column('trigger_on_min', sa.Boolean(), server_default=sa.text('1'), nullable=False),
-        sa.Column('active', sa.Boolean(), server_default=sa.text('1'), nullable=False),
-        sa.Column('created_at', sa.DateTime(), nullable=True),
+        "digital_io",
+        sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
+        sa.Column("sensor_id", sa.Integer(), nullable=False),
+        sa.Column("io_type", sa.String(), nullable=False),
+        sa.Column("label", sa.String(), server_default=""),
+        sa.Column("slave_id", sa.Integer(), nullable=False),
+        sa.Column("address", sa.Integer(), nullable=False),
+        sa.Column("di_type", sa.String(), nullable=True),
+        sa.Column("trigger_on_max", sa.Boolean(), server_default=sa.text("1"), nullable=False),
+        sa.Column("trigger_on_min", sa.Boolean(), server_default=sa.text("1"), nullable=False),
+        sa.Column("active", sa.Boolean(), server_default=sa.text("1"), nullable=False),
+        sa.Column("created_at", sa.DateTime(), nullable=True),
     )
 
     # 2. Move DI/DO rows from sensor back to digital_io
