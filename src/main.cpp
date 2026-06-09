@@ -110,7 +110,7 @@ int main(int argc, char *argv[]) {
     ctx->setContextProperty("modbusTcpService",    modbusTcp);
     ctx->setContextProperty("restApiService",      restApi);
 
-    const QUrl url("qrc:/com/datalogger/app/ui/qml/Main.qml");
+    const QUrl url("qrc:/com/datalogger/app/src/qml/Main.qml");
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreated, &app,
         [url](QObject *obj, const QUrl &objUrl) {
             if (!obj && url == objUrl)

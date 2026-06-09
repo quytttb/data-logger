@@ -65,35 +65,35 @@ set(CPP_SOURCES
 )
 
 set(QML_FILES
-    ui/qml/Main.qml
-    ui/qml/Theme.qml
-    ui/qml/MainTabContent.qml
-    ui/qml/shell/AppSideBar.qml
-    ui/qml/shell/MainHeaderChrome.qml
-    ui/qml/shell/MonitorTaskBar.qml
-    ui/qml/shell/HistoryTaskBar.qml
-    ui/qml/shell/SettingsTaskBar.qml
-    ui/qml/shell/TrendingTaskBar.qml
-    ui/qml/shell/ModbusTesterTaskBar.qml
-    ui/qml/views/MonitorView.qml
-    ui/qml/views/HistoryView.qml
-    ui/qml/views/TrendingView.qml
-    ui/qml/views/SettingsView.qml
-    ui/qml/views/SettingsGeneralTab.qml
-    ui/qml/views/SettingsConnectionTab.qml
-    ui/qml/views/SettingsSensorsTab.qml
-    ui/qml/views/SettingsServerTab.qml
-    ui/qml/views/TesterView.qml
-    ui/qml/views/TesterOperationsTab.qml
-    ui/qml/components/AppTextField.qml
-    ui/qml/components/MessagePopup.qml
-    ui/qml/components/ToastPopup.qml
-    ui/qml/components/DatePickerPopup.qml
-    ui/qml/components/ProvisionQrPopup.qml
-    ui/qml/components/SensorConfigForm.qml
-    ui/qml/components/SensorBasicTab.qml
-    ui/qml/components/SensorScalingTab.qml
-    ui/qml/components/SensorDigitalIOTab.qml
+    src/qml/Main.qml
+    src/qml/Theme.qml
+    src/qml/MainTabContent.qml
+    src/qml/shell/AppSideBar.qml
+    src/qml/shell/MainHeaderChrome.qml
+    src/qml/shell/MonitorTaskBar.qml
+    src/qml/shell/HistoryTaskBar.qml
+    src/qml/shell/SettingsTaskBar.qml
+    src/qml/shell/TrendingTaskBar.qml
+    src/qml/shell/ModbusTesterTaskBar.qml
+    src/qml/views/MonitorView.qml
+    src/qml/views/HistoryView.qml
+    src/qml/views/TrendingView.qml
+    src/qml/views/SettingsView.qml
+    src/qml/views/SettingsGeneralTab.qml
+    src/qml/views/SettingsConnectionTab.qml
+    src/qml/views/SettingsSensorsTab.qml
+    src/qml/views/SettingsServerTab.qml
+    src/qml/views/TesterView.qml
+    src/qml/views/TesterOperationsTab.qml
+    src/qml/components/AppTextField.qml
+    src/qml/components/MessagePopup.qml
+    src/qml/components/ToastPopup.qml
+    src/qml/components/DatePickerPopup.qml
+    src/qml/components/ProvisionQrPopup.qml
+    src/qml/components/SensorConfigForm.qml
+    src/qml/components/SensorBasicTab.qml
+    src/qml/components/SensorScalingTab.qml
+    src/qml/components/SensorDigitalIOTab.qml
 )
 
 # ── Build target with qt_add_qml_module ───────────────────────────────────

@@ -34,7 +34,7 @@ QString logDir() {
 QString qmlDir() {
     auto env = QProcessEnvironment::systemEnvironment();
     QString override = env.value("DATALOGGER_QML_DIR");
-    return override.isEmpty() ? binDir() + "/ui/qml" : override;
+    return override.isEmpty() ? binDir() + "/src/qml" : override;
 }
 
 QString appIconPath() {

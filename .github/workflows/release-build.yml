@@ -33,7 +33,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: build-release
-          key: cmake-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('CMakeLists.txt', 'src/**', 'ui/qml/**') }}
+          key: cmake-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('CMakeLists.txt', 'src/**') }}
           restore-keys: |
             cmake-${{ runner.os }}-${{ runner.arch }}-
 
