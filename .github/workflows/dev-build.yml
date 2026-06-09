@@ -2,110 +2,41 @@ name: Dev Build
 
 on:
   push:
-    branches:
-      - main
-    paths:
-      - '**.py'
-      - '**.qml'
-      - '**.sh'
-      - '**.toml'
-      - '**.ini'
-      - 'scripts/**'
-      - '.github/workflows/dev-build.yml'
-  workflow_dispatch:
-
-concurrency:
-  group: dev-build-${{ github.ref }}
-  cancel-in-progress: true
+    branches: [dev]
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  build-dev:
-    name: Build & Package (Dev)
-    if: "!contains(github.event.head_commit.message, 'chore(release):')"
-    runs-on: [self-hosted, linux, arm64]
-
+  build:
+    name: Build C++ (dev)
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
 
-      - name: Install System Dependencies
+      - name: Install Qt6 and build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y patchelf ccache rsync
+          sudo apt-get install -y \
+            cmake ninja-build g++-15 \
+            qt6-base-dev qt6-declarative-dev qt6-quickcontrols2-dev \
+            qt6-serialbus-dev qt6-serialport-dev \
+            qt6-httpserver-dev qt6-websockets-dev \
+            qt6-graphs-dev qt6-quick3d-dev
 
-      - name: Cache pip
-        uses: actions/cache@v5
-        with:
-          path: ~/.cache/pip
-          key: pip-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pyproject.toml') }}
-          restore-keys: |
-            pip-${{ runner.os }}-${{ runner.arch }}-
-
-      - name: Cache Nuitka
-        uses: actions/cache@v5
-        with:
-          path: ~/.cache/Nuitka
-          key: nuitka-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pyproject.toml', 'scripts/build_nuitka.sh', 'scripts/strip_pyside_qml_static.sh') }}
-          restore-keys: |
-            nuitka-${{ runner.os }}-${{ runner.arch }}-
-
-      - name: Setup Virtual Environment & Verify Python
+      - name: Configure
         run: |
-          python3 -m venv venv-build
-          venv-build/bin/python --version
-          venv-build/bin/pip install --upgrade pip
+          cmake -B build-ci \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER=gcc-15 \
+            -DCMAKE_CXX_COMPILER=g++-15
 
-      - name: Install dependencies
-        run: |
-          venv-build/bin/pip install -e .
-          venv-build/bin/pip install "Nuitka[onefile]"
+      - name: Build
+        run: cmake --build build-ci --parallel $(nproc)
 
-      - name: Build Standalone Binary with Nuitka
-        run: |
-          chmod +x scripts/build_nuitka.sh scripts/strip_pyside_qml_static.sh
-          PYTHON="${{ github.workspace }}/venv-build/bin/python" scripts/build_nuitka.sh
-
-      - name: Generate VERSION file & Package
-        run: |
-          set -euo pipefail
-          mkdir -p release_package
-
-          # Sinh VERSION và gắn mác dev cùng hash của commit
-          PYTHONPATH=. venv-build/bin/python -c "import core._version as v; print(v.__version__)" > VERSION.tmp
-          echo "v$(cat VERSION.tmp)-dev-${GITHUB_SHA::7}" > VERSION
-
-          # Copy các file cần thiết
-          cp VERSION deploy.sh release_package/
-          if [ -f datalogger ]; then
-            cp datalogger release_package/
-          else
-            echo "::error::Nuitka binary 'datalogger' not found"
-            exit 1
-          fi
-          cp -r config ui release_package/
-          [ -d docs ] && cp -r docs release_package/
-
-          # Nén tarball
-          tar -czvf datalogger-dev-snapshot.tar.gz -C release_package .
-
-      - name: Build .deb package
-        run: |
-          chmod +x scripts/build_deb.sh
-          VERSION="$(cat VERSION | tr -d '[:space:]')"
-          VERSION="${VERSION#v}"
-          ARCH="arm64"
-          scripts/build_deb.sh "$VERSION" "$ARCH"
-          echo "DEB_FILE=datalogger_${VERSION}_${ARCH}.deb" >> "$GITHUB_ENV"
-
-      - name: Upload Artifacts
+      - name: Upload binary artifact
         uses: actions/upload-artifact@v4
         with:
-          name: datalogger-dev-${{ github.sha }}
-          path: |
-            datalogger-dev-snapshot.tar.gz
-            *.deb
+          name: DataLogger-dev-${{ github.sha }}
+          path: build-ci/DataLogger
           retention-days: 7
-          if-no-files-found: error

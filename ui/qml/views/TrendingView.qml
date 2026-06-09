@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import QtCharts
+import QtGraphs
 import ".."
 
 Rectangle {
@@ -11,12 +11,22 @@ Rectangle {
     // Visible window of live data — points older than this scroll off the chart.
     readonly property int windowMs: 5 * 60 * 1000
 
+    Component {
+        id: lineSeriesComponent
+        LineSeries {
+            required property string seriesName
+            required property color seriesColor
+            name: seriesName
+            color: seriesColor
+            width: 2
+        }
+    }
+
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 15
         spacing: 0
 
-        // ── Card container (matches Settings form style) ─────────────────
         Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -30,30 +40,34 @@ Rectangle {
                 anchors.margins: 20
                 spacing: 0
 
-                // Legend lives in MainHeaderChrome (TrendingTaskBar.qml)
-
                 Item {
                     id: chartHolder
                     Layout.fillWidth: true
                     Layout.fillHeight: true
 
                     property var seriesMap: ({})
-                    property real combinedXMin: 0
-                    property real combinedXMax: 0
-                    property real combinedYMin: 0
-                    property real combinedYMax: 1
+                    property real xMin: 0
+                    property real xMax: 0
+                    property real yMin: 0
+                    property real yMax: 1
+
+                    function clearAllSeries() {
+                        var list = graphsView.seriesList
+                        for (var i = list.length - 1; i >= 0; --i)
+                            graphsView.removeSeries(list[i])
+                        chartHolder.seriesMap = ({})
+                    }
 
                     function rebuildSeries() {
-                        combinedChart.removeAllSeries()
-                        chartHolder.seriesMap = ({})
+                        clearAllSeries()
 
                         var sensors = monitorController.analogSensors
                         if (!sensors || sensors.length === 0)
                             return
 
                         var now = Date.now()
-                        chartHolder.combinedXMin = now - trendRoot.windowMs
-                        chartHolder.combinedXMax = now
+                        chartHolder.xMin = now - trendRoot.windowMs
+                        chartHolder.xMax = now
                         var yLo = Number.MAX_VALUE
                         var yHi = -Number.MAX_VALUE
 
@@ -62,17 +76,16 @@ Rectangle {
                             var label = s.unit && s.unit.length > 0
                                         ? (s.name + " (" + s.unit + ")")
                                         : s.name
-                            var series = combinedChart.createSeries(
-                                ChartView.SeriesTypeLine, label, combinedAxisX, combinedAxisY)
-                            series.color = s.color
-                            series.width = 2
+                            var series = lineSeriesComponent.createObject(graphsView, {
+                                seriesName: label,
+                                seriesColor: s.color
+                            })
+                            graphsView.addSeries(series)
                             chartHolder.seriesMap[s.id] = series
 
                             var buf = monitorController.getTrendBuffer(s.id)
                             for (var j = 0; j < buf.length; j++) {
                                 series.append(buf[j].x, buf[j].y)
-                                if (buf[j].x < chartHolder.combinedXMin) chartHolder.combinedXMin = buf[j].x
-                                if (buf[j].x > chartHolder.combinedXMax) chartHolder.combinedXMax = buf[j].x
                                 if (buf[j].y < yLo) yLo = buf[j].y
                                 if (buf[j].y > yHi) yHi = buf[j].y
                             }
@@ -82,12 +95,13 @@ Rectangle {
                     }
 
                     function applyAxes(yLo, yHi) {
-                        var minX = chartHolder.combinedXMax - trendRoot.windowMs
-                        if (chartHolder.combinedXMin < minX) chartHolder.combinedXMin = minX
-                        if (chartHolder.combinedXMax <= chartHolder.combinedXMin)
-                            chartHolder.combinedXMax = chartHolder.combinedXMin + 1000
-                        combinedAxisX.min = new Date(chartHolder.combinedXMin)
-                        combinedAxisX.max = new Date(chartHolder.combinedXMax)
+                        var now = Date.now()
+                        var minX = now - trendRoot.windowMs
+                        chartHolder.xMin = minX
+                        chartHolder.xMax = now
+                        xAxis.min = new Date(minX)
+                        xAxis.max = new Date(now)
+                        xAxis.tickInterval = trendRoot.windowMs / 6
 
                         if (yLo === undefined || yLo === Number.MAX_VALUE) {
                             yLo = 0; yHi = 1
@@ -95,16 +109,19 @@ Rectangle {
                         if (yHi <= yLo) yHi = yLo + 1
                         var margin = (yHi - yLo) * 0.1
                         if (margin === 0) margin = 1
-                        chartHolder.combinedYMin = yLo - margin
-                        chartHolder.combinedYMax = yHi + margin
-                        combinedAxisY.min = chartHolder.combinedYMin
-                        combinedAxisY.max = chartHolder.combinedYMax
+                        chartHolder.yMin = yLo - margin
+                        chartHolder.yMax = yHi + margin
+                        yAxis.min = chartHolder.yMin
+                        yAxis.max = chartHolder.yMax
+                        yAxis.tickInterval = (chartHolder.yMax - chartHolder.yMin) / 7
+                        if (yAxis.tickInterval <= 0)
+                            yAxis.tickInterval = 1
                     }
 
                     function appendPoint(sid, x, y) {
                         var series = chartHolder.seriesMap[sid]
-                        if (!series)
-                            return
+                        if (!series) return
+
                         series.append(x, y)
 
                         var cutoff = x - trendRoot.windowMs
@@ -114,19 +131,19 @@ Rectangle {
                                 s.remove(0)
                         }
 
-                        chartHolder.combinedXMax = x
-                        chartHolder.combinedXMin = cutoff
-                        combinedAxisX.min = new Date(chartHolder.combinedXMin)
-                        combinedAxisX.max = new Date(chartHolder.combinedXMax)
+                        xAxis.min = new Date(cutoff)
+                        xAxis.max = new Date(x)
+                        chartHolder.xMin = cutoff
+                        chartHolder.xMax = x
 
-                        if (y < chartHolder.combinedYMin || y > chartHolder.combinedYMax) {
+                        if (y < chartHolder.yMin || y > chartHolder.yMax) {
                             var lo = y, hi = y
                             for (var k in chartHolder.seriesMap) {
                                 var ss = chartHolder.seriesMap[k]
                                 for (var n = 0; n < ss.count; n++) {
-                                    var yy = ss.at(n).y
-                                    if (yy < lo) lo = yy
-                                    if (yy > hi) hi = yy
+                                    var pt = ss.at(n)
+                                    if (pt.y < lo) lo = pt.y
+                                    if (pt.y > hi) hi = pt.y
                                 }
                             }
                             chartHolder.applyAxes(lo, hi)
@@ -141,36 +158,33 @@ Rectangle {
                         function onNewDataPoint(sid, ts, val) { chartHolder.appendPoint(sid, ts, val) }
                     }
 
-                    ChartView {
-                        id: combinedChart
+                    GraphsView {
+                        id: graphsView
                         anchors.fill: parent
-                        backgroundColor: Theme.bgPanel
-                        plotAreaColor: Theme.bgDeep
-                        antialiasing: true
-                        legend.visible: false
-                        margins.top: 4
-                        margins.bottom: 4
-                        margins.left: 4
-                        margins.right: 4
 
-                        DateTimeAxis {
-                            id: combinedAxisX
-                            format: "HH:mm:ss"
-                            labelsColor: Theme.textSecondary
-                            gridLineColor: Theme.bgSeparator
-                            color: Theme.bgSeparator
-                            labelsFont.pixelSize: 11
-                            tickCount: 6
+                        theme: GraphsTheme {
+                            colorScheme: GraphsTheme.ColorScheme.Dark
+                            backgroundColor: Theme.bgDeep
+                            plotAreaBackgroundColor: Theme.bgDeep
+                            labelTextColor: Theme.textSecondary
+                            grid: GraphsLine {
+                                mainColor: Theme.bgSeparator
+                                subColor: Theme.bgSeparator
+                            }
+                            axisXLabelFont: Qt.font({ pixelSize: 11 })
+                            axisYLabelFont: Qt.font({ pixelSize: 11 })
                         }
 
-                        ValueAxis {
-                            id: combinedAxisY
-                            tickCount: 7
+                        axisX: DateTimeAxis {
+                            id: xAxis
+                            labelFormat: "HH:mm:ss"
+                            tickInterval: trendRoot.windowMs / 6
+                        }
+
+                        axisY: ValueAxis {
+                            id: yAxis
                             labelFormat: "%.1f"
-                            labelsColor: Theme.textSecondary
-                            gridLineColor: Theme.bgSeparator
-                            color: Theme.bgSeparator
-                            labelsFont.pixelSize: 11
+                            tickInterval: 1
                         }
                     }
 

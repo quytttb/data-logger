@@ -39,10 +39,8 @@ ApplicationWindow {
     property int scanProgTot: 0
 
     onCurrentTabChanged: {
-        historyController.setHistoryTabActive(currentTab === 1)
-    }
-    Component.onCompleted: {
-        historyController.setHistoryTabActive(currentTab === 1)
+        // Auto-clear history results when leaving the history tab
+        if (currentTab !== 1) historyController.clear()
     }
 
     ColumnLayout {
@@ -107,14 +105,10 @@ ApplicationWindow {
 
     Connections {
         target: testerController
-        function onScanProgress(current, total) {
-            root.scanProgCur = current
-            root.scanProgTot = total
-        }
-        function onScanningChanged(scanning) {
-            if (!scanning) {
-                root.scanProgCur = 0
-                root.scanProgTot = 0
+        function onScanResult(result) {
+            // Update progress indicator for slave scanning
+            if (result.found !== undefined) {
+                root.scanProgCur = result.slave_id || 0
             }
         }
     }

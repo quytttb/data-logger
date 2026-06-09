@@ -72,14 +72,6 @@ Rectangle {
                         return 1;
                     }
 
-                    // Alarm pulsing animation (ANALOG only)
-                    SequentialAnimation on opacity {
-                        running: model.isAlarm && isAnalog
-                        loops: Animation.Infinite
-                        NumberAnimation { to: 0.7; duration: 500 }
-                        NumberAnimation { to: 1.0; duration: 500 }
-                    }
-
                     ColumnLayout {
                         anchors.fill: parent
                         anchors.margins: 12

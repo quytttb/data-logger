@@ -17,7 +17,7 @@ Popup {
     property string confirmButtonText: "Confirm"
     property string cancelButtonText: "Cancel"
     property var confirmCallback: null
-    property string confirmButtonColor: Theme.btnStart
+    property color confirmButtonColor: Theme.btnStart
 
     parent: Overlay.overlay
     anchors.centerIn: parent
