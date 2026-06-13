@@ -1,4 +1,4 @@
-# Python artefacts (legacy — backend is now C++)
+# Python artefacts (legacy)
 .venv/
 venv-build/
 *.egg-info/
@@ -6,6 +6,7 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 .ruff_cache/
+assets/
 
 # Nuitka / PyInstaller packaging artefacts
 main.bin

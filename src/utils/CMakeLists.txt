@@ -1,0 +1,19 @@
+qt_add_library(utils STATIC
+    AppPaths.cpp
+    AppPaths.h
+    LogSetup.cpp
+    LogSetup.h
+    Crypto.cpp
+    Crypto.h
+    LanIp.cpp
+    LanIp.h
+    Formula.cpp
+    Formula.h
+)
+
+target_include_directories(utils PUBLIC ${CMAKE_SOURCE_DIR}/src)
+target_include_directories(utils PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+
+target_link_libraries(utils PUBLIC Qt6::Core Qt6::Network)
+
+add_library(datalogger::utils ALIAS utils)

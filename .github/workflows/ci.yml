@@ -39,4 +39,4 @@ jobs:
         run: cmake --build build-ci --parallel $(nproc)
 
       - name: Verify binary
-        run: test -f build-ci/DataLogger && echo "Build OK"
+        run: test -f build-ci/bin/DataLogger && echo "Build OK"

@@ -38,5 +38,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: DataLogger-dev-${{ github.sha }}
-          path: build-ci/DataLogger
+          path: build-ci/bin/DataLogger
           retention-days: 7

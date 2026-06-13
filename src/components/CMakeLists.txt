@@ -1,0 +1,40 @@
+qt_add_qml_module(datalogger_components
+    URI DataLogger.Components
+    VERSION 1.0
+    STATIC
+    QML_FILES
+        shell/AppSideBar.qml
+        shell/MainHeaderChrome.qml
+        shell/MonitorTaskBar.qml
+        shell/HistoryTaskBar.qml
+        shell/SettingsTaskBar.qml
+        shell/TrendingTaskBar.qml
+        shell/ModbusTesterTaskBar.qml
+        layout/AppTextField.qml
+        layout/MessagePopup.qml
+        layout/ToastPopup.qml
+        layout/DatePickerPopup.qml
+        sensor/SensorConfigForm.qml
+        sensor/SensorBasicTab.qml
+        sensor/SensorScalingTab.qml
+        sensor/SensorDigitalIOTab.qml
+        sensor/ProvisionQrPopup.qml
+    RESOURCES
+        ../../resources/icons/monitor.svg
+        ../../resources/icons/history.svg
+        ../../resources/icons/chart.svg
+        ../../resources/icons/settings.svg
+        ../../resources/icons/tester.svg
+        ../../resources/icons/connection.svg
+        ../../resources/icons/export.svg
+        ../../resources/icons/sensors.svg
+        ../../resources/icons/delete.svg
+        ../../resources/icons/edit.svg
+        ../../resources/icons/search.svg
+        ../../resources/icons/refresh.svg
+        ../../resources/icons/qr.svg
+    DEPENDENCIES
+        datalogger_theme
+)
+
+add_library(datalogger::components ALIAS datalogger_components)

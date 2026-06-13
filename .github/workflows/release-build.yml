@@ -52,8 +52,8 @@ jobs:
           VERSION="${{ github.ref_name }}"
           mkdir -p release_package
 
-          cp build-release/DataLogger release_package/
-          cp -r config assets release_package/
+          cp build-release/bin/DataLogger release_package/
+          cp -r config resources release_package/
           [ -d docs ] && cp -r docs release_package/ || true
 
           tar -czvf datalogger-release-${VERSION}.tar.gz -C release_package .

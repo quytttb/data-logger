@@ -31,4 +31,4 @@ cmake -B "$BUILD_DIR" \
 cmake --build "$BUILD_DIR" --parallel "$(nproc)"
 
 echo ""
-echo "Build complete: $BUILD_DIR/DataLogger"
+echo "Build complete: $BUILD_DIR/bin/DataLogger"

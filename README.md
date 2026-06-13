@@ -20,7 +20,23 @@
 
 ---
 
-## Yêu cầu hệ thống
+## Cấu trúc project
+
+```
+src/
+├── app/           # Entry point + QML shell (Main.qml, views/)
+├── components/    # QML tái sử dụng (shell/, layout/, sensor/)
+├── core/          # Controllers + QML models
+├── data/          # SQLite, models, repositories
+├── network/       # Modbus RTU/TCP, REST API, workers
+├── theme/         # Theme singleton (Material 3)
+└── utils/         # AppPaths, Crypto, Formula, …
+resources/         # Icons, app icon
+```
+
+Build layers (CMake): `utils → data → network → core → theme → components → app`
+
+---
 
 - **Phần cứng**: Raspberry Pi 4/5 (ARM64), màn hình cảm ứng 7", USB-RS485 Dongle.
 - **OS**: Raspberry Pi OS 64-bit (Bookworm trở lên)
@@ -63,7 +79,7 @@ cmake -B build-release \
 cmake --build build-release --parallel $(nproc)
 ```
 
-Binary đầu ra: `build-release/DataLogger`
+Binary đầu ra: `build-release/bin/DataLogger`
 
 ---
 
@@ -73,7 +89,7 @@ Binary đầu ra: `build-release/DataLogger`
 # Qt từ Online Installer cần chỉ thư viện runtime
 export LD_LIBRARY_PATH=$HOME/Qt/6.11.1/gcc_64/lib:$LD_LIBRARY_PATH
 
-./build-release/DataLogger
+./build-release/bin/DataLogger
 ```
 
 Nếu build với Qt từ apt thì không cần `LD_LIBRARY_PATH`.
@@ -166,7 +182,7 @@ journalctl -u datalogger -f
 Tag `v*.*.*` → GitHub Actions trigger `release-build.yml`:
 1. Self-hosted runner (ARM64) cài Qt 6 từ apt
 2. Build C++ bằng CMake
-3. Đóng gói `DataLogger` + `config/` + `assets/` → `datalogger-release-vX.Y.Z.tar.gz`
+3. Đóng gói `DataLogger` + `config/` + `resources/` → `datalogger-release-vX.Y.Z.tar.gz`
 4. Đính kèm vào GitHub Releases
 
 *(Dự án được bảo trì nội bộ.)*
