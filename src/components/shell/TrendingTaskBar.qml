@@ -1,14 +1,14 @@
+pragma ComponentBehavior: Bound
 import QtQuick
-import QtQuick.Controls
 import DataLogger.Theme
+import DataLogger.Core
 
-// Chú thích màu cuộn ngang cho Trending
 Item {
     id: root
     implicitHeight: 64
 
-    readonly property bool hasSensors: monitorController.analogSensors
-                                       && monitorController.analogSensors.length > 0
+    readonly property bool hasSensors: MonitorController.analogSensors
+                                       && MonitorController.analogSensors.length > 0
 
     Flickable {
         id: legendFlick
@@ -29,7 +29,7 @@ Item {
 
             Repeater {
                 id: legendRepeater
-                model: monitorController.analogSensors
+                model: MonitorController.analogSensors
 
                 delegate: Row {
                     id: chip
@@ -41,15 +41,15 @@ Item {
                         width: 12
                         height: 12
                         radius: 6
-                        color: modelData.color
+                        color: chip.modelData.color
                         anchors.verticalCenter: parent.verticalCenter
                     }
 
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
-                        text: modelData.unit && modelData.unit.length > 0
-                              ? (modelData.name + " (" + modelData.unit + ")")
-                              : modelData.name
+                        text: chip.modelData.unit && chip.modelData.unit.length > 0
+                              ? (chip.modelData.name + " (" + chip.modelData.unit + ")")
+                              : chip.modelData.name
                         color: Theme.textPrimary
                         font.pixelSize: 13
                         font.bold: true

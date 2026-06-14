@@ -1,92 +1,77 @@
 pragma Singleton
 import QtQuick
 
-// Design token registry — all QML files MUST reference these tokens.
-// Never hardcode colour literals outside this file.
-// Aligned with Material 3 Dark colour scheme (custom palette).
+// Backward-compatible aliases — prefer AppColors / AppTheme / AppTypography in new code.
 QtObject {
 
-    // ── Backgrounds / Surfaces ────────────────────────────────────────────
-    readonly property color bgDeep:      "#131313"   // Window / status bar (M3: surface)
-    readonly property color bgPanel:     "#1c1b1b"   // Cards, panels (M3: surfaceContainerLow)
-    readonly property color bgStripe:    "#232323"   // Alternating rows (M3: surfaceContainer)
-    readonly property color bgSeparator: "#2a2a2a"   // Dividers, chip bg (M3: surfaceContainerHigh)
-    readonly property color bgInput:     "#2a2a2a"   // TextField / input bg
-    readonly property color bgErrorTint: "#3a2020"   // Error chip / tinted bg
+    readonly property color bgDeep:      AppColors.surface
+    readonly property color bgPanel:     AppColors.surfaceContainerLow
+    readonly property color bgStripe:    AppColors.surfaceContainer
+    readonly property color bgSeparator: AppColors.surfaceContainerHigh
+    readonly property color bgInput:     AppColors.surfaceContainerHigh
+    readonly property color bgErrorTint: AppColors.errorContainer
 
-    // M3 alias set (used by new components)
-    readonly property color surface:                bgDeep
-    readonly property color surfaceContainerLow:    bgPanel
-    readonly property color surfaceContainer:       bgStripe
-    readonly property color surfaceContainerHigh:   bgSeparator
-    readonly property color surfaceContainerHighest:"#313131"
+    readonly property color surface:                AppColors.surface
+    readonly property color surfaceContainerLow:    AppColors.surfaceContainerLow
+    readonly property color surfaceContainer:       AppColors.surfaceContainer
+    readonly property color surfaceContainerHigh:   AppColors.surfaceContainerHigh
+    readonly property color surfaceContainerHighest: AppColors.surfaceContainerHigh
 
-    // ── Accent ───────────────────────────────────────────────────────────
-    readonly property color accent:      "#558dff"   // Primary / active tab, borders
-    readonly property color accentText:  "#b0c6ff"   // Titles, sensor names (M3: onPrimaryContainer)
+    readonly property color accent:      AppColors.primaryColor
+    readonly property color accentText:  AppColors.accentColor
 
-    // M3 alias
-    readonly property color primary:            accent
-    readonly property color primaryContainer:   "#1e3a6e"
-    readonly property color onPrimary:          "#ffffff"
-    readonly property color onPrimaryContainer: accentText
+    readonly property color primary:            AppColors.primaryColor
+    readonly property color primaryContainer:   AppColors.accentContainer
+    readonly property color onPrimary:          AppColors.onPrimary
+    readonly property color onPrimaryContainer: AppColors.accentContainerFg
 
-    // ── Text ─────────────────────────────────────────────────────────────
-    readonly property color textPrimary:      "#e5e2e1"  // Main content
-    readonly property color textSecondary:    "#8c90a0"  // Labels, timestamps
-    readonly property color textLabel:        "#8c90a0"  // Settings labels
+    readonly property color textPrimary:      AppColors.primaryText
+    readonly property color textSecondary:    AppColors.onSurfaceVariant
+    readonly property color textLabel:        AppColors.onSurfaceVariant
     readonly property int   fontLabelSize:    14
-    readonly property color textDim:          "#666666"  // Disabled-like, secondary timestamps
-    readonly property color textFaint:        "#555555"  // Out-of-range calendar days
-    readonly property color textOnColoredBtn: "#ffffff"  // Text on accent/start/stop buttons
+    readonly property color textDim:          AppColors.textMuted
+    readonly property color textFaint:        AppColors.textFaint
+    readonly property color textOnColoredBtn: AppColors.onPrimary
 
-    // M3 alias
-    readonly property color onSurface:         textPrimary
-    readonly property color onSurfaceVariant:  textSecondary
-    readonly property color primaryText:       textPrimary
+    readonly property color onSurface:         AppColors.primaryText
+    readonly property color onSurfaceVariant:  AppColors.onSurfaceVariant
+    readonly property color primaryText:       AppColors.primaryText
 
-    // ── Status semantic colours ───────────────────────────────────────────
-    readonly property color statusOk:         "#7dffa2"   // OK / collecting
-    readonly property color statusErr:        "#ff6666"   // Error (soft)
-    readonly property color statusErrBright:  "#ff4444"   // Critical dot
-    readonly property color statusWarn:       "#b0c6ff"   // Pending / warning
+    readonly property color statusOk:         AppColors.success
+    readonly property color statusErr:        AppColors.error
+    readonly property color statusErrBright:  AppColors.error
+    readonly property color statusWarn:       AppColors.warning
 
-    // M3 semantic alias
-    readonly property color success: statusOk
-    readonly property color error:   statusErr
-    readonly property color warning: "#d4a62d"
+    readonly property color success: AppColors.success
+    readonly property color error:   AppColors.error
+    readonly property color warning: AppColors.warning
 
-    // ── Borders ───────────────────────────────────────────────────────────
-    readonly property color borderOk:      "#2a6b3e"
-    readonly property color borderErr:     "#a83232"
-    readonly property color borderDefault: "#2a2a2a"
+    readonly property color borderOk:      AppColors.success
+    readonly property color borderErr:     AppColors.error
+    readonly property color borderDefault: AppColors.outlineVariant
 
-    readonly property color elevatedBorder: "#333333"  // Elevated pane outline
+    readonly property color elevatedBorder: AppColors.elevatedBorder
 
-    // ── Buttons ───────────────────────────────────────────────────────────
-    readonly property color btnStart:       "#2a6b3e"
-    readonly property color btnStop:        "#a83232"
-    readonly property color btnClear:       "#d4a62d"
-    readonly property color btnClearText:   "#1a1a1a"
-    readonly property color btnBgDisabled:  "#666666"
-    readonly property color btnBgMuted:     "#444444"
+    readonly property color btnStart:       AppColors.success
+    readonly property color btnStop:        AppColors.error
+    readonly property color btnClear:       AppColors.warning
+    readonly property color btnClearText:   AppColors.primaryText
+    readonly property color btnBgDisabled:  AppColors.disabledContent
+    readonly property color btnBgMuted:     AppColors.surfaceContainerHigh
 
-    // ── Shape / Radius ────────────────────────────────────────────────────
-    readonly property int radiusCard:   12   // M3 medium shape (cards, elevated panes)
-    readonly property int radiusSmall:   6   // Chips, tags
-    readonly property int radiusTiny:    4   // Dense items
-    readonly property int radiusMedium:  8   // Buttons, taskbar items, list items (M3: small shape)
-    readonly property int chipRadius:   12   // Status chips (M3)
-    readonly property int listItemRadius: 8  // List row highlight
+    readonly property int radiusCard:   AppTheme.cardRadius
+    readonly property int radiusSmall:   AppTheme.listItemRadius
+    readonly property int radiusTiny:    4
+    readonly property int radiusMedium:  AppTheme.listItemRadius
+    readonly property int chipRadius:    AppTheme.chipRadius
+    readonly property int listItemRadius: AppTheme.listItemRadius
 
-    // ── Spacing ───────────────────────────────────────────────────────────
     readonly property int spacingXS:   4
     readonly property int spacingS:    8
     readonly property int spacingM:   16
     readonly property int spacingL:   24
-    readonly property int sectionSpacing: 20  // ElevatedPane default padding
+    readonly property int sectionSpacing: AppTheme.sectionSpacing
 
-    // ── Typography scale (pixel sizes) ───────────────────────────────────
     readonly property int typeTitleLarge:   22
     readonly property int typeTitleMedium:  16
     readonly property int typeBodyLarge:    16
@@ -95,12 +80,6 @@ QtObject {
     readonly property int typeLabelMedium:  12
     readonly property int typeLabelSmall:   11
 
-    // ── Chart / Trending series palette ──────────────────────────────────
-    readonly property var chartSeriesColors: [
-        "#558dff", "#7dffa2", "#ff6666", "#d4a62d",
-        "#b0c6ff", "#ff9933", "#cc66ff", "#66cccc",
-    ]
-
-    // Alias used by ChartGraphsTheme equivalent
-    readonly property var graphSeriesColors: chartSeriesColors
+    readonly property var chartSeriesColors: AppColors.graphSeriesColors
+    readonly property var graphSeriesColors: AppColors.graphSeriesColors
 }

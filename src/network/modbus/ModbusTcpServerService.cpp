@@ -4,8 +4,27 @@
 #include <QDateTime>
 #include <QMutexLocker>
 #include <QDebug>
+#include <QQmlEngine>
+#include <QJSEngine>
 #include <cstring>
 #include <algorithm>
+#include <utility>
+
+static ModbusTcpServerService *g_modbusTcpInstance = nullptr;
+
+ModbusTcpServerService *ModbusTcpServerService::instance() { return g_modbusTcpInstance; }
+
+void ModbusTcpServerService::setInstance(ModbusTcpServerService *service)
+{
+    g_modbusTcpInstance = service;
+}
+
+ModbusTcpServerService *ModbusTcpServerService::create(QQmlEngine *, QJSEngine *)
+{
+    Q_ASSERT(g_modbusTcpInstance);
+    QQmlEngine::setObjectOwnership(g_modbusTcpInstance, QQmlEngine::CppOwnership);
+    return g_modbusTcpInstance;
+}
 
 ModbusTcpServerService::ModbusTcpServerService(QObject *parent) : QObject(parent) {}
 
@@ -160,7 +179,7 @@ void ModbusTcpServerService::setLoggerStatus(bool polling, bool rtuConnected) {
     m_server->setData(QModbusDataUnit::HoldingRegisters, HR_STATUS, flags);
     if (!polling) {
         // Mark all sensors stale
-        for (auto slot : qAsConst(m_sensorSlots)) {
+        for (auto slot : std::as_const(m_sensorSlots)) {
             int addr = kSensorBase + slot * kSensorStride + 1;
             quint16 f = 0;
             m_server->data(QModbusDataUnit::HoldingRegisters, addr, &f);
@@ -172,7 +191,7 @@ void ModbusTcpServerService::setLoggerStatus(bool polling, bool rtuConnected) {
 void ModbusTcpServerService::refreshAnyAlarmBit() {
     if (!m_server) return;
     bool anyAlarm = false;
-    for (auto slot : qAsConst(m_sensorSlots)) {
+    for (auto slot : std::as_const(m_sensorSlots)) {
         quint16 f = 0;
         m_server->data(QModbusDataUnit::HoldingRegisters, kSensorBase + slot * kSensorStride + 1, &f);
         if (f & SF_ALARM) { anyAlarm = true; break; }

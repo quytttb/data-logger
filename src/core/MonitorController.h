@@ -7,13 +7,18 @@
 #include <QHash>
 #include <QQueue>
 #include <deque>
+#include <QtQmlIntegration/qqmlintegration.h>
 
+class QJSEngine;
+class QQmlEngine;
 class MonitorModel;
 class ModbusTcpServerService;
 
 // Orchestrates ModbusWorker + DatabaseWorker threads and feeds MonitorModel.
 class MonitorController : public QObject {
     Q_OBJECT
+    QML_ELEMENT
+    QML_SINGLETON
 
     Q_PROPERTY(bool   isPolling        READ isPolling        NOTIFY pollingChanged)
     Q_PROPERTY(bool   isStopping       READ isStopping       NOTIFY stoppingChanged)
@@ -34,6 +39,10 @@ public:
     explicit MonitorController(MonitorModel *model,
                                 ModbusTcpServerService *modbusTcp = nullptr,
                                 QObject *parent = nullptr);
+
+    static MonitorController *instance();
+    static void setInstance(MonitorController *controller);
+    static MonitorController *create(QQmlEngine *, QJSEngine *);
 
     bool   isPolling()        const { return m_isPolling; }
     bool   isStopping()       const { return m_isStopping; }

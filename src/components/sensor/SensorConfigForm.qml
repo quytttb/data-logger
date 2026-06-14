@@ -1,9 +1,7 @@
 import QtQuick
-import QtQuick.Controls
 import QtQuick.Layouts
-import DataLogger.Theme
 
-// Shared sensor configuration form used by both SettingsView and TesterView.
+// Shared sensor configuration form
 // This is a "dumb component" — it does NOT call controllers/models directly.
 // Parent views call loadData() / resetForm() to populate, and getFormData() to read values.
 // Note: It delegates rendering to 3 sub-tabs: Basic, Scaling, and Digital I/O.

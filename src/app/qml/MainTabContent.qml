@@ -1,55 +1,110 @@
 import QtQuick
-import QtQuick.Controls
 import QtQuick.Layouts
-import "."
 
 Item {
     id: tabContentRoot
 
     property int currentTab: 0
-    property alias loaderTester: loaderTester
-    property alias loaderSettings: loaderSettings
+    property alias loaderTester: testerView
+    property alias loaderSettings: settingsView
+
+    property var _lastSettingsTaskBar: null
+
+    signal testerNavigateToAddSensor(var data)
+    signal settingsRequestMainTabChange(int tabIndex)
 
     Layout.fillWidth: true
     Layout.fillHeight: true
 
-    Loader {
-        id: loaderTester
-        anchors.fill: parent
-        active: tabContentRoot.currentTab === 4 || loaderTester.item !== null
-        visible: tabContentRoot.currentTab === 4
-        source: "views/TesterView.qml"
+    function connectSettingsTaskBar(taskBar) {
+        if (!taskBar || !settingsView)
+            return
+        if (_lastSettingsTaskBar === taskBar)
+            return
+        _lastSettingsTaskBar = taskBar
+
+        taskBar.settingsTabIndex = Qt.binding(function() { return settingsView.settingsTabIndex })
+        taskBar.isConfigChanged = Qt.binding(function() { return settingsView.isConfigChanged })
+        taskBar.hasSelectedSensor = Qt.binding(function() { return settingsView.hasSelectedSensor })
+        taskBar.isAddMode = Qt.binding(function() { return settingsView.isAddMode })
+        taskBar.sensorSubTabIndex = Qt.binding(function() { return settingsView.sensorSubTabIndex })
+        taskBar.hasSelectedDio = Qt.binding(function() { return settingsView.hasSelectedDio })
+        taskBar.sensorType = Qt.binding(function() { return settingsView.sensorType || "ANALOG" })
+
+        taskBar.tabSelected.connect(function(idx) { settingsView.settingsTabIndex = idx })
+        taskBar.sensorSubTabSelected.connect(function(idx) { settingsView.sensorSubTabIndex = idx })
+        taskBar.saveConfig.connect(function() { settingsView.saveConfig() })
+        taskBar.cancelConfig.connect(function() { settingsView.cancelConfig() })
+        taskBar.addSensor.connect(function() { settingsView.openAddSensor() })
+        taskBar.editSelectedSensor.connect(function() { settingsView.editSelectedSensor() })
+        taskBar.deleteSelectedSensor.connect(function() { settingsView.deleteSelectedSensor() })
+        taskBar.saveSensorForm.connect(function() { settingsView.saveSensorForm() })
+        taskBar.cancelSensorForm.connect(function() { settingsView.closeSensorForm() })
+        taskBar.deleteSelectedDio.connect(function() { settingsView.deleteSelectedDio() })
     }
 
-    Loader {
-        id: loaderMonitor
+    function syncModbusTaskBar(taskBar) {
+        if (taskBar)
+            taskBar.testerView = testerView
+    }
+
+    function openSettingsAddSensorWithData(data) {
+        settingsView.openAddSensorWithData(data)
+    }
+
+    function settingsTabIndex() {
+        return settingsView.settingsTabIndex
+    }
+
+    function closeSettingsSensorForm() {
+        settingsView.closeSensorForm()
+    }
+
+    function setSettingsReturnMainTab(tab) {
+        settingsView.returnMainTab = tab
+    }
+
+    MonitorView {
+        id: monitorView
         anchors.fill: parent
-        active: tabContentRoot.currentTab === 0 || loaderMonitor.item !== null
         visible: tabContentRoot.currentTab === 0
-        source: "views/MonitorView.qml"
     }
 
-    Loader {
-        id: loaderHistory
+    HistoryView {
+        id: historyView
         anchors.fill: parent
-        active: tabContentRoot.currentTab === 1
         visible: tabContentRoot.currentTab === 1
-        source: "views/HistoryView.qml"
     }
 
-    Loader {
-        id: loaderTrending
+    TrendingView {
+        id: trendingView
         anchors.fill: parent
-        active: tabContentRoot.currentTab === 2 || loaderTrending.item !== null
         visible: tabContentRoot.currentTab === 2
-        source: "views/TrendingView.qml"
     }
 
-    Loader {
-        id: loaderSettings
+    SettingsView {
+        id: settingsView
         anchors.fill: parent
-        active: tabContentRoot.currentTab === 3 || loaderSettings.item !== null
         visible: tabContentRoot.currentTab === 3
-        source: "views/SettingsView.qml"
+
+        Connections {
+            target: settingsView
+            function onRequestMainTabChange(tabIndex) {
+                tabContentRoot.settingsRequestMainTabChange(tabIndex)
+            }
+        }
+    }
+
+    TesterView {
+        id: testerView
+        anchors.fill: parent
+        visible: tabContentRoot.currentTab === 4
+
+        Connections {
+            target: testerView
+            function onNavigateToAddSensor(data) {
+                tabContentRoot.testerNavigateToAddSensor(data)
+            }
+        }
     }
 }

@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import DataLogger.Theme
-import DataLogger.Components
+import DataLogger.Core
 
 Item {
     id: root
@@ -32,20 +32,20 @@ Item {
                     Layout.fillWidth: true; Layout.alignment: Qt.AlignTop; spacing: 8
 
                     Text { text: "Device Information"; color: Theme.accentText; font.bold: true; font.pixelSize: 15 }
-                    Rectangle { Layout.fillWidth: true; height: 1; color: Theme.borderDefault }
+                    Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.borderDefault }
 
                     Text { text: "Device ID:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
                     TextField {
                         Layout.fillWidth: true
-                        text: settingsController ? settingsController.stationCode : ""
-                        onTextEdited: { settingsController.stationCode = text; root.configChanged = true }
+                        text: SettingsController ? SettingsController.stationCode : ""
+                        onTextEdited: { SettingsController.stationCode = text; root.configChanged = true }
                     }
 
                     Text { text: "Name Device:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
                     TextField {
                         Layout.fillWidth: true
-                        text: settingsController ? settingsController.stationName : ""
-                        onTextEdited: { settingsController.stationName = text; root.configChanged = true }
+                        text: SettingsController ? SettingsController.stationName : ""
+                        onTextEdited: { SettingsController.stationName = text; root.configChanged = true }
                     }
 
                     Text { text: "Poll interval (s):"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
@@ -60,15 +60,15 @@ Item {
                             if (isNaN(n)) return 1
                             return Math.min(3600, Math.max(1, n))
                         }
-                        value: settingsController ? settingsController.pollInterval : 3
+                        value: SettingsController ? SettingsController.pollInterval : 3
                         Connections {
-                            target: settingsController
+                            target: SettingsController
                             function onConfigLoaded() {
-                                pollSpin.value = settingsController.pollInterval
+                                pollSpin.value = SettingsController.pollInterval
                             }
                         }
                         onValueModified: {
-                            settingsController.pollInterval = Math.round(value)
+                            SettingsController.pollInterval = Math.round(value)
                             root.configChanged = true
                         }
                     }
@@ -76,24 +76,25 @@ Item {
                     Item { Layout.preferredHeight: 8 }
 
                     Text { text: "Firmware update"; color: Theme.accentText; font.bold: true; font.pixelSize: 15 }
-                    Rectangle { Layout.fillWidth: true; height: 1; color: Theme.borderDefault }
+                    Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.borderDefault }
 
                     Button {
+                        id: checkUpdatesBtn
                         text: "Check for updates"
                         Layout.fillWidth: true
                         Layout.preferredHeight: 40
                         onClicked: {
-                            if (settingsMessagePopup) {
-                                settingsMessagePopup.showConfirm(
+                            if (root.settingsMessagePopup) {
+                                root.settingsMessagePopup.showConfirm(
                                     "Firmware update",
                                     "The application will contact GitHub to check for updates. " +
                                     "If a newer build is available, it will be downloaded and applied; the app may restart.\n\nContinue?",
-                                    function() { settingsController.checkUpdates() },
+                                    function() { SettingsController.checkUpdates() },
                                     "Continue",
                                     Theme.accent
                                 )
                             } else {
-                                settingsController.checkUpdates()
+                                SettingsController.checkUpdates()
                             }
                         }
                         background: Rectangle {
@@ -101,7 +102,7 @@ Item {
                             radius: Theme.radiusMedium
                         }
                         contentItem: Text {
-                            text: parent.text
+                            text: checkUpdatesBtn.text
                             color: Theme.textOnColoredBtn
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
@@ -114,17 +115,17 @@ Item {
                     Layout.fillWidth: true; Layout.alignment: Qt.AlignTop; spacing: 8
 
                     Text { text: "Date & Time"; color: Theme.accentText; font.bold: true; font.pixelSize: 15 }
-                    Rectangle { Layout.fillWidth: true; height: 1; color: Theme.borderDefault }
+                    Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.borderDefault }
 
                     Text { text: "Time format:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
                     ComboBox {
                         Layout.fillWidth: true
                         model: ["HH:mm:ss", "hh:mm:ss AP"]
                         currentIndex: {
-                            var fmt = settingsController ? settingsController.timeFormat : "HH:mm:ss"
+                            var fmt = SettingsController ? SettingsController.timeFormat : "HH:mm:ss"
                             return Math.max(0, model.indexOf(fmt))
                         }
-                        onActivated: { settingsController.timeFormat = currentText; root.configChanged = true }
+                        onActivated: { SettingsController.timeFormat = currentText; root.configChanged = true }
                     }
 
                     Text { text: "Date format:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
@@ -132,10 +133,10 @@ Item {
                         Layout.fillWidth: true
                         model: ["dd/MM/yyyy", "yyyy-MM-dd", "MM/dd/yyyy"]
                         currentIndex: {
-                            var fmt = settingsController ? settingsController.dateFormat : "dd/MM/yyyy"
+                            var fmt = SettingsController ? SettingsController.dateFormat : "dd/MM/yyyy"
                             return Math.max(0, model.indexOf(fmt))
                         }
-                        onActivated: { settingsController.dateFormat = currentText; root.configChanged = true }
+                        onActivated: { SettingsController.dateFormat = currentText; root.configChanged = true }
                     }
 
                     Text { text: "Timezone:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
@@ -148,16 +149,16 @@ Item {
                             "UTC+11", "UTC+12"
                         ]
                         currentIndex: {
-                            var tz = settingsController ? settingsController.timezone : "UTC+7"
+                            var tz = SettingsController ? SettingsController.timezone : "UTC+7"
                             return Math.max(0, model.indexOf(tz))
                         }
-                        onActivated: { settingsController.timezone = currentText; root.configChanged = true }
+                        onActivated: { SettingsController.timezone = currentText; root.configChanged = true }
                     }
 
                     Text { text: "Auto sync time:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
                     Switch {
-                        checked: settingsController ? settingsController.autoSyncTime : false
-                        onToggled: { settingsController.autoSyncTime = checked; root.configChanged = true }
+                        checked: SettingsController ? SettingsController.autoSyncTime : false
+                        onToggled: { SettingsController.autoSyncTime = checked; root.configChanged = true }
                     }
                 }
             }

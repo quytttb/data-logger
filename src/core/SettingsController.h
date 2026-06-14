@@ -1,11 +1,17 @@
 #pragma once
 #include <QObject>
 #include <QString>
+#include <QtQmlIntegration/qqmlintegration.h>
 #include "data/models/AppConfig.h"
+
+class QJSEngine;
+class QQmlEngine;
 
 // Exposes AppConfig to QML and handles save/load.
 class SettingsController : public QObject {
     Q_OBJECT
+    QML_ELEMENT
+    QML_SINGLETON
 
     // Station
     Q_PROPERTY(QString stationCode   READ stationCode   WRITE setStationCode   NOTIFY configLoaded)
@@ -25,6 +31,7 @@ class SettingsController : public QObject {
     Q_PROPERTY(QString ftpPassword   READ ftpPassword   WRITE setFtpPassword   NOTIFY configLoaded)
     Q_PROPERTY(QString ftpRemotePath READ ftpRemotePath WRITE setFtpRemotePath NOTIFY configLoaded)
     Q_PROPERTY(QString ftpPrefix     READ ftpPrefix     WRITE setFtpPrefix     NOTIFY configLoaded)
+    Q_PROPERTY(QString ftpProtocol   READ ftpProtocol   WRITE setFtpProtocol   NOTIFY configLoaded)
 
     // Polling
     Q_PROPERTY(int    pollInterval   READ pollInterval  WRITE setPollInterval  NOTIFY configLoaded)
@@ -58,9 +65,16 @@ class SettingsController : public QObject {
     Q_PROPERTY(QString restApiBind   READ restApiBind    WRITE setRestApiBind    NOTIFY configLoaded)
     Q_PROPERTY(QString restApiToken  READ restApiToken                           NOTIFY configLoaded)
     Q_PROPERTY(int    configRevision READ configRevision                         NOTIFY configLoaded)
+    Q_PROPERTY(QString theme         READ theme         WRITE setTheme         NOTIFY themeChanged)
+    Q_PROPERTY(bool   provisionQrAvailable READ provisionQrAvailable             NOTIFY provisionQrChanged)
+    Q_PROPERTY(bool   provisionQrStale     READ provisionQrStale               NOTIFY provisionQrChanged)
 
 public:
-    explicit SettingsController(QObject *parent = nullptr);
+    explicit SettingsController(QObject *parent);
+
+    static SettingsController *instance();
+    static void setInstance(SettingsController *controller);
+    static SettingsController *create(QQmlEngine *, QJSEngine *);
 
     // Property getters
     QString stationCode()   const { return m_cfg.stationCode; }
@@ -76,6 +90,7 @@ public:
     QString ftpPassword()   const;  // decrypts on read
     QString ftpRemotePath() const { return m_cfg.ftpRemotePath; }
     QString ftpPrefix()     const { return m_cfg.ftpPrefix; }
+    QString ftpProtocol()   const { return m_cfg.ftpProtocol; }
     int    pollInterval()   const { return m_cfg.pollInterval; }
     QString serialPort()    const { return m_cfg.serialPort; }
     int    serialBaudrate() const { return m_cfg.serialBaudrate; }
@@ -99,6 +114,9 @@ public:
     QString restApiBind()       const { return m_cfg.restApiBind; }
     QString restApiToken()      const { return m_cfg.restApiToken; }
     int    configRevision()     const { return m_cfg.configRevision; }
+    QString theme()             const { return m_cfg.theme; }
+    bool   provisionQrAvailable() const;
+    bool   provisionQrStale()     const;
 
     // Property setters
     void setStationCode(const QString &v)   { m_cfg.stationCode = v; }
@@ -114,6 +132,7 @@ public:
     void setFtpPassword(const QString &v);  // encrypts before storing
     void setFtpRemotePath(const QString &v) { m_cfg.ftpRemotePath = v; }
     void setFtpPrefix(const QString &v)     { m_cfg.ftpPrefix = v; }
+    void setFtpProtocol(const QString &v)   { m_cfg.ftpProtocol = v; }
     void setPollInterval(int v)             { m_cfg.pollInterval = v; }
     void setSerialPort(const QString &v)    { m_cfg.serialPort = v; }
     void setSerialBaudrate(int v)           { m_cfg.serialBaudrate = v; }
@@ -135,6 +154,7 @@ public:
     void setRestApiEnabled(bool v)          { m_cfg.restApiEnabled = v; }
     void setRestApiPort(int v)              { m_cfg.restApiPort = v; }
     void setRestApiBind(const QString &v)   { m_cfg.restApiBind = v; }
+    void setTheme(const QString &v);
 
     // Access the loaded config struct (read-only, for MonitorController startup)
     const AppConfig &config() const { return m_cfg; }
@@ -145,6 +165,10 @@ public slots:
     Q_INVOKABLE void saveSerialConfig(const QString &port, int baudrate,
                                       int bytesize, const QString &parity, int stopbits);
     Q_INVOKABLE void regenerateRestToken();
+    Q_INVOKABLE void regenerate_rest_token() { regenerateRestToken(); }
+    Q_INVOKABLE QString get_provision_qr_base64();
+    Q_INVOKABLE void checkUpdates();
+    Q_INVOKABLE bool saveTheme(const QString &value);
     Q_INVOKABLE QVariantMap coefficientUiState(const QString &coeffJson) const;
     Q_INVOKABLE QString buildCoefficientJson(int mode, const QString &legacyJson,
                                               const QString &s0, const QString &s1,
@@ -153,11 +177,17 @@ public slots:
 signals:
     void configLoaded();
     void configSaved();
+    void themeChanged();
     void serverActiveChanged();
+    void provisionQrChanged();
     void messageSent(QString title, QString body);
 
 private:
+    QString buildProvisionJson() const;
+    QString provisionHost() const;
+
     QStringList validate() const;
 
     AppConfig m_cfg;
+    QString   m_qrTokenSnapshot;
 };

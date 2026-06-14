@@ -1,12 +1,8 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import DataLogger.Theme
-
-// Reusable date picker popup using MonthGrid.
-// Usage:
-//   DatePickerPopup { id: picker; onDatePicked: (d) => field.text = formatDate(d) }
-//   Button { onClicked: picker.open() }
 
 Popup {
     id: datePicker
@@ -32,7 +28,6 @@ Popup {
         anchors.fill: parent
         spacing: 4
 
-        // ── Month / Year navigation ──────────────────────────────────
         RowLayout {
             Layout.fillWidth: true
             spacing: 4
@@ -77,7 +72,6 @@ Popup {
             }
         }
 
-        // ── Day-of-week header ───────────────────────────────────────
         DayOfWeekRow {
             locale: monthGrid.locale
             Layout.fillWidth: true
@@ -92,7 +86,6 @@ Popup {
             }
         }
 
-        // ── Month grid ───────────────────────────────────────────────
         MonthGrid {
             id: monthGrid
             month: datePicker.selectedDate.getMonth()
@@ -102,8 +95,8 @@ Popup {
             Layout.fillHeight: true
 
             delegate: Rectangle {
+                id: dayCell
                 required property var model
-                // model.day, model.month, model.year, model.date
 
                 width: Math.floor(monthGrid.width / 7)
                 height: Math.floor((monthGrid.height) / 6)
@@ -123,35 +116,34 @@ Popup {
                         && model.year === s.getFullYear();
                 }
 
-                color: isSelected ? Theme.accent
-                     : mouseArea.containsMouse && isCurrentMonth ? Qt.rgba(1,1,1,0.08)
+                color: dayCell.isSelected ? Theme.accent
+                     : dayMouseArea.containsMouse && dayCell.isCurrentMonth ? Qt.rgba(1,1,1,0.08)
                      : "transparent"
 
                 Text {
                     anchors.centerIn: parent
-                    text: model.day
+                    text: dayCell.model.day
                     font.pixelSize: 14
-                    font.bold: isToday
-                    color: !isCurrentMonth ? Theme.textFaint
-                         : isSelected ? Theme.textOnColoredBtn
-                         : isToday ? Theme.accent
+                    font.bold: dayCell.isToday
+                    color: !dayCell.isCurrentMonth ? Theme.textFaint
+                         : dayCell.isSelected ? Theme.textOnColoredBtn
+                         : dayCell.isToday ? Theme.accent
                          : Theme.textPrimary
                 }
 
                 MouseArea {
-                    id: mouseArea
+                    id: dayMouseArea
                     anchors.fill: parent
                     hoverEnabled: true
                     onClicked: {
-                        datePicker.selectedDate = model.date;
-                        datePicker.datePicked(model.date);
+                        datePicker.selectedDate = dayCell.model.date;
+                        datePicker.datePicked(dayCell.model.date);
                         datePicker.close();
                     }
                 }
             }
         }
 
-        // ── Today shortcut ───────────────────────────────────────────
         Button {
             text: "Today"
             flat: true

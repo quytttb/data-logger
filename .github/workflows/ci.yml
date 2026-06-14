@@ -38,5 +38,18 @@ jobs:
       - name: Build
         run: cmake --build build-ci --parallel $(nproc)
 
+      - name: QML lint
+        run: cmake --build build-ci --target all_qmllint all_qmllint_module 2>&1 | tee qmllint.log
+
+      - name: QML lint warning budget
+        run: |
+          WARNINGS=$(grep -c "Warning:" qmllint.log || true)
+          echo "qmllint warnings: $WARNINGS"
+          MAX=500
+          if [ "$WARNINGS" -gt "$MAX" ]; then
+            echo "Exceeded max warnings ($MAX)"
+            exit 1
+          fi
+
       - name: Verify binary
         run: test -f build-ci/bin/DataLogger && echo "Build OK"

@@ -1,106 +1,97 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Controls.Material
 import QtQuick.Layouts
+
 import DataLogger.Theme
+import DataLogger.Core
 import DataLogger.Components
 
 Rectangle {
     id: histRoot
     color: "transparent"
 
-    MessagePopup {
-        id: histPopup
-    }
-
-    Connections {
-        target: historyController
-        function onMessageSent(t, m) { histPopup.showMessage(t, m) }
-    }
-
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 15
-        spacing: 0
+        anchors.margins: AppTheme.pagePadding
+        spacing: AppTheme.sectionSpacing
 
-        // ── Card container (matches Settings form style) ─────────────────
-        Rectangle {
+        InlineBanner {
+            Layout.fillWidth: true
+            visible: HistoryViewModel.lastError.length > 0
+            semantic: "error"
+            message: HistoryViewModel.lastError
+        }
+
+        ElevatedPane {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            color: Theme.bgPanel
-            radius: Theme.radiusCard
-            border.color: Theme.borderDefault
-            border.width: 1
+            padding: 0
+            contentSpacing: 0
 
-            ColumnLayout {
-                anchors.fill: parent
-                anchors.margins: 20
-                spacing: 12
+            AppTableView {
+                id: histTable
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                model: HistoryViewModel.tableModel
+                loading: HistoryViewModel.isLoading
+                reuseItems: false
+                hasData: HistoryViewModel.tableModel.rowsSize > 0
+                colWeights: [0.28, 0.22, 0.12, 0.18, 0.2]
+                colMinimums: [140, 100, 60, 80, 80]
+                headerAlignRight: function(col) { return col === 4 }
+                emptyMessage: !HistoryViewModel.searchedOnce
+                              ? qsTr("Adjust the time range or sensor, then search.")
+                              : qsTr("No records found for the selected filters.")
 
-                // Table header
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 36
-                    color: Theme.bgSeparator
-                    radius: Theme.radiusSmall
+                delegate: ItemDelegate {
+                    id: histCell
+                    required property int row
+                    required property int column
+                    required property string recordedAt
+                    required property string sensorName
+                    required property string unit
+                    required property string value
+                    required property string rawValue
 
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.leftMargin: 12
-                        anchors.rightMargin: 12
-                        spacing: 8
-                        Label { text: "Time";      color: Theme.accent; font.bold: true; font.pixelSize: 13; Layout.preferredWidth: 160 }
-                        Label { text: "Sensor";    color: Theme.accent; font.bold: true; font.pixelSize: 13; Layout.preferredWidth: 150 }
-                        Label { text: "Unit";      color: Theme.accent; font.bold: true; font.pixelSize: 13; Layout.preferredWidth: 80 }
-                        Label { text: "Value";     color: Theme.accent; font.bold: true; font.pixelSize: 13; Layout.preferredWidth: 120 }
-                        Label { text: "Raw value"; color: Theme.accent; font.bold: true; font.pixelSize: 13; Layout.fillWidth: true }
+                    implicitHeight: 40
+                    padding: 0
+                    hoverEnabled: true
+
+                    background: TableCellBackground {
+                        cellHovered: histCell.hovered
                     }
-                }
 
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 1
-                    color: Theme.borderDefault
-                }
-
-                // Data rows — fill remaining space
-                ListView {
-                    id: historyList
-                    clip: true
-                    smooth: false
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    model: historyModel
-                    spacing: 1
-                    boundsBehavior: Flickable.StopAtBounds
-
-                    delegate: Rectangle {
-                        width: historyList.width
-                        height: 40
-                        color: index % 2 === 0 ? Theme.bgPanel : Theme.bgStripe
-                        radius: 2
-
-                        RowLayout {
-                            anchors.fill: parent
-                            anchors.leftMargin: 12
-                            anchors.rightMargin: 12
-                            spacing: 8
-                            Text { text: model.recordedAt;  color: Theme.textLabel;     font.pixelSize: Theme.fontLabelSize; Layout.preferredWidth: 160 }
-                            Text { text: model.sensorName;  color: Theme.accentText;    font.pixelSize: Theme.fontLabelSize; font.bold: true; Layout.preferredWidth: 150; elide: Text.ElideRight }
-                            Text { text: model.unit;        color: Theme.textLabel;     font.pixelSize: Theme.fontLabelSize; Layout.preferredWidth: 80 }
-                            Text { text: model.value;       color: Theme.statusOk;      font.pixelSize: 14; font.bold: true; font.family: "Monospace"; Layout.preferredWidth: 120 }
-                            Text { text: model.rawValue;    color: Theme.textLabel;     font.pixelSize: Theme.fontLabelSize; Layout.fillWidth: true }
+                    contentItem: Label {
+                        anchors {
+                            left: parent.left
+                            leftMargin: histCell.column === 0 ? 16 : 8
+                            right: parent.right
+                            rightMargin: 8
+                            verticalCenter: parent.verticalCenter
                         }
-                    }
-
-                    Label {
-                        anchors.centerIn: parent
-                        visible: historyList.count === 0 && !historyController.isLoading
-                        text: "No data.\nAdjust the time range or sensor, then search."
-                        color: Theme.textSecondary
-                        font.pixelSize: 16
-                        horizontalAlignment: Text.AlignHCenter
-                        wrapMode: Text.WordWrap
-                        width: Math.min(400, parent.width - 32)
+                        text: {
+                            switch (histCell.column) {
+                            case 0: return histCell.recordedAt
+                            case 1: return histCell.sensorName
+                            case 2: return histCell.unit
+                            case 3: return histCell.value
+                            case 4: return histCell.rawValue
+                            default: return ""
+                            }
+                        }
+                        horizontalAlignment: histCell.column === 4 ? Text.AlignRight : Text.AlignLeft
+                        font.family: (histCell.column === 3 || histCell.column === 4) ? "monospace" : ""
+                        font.weight: histCell.column === 3 ? Font.DemiBold : Font.Normal
+                        color: {
+                            if (histCell.column === 2) return AppColors.tableHeaderText
+                            if (histCell.column === 0) return AppColors.tableCellMuted
+                            if (histCell.column === 3) return AppColors.success
+                            return AppColors.primaryText
+                        }
+                        elide: Text.ElideRight
                     }
                 }
             }

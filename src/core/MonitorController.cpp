@@ -11,11 +11,29 @@
 #include <QFile>
 #include <QSet>
 #include <QDebug>
+#include <QQmlEngine>
+#include <QJSEngine>
 
-// Colour palette for trending series and DI legend
+static MonitorController *g_monitorInstance = nullptr;
+
+MonitorController *MonitorController::instance() { return g_monitorInstance; }
+
+void MonitorController::setInstance(MonitorController *controller)
+{
+    g_monitorInstance = controller;
+}
+
+MonitorController *MonitorController::create(QQmlEngine *, QJSEngine *)
+{
+    Q_ASSERT(g_monitorInstance);
+    QQmlEngine::setObjectOwnership(g_monitorInstance, QQmlEngine::CppOwnership);
+    return g_monitorInstance;
+}
+
+// Colour palette for trending series and DI legend (M3 graph series — dark baseline).
 static const QStringList kPalette = {
-    "#558dff","#7dffa2","#ff6666","#d4a62d",
-    "#b0c6ff","#ff9933","#cc66ff","#66cccc"
+    "#4DB6AC", "#9FA8DA", "#4FC3F7", "#FFB74D",
+    "#CE93D8", "#F48FB1", "#64B5F6", "#81C784"
 };
 static const QHash<QString, QString> kDiTypeNames = {
     {"00","Monitoring"},{"01","Calibrating"},{"02","Error"},{"03","Maintenance"}
@@ -303,7 +321,7 @@ void MonitorController::onDataReady(QVariantMap payload) {
         if (di.value("state").toBool()) {
             QString code  = di.value("di_type").toString();
             QString label = kDiTypeNames.value(code, di.value("label").toString());
-            QString color = m_diLabelToColor.value(label, "#888888");
+            QString color = m_diLabelToColor.value(label, QStringLiteral("#938F99"));
             coloredDi.append(QVariantMap{{"label", label}, {"color", color}});
         }
     }

@@ -1,6 +1,24 @@
 #include "MonitorModel.h"
 #include <QDateTime>
+#include <QQmlEngine>
+#include <QJSEngine>
 #include <cmath>
+
+static MonitorModel *g_monitorModelInstance = nullptr;
+
+MonitorModel *MonitorModel::instance() { return g_monitorModelInstance; }
+
+void MonitorModel::setInstance(MonitorModel *model)
+{
+    g_monitorModelInstance = model;
+}
+
+MonitorModel *MonitorModel::create(QQmlEngine *, QJSEngine *)
+{
+    Q_ASSERT(g_monitorModelInstance);
+    QQmlEngine::setObjectOwnership(g_monitorModelInstance, QQmlEngine::CppOwnership);
+    return g_monitorModelInstance;
+}
 
 MonitorModel::MonitorModel(QObject *parent) : QAbstractListModel(parent) {}
 

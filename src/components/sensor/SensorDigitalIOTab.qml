@@ -1,9 +1,9 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import DataLogger.Theme
 
-// TAB 2: Digital I/O — attach DI/DO sensors to an analog; edit link on list selection.
 Rectangle {
     id: root
     color: Theme.bgPanel; radius: Theme.radiusCard
@@ -93,14 +93,12 @@ Rectangle {
         anchors.fill: parent; anchors.margins: 20
         spacing: 20
 
-        // ── LEFT: Attach or edit selected link ────────────────────────────
         ColumnLayout {
             Layout.fillHeight: true
             Layout.fillWidth: true
             Layout.preferredWidth: 1
             spacing: 12
 
-            // —— Edit selected link ——
             ColumnLayout {
                 visible: root.selectedLink !== null
                 Layout.fillWidth: true
@@ -110,7 +108,7 @@ Rectangle {
                     text: "Edit attachment"
                     color: Theme.accentText; font.bold: true; font.pixelSize: 14
                 }
-                Rectangle { Layout.fillWidth: true; height: 1; color: Theme.borderDefault }
+                Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.borderDefault }
 
                 Text {
                     text: root.selectedLink ? root.selectedLink.label : ""
@@ -177,7 +175,6 @@ Rectangle {
                 }
             }
 
-            // —— Attach new link ——
             ColumnLayout {
                 visible: root.selectedLink === null
                 Layout.fillWidth: true
@@ -296,7 +293,6 @@ Rectangle {
             Item { Layout.fillHeight: true }
         }
 
-        // ── RIGHT: Attached links (compact rows) ───────────────────────────
         ColumnLayout {
             Layout.fillHeight: true
             Layout.fillWidth: true
@@ -315,7 +311,7 @@ Rectangle {
                     color: Theme.textSecondary; font.pixelSize: 13
                 }
             }
-            Rectangle { Layout.fillWidth: true; height: 1; color: Theme.borderDefault }
+            Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.borderDefault }
 
             ListView {
                 id: dioListView
@@ -326,16 +322,20 @@ Rectangle {
                 currentIndex: -1
 
                 delegate: Rectangle {
-                    width: dioListView.width
+                    id: linkRow
+                    required property int index
+                    required property var modelData
+
+                    width: ListView.view.width
                     height: 48
                     radius: 4
-                    color: modelData.ioType === "DO" ? "#301010" : "#103010"
-                    border.color: dioListView.currentIndex === index ? Theme.accent : "transparent"
-                    border.width: dioListView.currentIndex === index ? 2 : 0
+                    color: linkRow.modelData.ioType === "DO" ? "#301010" : "#103010"
+                    border.color: ListView.view.currentIndex === linkRow.index ? Theme.accent : "transparent"
+                    border.width: ListView.view.currentIndex === linkRow.index ? 2 : 0
 
                     MouseArea {
                         anchors.fill: parent
-                        onClicked: dioListView.currentIndex = index
+                        onClicked: ListView.view.currentIndex = linkRow.index
                     }
 
                     RowLayout {
@@ -349,10 +349,10 @@ Rectangle {
                             Layout.preferredHeight: 26
                             Layout.alignment: Qt.AlignVCenter
                             radius: 4
-                            color: modelData.ioType === "DO" ? Theme.btnStop : Theme.btnStart
+                            color: linkRow.modelData.ioType === "DO" ? Theme.btnStop : Theme.btnStart
                             Text {
                                 anchors.centerIn: parent
-                                text: modelData.ioType
+                                text: linkRow.modelData.ioType
                                 color: "#FFF"
                                 font.bold: true
                                 font.pixelSize: 13
@@ -360,7 +360,7 @@ Rectangle {
                         }
 
                         Text {
-                            text: modelData.label
+                            text: linkRow.modelData.label
                             color: Theme.textPrimary
                             font.pixelSize: 15
                             Layout.fillWidth: true
@@ -370,8 +370,8 @@ Rectangle {
                         }
 
                         Text {
-                            visible: modelData.ioType === "DI"
-                            text: root.diTypeName(modelData.diType)
+                            visible: linkRow.modelData.ioType === "DI"
+                            text: root.diTypeName(linkRow.modelData.diType)
                             color: Theme.textSecondary
                             font.pixelSize: Theme.fontLabelSize
                             Layout.preferredWidth: implicitWidth
@@ -379,11 +379,11 @@ Rectangle {
                         }
 
                         Text {
-                            visible: modelData.ioType === "DO"
+                            visible: linkRow.modelData.ioType === "DO"
                             text: {
                                 var parts = []
-                                if (modelData.triggerOnMax) parts.push("Max")
-                                if (modelData.triggerOnMin) parts.push("Min")
+                                if (linkRow.modelData.triggerOnMax) parts.push("Max")
+                                if (linkRow.modelData.triggerOnMin) parts.push("Min")
                                 return parts.length ? parts.join(", ") : "—"
                             }
                             color: Theme.textSecondary
@@ -393,7 +393,7 @@ Rectangle {
                         }
 
                         Text {
-                            text: "Slave " + modelData.slaveId + " · Addr " + modelData.address
+                            text: "Slave " + linkRow.modelData.slaveId + " · Addr " + linkRow.modelData.address
                             color: Theme.textSecondary
                             font.pixelSize: Theme.fontLabelSize
                             Layout.preferredWidth: implicitWidth

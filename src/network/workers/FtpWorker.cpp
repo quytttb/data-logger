@@ -86,7 +86,9 @@ bool FtpWorker::uploadFile(const QString &localPath, const QString &remoteDir) {
     }
 
     QFileInfo fi(localPath);
-    QString scheme = (m_protocol == "ftp") ? "ftp" : "ftp"; // SFTP requires external lib
+    const QString scheme = (m_protocol == QStringLiteral("sftp"))
+        ? QStringLiteral("ftp")   // SFTP not implemented — fall back to FTP
+        : QStringLiteral("ftp");
     QUrl url;
     url.setScheme(scheme);
     url.setHost(m_address);

@@ -1,14 +1,14 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import DataLogger.Theme
+import DataLogger.Core
 
-// Thanh header Monitor: start/stop + trạng thái polling.
 Item {
     id: root
     implicitHeight: 64
 
-    // ── DI Legend Popup ──────────────────────────────────────────────────
     Popup {
         id: diLegendPopup
         parent: Overlay.overlay
@@ -37,21 +37,25 @@ Item {
                 horizontalAlignment: Text.AlignHCenter
             }
 
-            Rectangle { Layout.fillWidth: true; height: 1; color: Theme.borderDefault }
+            Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.borderDefault }
 
             Repeater {
-                model: monitorController.diLegend
+                model: MonitorController.diLegend
 
                 RowLayout {
+                    id: legendItem
+                    required property var modelData
                     Layout.fillWidth: true
                     spacing: 10
 
                     Rectangle {
-                        width: 12; height: 12; radius: 6
-                        color: modelData.color
+                        Layout.preferredWidth: 12
+                        Layout.preferredHeight: 12
+                        radius: 6
+                        color: legendItem.modelData.color
                     }
                     Text {
-                        text: modelData.label
+                        text: legendItem.modelData.label
                         color: Theme.textPrimary
                         font.pixelSize: 14
                         Layout.fillWidth: true
@@ -60,7 +64,7 @@ Item {
             }
 
             Text {
-                visible: !monitorController.diLegend || monitorController.diLegend.length === 0
+                visible: !MonitorController.diLegend || MonitorController.diLegend.length === 0
                 text: "No DI channels configured."
                 color: Theme.textSecondary
                 font.pixelSize: 14
@@ -86,39 +90,40 @@ Item {
         spacing: 10
 
         Button {
+            id: monitorBtn
             Layout.preferredWidth: 200
             Layout.preferredHeight: 44
-            enabled: !monitorController.isStopping && (monitorController.isPolling || monitorController.hasActiveSensors)
-            text: monitorController.isStopping ? "Stopping…"
-                : monitorController.isPolling ? "Stop monitoring" : "Start monitoring"
+            enabled: !MonitorController.isStopping && (MonitorController.isPolling || MonitorController.hasActiveSensors)
+            text: MonitorController.isStopping ? "Stopping…"
+                : MonitorController.isPolling ? "Stop monitoring" : "Start monitoring"
             font.pixelSize: 14
             font.bold: true
             background: Rectangle {
                 radius: Theme.radiusMedium
-                color: !parent.enabled ? Theme.btnBgDisabled
-                     : monitorController.isPolling ? Theme.btnStop : Theme.btnStart
-                opacity: parent.pressed ? 0.75 : 1.0
+                color: !monitorBtn.enabled ? Theme.btnBgDisabled
+                     : MonitorController.isPolling ? Theme.btnStop : Theme.btnStart
+                opacity: monitorBtn.pressed ? 0.75 : 1.0
             }
             contentItem: Text {
-                text: parent.text
-                font: parent.font
+                text: monitorBtn.text
+                font: monitorBtn.font
                 color: Theme.textOnColoredBtn
                 horizontalAlignment: Text.AlignHCenter
                 verticalAlignment: Text.AlignVCenter
                 elide: Text.ElideRight
             }
             onClicked: {
-                if (monitorController.isPolling)
-                    monitorController.stop_polling()
+                if (MonitorController.isPolling)
+                    MonitorController.stopPolling()
                 else
-                    monitorController.start_polling()
+                    MonitorController.startPolling()
             }
             Layout.alignment: Qt.AlignVCenter
         }
 
         BusyIndicator {
-            running: monitorController.isStopping
-            visible: monitorController.isStopping
+            running: MonitorController.isStopping
+            visible: MonitorController.isStopping
             Layout.preferredWidth: 28
             Layout.preferredHeight: 28
             Layout.alignment: Qt.AlignVCenter
@@ -129,15 +134,15 @@ Item {
             Layout.preferredHeight: 12
             radius: 6
             color: {
-                if (!monitorController.isPolling)
+                if (!MonitorController.isPolling)
                     return Theme.textSecondary
-                return monitorController.statusMode === 2 ? Theme.statusErrBright : Theme.statusOk
+                return MonitorController.statusMode === 2 ? Theme.statusErrBright : Theme.statusOk
             }
             Layout.alignment: Qt.AlignVCenter
         }
 
         Label {
-            text: monitorController.statusText
+            text: MonitorController.statusText
             color: Theme.textPrimary
             font.pixelSize: 14
             font.bold: true
@@ -146,9 +151,9 @@ Item {
             wrapMode: Text.NoWrap
         }
 
-        // ── DI Legend button ─────────────────────────────────────────────
         Button {
-            visible: monitorController.isPolling && monitorController.diLegend && monitorController.diLegend.length > 0
+            id: diLegendBtn
+            visible: MonitorController.isPolling && MonitorController.diLegend && MonitorController.diLegend.length > 0
             Layout.preferredHeight: 44
             Layout.alignment: Qt.AlignVCenter
             onClicked: diLegendPopup.open()
@@ -157,12 +162,13 @@ Item {
                 spacing: 6
                 anchors.verticalCenter: parent.verticalCenter
 
-                // Mini dots preview
                 Repeater {
-                    model: monitorController.diLegend
+                    model: MonitorController.diLegend
                     Rectangle {
+                        id: diDot
+                        required property var modelData
                         width: 8; height: 8; radius: 4
-                        color: modelData.color
+                        color: diDot.modelData.color
                         anchors.verticalCenter: parent.verticalCenter
                     }
                 }
@@ -180,32 +186,31 @@ Item {
                 color: Theme.bgSeparator
                 border.color: Theme.borderDefault
                 border.width: 1
-                opacity: parent.pressed ? 0.7 : 1.0
+                opacity: diLegendBtn.pressed ? 0.7 : 1.0
             }
         }
 
         Item { Layout.fillWidth: true }
 
-
         Rectangle {
             Layout.preferredWidth: errLabel.implicitWidth + 24
             Layout.preferredHeight: 32
             radius: Theme.radiusSmall
-            color: (monitorController.watchdogStatus !== "OK" && monitorController.watchdogStatus !== "N/A") || monitorController.errorCount > 0 ? Theme.bgErrorTint : Theme.bgSeparator
-            visible: monitorController.isPolling
+            color: (MonitorController.watchdogStatus !== "OK" && MonitorController.watchdogStatus !== "N/A") || MonitorController.errorCount > 0 ? Theme.bgErrorTint : Theme.bgSeparator
+            visible: MonitorController.isPolling
             Layout.alignment: Qt.AlignVCenter
 
             Text {
                 id: errLabel
                 anchors.centerIn: parent
                 text: {
-                    if (monitorController.watchdogStatus !== "OK" && monitorController.watchdogStatus !== "N/A")
-                        return "SYSTEM FAULT - " + monitorController.watchdogStatus;
-                    if (monitorController.errorCount > 0)
-                        return "Modbus read errors: " + monitorController.errorCount;
+                    if (MonitorController.watchdogStatus !== "OK" && MonitorController.watchdogStatus !== "N/A")
+                        return "SYSTEM FAULT - " + MonitorController.watchdogStatus;
+                    if (MonitorController.errorCount > 0)
+                        return "Modbus read errors: " + MonitorController.errorCount;
                     return "No read errors";
                 }
-                color: (monitorController.watchdogStatus !== "OK" && monitorController.watchdogStatus !== "N/A") || monitorController.errorCount > 0 ? Theme.statusErr : Theme.textSecondary
+                color: (MonitorController.watchdogStatus !== "OK" && MonitorController.watchdogStatus !== "N/A") || MonitorController.errorCount > 0 ? Theme.statusErr : Theme.textSecondary
                 font.pixelSize: 12
                 font.bold: true
             }

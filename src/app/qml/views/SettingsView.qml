@@ -1,7 +1,7 @@
 import QtQuick
-import QtQuick.Controls
 import QtQuick.Layouts
 import DataLogger.Theme
+import DataLogger.Core
 import DataLogger.Components
 
 Rectangle {
@@ -23,16 +23,15 @@ Rectangle {
 
     // Signals bound to TaskBar
     function saveConfig() {
-        settingsController.save_config()
+        SettingsController.saveConfig()
         isConfigChanged = false
         if (generalTab) generalTab.configChanged = false
         if (connectionTab) connectionTab.configChanged = false
         if (serverTab) serverTab.configChanged = false
-        // toastPopup is handled by messageSent from controller now, but we can keep it if needed.
     }
 
     function cancelConfig() {
-        settingsController.load_config() // Reload from DB
+        SettingsController.loadConfig() // Reload from DB
         isConfigChanged = false
         if (generalTab) generalTab.configChanged = false
         if (connectionTab) connectionTab.configChanged = false
@@ -75,20 +74,20 @@ Rectangle {
 
     function editSelectedSensor() {
         if (sensorsTab.listView.currentIndex < 0) return
-        var s = sensorModel.get_sensor(sensorsTab.listView.currentIndex)
+        var s = SensorListModel.get_sensor(sensorsTab.listView.currentIndex)
         if (!s || !s.sensorId) return
 
         isAddMode = false
         editSensorId = s.sensorId
         returnMainTab = -1
-        var ui = settingsController.coefficientUiState(s.coefficient)
+        var ui = SettingsController.coefficientUiState(s.coefficient)
         sensorForm.loadData(s, ui)
-        sensorForm.dioRepeaterRef.model = sensorModel.get_analog_links(editSensorId)
+        sensorForm.dioRepeaterRef.model = SensorListModel.get_analog_links(editSensorId)
         // Populate DI/DO dropdowns for attach form (only meaningful for ANALOG sensors)
         if (s.sensorType === "ANALOG") {
             sensorForm.loadLinks(
-                sensorModel.list_di_sensors(),
-                sensorModel.list_do_sensors(editSensorId))
+                SensorListModel.list_di_sensors(),
+                SensorListModel.list_do_sensors(editSensorId))
         }
         sensorSubTabIndex = 0
         settingsTabIndex = 4
@@ -96,14 +95,14 @@ Rectangle {
 
     function deleteSelectedSensor() {
         if (sensorsTab.listView.currentIndex < 0) return
-        var s = sensorModel.get_sensor(sensorsTab.listView.currentIndex)
+        var s = SensorListModel.get_sensor(sensorsTab.listView.currentIndex)
         if (!s || !s.sensorId) return
 
         var msg = "Delete sensor \"" + s.name + "\"?"
         settingsPopup.showConfirm(
             "Confirm delete",
             msg,
-            function() { sensorModel.remove_sensor(s.sensorId) },
+            function() { SensorListModel.remove_sensor(s.sensorId) },
             "Delete",
             Theme.btnStop
         )
@@ -111,7 +110,7 @@ Rectangle {
 
     function saveSensorForm() {
         var d = sensorForm.getFormData()
-        var coeff = settingsController.buildCoefficientJson(
+        var coeff = SettingsController.buildCoefficientJson(
             d.scalingModeIndex, d.coeffJson,
             d.scalingModeIndex === 1 ? d.linearA : d.rawMin,
             d.scalingModeIndex === 1 ? d.linearB : d.rawMax,
@@ -120,24 +119,24 @@ Rectangle {
         if (coeff.length === 0) return
 
         if (isAddMode) {
-            sensorModel.add_sensor(d.name, d.unit, d.slaveId, d.registerAddress,
+            SensorListModel.add_sensor(d.name, d.unit, d.slaveId, d.registerAddress,
                 d.registerType, d.dataType, d.dataFormat,
                 coeff, d.pollInterval, d.reportIndex, d.active,
-                d.minThreshold, d.maxThreshold)
+                d.minThreshold, d.maxThreshold, d.sensorType)
         } else {
-            sensorModel.update_sensor(editSensorId, d.name, d.unit,
+            SensorListModel.update_sensor(editSensorId, d.name, d.unit,
                 d.slaveId, d.registerAddress, d.registerType, d.dataType,
                 d.dataFormat, coeff, d.pollInterval, d.reportIndex,
-                d.active, d.minThreshold, d.maxThreshold)
+                d.active, d.minThreshold, d.maxThreshold, d.sensorType)
         }
         _navigateBack()
     }
 
     function _refreshLinks() {
-        sensorForm.dioRepeaterRef.model = sensorModel.get_analog_links(editSensorId)
+        sensorForm.dioRepeaterRef.model = SensorListModel.get_analog_links(editSensorId)
         sensorForm.loadLinks(
-            sensorModel.list_di_sensors(),
-            sensorModel.list_do_sensors(editSensorId))
+            SensorListModel.list_di_sensors(),
+            SensorListModel.list_do_sensors(editSensorId))
     }
 
     function closeSensorForm() {
@@ -163,27 +162,7 @@ Rectangle {
         id: settingsPopup
     }
 
-    ToastPopup {
-        id: toastPopup
-    }
-
-    Connections {
-        target: settingsController
-        function onMessageSent(t, m) { 
-            if (t.toLowerCase() === "success") toastPopup.showToast(t, m)
-            else settingsPopup.showMessage(t, m)
-        }
-    }
-
-    Connections {
-        target: sensorModel
-        function onMessageSent(t, m) { 
-            if (t.toLowerCase() === "success") toastPopup.showToast(t, m)
-            else settingsPopup.showMessage(t, m)
-        }
-    }
-
-    Component.onCompleted: { sensorModel.refresh() }
+    Component.onCompleted: { SensorListModel.refresh() }
 
 
     ColumnLayout {
@@ -234,22 +213,22 @@ Rectangle {
                 editSensorId: settingsRoot.editSensorId
                 sensorSubTabIndex: settingsRoot.sensorSubTabIndex
                 onAttachDiRequested: function(diSensorId, diType) {
-                    sensorModel.attach_di(settingsRoot.editSensorId, diSensorId, diType)
+                    SensorListModel.attach_di(settingsRoot.editSensorId, diSensorId, diType)
                     settingsRoot._refreshLinks()
                 }
                 onAttachDoRequested: function(doSensorId, trigMax, trigMin) {
-                    sensorModel.attach_do(settingsRoot.editSensorId, doSensorId, trigMax, trigMin)
+                    SensorListModel.attach_do(settingsRoot.editSensorId, doSensorId, trigMax, trigMin)
                     settingsRoot._refreshLinks()
                 }
                 onRemoveDioRequested: function(linkId) {
-                    sensorModel.detach_link(linkId)
+                    SensorListModel.detach_link(linkId)
                     settingsRoot._refreshLinks()
                 }
                 onUpdateLinkDiTypeRequested: function(linkId, diType) {
-                    sensorModel.update_link_di_type(linkId, diType)
+                    SensorListModel.update_link_di_type(linkId, diType)
                 }
                 onUpdateLinkDoTriggersRequested: function(linkId, trigMax, trigMin) {
-                    sensorModel.update_link_do_triggers(linkId, trigMax, trigMin)
+                    SensorListModel.update_link_do_triggers(linkId, trigMax, trigMin)
                 }
             }
         }

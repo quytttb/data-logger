@@ -5,6 +5,13 @@
 #include <QUuid>
 #include <QDebug>
 
+namespace {
+QString nnText(const QString &s)
+{
+    return s.isNull() ? QStringLiteral("") : s;
+}
+} // namespace
+
 AppConfigDao::AppConfigDao(QSqlDatabase db) : m_db(std::move(db)) {}
 
 AppConfig AppConfigDao::rowToConfig(const QSqlRecord &r) {
@@ -23,6 +30,9 @@ AppConfig AppConfigDao::rowToConfig(const QSqlRecord &r) {
     c.ftpPassword       = r.value("ftp_password").toString();
     c.ftpRemotePath     = r.value("ftp_remote_path").toString();
     c.ftpPrefix         = r.value("ftp_prefix").toString();
+    c.ftpProtocol       = r.value("ftp_protocol").toString();
+    if (c.ftpProtocol.isEmpty())
+        c.ftpProtocol = QStringLiteral("ftp");
     c.pollInterval      = r.value("poll_interval").toInt();
     c.serialPort        = r.value("serial_port").toString();
     c.serialBaudrate    = r.value("serial_baudrate").toInt();
@@ -47,6 +57,9 @@ AppConfig AppConfigDao::rowToConfig(const QSqlRecord &r) {
     c.restApiToken      = r.value("rest_api_token").toString();
     c.configRevision    = r.value("config_revision").toInt();
     c.uiLocale          = r.value("ui_locale").toString();
+    c.theme             = r.value("theme").toString();
+    if (c.theme.isEmpty())
+        c.theme = QStringLiteral("dark");
     return c;
 }
 
@@ -71,78 +84,81 @@ bool AppConfigDao::save(const AppConfig &c) {
         q.prepare(R"(INSERT INTO app_config (
             station_code, station_name, time_format, date_format, timezone,
             auto_sync_time, buzzer_enable, ftp_address, ftp_port, ftp_username,
-            ftp_password, ftp_remote_path, ftp_prefix, poll_interval,
+            ftp_password, ftp_remote_path, ftp_prefix, ftp_protocol, poll_interval,
             serial_port, serial_baudrate, serial_bytesize, serial_parity, serial_stopbits,
             server_active, server_device_type, server_name, server_send_interval,
             server_start_time, server_base_folder, server_time_folder, server_file_suffix,
             modbus_tcp_enabled, modbus_tcp_port, modbus_tcp_bind, modbus_tcp_unit_id,
             rest_api_enabled, rest_api_port, rest_api_bind, rest_api_token,
-            config_revision, ui_locale
+            config_revision, ui_locale, theme
         ) VALUES (
             :sc, :sn, :tf, :df, :tz,
             :ast, :be, :fa, :fp, :fu,
-            :fpw, :frp, :fpfx, :pi,
+            :fpw, :frp, :fpfx, :fprot, :pi,
             :sp, :sb, :sbs, :spar, :ssb,
             :sact, :sdt, :snm, :ssi,
             :sst, :sbf, :stf, :ssf,
             :mte, :mtp, :mtb, :mtui,
             :rae, :rap, :rab, :rat,
-            :cr, :ul
+            :cr, :ul, :th
         ))");
     } else {
         q.prepare(R"(UPDATE app_config SET
             station_code=:sc, station_name=:sn, time_format=:tf, date_format=:df,
             timezone=:tz, auto_sync_time=:ast, buzzer_enable=:be, ftp_address=:fa,
             ftp_port=:fp, ftp_username=:fu, ftp_password=:fpw, ftp_remote_path=:frp,
-            ftp_prefix=:fpfx, poll_interval=:pi, serial_port=:sp, serial_baudrate=:sb,
+            ftp_prefix=:fpfx, ftp_protocol=:fprot, poll_interval=:pi, serial_port=:sp, serial_baudrate=:sb,
             serial_bytesize=:sbs, serial_parity=:spar, serial_stopbits=:ssb,
             server_active=:sact, server_device_type=:sdt, server_name=:snm,
             server_send_interval=:ssi, server_start_time=:sst, server_base_folder=:sbf,
             server_time_folder=:stf, server_file_suffix=:ssf,
             modbus_tcp_enabled=:mte, modbus_tcp_port=:mtp, modbus_tcp_bind=:mtb,
             modbus_tcp_unit_id=:mtui, rest_api_enabled=:rae, rest_api_port=:rap,
-            rest_api_bind=:rab, rest_api_token=:rat, config_revision=:cr, ui_locale=:ul
+            rest_api_bind=:rab, rest_api_token=:rat, config_revision=:cr, ui_locale=:ul,
+            theme=:th
             WHERE id=:id)");
         q.bindValue(":id", c.id);
     }
 
-    q.bindValue(":sc",   c.stationCode);
-    q.bindValue(":sn",   c.stationName);
-    q.bindValue(":tf",   c.timeFormat);
-    q.bindValue(":df",   c.dateFormat);
-    q.bindValue(":tz",   c.timezone);
+    q.bindValue(":sc",   nnText(c.stationCode));
+    q.bindValue(":sn",   nnText(c.stationName));
+    q.bindValue(":tf",   nnText(c.timeFormat));
+    q.bindValue(":df",   nnText(c.dateFormat));
+    q.bindValue(":tz",   nnText(c.timezone));
     q.bindValue(":ast",  c.autoSyncTime ? 1 : 0);
     q.bindValue(":be",   c.buzzerEnable ? 1 : 0);
-    q.bindValue(":fa",   c.ftpAddress);
+    q.bindValue(":fa",   nnText(c.ftpAddress));
     q.bindValue(":fp",   c.ftpPort);
-    q.bindValue(":fu",   c.ftpUsername);
-    q.bindValue(":fpw",  c.ftpPassword);
-    q.bindValue(":frp",  c.ftpRemotePath);
-    q.bindValue(":fpfx", c.ftpPrefix);
+    q.bindValue(":fu",   nnText(c.ftpUsername));
+    q.bindValue(":fpw",  nnText(c.ftpPassword));
+    q.bindValue(":frp",  nnText(c.ftpRemotePath));
+    q.bindValue(":fpfx", nnText(c.ftpPrefix));
+    q.bindValue(":fprot", nnText(c.ftpProtocol.isEmpty() ? QStringLiteral("ftp") : c.ftpProtocol));
     q.bindValue(":pi",   c.pollInterval);
-    q.bindValue(":sp",   c.serialPort);
+    q.bindValue(":sp",   nnText(c.serialPort));
     q.bindValue(":sb",   c.serialBaudrate);
     q.bindValue(":sbs",  c.serialBytesize);
-    q.bindValue(":spar", c.serialParity);
+    q.bindValue(":spar", nnText(c.serialParity));
     q.bindValue(":ssb",  c.serialStopbits);
     q.bindValue(":sact", c.serverActive ? 1 : 0);
-    q.bindValue(":sdt",  c.serverDeviceType);
-    q.bindValue(":snm",  c.serverName);
+    q.bindValue(":sdt",  nnText(c.serverDeviceType));
+    q.bindValue(":snm",  nnText(c.serverName));
     q.bindValue(":ssi",  c.serverSendInterval);
-    q.bindValue(":sst",  c.serverStartTime);
-    q.bindValue(":sbf",  c.serverBaseFolder);
-    q.bindValue(":stf",  c.serverTimeFolder);
-    q.bindValue(":ssf",  c.serverFileSuffix);
+    q.bindValue(":sst",  nnText(c.serverStartTime));
+    q.bindValue(":sbf",  nnText(c.serverBaseFolder));
+    q.bindValue(":stf",  nnText(c.serverTimeFolder));
+    q.bindValue(":ssf",  nnText(c.serverFileSuffix));
     q.bindValue(":mte",  c.modbusTcpEnabled ? 1 : 0);
     q.bindValue(":mtp",  c.modbusTcpPort);
-    q.bindValue(":mtb",  c.modbusTcpBind);
+    q.bindValue(":mtb",  nnText(c.modbusTcpBind));
     q.bindValue(":mtui", c.modbusTcpUnitId);
     q.bindValue(":rae",  c.restApiEnabled ? 1 : 0);
     q.bindValue(":rap",  c.restApiPort);
-    q.bindValue(":rab",  c.restApiBind);
-    q.bindValue(":rat",  c.restApiToken);
+    q.bindValue(":rab",  nnText(c.restApiBind));
+    q.bindValue(":rat",  nnText(c.restApiToken));
     q.bindValue(":cr",   c.configRevision);
-    q.bindValue(":ul",   c.uiLocale);
+    q.bindValue(":ul",   nnText(c.uiLocale));
+    q.bindValue(":th",   nnText(c.theme));
 
     if (!q.exec()) {
         qWarning() << "AppConfigDao::save error:" << q.lastError().text();

@@ -1,7 +1,8 @@
+pragma ComponentBehavior: Bound
 import QtQuick
-import QtQuick.Controls
 import QtQuick.Layouts
 import DataLogger.Theme
+import DataLogger.Core
 
 Rectangle {
     id: root
@@ -20,10 +21,10 @@ Rectangle {
 
     ColumnLayout {
         anchors.fill: parent; spacing: 0
-        
-        // Header
+
         Rectangle {
-            Layout.fillWidth: true; height: 36
+            Layout.fillWidth: true
+            Layout.preferredHeight: 36
             color: Theme.bgSeparator; radius: Theme.radiusTiny
             RowLayout {
                 anchors.fill: parent; anchors.leftMargin: 15; anchors.rightMargin: 15; spacing: 5
@@ -40,38 +41,51 @@ Rectangle {
             }
         }
 
-        // List
         ListView {
             id: sensorListView
             clip: true
             smooth: false
             Layout.fillWidth: true; Layout.fillHeight: true
-            model: sensorModel
+            model: SensorListModel
             boundsBehavior: Flickable.StopAtBounds
-            
+
             delegate: Rectangle {
-                width: sensorListView.width; height: 44
-                color: index % 2 === 0 ? "transparent" : Theme.bgDeep
+                id: sensorRow
+                required property int index
+                required property string name
+                required property string unit
+                required property int slaveId
+                required property int registerAddress
+                required property string registerType
+                required property string dataType
+                required property string dataFormat
+                required property var minThreshold
+                required property var maxThreshold
+                required property int pollInterval
+                required property bool active
+
+                width: ListView.view.width; height: 44
+                color: sensorRow.index % 2 === 0 ? "transparent" : Theme.bgDeep
                 border.color: ListView.isCurrentItem ? Theme.accent : "transparent"
                 border.width: ListView.isCurrentItem ? 2 : 0
-                
+
                 MouseArea {
                     anchors.fill: parent
                     onClicked: {
-                        sensorListView.currentIndex = (sensorListView.currentIndex === index) ? -1 : index
+                        ListView.view.currentIndex = (ListView.view.currentIndex === sensorRow.index) ? -1 : sensorRow.index
                     }
                     onDoubleClicked: root.sensorDoubleClicked()
                 }
 
                 RowLayout {
                     anchors.fill: parent; anchors.leftMargin: 15; anchors.rightMargin: 15; spacing: 5
-                    Text { text: name; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; font.bold: true; Layout.preferredWidth: 120; elide: Text.ElideRight }
-                    Text { text: unit; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; Layout.preferredWidth: 50; elide: Text.ElideRight }
-                    Text { text: slaveId; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; Layout.preferredWidth: 45; horizontalAlignment: Text.AlignHCenter }
-                    Text { text: registerAddress; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; Layout.preferredWidth: 45; horizontalAlignment: Text.AlignHCenter }
-                    Text { 
+                    Text { text: sensorRow.name; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; font.bold: true; Layout.preferredWidth: 120; elide: Text.ElideRight }
+                    Text { text: sensorRow.unit; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; Layout.preferredWidth: 50; elide: Text.ElideRight }
+                    Text { text: sensorRow.slaveId; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; Layout.preferredWidth: 45; horizontalAlignment: Text.AlignHCenter }
+                    Text { text: sensorRow.registerAddress; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; Layout.preferredWidth: 45; horizontalAlignment: Text.AlignHCenter }
+                    Text {
                         text: {
-                            var t = String(registerType).toLowerCase().trim()
+                            var t = String(sensorRow.registerType).toLowerCase().trim()
                             if (t.indexOf("holding") >= 0 || t === "hr") return "HOLD"
                             if (t === "inputs" || t.indexOf("discrete") >= 0 || t === "di") return "DISC"
                             if (t.indexOf("input") >= 0 || t === "ir") return "INPT"
@@ -79,38 +93,38 @@ Rectangle {
                             if (t.indexOf("invalid") >= 0) return "INV"
                             return t.substring(0, 4).toUpperCase()
                         }
-                        color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; Layout.preferredWidth: 50; horizontalAlignment: Text.AlignHCenter 
+                        color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; Layout.preferredWidth: 50; horizontalAlignment: Text.AlignHCenter
                     }
                     Text {
                         readonly property bool isBool: {
-                            var t = String(registerType).toLowerCase().trim()
+                            var t = String(sensorRow.registerType).toLowerCase().trim()
                             return t.indexOf("coil") >= 0 || t.indexOf("discrete") >= 0
                         }
-                        text: isBool ? "" : dataType
+                        text: isBool ? "" : sensorRow.dataType
                         color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; Layout.preferredWidth: 65; horizontalAlignment: Text.AlignHCenter
                     }
                     Text {
                         readonly property bool isBool: {
-                            var t = String(registerType).toLowerCase().trim()
+                            var t = String(sensorRow.registerType).toLowerCase().trim()
                             return t.indexOf("coil") >= 0 || t.indexOf("discrete") >= 0
                         }
-                        text: isBool ? "" : dataFormat
+                        text: isBool ? "" : sensorRow.dataFormat
                         color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; Layout.preferredWidth: 55; horizontalAlignment: Text.AlignHCenter
                     }
                     Text {
                         readonly property bool isBool: {
-                            var t = String(registerType).toLowerCase().trim()
+                            var t = String(sensorRow.registerType).toLowerCase().trim()
                             return t.indexOf("coil") >= 0 || t.indexOf("discrete") >= 0
                         }
-                        text: isBool ? "" : (pollInterval + "s")
+                        text: isBool ? "" : (sensorRow.pollInterval + "s")
                         color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; Layout.preferredWidth: 45; horizontalAlignment: Text.AlignHCenter
                     }
-                    Text { 
+                    Text {
                         text: {
-                            var t = String(registerType).toLowerCase().trim()
+                            var t = String(sensorRow.registerType).toLowerCase().trim()
                             var isBool = t.indexOf("coil") >= 0 || t.indexOf("discrete") >= 0
                             if (isBool) return ""
-                            return (minThreshold !== undefined && minThreshold !== "" ? minThreshold : "-") + "  →  " + (maxThreshold !== undefined && maxThreshold !== "" ? maxThreshold : "-")
+                            return (sensorRow.minThreshold !== undefined && sensorRow.minThreshold !== "" ? sensorRow.minThreshold : "-") + "  →  " + (sensorRow.maxThreshold !== undefined && sensorRow.maxThreshold !== "" ? sensorRow.maxThreshold : "-")
                         }
                         color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; Layout.fillWidth: true; elide: Text.ElideRight; horizontalAlignment: Text.AlignHCenter
                     }
@@ -119,7 +133,7 @@ Rectangle {
                         Rectangle {
                             width: 12; height: 12; radius: 6
                             anchors.centerIn: parent
-                            color: active ? Theme.statusOk : Theme.btnStop
+                            color: sensorRow.active ? Theme.statusOk : Theme.btnStop
                             border.color: Theme.borderDefault; border.width: 1
                         }
                     }
@@ -127,12 +141,11 @@ Rectangle {
             }
         }
 
-        // Empty state
         Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
             visible: sensorListView.count === 0
-            
+
             Text {
                 anchors.centerIn: parent
                 text: "No sensors yet.\nClick [+ Add sensor] to create one."

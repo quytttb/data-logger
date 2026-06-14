@@ -1,45 +1,49 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Dialogs
+
 import DataLogger.Theme
+import DataLogger.Core
 import DataLogger.Components
 
-// Thanh công cụ History — nằm trong header chung (cùng chiều cao với logo).
 Item {
     id: root
     implicitHeight: 64
 
-    function formatDate(d) {
-        var dd = String(d.getDate()).padStart(2, '0');
-        var mm = String(d.getMonth() + 1).padStart(2, '0');
-        var yyyy = d.getFullYear();
-        return dd + "/" + mm + "/" + yyyy;
+    FileDialog {
+        id: csvSaveDialog
+        title: qsTr("Export CSV")
+        fileMode: FileDialog.SaveFile
+        nameFilters: [qsTr("CSV files (*.csv)"), qsTr("All files (*)")]
+        defaultSuffix: "csv"
+        onAccepted: HistoryViewModel.exportCsv(selectedFile)
+    }
+
+    Connections {
+        target: HistoryViewModel
+        function onExportFinished(ok, message) {
+            if (ok) {
+                AppNotifier.show(qsTr("CSV exported: %1").arg(message), "success")
+            } else {
+                AppNotifier.show(qsTr("CSV export failed"), "error",
+                                 { detailText: message, detailTitle: qsTr("Export error") })
+            }
+        }
     }
 
     function doSearch() {
-        var sensorId = 0;
-        var idx = sensorFilter.currentIndex;
-        var ids = historyController.sensorIds;
+        var sensorId = 0
+        var idx = sensorFilter.currentIndex
+        var ids = HistoryViewModel.sensorIds
         if (idx >= 0 && idx < ids.length)
-            sensorId = ids[idx];
-        historyController.search(fromField.text, toField.text, sensorId);
+            sensorId = ids[idx]
+        HistoryViewModel.search(fromField.text, toField.text, sensorId)
     }
 
     Component.onCompleted: {
-        historyController.load_sensors();
-        doSearch();
-    }
-
-    // ── Date Pickers ─────────────────────────────────────────────────────
-    DatePickerPopup {
-        id: fromPicker
-        selectedDate: new Date()
-        onDatePicked: (d) => { fromField.text = root.formatDate(d) }
-    }
-    DatePickerPopup {
-        id: toPicker
-        selectedDate: new Date()
-        onDatePicked: (d) => { toField.text = root.formatDate(d) }
+        HistoryViewModel.load_sensors()
+        Qt.callLater(root.doSearch)
     }
 
     RowLayout {
@@ -49,73 +53,58 @@ Item {
         spacing: 8
 
         Label {
-            text: "From:"
+            text: qsTr("From:")
             color: Theme.textSecondary
-            font.pixelSize: 13
-            font.bold: true
+            font: AppTypography.bodyMedium
             Layout.alignment: Qt.AlignVCenter
         }
-        AppTextField {
-            id: fromField
-            useSmallRadius: true
-            text: root.formatDate(new Date())
-            readOnly: true
-            Layout.preferredWidth: 110
-            font.pixelSize: 13
-            horizontalAlignment: Text.AlignHCenter
-            Layout.alignment: Qt.AlignVCenter
 
-            MouseArea {
-                anchors.fill: parent
-                cursorShape: Qt.PointingHandCursor
-                onClicked: fromPicker.open()
+        DateField {
+            id: fromField
+            Layout.preferredWidth: 118
+            Layout.preferredHeight: 40
+            initialDate: {
+                const d = new Date()
+                d.setDate(d.getDate() - 7)
+                return d
             }
         }
 
         Label {
-            text: "To:"
+            text: qsTr("To:")
             color: Theme.textSecondary
-            font.pixelSize: 13
-            font.bold: true
+            font: AppTypography.bodyMedium
             Layout.alignment: Qt.AlignVCenter
         }
-        AppTextField {
-            id: toField
-            useSmallRadius: true
-            text: root.formatDate(new Date())
-            readOnly: true
-            Layout.preferredWidth: 110
-            font.pixelSize: 13
-            horizontalAlignment: Text.AlignHCenter
-            Layout.alignment: Qt.AlignVCenter
 
-            MouseArea {
-                anchors.fill: parent
-                cursorShape: Qt.PointingHandCursor
-                onClicked: toPicker.open()
-            }
+        DateField {
+            id: toField
+            Layout.preferredWidth: 118
+            Layout.preferredHeight: 40
+            initialDate: new Date()
         }
 
         ComboBox {
             id: sensorFilter
             Layout.preferredWidth: 160
-            model: historyController.sensorNames
+            model: HistoryViewModel.sensorNames
             currentIndex: 0
             Layout.alignment: Qt.AlignVCenter
         }
 
         Button {
+            id: searchBtn
             Layout.preferredWidth: 44
             Layout.preferredHeight: 44
-            enabled: !historyController.isLoading && sensorModel.rowCount() > 0
+            enabled: !HistoryViewModel.isLoading && SensorListModel.count > 0
             icon.source: "qrc:/qt/qml/DataLogger/Components/resources/icons/search.svg"
             icon.color: Theme.textOnColoredBtn
             icon.width: 16
             icon.height: 16
             background: Rectangle {
-                color: !parent.enabled ? Theme.btnBgDisabled : Theme.accent
+                color: !searchBtn.enabled ? Theme.btnBgDisabled : Theme.accent
                 radius: Theme.radiusMedium
-                opacity: parent.pressed ? 0.7 : 1.0
+                opacity: searchBtn.pressed ? 0.7 : 1.0
             }
             onClicked: root.doSearch()
             Layout.alignment: Qt.AlignVCenter
@@ -125,17 +114,17 @@ Item {
             id: refreshBtn
             Layout.preferredWidth: 44
             Layout.preferredHeight: 44
-            enabled: !historyController.isLoading && sensorModel.rowCount() > 0
+            enabled: !HistoryViewModel.isLoading && SensorListModel.count > 0
             icon.source: "qrc:/qt/qml/DataLogger/Components/resources/icons/refresh.svg"
             icon.color: Theme.textPrimary
             icon.width: 16
             icon.height: 16
             background: Rectangle {
-                color: !parent.enabled ? Theme.btnBgMuted : Theme.bgPanel
+                color: !refreshBtn.enabled ? Theme.btnBgMuted : Theme.bgPanel
                 border.color: Theme.borderDefault
                 border.width: 1
                 radius: Theme.radiusMedium
-                opacity: parent.pressed ? 0.7 : 1.0
+                opacity: refreshBtn.pressed ? 0.7 : 1.0
             }
             onClicked: root.doSearch()
             Layout.alignment: Qt.AlignVCenter
@@ -146,17 +135,36 @@ Item {
                 to: 360
                 duration: 1000
                 loops: Animation.Infinite
-                running: historyController.isLoading
+                running: HistoryViewModel.isLoading
             }
+        }
+
+        Button {
+            id: exportBtn
+            Layout.preferredWidth: 44
+            Layout.preferredHeight: 44
+            enabled: HistoryViewModel.recordCount > 0
+            icon.source: "qrc:/qt/qml/DataLogger/Components/resources/icons/export.svg"
+            icon.color: Theme.textPrimary
+            icon.width: 16
+            icon.height: 16
+            background: Rectangle {
+                color: !exportBtn.enabled ? Theme.btnBgMuted : Theme.bgPanel
+                border.color: Theme.borderDefault
+                border.width: 1
+                radius: Theme.radiusMedium
+                opacity: exportBtn.pressed ? 0.7 : 1.0
+            }
+            onClicked: csvSaveDialog.open()
+            Layout.alignment: Qt.AlignVCenter
         }
 
         Item { Layout.fillWidth: true }
 
         Label {
-            text: "%1 rows".arg(historyController.recordCount)
+            text: qsTr("%1 rows").arg(HistoryViewModel.recordCount)
             color: Theme.textSecondary
-            font.pixelSize: 13
-            font.bold: true
+            font: AppTypography.bodyMedium
             Layout.alignment: Qt.AlignVCenter
         }
     }

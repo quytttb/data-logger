@@ -88,7 +88,8 @@ bool Database::createTables(QSqlDatabase &db) {
             rest_api_bind TEXT NOT NULL DEFAULT '0.0.0.0',
             rest_api_token TEXT NOT NULL DEFAULT '',
             config_revision INTEGER NOT NULL DEFAULT 1,
-            ui_locale TEXT NOT NULL DEFAULT 'vi'
+            ui_locale TEXT NOT NULL DEFAULT 'vi',
+            theme TEXT NOT NULL DEFAULT 'dark'
         ))",
 
         R"(CREATE TABLE IF NOT EXISTS sensor (
@@ -175,6 +176,7 @@ bool Database::migrate(QSqlDatabase &db) {
         {"app_config",  "rest_api_bind",       "TEXT NOT NULL DEFAULT '0.0.0.0'"},
         {"app_config",  "rest_api_token",      "TEXT NOT NULL DEFAULT ''"},
         {"app_config",  "config_revision",     "INTEGER NOT NULL DEFAULT 1"},
+        {"app_config",  "theme",               "TEXT NOT NULL DEFAULT 'dark'"},
     };
 
     for (const auto &a : additions) {

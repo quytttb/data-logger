@@ -2,6 +2,8 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import DataLogger.Theme
+import DataLogger.Core
+import DataLogger.Network
 
 /**
  * Modal dialog showing provisioning QR for Central App (contains API token — LAN only).
@@ -20,13 +22,13 @@ Popup {
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
     function refresh() {
-        imageBase64 = settingsController.get_provision_qr_base64()
+        imageBase64 = SettingsController.get_provision_qr_base64()
     }
 
     background: Rectangle {
-        color: Theme.bgPanel
-        radius: Theme.radiusCard
-        border.color: Theme.accent
+        color: AppColors.surfaceContainerLow
+        radius: AppTheme.cardRadius
+        border.color: AppColors.elevatedBorder
         border.width: 1
     }
 
@@ -44,26 +46,26 @@ Popup {
 
         Rectangle {
             Layout.alignment: Qt.AlignHCenter
-            width: 260
-            height: 260
-            color: "#ffffff"
-            radius: Theme.radiusSmall
+            Layout.preferredWidth: 260
+            Layout.preferredHeight: 260
+            color: AppColors.surfaceContainerLow
+            radius: AppTheme.listItemRadius
 
             Image {
                 anchors.centerIn: parent
                 width: 248
                 height: 248
                 fillMode: Image.PreserveAspectFit
-                source: imageBase64.length > 0
-                        ? ("data:image/png;base64," + imageBase64)
+                source: root.imageBase64.length > 0
+                        ? ("data:image/png;base64," + root.imageBase64)
                         : ""
             }
         }
 
         Text {
-            visible: settingsController.provisionQrStale
+            visible: SettingsController.provisionQrStale
             text: "Token changed — scan QR again in Central App"
-            color: "#d4a62d"
+            color: AppColors.warning
             font.pixelSize: Theme.fontLabelSize
             font.bold: true
             Layout.fillWidth: true
@@ -90,7 +92,7 @@ Popup {
 
         Text {
             text: "QR contains the API secret — do not share outside LAN"
-            color: "#ff8080"
+            color: AppColors.error
             font.pixelSize: Theme.fontLabelSize - 1
             Layout.fillWidth: true
             wrapMode: Text.Wrap
@@ -98,7 +100,7 @@ Popup {
         }
 
         Text {
-            visible: restApiService.state !== "listening"
+            visible: RestApiService.state !== "listening"
             text: "REST server not listening yet — enable Active and Save first"
             color: Theme.textLabel
             font.pixelSize: Theme.fontLabelSize - 2

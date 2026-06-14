@@ -1,7 +1,27 @@
 #include "SensorListModel.h"
 #include "data/db/Database.h"
 #include "data/repositories/SensorDao.h"
+#include "data/models/AnalogDigitalLink.h"
 #include <QVariant>
+#include <QQmlEngine>
+#include <QJSEngine>
+#include <QSet>
+
+static SensorListModel *g_sensorListInstance = nullptr;
+
+SensorListModel *SensorListModel::instance() { return g_sensorListInstance; }
+
+void SensorListModel::setInstance(SensorListModel *model)
+{
+    g_sensorListInstance = model;
+}
+
+SensorListModel *SensorListModel::create(QQmlEngine *, QJSEngine *)
+{
+    Q_ASSERT(g_sensorListInstance);
+    QQmlEngine::setObjectOwnership(g_sensorListInstance, QQmlEngine::CppOwnership);
+    return g_sensorListInstance;
+}
 
 SensorListModel::SensorListModel(QObject *parent) : QAbstractListModel(parent) {
     loadFromDb();
@@ -144,6 +164,236 @@ bool SensorListModel::removeSensor(int id) {
     SensorDao dao(db);
     bool ok = dao.remove(id);
     db.close();
-    if (ok) loadFromDb();
+    if (ok) {
+        loadFromDb();
+        emit messageSent(QStringLiteral("Success"), QStringLiteral("Sensor deleted."));
+    } else {
+        emit messageSent(QStringLiteral("Error"), QStringLiteral("Failed to delete sensor."));
+    }
+    return ok;
+}
+
+const Sensor *SensorListModel::findSensorById(int id) const
+{
+    for (const auto &s : m_sensors) {
+        if (s.id == id)
+            return &s;
+    }
+    return nullptr;
+}
+
+static QVariantMap sensorBrief(const Sensor &s)
+{
+    return {
+        {QStringLiteral("id"),       s.id},
+        {QStringLiteral("name"),     s.name},
+        {QStringLiteral("slaveId"),  s.slaveId},
+        {QStringLiteral("address"),  s.registerAddress},
+    };
+}
+
+bool SensorListModel::add_sensor(const QString &name, const QString &unit, int slaveId,
+                                 int registerAddress, const QString &registerType,
+                                 const QString &dataType, const QString &dataFormat,
+                                 const QString &coefficient, int pollInterval, int reportIndex,
+                                 bool active, const QVariant &minThreshold,
+                                 const QVariant &maxThreshold, const QString &sensorType)
+{
+    QVariantMap props{
+        {QStringLiteral("name"),            name},
+        {QStringLiteral("unit"),            unit},
+        {QStringLiteral("slaveId"),         slaveId},
+        {QStringLiteral("registerAddress"), registerAddress},
+        {QStringLiteral("registerType"),    registerType},
+        {QStringLiteral("dataType"),        dataType},
+        {QStringLiteral("dataFormat"),      dataFormat},
+        {QStringLiteral("coefficient"),     coefficient},
+        {QStringLiteral("pollInterval"),    pollInterval},
+        {QStringLiteral("reportIndex"),     reportIndex},
+        {QStringLiteral("active"),          active},
+        {QStringLiteral("sensorType"),      sensorType},
+    };
+    if (!minThreshold.isNull()) props[QStringLiteral("minThreshold")] = minThreshold;
+    if (!maxThreshold.isNull()) props[QStringLiteral("maxThreshold")] = maxThreshold;
+    const bool ok = addSensor(props);
+    if (ok)
+        emit messageSent(QStringLiteral("Success"), QStringLiteral("Sensor added."));
+    else
+        emit messageSent(QStringLiteral("Error"), QStringLiteral("Failed to add sensor."));
+    return ok;
+}
+
+bool SensorListModel::update_sensor(int id, const QString &name, const QString &unit,
+                                    int slaveId, int registerAddress,
+                                    const QString &registerType, const QString &dataType,
+                                    const QString &dataFormat, const QString &coefficient,
+                                    int pollInterval, int reportIndex, bool active,
+                                    const QVariant &minThreshold, const QVariant &maxThreshold,
+                                    const QString &sensorType)
+{
+    QVariantMap props{
+        {QStringLiteral("name"),            name},
+        {QStringLiteral("unit"),            unit},
+        {QStringLiteral("slaveId"),         slaveId},
+        {QStringLiteral("registerAddress"), registerAddress},
+        {QStringLiteral("registerType"),    registerType},
+        {QStringLiteral("dataType"),        dataType},
+        {QStringLiteral("dataFormat"),      dataFormat},
+        {QStringLiteral("coefficient"),     coefficient},
+        {QStringLiteral("pollInterval"),    pollInterval},
+        {QStringLiteral("reportIndex"),     reportIndex},
+        {QStringLiteral("active"),          active},
+        {QStringLiteral("sensorType"),      sensorType},
+    };
+    if (!minThreshold.isNull()) props[QStringLiteral("minThreshold")] = minThreshold;
+    if (!maxThreshold.isNull()) props[QStringLiteral("maxThreshold")] = maxThreshold;
+    const bool ok = updateSensor(id, props);
+    if (ok)
+        emit messageSent(QStringLiteral("Success"), QStringLiteral("Sensor updated."));
+    else
+        emit messageSent(QStringLiteral("Error"), QStringLiteral("Failed to update sensor."));
+    return ok;
+}
+
+QVariantList SensorListModel::get_analog_links(int analogSensorId) const
+{
+    auto db = Database::openConnection();
+    SensorDao dao(db);
+    const auto links = dao.linksForAnalog(analogSensorId);
+    db.close();
+
+    QVariantList out;
+    for (const auto &l : links) {
+        const Sensor *digital = findSensorById(l.digitalSensorId);
+        if (!digital)
+            continue;
+        const bool isDi = digital->sensorType == SensorType::DI;
+        out.append(QVariantMap{
+            {QStringLiteral("id"),            l.id},
+            {QStringLiteral("ioType"),        isDi ? QStringLiteral("DI") : QStringLiteral("DO")},
+            {QStringLiteral("label"),         digital->name},
+            {QStringLiteral("slaveId"),       digital->slaveId},
+            {QStringLiteral("address"),       digital->registerAddress},
+            {QStringLiteral("diType"),        l.diType},
+            {QStringLiteral("triggerOnMax"),  l.triggerOnMax},
+            {QStringLiteral("triggerOnMin"),  l.triggerOnMin},
+        });
+    }
+    return out;
+}
+
+QVariantList SensorListModel::list_di_sensors() const
+{
+    QVariantList out;
+    for (const auto &s : m_sensors) {
+        if (s.sensorType == SensorType::DI)
+            out.append(sensorBrief(s));
+    }
+    return out;
+}
+
+QVariantList SensorListModel::list_do_sensors(int analogSensorId) const
+{
+    auto db = Database::openConnection();
+    SensorDao dao(db);
+    const auto links = dao.loadAllLinks();
+    db.close();
+
+    QSet<int> linkedElsewhere;
+    for (const auto &l : links) {
+        if (l.analogSensorId != analogSensorId)
+            linkedElsewhere.insert(l.digitalSensorId);
+    }
+
+    QVariantList out;
+    for (const auto &s : m_sensors) {
+        if (s.sensorType == SensorType::DO && !linkedElsewhere.contains(s.id))
+            out.append(sensorBrief(s));
+    }
+    return out;
+}
+
+bool SensorListModel::attach_di(int analogSensorId, int diSensorId, const QString &diType)
+{
+    AnalogDigitalLink link;
+    link.analogSensorId  = analogSensorId;
+    link.digitalSensorId = diSensorId;
+    link.diType          = diType;
+    link.triggerOnMax    = false;
+    link.triggerOnMin    = false;
+
+    auto db = Database::openConnection();
+    SensorDao dao(db);
+    const bool ok = dao.saveLink(link);
+    db.close();
+    if (ok)
+        emit messageSent(QStringLiteral("Success"), QStringLiteral("DI link attached."));
+    else
+        emit messageSent(QStringLiteral("Error"), QStringLiteral("Failed to attach DI."));
+    return ok;
+}
+
+bool SensorListModel::attach_do(int analogSensorId, int doSensorId, bool trigMax, bool trigMin)
+{
+    AnalogDigitalLink link;
+    link.analogSensorId  = analogSensorId;
+    link.digitalSensorId = doSensorId;
+    link.triggerOnMax    = trigMax;
+    link.triggerOnMin    = trigMin;
+
+    auto db = Database::openConnection();
+    SensorDao dao(db);
+    const bool ok = dao.saveLink(link);
+    db.close();
+    if (ok)
+        emit messageSent(QStringLiteral("Success"), QStringLiteral("DO link attached."));
+    else
+        emit messageSent(QStringLiteral("Error"), QStringLiteral("Failed to attach DO."));
+    return ok;
+}
+
+bool SensorListModel::detach_link(int linkId)
+{
+    auto db = Database::openConnection();
+    SensorDao dao(db);
+    const bool ok = dao.removeLink(linkId);
+    db.close();
+    if (ok)
+        emit messageSent(QStringLiteral("Success"), QStringLiteral("Link removed."));
+    else
+        emit messageSent(QStringLiteral("Error"), QStringLiteral("Failed to remove link."));
+    return ok;
+}
+
+bool SensorListModel::update_link_di_type(int linkId, const QString &diType)
+{
+    auto db = Database::openConnection();
+    SensorDao dao(db);
+    bool ok = false;
+    for (auto &l : dao.loadAllLinks()) {
+        if (l.id == linkId) {
+            l.diType = diType;
+            ok = dao.saveLink(l);
+            break;
+        }
+    }
+    db.close();
+    return ok;
+}
+
+bool SensorListModel::update_link_do_triggers(int linkId, bool trigMax, bool trigMin)
+{
+    auto db = Database::openConnection();
+    SensorDao dao(db);
+    bool ok = false;
+    for (auto &l : dao.loadAllLinks()) {
+        if (l.id == linkId) {
+            l.triggerOnMax = trigMax;
+            l.triggerOnMin = trigMin;
+            ok = dao.saveLink(l);
+            break;
+        }
+    }
+    db.close();
     return ok;
 }

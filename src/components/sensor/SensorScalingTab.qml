@@ -27,7 +27,7 @@ Rectangle {
         spacing: 8
 
         Text { text: "Scaling & Alarms"; color: Theme.accentText; font.bold: true; font.pixelSize: 15 }
-        Rectangle { Layout.fillWidth: true; height: 1; color: Theme.borderDefault }
+        Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.borderDefault }
 
         // Use a 2-column grid for compact threshold + scaling layout
         GridLayout {

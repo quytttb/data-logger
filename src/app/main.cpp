@@ -1,6 +1,5 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
-#include <QQmlContext>
 #include <QIcon>
 
 #include "utils/AppPaths.h"
@@ -8,11 +7,12 @@
 #include "data/db/Database.h"
 #include "network/modbus/ModbusTcpServerService.h"
 #include "network/rest/RestApiService.h"
+#include "network/workers/FtpWorker.h"
 #include "core/MonitorModel.h"
 #include "core/SensorListModel.h"
 #include "core/SettingsController.h"
 #include "core/MonitorController.h"
-#include "core/HistoryController.h"
+#include "core/history/HistoryViewModel.h"
 #include "core/TesterController.h"
 #include "core/ReportController.h"
 
@@ -48,9 +48,25 @@ int main(int argc, char *argv[]) {
 
     auto *settingsCtrl  = new SettingsController(&app);
     auto *monitorCtrl   = new MonitorController(monitorModel, modbusTcp, &app);
-    auto *historyCtrl   = new HistoryController(&app);
+    auto *historyVm      = new HistoryViewModel(&app);
     auto *testerCtrl    = new TesterController(&app);
     auto *reportCtrl    = new ReportController(&app);
+    auto *ftpWorker     = new FtpWorker(&app);
+
+    ModbusTcpServerService::setInstance(modbusTcp);
+    RestApiService::setInstance(restApi);
+    MonitorModel::setInstance(monitorModel);
+    SensorListModel::setInstance(sensorList);
+    SettingsController::setInstance(settingsCtrl);
+    MonitorController::setInstance(monitorCtrl);
+    HistoryViewModel::setInstance(historyVm);
+    TesterController::setInstance(testerCtrl);
+    ReportController::setInstance(reportCtrl);
+
+    reportCtrl->setFtpWorker(ftpWorker);
+    reportCtrl->setSettingsController(settingsCtrl);
+    QObject::connect(ftpWorker, &FtpWorker::workerHeartbeat,
+                     monitorCtrl, &MonitorController::registerHeartbeat);
 
     settingsCtrl->loadConfig();
     const AppConfig &cfg = settingsCtrl->config();
@@ -64,6 +80,8 @@ int main(int argc, char *argv[]) {
 
     if (cfg.restApiEnabled)
         restApi->start(cfg.restApiBind, cfg.restApiPort, cfg.restApiToken);
+
+    reportCtrl->applyServerConfig();
 
     QObject::connect(settingsCtrl, &SettingsController::configSaved, &app, [&]() {
         const AppConfig &c = settingsCtrl->config();
@@ -79,22 +97,12 @@ int main(int argc, char *argv[]) {
 
     QObject::connect(&app, &QGuiApplication::aboutToQuit, [&]() {
         monitorCtrl->stopPollingSync();
+        ftpWorker->stop();
         modbusTcp->stop();
         restApi->stop();
     });
 
     QQmlApplicationEngine engine;
-
-    QQmlContext *ctx = engine.rootContext();
-    ctx->setContextProperty("settingsController",  settingsCtrl);
-    ctx->setContextProperty("monitorController",   monitorCtrl);
-    ctx->setContextProperty("historyController",   historyCtrl);
-    ctx->setContextProperty("testerController",    testerCtrl);
-    ctx->setContextProperty("reportController",    reportCtrl);
-    ctx->setContextProperty("monitorModel",        monitorModel);
-    ctx->setContextProperty("sensorListModel",     sensorList);
-    ctx->setContextProperty("modbusTcpService",    modbusTcp);
-    ctx->setContextProperty("restApiService",      restApi);
 
     QObject::connect(
         &engine,

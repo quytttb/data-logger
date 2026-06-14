@@ -3,10 +3,6 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import DataLogger.Theme
 
-/**
- * Hộp thoại thông báo modal (lỗi / info) — dùng chung Monitor, History, Settings.
- * compact: kiểu Settings (340×160, chữ căn giữa); mặc định: rộng theo parent, nội dung trái.
- */
 Popup {
     id: root
 
@@ -47,7 +43,7 @@ Popup {
     background: Rectangle {
         color: Theme.bgPanel
         radius: Theme.radiusCard
-        border.color: isConfirmMode && confirmButtonColor === Theme.btnStop ? Theme.borderErr : Theme.accent
+        border.color: root.isConfirmMode && root.confirmButtonColor === Theme.btnStop ? Theme.borderErr : Theme.accent
         border.width: 1
     }
 
@@ -58,7 +54,7 @@ Popup {
             text: root.popupTitle
             font.bold: true
             font.pixelSize: 18
-            color: isConfirmMode && confirmButtonColor === Theme.btnStop ? Theme.statusErr : Theme.textPrimary
+            color: root.isConfirmMode && root.confirmButtonColor === Theme.btnStop ? Theme.statusErr : Theme.textPrimary
             Layout.fillWidth: true
             wrapMode: Text.WordWrap
             horizontalAlignment: Text.AlignHCenter
@@ -74,7 +70,6 @@ Popup {
             horizontalAlignment: Text.AlignHCenter
         }
 
-        // ── Single "Close" button for info mode ──
         Button {
             visible: !root.isConfirmMode
             text: "Close"
@@ -82,7 +77,6 @@ Popup {
             onClicked: root.close()
         }
 
-        // ── Action buttons for confirm mode ──
         RowLayout {
             visible: root.isConfirmMode
             Layout.fillWidth: true
@@ -95,15 +89,16 @@ Popup {
             }
 
             Button {
+                id: confirmBtn
                 text: root.confirmButtonText
                 Layout.fillWidth: true
                 background: Rectangle {
                     color: root.confirmButtonColor
                     radius: Theme.radiusSmall
-                    opacity: parent.pressed ? 0.7 : 1.0
+                    opacity: confirmBtn.pressed ? 0.7 : 1.0
                 }
                 contentItem: Text {
-                    text: parent.text
+                    text: confirmBtn.text
                     color: Theme.textOnColoredBtn
                     font.bold: true
                     horizontalAlignment: Text.AlignHCenter

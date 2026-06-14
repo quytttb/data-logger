@@ -7,15 +7,16 @@
 #include <QVariantMap>
 #include <QMutex>
 #include <functional>
+#include <QtQmlIntegration/qqmlintegration.h>
+
+class QJSEngine;
+class QQmlEngine;
 
 // Embeds a QHttpServer to serve the REST API on the LAN.
-//
-// Endpoints:
-//   GET  /api/v1/readings   — current sensor snapshot (Bearer token auth)
-//   GET  /api/v1/config     — returns current AppConfig (Bearer token auth)
-//   POST /api/v1/config     — apply remote config + emit configApplied signal
 class RestApiService : public QObject {
     Q_OBJECT
+    QML_ELEMENT
+    QML_SINGLETON
     Q_PROPERTY(QString state     READ state     NOTIFY stateChanged)
     Q_PROPERTY(bool isListening  READ isListening NOTIFY stateChanged)
     Q_PROPERTY(QString lastError READ lastError NOTIFY lastErrorChanged)
@@ -26,7 +27,11 @@ public:
     static constexpr const char* STATE_LISTENING= "listening";
     static constexpr const char* STATE_ERROR    = "error";
 
-    explicit RestApiService(QObject *parent = nullptr);
+    explicit RestApiService(QObject *parent);
+
+    static RestApiService *instance();
+    static void setInstance(RestApiService *service);
+    static RestApiService *create(QQmlEngine *, QJSEngine *);
 
     QString state()             const { return m_state; }
     bool    isListening()       const { return m_state == STATE_LISTENING; }

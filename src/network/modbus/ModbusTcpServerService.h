@@ -6,19 +6,16 @@
 #include <QMutex>
 #include <QList>
 #include <QVector>
+#include <QtQmlIntegration/qqmlintegration.h>
+
+class QJSEngine;
+class QQmlEngine;
 
 // Manages a QModbusTcpServer exposing sensor readings to SCADA / Central App.
-//
-// Register map (Holding Registers):
-//   HR 0     : map version = 1
-//   HR 1     : logger status flags (bit0=polling, bit1=RTU connected, bit2=any alarm)
-//   HR 2..3  : unix timestamp of last update (uint32)
-//   HR 4     : sensor count
-//   HR 5     : Ndi  (discrete inputs count)
-//   HR 6     : Ndo  (coils count)
-//   HR 10+i*8 : sensor block (id, flags, float32 value, reserved)
 class ModbusTcpServerService : public QObject {
     Q_OBJECT
+    QML_ELEMENT
+    QML_SINGLETON
     Q_PROPERTY(QString state     READ state     NOTIFY stateChanged)
     Q_PROPERTY(bool isListening  READ isListening NOTIFY stateChanged)
     Q_PROPERTY(QString lastError READ lastError NOTIFY lastErrorChanged)
@@ -30,8 +27,12 @@ public:
     static constexpr const char* STATE_LISTENING= "listening";
     static constexpr const char* STATE_ERROR    = "error";
 
-    explicit ModbusTcpServerService(QObject *parent = nullptr);
+    explicit ModbusTcpServerService(QObject *parent);
     ~ModbusTcpServerService();
+
+    static ModbusTcpServerService *instance();
+    static void setInstance(ModbusTcpServerService *service);
+    static ModbusTcpServerService *create(QQmlEngine *, QJSEngine *);
 
     QString state()             const { return m_state; }
     bool    isListening()       const { return m_state == STATE_LISTENING; }

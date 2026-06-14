@@ -2,11 +2,31 @@
 #include "data/db/Database.h"
 #include "data/repositories/AppConfigDao.h"
 #include "utils/Crypto.h"
+#include "utils/LanIp.h"
+#include "utils/ProvisionQr.h"
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QUuid>
 #include <QDebug>
+#include <QQmlEngine>
+#include <QJSEngine>
 #include <cmath>
+
+static SettingsController *g_settingsInstance = nullptr;
+
+SettingsController *SettingsController::instance() { return g_settingsInstance; }
+
+void SettingsController::setInstance(SettingsController *controller)
+{
+    g_settingsInstance = controller;
+}
+
+SettingsController *SettingsController::create(QQmlEngine *, QJSEngine *)
+{
+    Q_ASSERT(g_settingsInstance);
+    QQmlEngine::setObjectOwnership(g_settingsInstance, QQmlEngine::CppOwnership);
+    return g_settingsInstance;
+}
 
 SettingsController::SettingsController(QObject *parent) : QObject(parent) {}
 
@@ -25,12 +45,31 @@ void SettingsController::setServerActive(bool v) {
     }
 }
 
+void SettingsController::setTheme(const QString &v) {
+    const QString normalized = v.isEmpty() ? QStringLiteral("dark") : v;
+    if (m_cfg.theme == normalized)
+        return;
+    m_cfg.theme = normalized;
+    emit themeChanged();
+}
+
+bool SettingsController::saveTheme(const QString &value) {
+    setTheme(value);
+    auto db = Database::openConnection();
+    AppConfigDao dao(db);
+    const bool ok = dao.save(m_cfg);
+    db.close();
+    return ok;
+}
+
 void SettingsController::loadConfig() {
     auto db = Database::openConnection();
     AppConfigDao dao(db);
     m_cfg = dao.load();
     db.close();
     emit configLoaded();
+    emit themeChanged();
+    emit provisionQrChanged();
 }
 
 void SettingsController::saveConfig() {
@@ -53,6 +92,7 @@ void SettingsController::saveConfig() {
     if (ok) {
         emit configLoaded();
         emit configSaved();
+        emit provisionQrChanged();
         emit messageSent("Success", "Configuration saved.");
     } else {
         emit messageSent("Error", "Failed to save configuration.");
@@ -82,7 +122,63 @@ void SettingsController::regenerateRestToken() {
     db.close();
     emit configLoaded();
     emit configSaved();
+    emit provisionQrChanged();
     emit messageSent("REST API", "Token changed — scan QR again in Central App.");
+}
+
+bool SettingsController::provisionQrAvailable() const
+{
+    return m_cfg.restApiEnabled && !m_cfg.restApiToken.trimmed().isEmpty();
+}
+
+bool SettingsController::provisionQrStale() const
+{
+    return !m_qrTokenSnapshot.isEmpty()
+        && m_qrTokenSnapshot != m_cfg.restApiToken;
+}
+
+QString SettingsController::provisionHost() const
+{
+    const QString bind = m_cfg.restApiBind.trimmed();
+    if (!bind.isEmpty() && bind != QStringLiteral("0.0.0.0")
+        && bind != QStringLiteral("::"))
+        return bind;
+    return LanIp::primaryLanIp();
+}
+
+QString SettingsController::buildProvisionJson() const
+{
+    QJsonObject obj{
+        {QStringLiteral("schema"), QStringLiteral("central-logger-provision/v1")},
+        {QStringLiteral("api_token"), m_cfg.restApiToken},
+        {QStringLiteral("host"), provisionHost()},
+        {QStringLiteral("api_port"), m_cfg.restApiPort},
+        {QStringLiteral("modbus_port"), m_cfg.modbusTcpPort},
+        {QStringLiteral("modbus_unit_id"), m_cfg.modbusTcpUnitId},
+    };
+    if (!m_cfg.stationCode.isEmpty())
+        obj.insert(QStringLiteral("station_code"), m_cfg.stationCode);
+    if (!m_cfg.stationName.isEmpty())
+        obj.insert(QStringLiteral("station_name"), m_cfg.stationName);
+    return QString::fromUtf8(QJsonDocument(obj).toJson(QJsonDocument::Compact));
+}
+
+QString SettingsController::get_provision_qr_base64()
+{
+    if (!provisionQrAvailable()) {
+        emit messageSent(QStringLiteral("REST API"),
+                         QStringLiteral("Enable REST API and save a token before generating QR."));
+        return {};
+    }
+    m_qrTokenSnapshot = m_cfg.restApiToken;
+    emit provisionQrChanged();
+    return ProvisionQr::pngBase64(buildProvisionJson());
+}
+
+void SettingsController::checkUpdates()
+{
+    emit messageSent(QStringLiteral("Firmware update"),
+                     QStringLiteral("Automatic update check is not configured yet."));
 }
 
 QStringList SettingsController::validate() const {

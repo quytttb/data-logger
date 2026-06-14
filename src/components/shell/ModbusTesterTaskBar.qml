@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import DataLogger.Theme
+import DataLogger.Core
 
 // Thanh header Modbus: gọi API trên TesterView (Main.syncModbusTaskBarRef gán từ MainTabContent.loaderTester).
 Item {
@@ -17,7 +18,7 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         spacing: 0
 
-        // Nửa trái: kết nối — luôn căn trái, độ rộng cố định 50% không ảnh hưởng nửa phải
+        // Nửa trái: kết nối — luôn căn trái
         Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -30,70 +31,70 @@ Item {
                 width: implicitWidth
 
                 BusyIndicator {
-                    visible: testerController.isConnecting
-                    running: testerController.isConnecting
+                    visible: TesterController.isConnecting
+                    running: TesterController.isConnecting
                     Layout.preferredWidth: 28
                     Layout.preferredHeight: 28
                     Layout.alignment: Qt.AlignVCenter
                 }
 
                 Button {
+                    id: connectBtn
                     Layout.preferredHeight: 44
-                    enabled: testerView && !testerController.isConnecting
-                    text: testerController.isConnecting ? "Connecting…"
-                        : testerController.isConnected ? "Disconnect" : "Connect"
+                    enabled: root.testerView !== null && !TesterController.isConnecting
+                    text: TesterController.isConnecting ? "Connecting…"
+                        : TesterController.isConnected ? "Disconnect" : "Connect"
                     font.pixelSize: 12
                     font.bold: true
                     background: Rectangle {
                         radius: Theme.radiusSmall
-                        color: testerController.isConnecting ? Theme.btnBgDisabled
-                             : testerController.isConnected ? Theme.btnStop : Theme.accent
-                        opacity: parent.pressed ? 0.75 : 1.0
+                        color: TesterController.isConnecting ? Theme.btnBgDisabled
+                             : TesterController.isConnected ? Theme.btnStop : Theme.accent
+                        opacity: connectBtn.pressed ? 0.75 : 1.0
                     }
                     contentItem: Text {
-                        text: parent.text
-                        font: parent.font
+                        text: connectBtn.text
+                        font: connectBtn.font
                         color: Theme.textOnColoredBtn
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                         elide: Text.ElideRight
                     }
                     onClicked: {
-                        if (testerView)
-                            testerView.connectOrDisconnect()
+                        if (root.testerView)
+                            root.testerView.connectOrDisconnect()
                     }
                     Layout.alignment: Qt.AlignVCenter
                 }
 
                 Button {
+                    id: saveSensorBtn
                     Layout.preferredHeight: 44
-                    visible: testerController.isConnected
+                    visible: TesterController.isConnected
                     text: "Save new sensor"
                     font.pixelSize: 11
                     font.bold: true
                     background: Rectangle {
                         radius: Theme.radiusSmall
                         color: Theme.btnStart
-                        opacity: parent.pressed ? 0.75 : 1.0
+                        opacity: saveSensorBtn.pressed ? 0.75 : 1.0
                     }
                     contentItem: Text {
-                        text: parent.text
-                        font: parent.font
+                        text: saveSensorBtn.text
+                        font: saveSensorBtn.font
                         color: Theme.textOnColoredBtn
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                         elide: Text.ElideRight
                     }
                     onClicked: {
-                        if (testerView)
-                            testerView.openSaveSensorInSettings()
+                        if (root.testerView)
+                            root.testerView.openSaveSensorInSettings()
                     }
                     Layout.alignment: Qt.AlignVCenter
                 }
             }
         }
-
-
 
         // Nửa phải: quét / xóa bảng — luôn căn phải
         Item {
@@ -105,13 +106,14 @@ Item {
                 anchors.right: parent.right
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 6
-                
+
                 // ── Mode Toggle (Read / Write) ──
                 RowLayout {
                     spacing: 0
                     Layout.alignment: Qt.AlignVCenter
-                    
+
                     Button {
+                        id: readModeBtn
                         text: "Read"
                         Layout.preferredHeight: 44
                         Layout.preferredWidth: 70
@@ -119,23 +121,24 @@ Item {
                         font.bold: true
                         background: Rectangle {
                             radius: Theme.radiusSmall
-                            color: isReadMode ? Theme.accent : Theme.bgDeep
-                            border.color: Theme.borderDefault
+                            color: root.isReadMode ? AppColors.primaryColor : AppColors.surface
+                            border.color: AppColors.outlineVariant
                             border.width: 1
                         }
                         contentItem: Text {
-                            text: parent.text
-                            font: parent.font
-                            color: isReadMode ? "white" : Theme.textSecondary
+                            text: readModeBtn.text
+                            font: readModeBtn.font
+                            color: root.isReadMode ? AppColors.onPrimary : AppColors.onSurfaceVariant
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
                         }
                         onClicked: {
-                            if (testerView && testerView.opsItem)
-                                testerView.opsItem.isReadMode = true
+                            if (root.testerView && root.testerView.opsItem)
+                                root.testerView.opsItem.isReadMode = true
                         }
                     }
                     Button {
+                        id: writeModeBtn
                         text: "Write"
                         Layout.preferredHeight: 44
                         Layout.preferredWidth: 70
@@ -143,25 +146,24 @@ Item {
                         font.bold: true
                         background: Rectangle {
                             radius: Theme.radiusSmall
-                            color: !isReadMode ? "#e67e22" : Theme.bgDeep
-                            border.color: Theme.borderDefault
+                            color: !root.isReadMode ? AppColors.warning : AppColors.surface
+                            border.color: AppColors.outlineVariant
                             border.width: 1
                         }
                         contentItem: Text {
-                            text: parent.text
-                            font: parent.font
-                            color: !isReadMode ? "white" : Theme.textSecondary
+                            text: writeModeBtn.text
+                            font: writeModeBtn.font
+                            color: !root.isReadMode ? AppColors.primaryText : AppColors.onSurfaceVariant
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
                         }
                         onClicked: {
-                            if (testerView && testerView.opsItem)
-                                testerView.opsItem.isReadMode = false
+                            if (root.testerView && root.testerView.opsItem)
+                                root.testerView.opsItem.isReadMode = false
                         }
                     }
                 }
 
-                // Separator 
                 Rectangle {
                     Layout.preferredWidth: 1
                     Layout.preferredHeight: 24
@@ -169,7 +171,6 @@ Item {
                     Layout.alignment: Qt.AlignVCenter
                 }
 
-                // Toggle lọc hàng có giá trị 0
                 RowLayout {
                     spacing: 4
                     Layout.alignment: Qt.AlignVCenter
@@ -182,8 +183,8 @@ Item {
                         id: hideZerosSwitch
                         checked: false
                         onCheckedChanged: {
-                            if (testerView)
-                                testerView.hideZeros = checked
+                            if (root.testerView)
+                                root.testerView.hideZeros = checked
                         }
                     }
                 }
@@ -194,11 +195,11 @@ Item {
                     Layout.preferredHeight: 44
                     font.pixelSize: 11
                     font.bold: true
-                    enabled: testerView && !testerController.isScanning
+                    enabled: root.testerView !== null && !TesterController.isScanning
                     background: Rectangle {
                         radius: Theme.radiusSmall
                         color: Theme.btnClear
-                        opacity: parent.pressed ? 0.8 : 1.0
+                        opacity: clearBtn.pressed ? 0.8 : 1.0
                     }
                     contentItem: Text {
                         text: clearBtn.text
@@ -210,13 +211,11 @@ Item {
                         wrapMode: Text.NoWrap
                     }
                     onClicked: {
-                        if (testerView)
-                            testerView.clearResultsTable()
+                        if (root.testerView)
+                            root.testerView.clearResultsTable()
                     }
                     Layout.alignment: Qt.AlignVCenter
                 }
-
-
 
                 Button {
                     id: actionBtn
@@ -224,29 +223,28 @@ Item {
                     Layout.preferredWidth: 100
                     font.pixelSize: 12
                     font.bold: true
-                    enabled: testerView && !testerController.isStopping
-                    
-                    // Logic đổi text theo chế độ Read / Write
+                    enabled: root.testerView !== null && !TesterController.isStopping
+
                     text: {
-                        if (isReadMode) {
-                            return testerController.isStopping ? "Stopping…"
-                                 : testerController.isScanning ? "Stop scan" : "Scan range"
+                        if (root.isReadMode) {
+                            return TesterController.isStopping ? "Stopping…"
+                                 : TesterController.isScanning ? "Stop scan" : "Scan range"
                         } else {
                             return "Write"
                         }
                     }
-                    
+
                     background: Rectangle {
                         radius: Theme.radiusSmall
                         color: {
                             if (!actionBtn.enabled) return Theme.btnBgDisabled;
-                            if (isReadMode) {
-                                return testerController.isScanning ? Theme.btnStop : Theme.accent
+                            if (root.isReadMode) {
+                                return TesterController.isScanning ? Theme.btnStop : Theme.accent
                             } else {
-                                return "#e67e22" // Màu cam cho nút Write
+                                return AppColors.warning
                             }
                         }
-                        opacity: parent.pressed ? 0.75 : 1.0
+                        opacity: actionBtn.pressed ? 0.75 : 1.0
                     }
                     contentItem: Text {
                         text: actionBtn.text
@@ -258,11 +256,11 @@ Item {
                         wrapMode: Text.NoWrap
                     }
                     onClicked: {
-                        if (testerView) {
-                            if (isReadMode) {
-                                testerView.toggleScan()
+                        if (root.testerView) {
+                            if (root.isReadMode) {
+                                root.testerView.toggleScan()
                             } else {
-                                testerView.performWrite()
+                                root.testerView.performWrite()
                             }
                         }
                     }
@@ -270,8 +268,8 @@ Item {
                 }
 
                 BusyIndicator {
-                    visible: isReadMode && testerController.isStopping
-                    running: isReadMode && testerController.isStopping
+                    visible: root.isReadMode && TesterController.isStopping
+                    running: root.isReadMode && TesterController.isStopping
                     Layout.preferredWidth: 24
                     Layout.preferredHeight: 24
                     Layout.alignment: Qt.AlignVCenter

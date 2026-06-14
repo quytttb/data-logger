@@ -5,8 +5,8 @@ struct AppConfig {
     int id = 0;
 
     // Station info
-    QString stationCode;
-    QString stationName;
+    QString stationCode = QStringLiteral("DL-001");
+    QString stationName = QStringLiteral("Data Logger");
 
     // General
     QString timeFormat  = "HH:mm:ss";
@@ -22,7 +22,7 @@ struct AppConfig {
     QString ftpPassword;   // stored encrypted
     QString ftpRemotePath = "/";
     QString ftpPrefix;
-    QString ftpProtocol = "sftp";
+    QString ftpProtocol = "ftp";
 
     // Server / Transmission
     bool serverActive          = false;
@@ -58,4 +58,5 @@ struct AppConfig {
     int configRevision       = 1;
 
     QString uiLocale = "vi";
+    QString theme = "dark";
 };

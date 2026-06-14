@@ -8,7 +8,25 @@
 #include <QHostAddress>
 #include <QMutexLocker>
 #include <QDebug>
+#include <QQmlEngine>
+#include <QJSEngine>
 #include <QTcpServer>
+
+static RestApiService *g_restApiInstance = nullptr;
+
+RestApiService *RestApiService::instance() { return g_restApiInstance; }
+
+void RestApiService::setInstance(RestApiService *service)
+{
+    g_restApiInstance = service;
+}
+
+RestApiService *RestApiService::create(QQmlEngine *, QJSEngine *)
+{
+    Q_ASSERT(g_restApiInstance);
+    QQmlEngine::setObjectOwnership(g_restApiInstance, QQmlEngine::CppOwnership);
+    return g_restApiInstance;
+}
 
 RestApiService::RestApiService(QObject *parent) : QObject(parent) {}
 

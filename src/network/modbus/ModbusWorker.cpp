@@ -8,6 +8,7 @@
 #include <QThread>
 #include <QtDebug>
 #include <cmath>
+#include <utility>
 
 // Forward declaration — defined at end of file
 static double decodeRegisters(const QVector<quint16> &regs, const QString &dataType, const QString &fmt);
@@ -131,7 +132,7 @@ void ModbusWorker::onPollTimer() {
     }
 
     qint64 now = QDateTime::currentMSecsSinceEpoch();
-    for (const auto &cfg : qAsConst(m_sensors)) {
+    for (const auto &cfg : std::as_const(m_sensors)) {
         if (!m_running) break;
         int sid = cfg["id"].toInt();
         if (now >= m_nextPollMs.value(sid, 0)) {
@@ -328,7 +329,7 @@ void ModbusWorker::writeSingleCoil(int sensorId, bool value) {
         qWarning() << "writeSingleCoil: not connected";
         return;
     }
-    for (const auto &cfg : qAsConst(m_sensors)) {
+    for (const auto &cfg : std::as_const(m_sensors)) {
         if (cfg["id"].toInt() == sensorId) {
             int slaveId = cfg["slave_id"].toInt();
             int address = cfg["register_address"].toInt();

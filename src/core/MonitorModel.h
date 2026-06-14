@@ -3,10 +3,16 @@
 #include <QList>
 #include <QHash>
 #include <QVariantMap>
+#include <QtQmlIntegration/qqmlintegration.h>
+
+class QJSEngine;
+class QQmlEngine;
 
 // Live sensor card model for MonitorView.
 class MonitorModel : public QAbstractListModel {
     Q_OBJECT
+    QML_ELEMENT
+    QML_SINGLETON
     Q_PROPERTY(int count READ rowCount NOTIFY countChanged)
 
 public:
@@ -17,7 +23,11 @@ public:
         DiStatesRole, SensorTypeRole,
     };
 
-    explicit MonitorModel(QObject *parent = nullptr);
+    explicit MonitorModel(QObject *parent);
+
+    static MonitorModel *instance();
+    static void setInstance(MonitorModel *model);
+    static MonitorModel *create(QQmlEngine *, QJSEngine *);
 
     int      rowCount(const QModelIndex &parent = {}) const override;
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;

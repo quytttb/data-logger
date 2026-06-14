@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import DataLogger.Theme
+import DataLogger.Core
 
 ColumnLayout {
     id: headerChromeRoot
@@ -11,41 +12,18 @@ ColumnLayout {
     property int scanProgTot: 0
     /// ApplicationWindow — gọi syncModbusTaskBarRef từ Loader taskbar (`var`: Window không phải Item trong QML)
     property var appRoot: null
+    property var tabContent: null
 
     property alias modbusTbLoader: modbusTbLoader
-    property var _lastSettingsTaskBar: null
+    property string appIconUrl: ""
 
     function connectSettings() {
-        if (settingsTbLoader.item && tabContent.loaderSettings.item) {
-            var item = settingsTbLoader.item;
-            var view = tabContent.loaderSettings.item;
-            
-            if (headerChromeRoot._lastSettingsTaskBar === item) return;
-            headerChromeRoot._lastSettingsTaskBar = item;
-            
-            item.settingsTabIndex = Qt.binding(function() { return view.settingsTabIndex })
-            item.isConfigChanged = Qt.binding(function() { return view.isConfigChanged })
-            item.hasSelectedSensor = Qt.binding(function() { return view.hasSelectedSensor })
-            item.isAddMode = Qt.binding(function() { return view.isAddMode })
-            item.sensorSubTabIndex = Qt.binding(function() { return view.sensorSubTabIndex })
-            item.hasSelectedDio = Qt.binding(function() { return view.hasSelectedDio })
-            item.sensorType = Qt.binding(function() { return view.sensorType || "ANALOG" })
-
-            item.tabSelected.connect(function(idx) { view.settingsTabIndex = idx })
-            item.sensorSubTabSelected.connect(function(idx) { view.sensorSubTabIndex = idx })
-            item.saveConfig.connect(function() { view.saveConfig() })
-            item.cancelConfig.connect(function() { view.cancelConfig() })
-            item.addSensor.connect(function() { view.openAddSensor() })
-            item.editSelectedSensor.connect(function() { view.editSelectedSensor() })
-            item.deleteSelectedSensor.connect(function() { view.deleteSelectedSensor() })
-            item.saveSensorForm.connect(function() { view.saveSensorForm() })
-            item.cancelSensorForm.connect(function() { view.closeSensorForm() })
-            item.deleteSelectedDio.connect(function() { view.deleteSelectedDio() })
-        }
+        if (tabContent)
+            tabContent.connectSettingsTaskBar(settingsTbLoader.item)
     }
 
     Layout.fillWidth: true
-    Layout.preferredHeight: 64 + 1 + ((currentTab === 4 && testerController.isScanning) ? 10 : 0)
+    Layout.preferredHeight: 64 + 1 + ((currentTab === 4 && TesterController.isScanning) ? 10 : 0)
     Layout.maximumHeight: Layout.preferredHeight
     spacing: 0
 
@@ -59,7 +37,7 @@ ColumnLayout {
         Rectangle {
             Layout.preferredWidth: 200
             Layout.fillHeight: true
-            color: Theme.bgPanel
+            color: AppColors.surface
 
             Row {
                 anchors.centerIn: parent
@@ -69,17 +47,17 @@ ColumnLayout {
                     height: 40
                     width: height
                     fillMode: Image.PreserveAspectFit
-                    source: (typeof appIconUrl === "string" && appIconUrl.length > 0) ? appIconUrl : ""
+                    source: (headerChromeRoot.appIconUrl.length > 0) ? headerChromeRoot.appIconUrl : ""
                     visible: source.toString().length > 0
                     asynchronous: true
                 }
 
                 Text {
                     text: "Data Logger"
-                    font.pixelSize: 15
+                    font: AppTypography.labelLarge
                     font.weight: Font.Black
                     font.letterSpacing: 1
-                    color: Theme.accentText
+                    color: AppColors.primaryText
                     anchors.verticalCenter: parent.verticalCenter
                 }
             }
@@ -88,7 +66,7 @@ ColumnLayout {
         Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            color: Theme.bgDeep
+            color: AppColors.surface
 
             RowLayout {
                 anchors.fill: parent
@@ -104,12 +82,14 @@ ColumnLayout {
                     visible: headerChromeRoot.currentTab === 4
                     source: "ModbusTesterTaskBar.qml"
                     onLoaded: {
-                        if (appRoot)
-                            appRoot.syncModbusTaskBarRef()
+                        if (headerChromeRoot.tabContent)
+                            headerChromeRoot.tabContent.syncModbusTaskBar(modbusTbLoader.item)
                     }
                     onVisibleChanged: {
-                        if (visible && appRoot)
-                            Qt.callLater(appRoot.syncModbusTaskBarRef)
+                        if (visible && headerChromeRoot.tabContent)
+                            Qt.callLater(function() {
+                                headerChromeRoot.tabContent.syncModbusTaskBar(modbusTbLoader.item)
+                            })
                     }
                 }
 
@@ -130,11 +110,6 @@ ColumnLayout {
                     visible: headerChromeRoot.currentTab === 3
                     source: "SettingsTaskBar.qml"
                     onLoaded: headerChromeRoot.connectSettings()
-                }
-                
-                Connections {
-                    target: tabContent.loaderSettings
-                    function onLoaded() { headerChromeRoot.connectSettings() }
                 }
 
                 Loader {
@@ -157,13 +132,13 @@ ColumnLayout {
 
     Rectangle {
         Layout.fillWidth: true
-        height: 1
-        color: Theme.bgSeparator
+        Layout.preferredHeight: 1
+        color: AppColors.dividerLine
     }
 
     RowLayout {
         Layout.fillWidth: true
-        Layout.preferredHeight: (headerChromeRoot.currentTab === 4 && testerController.isScanning) ? 10 : 0
+        Layout.preferredHeight: (headerChromeRoot.currentTab === 4 && TesterController.isScanning) ? 10 : 0
         Layout.maximumHeight: Layout.preferredHeight
         visible: Layout.preferredHeight > 0
         spacing: 0
@@ -189,7 +164,7 @@ ColumnLayout {
                 from: 0
                 to: 100
                 value: headerChromeRoot.scanProgTot > 0 ? (headerChromeRoot.scanProgCur / headerChromeRoot.scanProgTot) * 100 : 0
-                indeterminate: testerController.isScanning && headerChromeRoot.scanProgTot <= 0
+                indeterminate: TesterController.isScanning && headerChromeRoot.scanProgTot <= 0
             }
         }
     }

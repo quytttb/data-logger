@@ -50,10 +50,16 @@ QList<SensorData> SensorDataDao::query(int sensorId,
                                         const QDateTime &from, const QDateTime &to,
                                         int limit) {
     QSqlQuery q(m_db);
-    q.prepare(R"(SELECT * FROM sensor_data
-        WHERE sensor_id=:sid AND recorded_at BETWEEN :f AND :t
-        ORDER BY recorded_at DESC LIMIT :lim)");
-    q.bindValue(":sid", sensorId);
+    if (sensorId > 0) {
+        q.prepare(R"(SELECT * FROM sensor_data
+            WHERE sensor_id=:sid AND recorded_at BETWEEN :f AND :t
+            ORDER BY recorded_at DESC LIMIT :lim)");
+        q.bindValue(":sid", sensorId);
+    } else {
+        q.prepare(R"(SELECT * FROM sensor_data
+            WHERE recorded_at BETWEEN :f AND :t
+            ORDER BY recorded_at DESC LIMIT :lim)");
+    }
     q.bindValue(":f",   from.toString(Qt::ISODate));
     q.bindValue(":t",   to.toString(Qt::ISODate));
     q.bindValue(":lim", limit);

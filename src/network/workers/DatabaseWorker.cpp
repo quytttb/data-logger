@@ -4,6 +4,7 @@
 #include <QDateTime>
 #include <QMutexLocker>
 #include <QDebug>
+#include <utility>
 
 DatabaseWorker::DatabaseWorker(QObject *parent) : QObject(parent) {}
 
@@ -53,7 +54,7 @@ void DatabaseWorker::flush() {
     }
 
     QList<SensorData> records;
-    for (const auto &p : qAsConst(batch)) {
+    for (const auto &p : std::as_const(batch)) {
         SensorData d;
         d.sensorId  = p["sensor_id"].toInt();
         d.rawValue  = p.contains("raw_value") && !p["raw_value"].isNull()

@@ -2,6 +2,8 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import DataLogger.Theme
+import DataLogger.Core
+import DataLogger.Network
 import DataLogger.Components
 
 Item {
@@ -11,7 +13,7 @@ Item {
     ProvisionQrPopup { id: provisionQrPopup }
 
     Connections {
-        target: settingsController
+        target: SettingsController
         function onConfigLoaded() {
             if (provisionQrPopup.visible)
                 provisionQrPopup.refresh()
@@ -76,7 +78,7 @@ Item {
                                     text: "Modbus RTU"
                                     color: Theme.accentText; font.bold: true; font.pixelSize: 15
                                 }
-                                Rectangle { Layout.fillWidth: true; height: 1; color: Theme.borderDefault }
+                                Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.borderDefault }
 
                                 RowLayout {
                                     Layout.fillWidth: true; spacing: 25
@@ -91,25 +93,25 @@ Item {
                                             ComboBox {
                                                 id: masterPortCombo
                                                 Layout.fillWidth: true
-                                                model: testerController.availablePorts
+                                                model: TesterController.availablePorts
                                                 editable: true
                                                 property bool ready: false
-                                                Component.onCompleted: { editText = settingsController.serialPort; ready = true }
+                                                Component.onCompleted: { editText = SettingsController.serialPort; ready = true }
                                                 Connections {
-                                                    target: settingsController
+                                                    target: SettingsController
                                                     function onConfigLoaded() {
                                                         masterPortCombo.ready = false
-                                                        masterPortCombo.editText = settingsController.serialPort
+                                                        masterPortCombo.editText = SettingsController.serialPort
                                                         masterPortCombo.ready = true
                                                     }
                                                 }
-                                                onEditTextChanged: { if (ready) { settingsController.serialPort = editText; root.configChanged = true } }
-                                                onActivated: function(index) { settingsController.serialPort = currentText; root.configChanged = true }
+                                                onEditTextChanged: { if (ready) { SettingsController.serialPort = editText; root.configChanged = true } }
+                                                onActivated: function(index) { SettingsController.serialPort = currentText; root.configChanged = true }
                                             }
                                             ToolButton {
                                                 icon.source: "qrc:/qt/qml/DataLogger/Components/resources/icons/refresh.svg"
                                                 icon.color: Theme.accentText; icon.width: 18; icon.height: 18
-                                                onClicked: testerController.refresh_ports()
+                                                onClicked: TesterController.refresh_ports()
                                             }
                                         }
 
@@ -120,24 +122,24 @@ Item {
                                             model: ["1200", "2400", "4800", "9600", "19200", "38400", "57600", "115200"]
                                             editable: true
                                             property bool ready: false
-                                            Component.onCompleted: { editText = String(settingsController.serialBaudrate); ready = true }
+                                            Component.onCompleted: { editText = String(SettingsController.serialBaudrate); ready = true }
                                             Connections {
-                                                target: settingsController
+                                                target: SettingsController
                                                 function onConfigLoaded() {
                                                     masterBaudCombo.ready = false
-                                                    masterBaudCombo.editText = String(settingsController.serialBaudrate)
+                                                    masterBaudCombo.editText = String(SettingsController.serialBaudrate)
                                                     masterBaudCombo.ready = true
                                                 }
                                             }
                                             onEditTextChanged: {
                                                 if (ready) {
                                                     var val = parseInt(editText, 10)
-                                                    if (!isNaN(val) && val > 0) { settingsController.serialBaudrate = val; root.configChanged = true }
+                                                    if (!isNaN(val) && val > 0) { SettingsController.serialBaudrate = val; root.configChanged = true }
                                                 }
                                             }
                                             onActivated: function(index) {
                                                 var val = parseInt(currentText, 10)
-                                                if (!isNaN(val)) { settingsController.serialBaudrate = val; root.configChanged = true }
+                                                if (!isNaN(val)) { SettingsController.serialBaudrate = val; root.configChanged = true }
                                             }
                                         }
                                     }
@@ -149,22 +151,22 @@ Item {
                                         Text { text: "Data bits:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
                                         ComboBox {
                                             Layout.fillWidth: true; model: ["5", "6", "7", "8"]
-                                            Component.onCompleted: { currentIndex = model.indexOf(String(settingsController.serialBytesize)) }
-                                            onActivated: { settingsController.serialBytesize = parseInt(currentText, 10); root.configChanged = true }
+                                            Component.onCompleted: { currentIndex = model.indexOf(String(SettingsController.serialBytesize)) }
+                                            onActivated: { SettingsController.serialBytesize = parseInt(currentText, 10); root.configChanged = true }
                                         }
 
                                         Text { text: "Parity:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
                                         ComboBox {
                                             Layout.fillWidth: true; model: ["N", "E", "O"]
-                                            Component.onCompleted: { currentIndex = model.indexOf(settingsController.serialParity) }
-                                            onActivated: { settingsController.serialParity = currentText; root.configChanged = true }
+                                            Component.onCompleted: { currentIndex = model.indexOf(SettingsController.serialParity) }
+                                            onActivated: { SettingsController.serialParity = currentText; root.configChanged = true }
                                         }
 
                                         Text { text: "Stop bits:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
                                         ComboBox {
                                             Layout.fillWidth: true; model: ["1", "2"]
-                                            Component.onCompleted: { currentIndex = model.indexOf(String(settingsController.serialStopbits)) }
-                                            onActivated: { settingsController.serialStopbits = parseInt(currentText, 10); root.configChanged = true }
+                                            Component.onCompleted: { currentIndex = model.indexOf(String(SettingsController.serialStopbits)) }
+                                            onActivated: { SettingsController.serialStopbits = parseInt(currentText, 10); root.configChanged = true }
                                         }
                                     }
                                 }
@@ -209,20 +211,20 @@ Item {
                                     }
                                     Rectangle {
                                         implicitWidth: 10; implicitHeight: 10; radius: 5
-                                        color: modbusTcpService.state === "listening" ? "#7dffa2"
-                                             : modbusTcpService.state === "error" ? "#ff5353"
-                                             : modbusTcpService.state === "starting" ? "#d4a62d"
-                                             : "#888888"
+                                        color: ModbusTcpServerService.state === "listening" ? AppColors.success
+                                             : ModbusTcpServerService.state === "error" ? AppColors.error
+                                             : ModbusTcpServerService.state === "starting" ? AppColors.warning
+                                             : AppColors.onSurfaceVariant
                                     }
                                     Text {
-                                        text: modbusTcpService.state === "listening" ? "Listening"
-                                            : modbusTcpService.state === "error" ? "Error"
-                                            : modbusTcpService.state === "starting" ? "Starting…"
+                                        text: ModbusTcpServerService.state === "listening" ? "Listening"
+                                            : ModbusTcpServerService.state === "error" ? "Error"
+                                            : ModbusTcpServerService.state === "starting" ? "Starting…"
                                             : "Stopped"
                                         color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize
                                     }
                                 }
-                                Rectangle { Layout.fillWidth: true; height: 1; color: Theme.borderDefault }
+                                Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.borderDefault }
 
                                 RowLayout {
                                     Layout.fillWidth: true; spacing: 10
@@ -233,14 +235,14 @@ Item {
                                     }
                                     Switch {
                                         id: tcpActiveSwitch
-                                        checked: settingsController.modbusTcpEnabled
+                                        checked: SettingsController.modbusTcpEnabled
                                         Connections {
-                                            target: settingsController
+                                            target: SettingsController
                                             function onConfigLoaded() {
-                                                tcpActiveSwitch.checked = settingsController.modbusTcpEnabled
+                                                tcpActiveSwitch.checked = SettingsController.modbusTcpEnabled
                                             }
                                         }
-                                        onToggled: { settingsController.modbusTcpEnabled = checked; root.configChanged = true }
+                                        onToggled: { SettingsController.modbusTcpEnabled = checked; root.configChanged = true }
                                     }
                                     Item { Layout.fillWidth: true }
                                 }
@@ -249,35 +251,35 @@ Item {
                                 TextField {
                                     id: tcpBindField
                                     Layout.fillWidth: true
-                                    text: settingsController.modbusTcpBind
+                                    text: SettingsController.modbusTcpBind
                                     placeholderText: "0.0.0.0"
                                     selectByMouse: true
                                     Connections {
-                                        target: settingsController
+                                        target: SettingsController
                                         function onConfigLoaded() {
-                                            tcpBindField.text = settingsController.modbusTcpBind
+                                            tcpBindField.text = SettingsController.modbusTcpBind
                                         }
                                     }
-                                    onTextEdited: { settingsController.modbusTcpBind = text; root.configChanged = true }
+                                    onTextEdited: { SettingsController.modbusTcpBind = text; root.configChanged = true }
                                 }
 
                                 Text { text: "Port:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
                                 TextField {
                                     id: tcpPortField
                                     Layout.fillWidth: true
-                                    text: settingsController ? String(settingsController.modbusTcpPort) : "5020"
+                                    text: SettingsController ? String(SettingsController.modbusTcpPort) : "5020"
                                     inputMethodHints: Qt.ImhDigitsOnly
                                     selectByMouse: true
                                     Connections {
-                                        target: settingsController
+                                        target: SettingsController
                                         function onConfigLoaded() {
-                                            tcpPortField.text = String(settingsController.modbusTcpPort)
+                                            tcpPortField.text = String(SettingsController.modbusTcpPort)
                                         }
                                     }
                                     onTextEdited: {
                                         var p = parseInt(text, 10)
                                         if (!isNaN(p) && p >= 1 && p <= 65535) {
-                                            settingsController.modbusTcpPort = p
+                                            SettingsController.modbusTcpPort = p
                                             root.configChanged = true
                                         }
                                     }
@@ -295,25 +297,25 @@ Item {
                                         if (isNaN(n)) return tcpUnitSpin.from
                                         return Math.min(tcpUnitSpin.to, Math.max(tcpUnitSpin.from, n))
                                     }
-                                    value: settingsController.modbusTcpUnitId
+                                    value: SettingsController.modbusTcpUnitId
                                     Connections {
-                                        target: settingsController
+                                        target: SettingsController
                                         function onConfigLoaded() {
-                                            tcpUnitSpin.value = settingsController.modbusTcpUnitId
+                                            tcpUnitSpin.value = SettingsController.modbusTcpUnitId
                                         }
                                     }
                                     onValueModified: {
-                                        settingsController.modbusTcpUnitId = Math.round(value)
+                                        SettingsController.modbusTcpUnitId = Math.round(value)
                                         root.configChanged = true
                                     }
                                 }
 
                                 Text {
-                                    text: modbusTcpService.lastError.length > 0
-                                          ? ("⚠ " + modbusTcpService.lastError)
+                                    text: ModbusTcpServerService.lastError.length > 0
+                                          ? ("⚠ " + ModbusTcpServerService.lastError)
                                           : ""
-                                    visible: modbusTcpService.lastError.length > 0
-                                    color: "#ff8080"; font.pixelSize: Theme.fontLabelSize - 1
+                                    visible: ModbusTcpServerService.lastError.length > 0
+                                    color: AppColors.error; font.pixelSize: Theme.fontLabelSize - 1
                                     Layout.fillWidth: true; wrapMode: Text.Wrap
                                 }
                             }
@@ -331,20 +333,20 @@ Item {
                                     }
                                     Rectangle {
                                         implicitWidth: 10; implicitHeight: 10; radius: 5
-                                        color: restApiService.state === "listening" ? "#7dffa2"
-                                             : restApiService.state === "error" ? "#ff5353"
-                                             : restApiService.state === "starting" ? "#d4a62d"
-                                             : "#888888"
+                                        color: RestApiService.state === "listening" ? AppColors.success
+                                             : RestApiService.state === "error" ? AppColors.error
+                                             : RestApiService.state === "starting" ? AppColors.warning
+                                             : AppColors.onSurfaceVariant
                                     }
                                     Text {
-                                        text: restApiService.state === "listening" ? "Listening"
-                                            : restApiService.state === "error" ? "Error"
-                                            : restApiService.state === "starting" ? "Starting…"
+                                        text: RestApiService.state === "listening" ? "Listening"
+                                            : RestApiService.state === "error" ? "Error"
+                                            : RestApiService.state === "starting" ? "Starting…"
                                             : "Stopped"
                                         color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize
                                     }
                                 }
-                                Rectangle { Layout.fillWidth: true; height: 1; color: Theme.borderDefault }
+                                Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.borderDefault }
 
                                 RowLayout {
                                     Layout.fillWidth: true; spacing: 10
@@ -355,14 +357,14 @@ Item {
                                     }
                                     Switch {
                                         id: restActiveSwitch
-                                        checked: settingsController.restApiEnabled
+                                        checked: SettingsController.restApiEnabled
                                         Connections {
-                                            target: settingsController
+                                            target: SettingsController
                                             function onConfigLoaded() {
-                                                restActiveSwitch.checked = settingsController.restApiEnabled
+                                                restActiveSwitch.checked = SettingsController.restApiEnabled
                                             }
                                         }
-                                        onToggled: { settingsController.restApiEnabled = checked; root.configChanged = true }
+                                        onToggled: { SettingsController.restApiEnabled = checked; root.configChanged = true }
                                     }
                                     Item { Layout.fillWidth: true }
                                 }
@@ -371,35 +373,35 @@ Item {
                                 TextField {
                                     id: restBindField
                                     Layout.fillWidth: true
-                                    text: settingsController.restApiBind
+                                    text: SettingsController.restApiBind
                                     placeholderText: "0.0.0.0"
                                     selectByMouse: true
                                     Connections {
-                                        target: settingsController
+                                        target: SettingsController
                                         function onConfigLoaded() {
-                                            restBindField.text = settingsController.restApiBind
+                                            restBindField.text = SettingsController.restApiBind
                                         }
                                     }
-                                    onTextEdited: { settingsController.restApiBind = text; root.configChanged = true }
+                                    onTextEdited: { SettingsController.restApiBind = text; root.configChanged = true }
                                 }
 
                                 Text { text: "Port:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
                                 TextField {
                                     id: restPortField
                                     Layout.fillWidth: true
-                                    text: settingsController ? String(settingsController.restApiPort) : "8080"
+                                    text: SettingsController ? String(SettingsController.restApiPort) : "8080"
                                     inputMethodHints: Qt.ImhDigitsOnly
                                     selectByMouse: true
                                     Connections {
-                                        target: settingsController
+                                        target: SettingsController
                                         function onConfigLoaded() {
-                                            restPortField.text = String(settingsController.restApiPort)
+                                            restPortField.text = String(SettingsController.restApiPort)
                                         }
                                     }
                                     onTextEdited: {
                                         var p = parseInt(text, 10)
                                         if (!isNaN(p) && p >= 1 && p <= 65535) {
-                                            settingsController.restApiPort = p
+                                            SettingsController.restApiPort = p
                                             root.configChanged = true
                                         }
                                     }
@@ -414,11 +416,11 @@ Item {
                                         readOnly: true
                                         selectByMouse: true
                                         echoMode: tokenShow.checked ? TextInput.Normal : TextInput.Password
-                                        text: settingsController.restApiToken
+                                        text: SettingsController.restApiToken
                                         Connections {
-                                            target: settingsController
+                                            target: SettingsController
                                             function onConfigLoaded() {
-                                                restTokenField.text = settingsController.restApiToken
+                                                restTokenField.text = SettingsController.restApiToken
                                             }
                                         }
                                     }
@@ -431,10 +433,10 @@ Item {
                                     ToolButton {
                                         text: "Regenerate"
                                         font.pixelSize: Theme.fontLabelSize - 1
-                                        onClicked: settingsController.regenerate_rest_token()
+                                        onClicked: SettingsController.regenerate_rest_token()
                                     }
                                     ToolButton {
-                                        enabled: settingsController.provisionQrAvailable
+                                        enabled: SettingsController.provisionQrAvailable
                                         icon.source: "qrc:/qt/qml/DataLogger/Components/resources/icons/qr.svg"
                                         icon.color: Theme.accentText
                                         icon.width: 18
@@ -447,11 +449,11 @@ Item {
                                 }
 
                                 Text {
-                                    text: restApiService.lastError.length > 0
-                                          ? ("⚠ " + restApiService.lastError)
+                                    text: RestApiService.lastError.length > 0
+                                          ? ("⚠ " + RestApiService.lastError)
                                           : ""
-                                    visible: restApiService.lastError.length > 0
-                                    color: "#ff8080"; font.pixelSize: Theme.fontLabelSize - 1
+                                    visible: RestApiService.lastError.length > 0
+                                    color: AppColors.error; font.pixelSize: Theme.fontLabelSize - 1
                                     Layout.fillWidth: true; wrapMode: Text.Wrap
                                 }
                             }

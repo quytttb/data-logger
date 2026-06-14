@@ -11,7 +11,7 @@ public:
     // Insert a batch of readings (called from DatabaseWorker).
     bool insertBatch(const QList<SensorData> &records);
 
-    // Query helpers for HistoryView
+    // Query helpers for HistoryView (sensorId==0 → all sensors)
     QList<SensorData> query(int sensorId,
                             const QDateTime &from, const QDateTime &to,
                             int limit = 2000);
