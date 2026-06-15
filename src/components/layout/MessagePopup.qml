@@ -70,7 +70,7 @@ Popup {
             horizontalAlignment: Text.AlignHCenter
         }
 
-        Button {
+        ThemedButton {
             visible: !root.isConfirmMode
             text: "Close"
             Layout.alignment: Qt.AlignHCenter
@@ -82,7 +82,7 @@ Popup {
             Layout.fillWidth: true
             spacing: 10
 
-            Button {
+            ThemedButton {
                 text: root.cancelButtonText
                 Layout.fillWidth: true
                 onClicked: root.close()

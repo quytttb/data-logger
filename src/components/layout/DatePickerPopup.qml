@@ -32,7 +32,7 @@ Popup {
             Layout.fillWidth: true
             spacing: 4
 
-            Button {
+            ThemedButton {
                 text: "◀"
                 flat: true
                 font.pixelSize: 16
@@ -56,7 +56,7 @@ Popup {
                 color: Theme.textPrimary
             }
 
-            Button {
+            ThemedButton {
                 text: "▶"
                 flat: true
                 font.pixelSize: 16
@@ -144,7 +144,7 @@ Popup {
             }
         }
 
-        Button {
+        ThemedButton {
             text: "Today"
             flat: true
             font.pixelSize: 13

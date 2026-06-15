@@ -74,7 +74,7 @@ Item {
 
             Item { Layout.preferredHeight: 4 }
 
-            Button {
+            ThemedButton {
                 text: "OK"
                 Layout.alignment: Qt.AlignHCenter
                 Layout.preferredWidth: 100
@@ -175,7 +175,7 @@ Item {
 
                 Text {
                     text: "DI Status"
-                    color: Theme.textPrimary
+                    color: AppColors.buttonText
                     font.pixelSize: 12; font.bold: true
                     anchors.verticalCenter: parent.verticalCenter
                 }

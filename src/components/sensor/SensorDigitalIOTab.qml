@@ -167,7 +167,7 @@ Rectangle {
                     }
                 }
 
-                Button {
+                ThemedButton {
                     text: "Back to attach"
                     flat: true
                     Layout.fillWidth: true
@@ -183,8 +183,8 @@ Rectangle {
                 TabBar {
                     id: attachTypeBar
                     Layout.fillWidth: true
-                    TabButton { text: "DI"; width: implicitWidth + 30 }
-                    TabButton { text: "DO"; width: implicitWidth + 30 }
+                    ThemedTabButton { text: "DI"; width: implicitWidth + 30 }
+                    ThemedTabButton { text: "DO"; width: implicitWidth + 30 }
                 }
 
                 ColumnLayout {
@@ -224,7 +224,7 @@ Rectangle {
                             model: ["00 — Monitoring", "01 — Calibrating", "02 — Error", "03 — Maintenance"]
                         }
 
-                        Button {
+                        ThemedButton {
                             text: "Attach DI"
                             Layout.fillWidth: true
                             enabled: diSensorCombo.currentIndex >= 0
@@ -275,7 +275,7 @@ Rectangle {
                             CheckBox { id: doTrigMin; text: "Trigger on Min"; checked: true }
                         }
 
-                        Button {
+                        ThemedButton {
                             text: "Attach DO"
                             Layout.fillWidth: true
                             enabled: doSensorCombo.currentIndex >= 0

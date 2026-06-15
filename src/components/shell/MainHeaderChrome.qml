@@ -54,7 +54,7 @@ ColumnLayout {
 
                 Text {
                     text: "Data Logger"
-                    font: AppTypography.labelLarge
+                    font.pixelSize: 15
                     font.weight: Font.Black
                     font.letterSpacing: 1
                     color: AppColors.primaryText

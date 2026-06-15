@@ -109,7 +109,7 @@ Popup {
             horizontalAlignment: Text.AlignHCenter
         }
 
-        Button {
+        ThemedButton {
             text: "Close"
             Layout.alignment: Qt.AlignHCenter
             onClicked: root.close()

@@ -55,7 +55,7 @@ Item {
                     contentItem: Text {
                         text: connectBtn.text
                         font: connectBtn.font
-                        color: Theme.textOnColoredBtn
+                        color: AppColors.buttonTextOnFilled
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                         elide: Text.ElideRight
@@ -82,7 +82,7 @@ Item {
                     contentItem: Text {
                         text: saveSensorBtn.text
                         font: saveSensorBtn.font
-                        color: Theme.textOnColoredBtn
+                        color: AppColors.buttonTextOnFilled
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                         elide: Text.ElideRight
@@ -128,7 +128,7 @@ Item {
                         contentItem: Text {
                             text: readModeBtn.text
                             font: readModeBtn.font
-                            color: root.isReadMode ? AppColors.onPrimary : AppColors.onSurfaceVariant
+                            color: root.isReadMode ? AppColors.buttonTextOnFilled : AppColors.onSurfaceVariant
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
                         }
@@ -153,7 +153,7 @@ Item {
                         contentItem: Text {
                             text: writeModeBtn.text
                             font: writeModeBtn.font
-                            color: !root.isReadMode ? AppColors.primaryText : AppColors.onSurfaceVariant
+                            color: !root.isReadMode ? AppColors.buttonTextOnFilled : AppColors.onSurfaceVariant
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
                         }
@@ -249,7 +249,7 @@ Item {
                     contentItem: Text {
                         text: actionBtn.text
                         font: actionBtn.font
-                        color: Theme.textOnColoredBtn
+                        color: AppColors.buttonTextOnFilled
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                         elide: Text.ElideNone

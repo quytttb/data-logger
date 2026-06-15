@@ -31,7 +31,7 @@ QtObject {
     readonly property int   fontLabelSize:    14
     readonly property color textDim:          AppColors.textMuted
     readonly property color textFaint:        AppColors.textFaint
-    readonly property color textOnColoredBtn: AppColors.onPrimary
+    readonly property color textOnColoredBtn: AppColors.buttonTextOnFilled
 
     readonly property color onSurface:         AppColors.primaryText
     readonly property color onSurfaceVariant:  AppColors.onSurfaceVariant
@@ -55,7 +55,9 @@ QtObject {
     readonly property color btnStart:       AppColors.success
     readonly property color btnStop:        AppColors.error
     readonly property color btnClear:       AppColors.warning
-    readonly property color btnClearText:   AppColors.primaryText
+    readonly property color btnClearText:   AppColors.buttonTextOnFilled
+    readonly property color buttonIcon:     AppColors.buttonIcon
+    readonly property color buttonIconOnFilled: AppColors.buttonIconOnFilled
     readonly property color btnBgDisabled:  AppColors.disabledContent
     readonly property color btnBgMuted:     AppColors.surfaceContainerHigh
 

@@ -15,6 +15,7 @@ ApplicationWindow {
     Material.theme: AppTheme.materialTheme
     Material.primary: AppTheme.primary
     Material.accent: AppTheme.accent
+    palette.buttonText: AppColors.buttonText
 
     function syncModbusTaskBarRef() {
         tabContent.syncModbusTaskBar(headerChrome.modbusTbLoader.item)

@@ -29,6 +29,12 @@ QtObject {
     readonly property color accentColor:  isLight ? "#3949AB" : "#9FA8DA"
     readonly property color onPrimary:    "#FFFFFF"
 
+    /// Button labels — black in dark mode for contrast on tinted Material/filled buttons.
+    readonly property color buttonText: isDark ? "#000000" : primaryText
+    readonly property color buttonTextOnFilled: isDark ? "#000000" : onPrimary
+    readonly property color buttonIcon: buttonText
+    readonly property color buttonIconOnFilled: buttonTextOnFilled
+
     // Solid containers (alpha-only blends were too low-contrast on rail / tonal buttons).
     readonly property color accentContainer:   isLight ? "#E8EAF6" : "#3D4F7C"
     // Not "onAccentContainer" — QML reserves on<Property> when property "accentContainer" exists.

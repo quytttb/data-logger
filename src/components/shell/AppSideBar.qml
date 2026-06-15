@@ -48,7 +48,7 @@ Rectangle {
                     }
 
                     text: ["Monitor", "History", "Trending", "Settings", "Modbus tester"][navDelegate.index]
-                    font: AppTypography.bodyMedium
+                    font.pixelSize: AppTypography.bodyMedium.pixelSize
                     font.weight: Font.Bold
                     palette.buttonText: navDelegate.isActive ? AppColors.accentContainerFg : AppColors.onSurfaceVariant
                     icon.source: ["qrc:/qt/qml/DataLogger/Components/resources/icons/monitor.svg", "qrc:/qt/qml/DataLogger/Components/resources/icons/history.svg", "qrc:/qt/qml/DataLogger/Components/resources/icons/chart.svg", "qrc:/qt/qml/DataLogger/Components/resources/icons/settings.svg", "qrc:/qt/qml/DataLogger/Components/resources/icons/tester.svg"][navDelegate.index]
@@ -87,7 +87,7 @@ Rectangle {
             contentItem: Text {
                 text: themeBtn.text
                 font: themeBtn.font
-                color: AppColors.primaryText
+                color: AppColors.buttonText
                 horizontalAlignment: Text.AlignHCenter
                 verticalAlignment: Text.AlignVCenter
             }
@@ -118,7 +118,7 @@ Rectangle {
             contentItem: Text {
                 text: exitBtn.text
                 font: exitBtn.font
-                color: AppColors.onPrimary
+                color: AppColors.buttonTextOnFilled
                 horizontalAlignment: Text.AlignHCenter
                 verticalAlignment: Text.AlignVCenter
             }
@@ -153,7 +153,7 @@ Rectangle {
 
                 Text {
                     text: MonitorController.statusText
-                    font: AppTypography.labelSmall
+                    font.pixelSize: AppTypography.labelSmall.pixelSize
                     font.weight: Font.Bold
                     color: {
                         var m = MonitorController.statusMode;
@@ -197,7 +197,7 @@ Rectangle {
                                 return "FTP (%1 pending)".arg(ReportController.pendingCount);
                             return "FTP on";
                         }
-                        font: AppTypography.labelSmall
+                        font.pixelSize: AppTypography.labelSmall.pixelSize
                         font.weight: Font.Bold
                         color: ftpStatusRow.statusColor
                     }

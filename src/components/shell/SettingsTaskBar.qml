@@ -40,10 +40,10 @@ Item {
                 if (root.settingsTabIndex !== currentIndex && currentIndex < 4)
                     root.tabSelected(currentIndex)
             }
-            TabButton { text: "General";    icon.source: "qrc:/qt/qml/DataLogger/Components/resources/icons/settings.svg";    width: implicitWidth + 40 }
-            TabButton { text: "Connection"; icon.source: "qrc:/qt/qml/DataLogger/Components/resources/icons/connection.svg";  width: implicitWidth + 40 }
-            TabButton { text: "Server";     icon.source: "qrc:/qt/qml/DataLogger/Components/resources/icons/export.svg";      width: implicitWidth + 40 }
-            TabButton { text: "Sensors";    icon.source: "qrc:/qt/qml/DataLogger/Components/resources/icons/sensors.svg";     width: implicitWidth + 40 }
+            ThemedTabButton { text: "General";    icon.source: "qrc:/qt/qml/DataLogger/Components/resources/icons/settings.svg";    width: implicitWidth + 40 }
+            ThemedTabButton { text: "Connection"; icon.source: "qrc:/qt/qml/DataLogger/Components/resources/icons/connection.svg";  width: implicitWidth + 40 }
+            ThemedTabButton { text: "Server";     icon.source: "qrc:/qt/qml/DataLogger/Components/resources/icons/export.svg";      width: implicitWidth + 40 }
+            ThemedTabButton { text: "Sensors";    icon.source: "qrc:/qt/qml/DataLogger/Components/resources/icons/sensors.svg";     width: implicitWidth + 40 }
         }
 
         RowLayout {
@@ -58,9 +58,9 @@ Item {
                     if (root.sensorSubTabIndex !== currentIndex)
                         root.sensorSubTabSelected(currentIndex)
                 }
-                TabButton { text: "Basic && Modbus";   width: implicitWidth + 30 }
-                TabButton { text: "Scaling && Alarms"; width: implicitWidth + 30; visible: root.sensorType === "ANALOG" }
-                TabButton { text: "Digital I/O";       width: implicitWidth + 30; visible: !root.isAddMode && root.sensorType === "ANALOG" }
+                ThemedTabButton { text: "Basic && Modbus";   width: implicitWidth + 30 }
+                ThemedTabButton { text: "Scaling && Alarms"; width: implicitWidth + 30; visible: root.sensorType === "ANALOG" }
+                ThemedTabButton { text: "Digital I/O";       width: implicitWidth + 30; visible: !root.isAddMode && root.sensorType === "ANALOG" }
             }
         }
 
@@ -71,7 +71,7 @@ Item {
             visible: root.settingsTabIndex >= 0 && root.settingsTabIndex <= 2 && root.isConfigChanged
             spacing: 8
 
-            Button {
+            ThemedButton {
                 text: "Cancel"
                 font.bold: true
                 Layout.preferredHeight: 44
@@ -108,7 +108,7 @@ Item {
                 visible: root.hasSelectedSensor
                 Layout.preferredWidth: 44; Layout.preferredHeight: 44
                 icon.source: "qrc:/qt/qml/DataLogger/Components/resources/icons/delete.svg"
-                icon.color: Theme.textOnColoredBtn; icon.width: 18; icon.height: 18
+                icon.color: AppColors.buttonIconOnFilled; icon.width: 18; icon.height: 18
                 background: Rectangle { radius: Theme.radiusSmall; color: Theme.btnStop; opacity: deleteSensorBtn.pressed ? 0.75 : 1.0 }
                 onClicked: root.deleteSelectedSensor()
             }
@@ -118,7 +118,7 @@ Item {
                 visible: root.hasSelectedSensor
                 Layout.preferredWidth: 44; Layout.preferredHeight: 44
                 icon.source: "qrc:/qt/qml/DataLogger/Components/resources/icons/edit.svg"
-                icon.color: Theme.textOnColoredBtn; icon.width: 18; icon.height: 18
+                icon.color: AppColors.buttonIconOnFilled; icon.width: 18; icon.height: 18
                 background: Rectangle { radius: Theme.radiusSmall; color: Theme.accent; opacity: editSensorBtn.pressed ? 0.75 : 1.0 }
                 onClicked: root.editSelectedSensor()
             }
@@ -153,7 +153,7 @@ Item {
                 visible: root.sensorSubTabIndex === 2 && root.hasSelectedDio
                 Layout.preferredWidth: 44; Layout.preferredHeight: 44
                 icon.source: "qrc:/qt/qml/DataLogger/Components/resources/icons/delete.svg"
-                icon.color: Theme.textOnColoredBtn; icon.width: 18; icon.height: 18
+                icon.color: AppColors.buttonIconOnFilled; icon.width: 18; icon.height: 18
                 background: Rectangle { radius: Theme.radiusSmall; color: Theme.btnStop; opacity: deleteDioBtn.pressed ? 0.75 : 1.0 }
                 onClicked: root.deleteSelectedDio()
             }
@@ -165,7 +165,7 @@ Item {
                 visible: root.sensorSubTabIndex === 2 && root.hasSelectedDio
             }
 
-            Button {
+            ThemedButton {
                 text: "Cancel"
                 font.bold: true
                 Layout.preferredHeight: 44

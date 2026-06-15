@@ -98,7 +98,7 @@ Item {
             Layout.preferredHeight: 44
             enabled: !HistoryViewModel.isLoading && SensorListModel.count > 0
             icon.source: "qrc:/qt/qml/DataLogger/Components/resources/icons/search.svg"
-            icon.color: Theme.textOnColoredBtn
+            icon.color: AppColors.buttonIconOnFilled
             icon.width: 16
             icon.height: 16
             background: Rectangle {
@@ -116,7 +116,7 @@ Item {
             Layout.preferredHeight: 44
             enabled: !HistoryViewModel.isLoading && SensorListModel.count > 0
             icon.source: "qrc:/qt/qml/DataLogger/Components/resources/icons/refresh.svg"
-            icon.color: Theme.textPrimary
+            icon.color: AppColors.buttonIcon
             icon.width: 16
             icon.height: 16
             background: Rectangle {
@@ -145,7 +145,7 @@ Item {
             Layout.preferredHeight: 44
             enabled: HistoryViewModel.recordCount > 0
             icon.source: "qrc:/qt/qml/DataLogger/Components/resources/icons/export.svg"
-            icon.color: Theme.textPrimary
+            icon.color: AppColors.buttonIcon
             icon.width: 16
             icon.height: 16
             background: Rectangle {

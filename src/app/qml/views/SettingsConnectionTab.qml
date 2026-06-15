@@ -33,11 +33,11 @@ Item {
                 color: "transparent"
             }
 
-            TabButton {
+            ThemedTabButton {
                 text: "Local Sensors"
                 width: implicitWidth + 30
             }
-            TabButton {
+            ThemedTabButton {
                 text: "Network Services"
                 width: implicitWidth + 30
             }
@@ -108,9 +108,10 @@ Item {
                                                 onEditTextChanged: { if (ready) { SettingsController.serialPort = editText; root.configChanged = true } }
                                                 onActivated: function(index) { SettingsController.serialPort = currentText; root.configChanged = true }
                                             }
-                                            ToolButton {
+                                            ThemedToolButton {
                                                 icon.source: "qrc:/qt/qml/DataLogger/Components/resources/icons/refresh.svg"
-                                                icon.color: Theme.accentText; icon.width: 18; icon.height: 18
+                                                icon.width: 18
+                                                icon.height: 18
                                                 onClicked: TesterController.refresh_ports()
                                             }
                                         }
@@ -424,21 +425,20 @@ Item {
                                             }
                                         }
                                     }
-                                    ToolButton {
+                                    ThemedToolButton {
                                         id: tokenShow
                                         checkable: true
                                         text: checked ? "Hide" : "Show"
                                         font.pixelSize: Theme.fontLabelSize - 1
                                     }
-                                    ToolButton {
+                                    ThemedToolButton {
                                         text: "Regenerate"
                                         font.pixelSize: Theme.fontLabelSize - 1
                                         onClicked: SettingsController.regenerate_rest_token()
                                     }
-                                    ToolButton {
+                                    ThemedToolButton {
                                         enabled: SettingsController.provisionQrAvailable
                                         icon.source: "qrc:/qt/qml/DataLogger/Components/resources/icons/qr.svg"
-                                        icon.color: Theme.accentText
                                         icon.width: 18
                                         icon.height: 18
                                         onClicked: {
