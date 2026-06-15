@@ -75,10 +75,10 @@ Item {
         }
     }
 
-    Text {
-        text: "\u25BE"
-        color: AppColors.iconSubtle
-        font.pixelSize: 14
+    UiIcon {
+        name: "arrowDownward"
+        iconColor: AppColors.iconSubtle
+        size: 14
         anchors.verticalCenter: parent.verticalCenter
         anchors.right: parent.right
         anchors.rightMargin: 10

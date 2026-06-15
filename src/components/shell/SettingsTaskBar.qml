@@ -40,10 +40,11 @@ Item {
                 if (root.settingsTabIndex !== currentIndex && currentIndex < 4)
                     root.tabSelected(currentIndex)
             }
-            ThemedTabButton { text: "General";    icon.source: "qrc:/qt/qml/DataLogger/Components/resources/icons/settings.svg";    width: implicitWidth + 40 }
-            ThemedTabButton { text: "Connection"; icon.source: "qrc:/qt/qml/DataLogger/Components/resources/icons/connection.svg";  width: implicitWidth + 40 }
-            ThemedTabButton { text: "Server";     icon.source: "qrc:/qt/qml/DataLogger/Components/resources/icons/export.svg";      width: implicitWidth + 40 }
-            ThemedTabButton { text: "Sensors";    icon.source: "qrc:/qt/qml/DataLogger/Components/resources/icons/sensors.svg";     width: implicitWidth + 40 }
+            background: Rectangle { color: "transparent" }
+            ThemedTabButton { text: "General";    iconName: "cog";    width: implicitWidth + 40 }
+            ThemedTabButton { text: "Connection"; iconName: "link";   width: implicitWidth + 40 }
+            ThemedTabButton { text: "Server";     iconName: "download"; width: implicitWidth + 40 }
+            ThemedTabButton { text: "Sensors";    iconName: "chip";     width: implicitWidth + 40 }
         }
 
         RowLayout {
@@ -58,6 +59,7 @@ Item {
                     if (root.sensorSubTabIndex !== currentIndex)
                         root.sensorSubTabSelected(currentIndex)
                 }
+                background: Rectangle { color: "transparent" }
                 ThemedTabButton { text: "Basic && Modbus";   width: implicitWidth + 30 }
                 ThemedTabButton { text: "Scaling && Alarms"; width: implicitWidth + 30; visible: root.sensorType === "ANALOG" }
                 ThemedTabButton { text: "Digital I/O";       width: implicitWidth + 30; visible: !root.isAddMode && root.sensorType === "ANALOG" }
@@ -106,20 +108,50 @@ Item {
             Button {
                 id: deleteSensorBtn
                 visible: root.hasSelectedSensor
-                Layout.preferredWidth: 44; Layout.preferredHeight: 44
-                icon.source: "qrc:/qt/qml/DataLogger/Components/resources/icons/delete.svg"
-                icon.color: AppColors.buttonIconOnFilled; icon.width: 18; icon.height: 18
-                background: Rectangle { radius: Theme.radiusSmall; color: Theme.btnStop; opacity: deleteSensorBtn.pressed ? 0.75 : 1.0 }
+                implicitWidth: 44
+                implicitHeight: 44
+                Layout.preferredWidth: 44
+                Layout.preferredHeight: 44
+                contentItem: Item {
+                    anchors.fill: parent
+                    UiIcon {
+                        anchors.centerIn: parent
+                        name: "trashCan"
+                        size: 18
+                        iconColor: AppColors.buttonIconOnFilled
+                    }
+                }
+                background: Rectangle {
+                    anchors.fill: parent
+                    radius: Theme.radiusMedium
+                    color: Theme.btnStop
+                    opacity: deleteSensorBtn.pressed ? 0.75 : 1.0
+                }
                 onClicked: root.deleteSelectedSensor()
             }
 
             Button {
                 id: editSensorBtn
                 visible: root.hasSelectedSensor
-                Layout.preferredWidth: 44; Layout.preferredHeight: 44
-                icon.source: "qrc:/qt/qml/DataLogger/Components/resources/icons/edit.svg"
-                icon.color: AppColors.buttonIconOnFilled; icon.width: 18; icon.height: 18
-                background: Rectangle { radius: Theme.radiusSmall; color: Theme.accent; opacity: editSensorBtn.pressed ? 0.75 : 1.0 }
+                implicitWidth: 44
+                implicitHeight: 44
+                Layout.preferredWidth: 44
+                Layout.preferredHeight: 44
+                contentItem: Item {
+                    anchors.fill: parent
+                    UiIcon {
+                        anchors.centerIn: parent
+                        name: "pencil"
+                        size: 18
+                        iconColor: AppColors.buttonIconOnFilled
+                    }
+                }
+                background: Rectangle {
+                    anchors.fill: parent
+                    radius: Theme.radiusMedium
+                    color: Theme.accent
+                    opacity: editSensorBtn.pressed ? 0.75 : 1.0
+                }
                 onClicked: root.editSelectedSensor()
             }
 
@@ -151,10 +183,25 @@ Item {
             Button {
                 id: deleteDioBtn
                 visible: root.sensorSubTabIndex === 2 && root.hasSelectedDio
-                Layout.preferredWidth: 44; Layout.preferredHeight: 44
-                icon.source: "qrc:/qt/qml/DataLogger/Components/resources/icons/delete.svg"
-                icon.color: AppColors.buttonIconOnFilled; icon.width: 18; icon.height: 18
-                background: Rectangle { radius: Theme.radiusSmall; color: Theme.btnStop; opacity: deleteDioBtn.pressed ? 0.75 : 1.0 }
+                implicitWidth: 44
+                implicitHeight: 44
+                Layout.preferredWidth: 44
+                Layout.preferredHeight: 44
+                contentItem: Item {
+                    anchors.fill: parent
+                    UiIcon {
+                        anchors.centerIn: parent
+                        name: "trashCan"
+                        size: 18
+                        iconColor: AppColors.buttonIconOnFilled
+                    }
+                }
+                background: Rectangle {
+                    anchors.fill: parent
+                    radius: Theme.radiusMedium
+                    color: Theme.btnStop
+                    opacity: deleteDioBtn.pressed ? 0.75 : 1.0
+                }
                 onClicked: root.deleteSelectedDio()
             }
 

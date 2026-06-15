@@ -7,8 +7,10 @@
 #include <atomic>
 
 static std::atomic<int> s_connCounter{0};
+static QString s_dbPath;
 
 bool Database::init(const QString &dbPath) {
+    s_dbPath = dbPath;
     QString connName = "main";
     QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE", connName);
     db.setDatabaseName(dbPath);
@@ -29,8 +31,8 @@ bool Database::init(const QString &dbPath) {
 QSqlDatabase Database::openConnection() {
     int n = ++s_connCounter;
     QString connName = QStringLiteral("conn_%1").arg(n);
-    QSqlDatabase db = QSqlDatabase::cloneDatabase(
-        QSqlDatabase::database("main"), connName);
+    QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE", connName);
+    db.setDatabaseName(s_dbPath);
     db.open();
     applyPragmas(db);
     return db;

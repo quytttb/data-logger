@@ -18,12 +18,7 @@ Rectangle {
         anchors.margins: AppTheme.pagePadding
         spacing: AppTheme.sectionSpacing
 
-        InlineBanner {
-            Layout.fillWidth: true
-            visible: HistoryViewModel.lastError.length > 0
-            semantic: "error"
-            message: HistoryViewModel.lastError
-        }
+
 
         ElevatedPane {
             Layout.fillWidth: true
@@ -42,9 +37,11 @@ Rectangle {
                 colWeights: [0.28, 0.22, 0.12, 0.18, 0.2]
                 colMinimums: [140, 100, 60, 80, 80]
                 headerAlignRight: function(col) { return col === 4 }
-                emptyMessage: !HistoryViewModel.searchedOnce
-                              ? qsTr("Adjust the time range or sensor, then search.")
-                              : qsTr("No records found for the selected filters.")
+                emptyMessage: HistoryViewModel.lastError.length > 0
+                              ? HistoryViewModel.lastError
+                              : (!HistoryViewModel.searchedOnce
+                                  ? qsTr("Adjust the time range or sensor, then search.")
+                                  : qsTr("No records found for the selected filters."))
 
                 delegate: ItemDelegate {
                     id: histCell

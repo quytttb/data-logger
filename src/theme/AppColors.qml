@@ -6,8 +6,8 @@ import DataLogger.Core
 // M3 color roles + state layers. Theme via SettingsController (not Material.theme on singletons).
 // ApplicationWindow sets Material.primary/accent from AppTheme — custom UI uses tokens here only.
 QtObject {
-    readonly property bool isLight: SettingsController.theme === "light"
-    readonly property bool isDark:  !isLight
+    readonly property bool isLight: false
+    readonly property bool isDark:  true
 
     readonly property real hoverOpacity:    0.08
     readonly property real dividerOpacity:  0.12
@@ -41,10 +41,8 @@ QtObject {
     readonly property color accentContainerFg: isLight ? "#283593" : "#E8EAF6"
 
     // primaryText — not "onSurface" (clashes with Qt Material).
-    readonly property color primaryText:
-        SettingsController.theme === "light" ? "#1C1B1F" : "#E6E1E5"
-    readonly property color onSurfaceVariant:
-        SettingsController.theme === "light" ? "#49454F" : "#CAC4D0"
+    readonly property color primaryText: "#E6E1E5"
+    readonly property color onSurfaceVariant: "#CAC4D0"
 
     readonly property color hoverFill: hoverLayer(primaryText)
     readonly property color dividerLine: divider(primaryText)

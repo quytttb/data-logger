@@ -103,7 +103,6 @@ Rectangle {
                     chartHolder.xMax = now
                     xAxis.min = new Date(minX)
                     xAxis.max = new Date(now)
-                    xAxis.tickInterval = trendRoot.windowMs / 6
 
                     if (yLo === undefined || yLo === Number.MAX_VALUE) {
                         yLo = 0; yHi = 1
@@ -115,9 +114,6 @@ Rectangle {
                     chartHolder.yMax = yHi + margin
                     yAxis.min = chartHolder.yMin
                     yAxis.max = chartHolder.yMax
-                    yAxis.tickInterval = (chartHolder.yMax - chartHolder.yMin) / 7
-                    if (yAxis.tickInterval <= 0)
-                        yAxis.tickInterval = 1
                 }
 
                 function appendPoint(sid, x, y) {
@@ -163,28 +159,24 @@ Rectangle {
                 ChartGraphsView {
                     id: graphsView
                     anchors.fill: parent
+                    visible: MonitorController.analogSensors && MonitorController.analogSensors.length > 0
 
                     axisX: DateTimeAxis {
                         id: xAxis
                         labelFormat: "HH:mm:ss"
-                        tickInterval: trendRoot.windowMs / 6
                     }
 
                     axisY: ValueAxis {
                         id: yAxis
                         labelFormat: "%.1f"
-                        tickInterval: 1
                     }
                 }
 
-                Label {
-                    anchors.centerIn: parent
-                    visible: !MonitorController.analogSensors || MonitorController.analogSensors.length === 0
-                        text: qsTr("No active sensors.\nStart monitoring to see live trends.")
-                        color: AppColors.onSurfaceVariant
-                    font: AppTypography.bodyMedium
-                    horizontalAlignment: Text.AlignHCenter
-                    wrapMode: Text.WordWrap
+                EmptyStatePlaceholder {
+                    anchors.fill: parent
+                    visible: !graphsView.visible
+                    message: qsTr("No active sensors.\nStart monitoring to see live trends.")
+                    iconName: "showChart"
                 }
             }
         }

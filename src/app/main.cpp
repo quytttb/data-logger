@@ -1,6 +1,8 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QIcon>
+#include <QFontDatabase>
+#include <QtDebug>
 
 #include "utils/AppPaths.h"
 #include "utils/LogSetup.h"
@@ -22,6 +24,20 @@ int main(int argc, char *argv[]) {
 
     QGuiApplication app(argc, argv);
     app.setApplicationName("DataLogger");
+
+    const QString iconFontPath =
+        QStringLiteral(":/qt/qml/DataLogger/Components/resources/fonts/MaterialSymbols/"
+                       "MaterialSymbolsOutlined.ttf");
+    const int fontId = QFontDatabase::addApplicationFont(iconFontPath);
+    if (fontId < 0) {
+        qWarning() << "[main] Failed to load icon font from" << iconFontPath
+                   << "— icons will show as boxes";
+    } else {
+        const QStringList families = QFontDatabase::applicationFontFamilies(fontId);
+        if (!families.isEmpty()) {
+            qDebug() << "[main] Icon font loaded:" << families.constFirst();
+        }
+    }
     app.setApplicationVersion("2.0.0");
     app.setOrganizationName("DATALOGGER");
     app.setOrganizationDomain("datalogger.local");

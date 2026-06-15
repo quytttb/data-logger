@@ -183,6 +183,7 @@ Rectangle {
                 TabBar {
                     id: attachTypeBar
                     Layout.fillWidth: true
+                    background: Rectangle { color: "transparent" }
                     ThemedTabButton { text: "DI"; width: implicitWidth + 30 }
                     ThemedTabButton { text: "DO"; width: implicitWidth + 30 }
                 }

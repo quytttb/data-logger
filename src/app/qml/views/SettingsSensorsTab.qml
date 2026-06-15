@@ -3,6 +3,7 @@ import QtQuick
 import QtQuick.Layouts
 import DataLogger.Theme
 import DataLogger.Core
+import DataLogger.Components
 
 Rectangle {
     id: root
@@ -48,6 +49,7 @@ Rectangle {
             Layout.fillWidth: true; Layout.fillHeight: true
             model: SensorListModel
             boundsBehavior: Flickable.StopAtBounds
+            visible: count > 0
 
             delegate: Rectangle {
                 id: sensorRow
@@ -141,17 +143,12 @@ Rectangle {
             }
         }
 
-        Item {
+        EmptyStatePlaceholder {
             Layout.fillWidth: true
             Layout.fillHeight: true
             visible: sensorListView.count === 0
-
-            Text {
-                anchors.centerIn: parent
-                text: "No sensors yet.\nClick [+ Add sensor] to create one."
-                color: Theme.textSecondary; font.pixelSize: 16
-                horizontalAlignment: Text.AlignHCenter
-            }
+            message: "No sensors yet.\nClick [+ Add sensor] to create one."
+            iconName: "chip"
         }
     }
 }

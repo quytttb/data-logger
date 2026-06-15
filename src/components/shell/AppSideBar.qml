@@ -2,13 +2,15 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Window
 import DataLogger.Theme
 import DataLogger.Core
+import DataLogger.Components
 
 Rectangle {
     id: sideBarRoot
-    implicitWidth: 200
-    color: AppColors.surface
+    implicitWidth: AppTheme.railWidth
+    color: AppColors.surfaceContainer
 
     property int currentTab: 0
     signal selectTab(int index)
@@ -17,10 +19,30 @@ Rectangle {
         anchors.fill: parent
         spacing: 0
 
+        Item {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 76
+
+            Image {
+                anchors.centerIn: parent
+                source: "qrc:/qt/qml/DataLogger/Components/resources/icons/brand_4m_technologies_blue.svg"
+                sourceSize: Qt.size(60, 60)
+                fillMode: Image.PreserveAspectFit
+            }
+
+            MouseArea {
+                anchors.fill: parent
+                onPressed: mouse => {
+                    if (mouse.button === Qt.LeftButton && Window.window)
+                        Window.window.startSystemMove()
+                }
+            }
+        }
+
         Column {
             id: navColumn
             Layout.fillWidth: true
-            spacing: 0
+            spacing: AppTheme.navItemSpacing + 8
 
             Repeater {
                 model: 5
@@ -28,35 +50,65 @@ Rectangle {
                 delegate: ItemDelegate {
                     id: navDelegate
                     width: sideBarRoot.width
-                    implicitHeight: 56
+                    implicitHeight: AppTheme.navItemHeight
                     required property int index
                     readonly property int tabIdx: index
                     readonly property bool isActive: sideBarRoot.currentTab === tabIdx
-                    highlighted: isActive
-                    padding: 0
+                    padding: 4
+                    hoverEnabled: true
 
-                    background: Rectangle {
+                    background: Item {}
+
+                    contentItem: ColumnLayout {
+                        spacing: 4
                         anchors.fill: parent
-                        color: navDelegate.isActive ? AppColors.accentContainer
-                             : navDelegate.hovered ? AppColors.hoverFill : "transparent"
 
-                        Rectangle {
-                            width: 4
-                            height: parent.height
-                            color: navDelegate.isActive ? AppColors.primaryColor : "transparent"
+                        Item {
+                            Layout.preferredWidth: AppTheme.navPillWidth
+                            Layout.preferredHeight: AppTheme.navPillHeight
+                            Layout.alignment: Qt.AlignHCenter
+
+                            Rectangle {
+                                anchors.centerIn: parent
+                                width: AppTheme.navPillWidth
+                                height: AppTheme.navPillHeight
+                                radius: AppTheme.navPillRadius
+                                visible: navDelegate.isActive
+                                color: AppColors.accentContainer
+                            }
+
+                            Rectangle {
+                                anchors.centerIn: parent
+                                width: AppTheme.navPillWidth
+                                height: AppTheme.navPillHeight
+                                radius: AppTheme.navPillRadius
+                                visible: navDelegate.hovered && !navDelegate.isActive
+                                color: AppColors.hoverFill
+                            }
+
+                            UiIcon {
+                                anchors.centerIn: parent
+                                name: ["viewDashboard", "history", "showChart", "cog", "server"][navDelegate.index]
+                                size: 24
+                                iconColor: navDelegate.isActive
+                                         ? AppColors.accentContainerFg
+                                         : AppColors.onSurfaceVariant
+                            }
+                        }
+
+                        Text {
+                            text: ["Monitor", "History", "Trending", "Settings", "Tester"][navDelegate.index]
+                            font.family: AppTypography.labelMedium.family
+                            font.pixelSize: AppTypography.labelMedium.pixelSize
+                            font.bold: navDelegate.isActive
+                            color: navDelegate.isActive ? AppColors.accentContainerFg : AppColors.onSurfaceVariant
+                            horizontalAlignment: Text.AlignHCenter
+                            elide: Text.ElideRight
+                            maximumLineCount: 1
+                            Layout.fillWidth: true
+                            Layout.alignment: Qt.AlignHCenter
                         }
                     }
-
-                    text: ["Monitor", "History", "Trending", "Settings", "Modbus tester"][navDelegate.index]
-                    font.pixelSize: AppTypography.bodyMedium.pixelSize
-                    font.weight: Font.Bold
-                    palette.buttonText: navDelegate.isActive ? AppColors.accentContainerFg : AppColors.onSurfaceVariant
-                    icon.source: ["qrc:/qt/qml/DataLogger/Components/resources/icons/monitor.svg", "qrc:/qt/qml/DataLogger/Components/resources/icons/history.svg", "qrc:/qt/qml/DataLogger/Components/resources/icons/chart.svg", "qrc:/qt/qml/DataLogger/Components/resources/icons/settings.svg", "qrc:/qt/qml/DataLogger/Components/resources/icons/tester.svg"][navDelegate.index]
-                    icon.color: navDelegate.isActive ? AppColors.accentContainerFg : AppColors.onSurfaceVariant
-                    icon.width: 18
-                    icon.height: 18
-                    spacing: 12
-                    leftPadding: 16
 
                     onClicked: sideBarRoot.selectTab(navDelegate.tabIdx)
                 }
@@ -65,142 +117,116 @@ Rectangle {
 
         Item { Layout.fillHeight: true }
 
-        Button {
-            id: themeBtn
-            Layout.fillWidth: true
-            Layout.leftMargin: 12
-            Layout.rightMargin: 12
-            Layout.bottomMargin: 4
-            implicitHeight: 36
-            text: SettingsController.theme === "dark" ? "Light mode" : "Dark mode"
-            font: AppTypography.labelMedium
-
-            background: Rectangle {
-                anchors.fill: parent
-                radius: AppTheme.listItemRadius
-                color: themeBtn.down ? AppColors.hoverFill
-                     : themeBtn.hovered ? AppColors.hoverFill : "transparent"
-                border.color: AppColors.outlineVariant
-                border.width: 1
-            }
-
-            contentItem: Text {
-                text: themeBtn.text
-                font: themeBtn.font
-                color: AppColors.buttonText
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
-            }
-
-            onClicked: {
-                const next = SettingsController.theme === "dark" ? "light" : "dark"
-                SettingsController.saveTheme(next)
-            }
-        }
-
+        // Exit Button (Centered flat icon button)
         Button {
             id: exitBtn
-            Layout.fillWidth: true
-            Layout.leftMargin: 12
-            Layout.rightMargin: 12
+            Layout.alignment: Qt.AlignHCenter
             Layout.bottomMargin: 8
+            implicitWidth: 44
             implicitHeight: 44
-            text: "Exit"
-            font: AppTypography.labelLarge
 
             background: Rectangle {
                 anchors.fill: parent
-                radius: AppTheme.listItemRadius
-                color: exitBtn.down ? Qt.darker(AppColors.error, 1.15)
-                     : exitBtn.hovered ? Qt.lighter(AppColors.error, 1.08) : AppColors.error
+                radius: Theme.radiusMedium
+                color: exitBtn.pressed ? AppColors.error : AppColors.errorContainer
             }
 
-            contentItem: Text {
-                text: exitBtn.text
-                font: exitBtn.font
-                color: AppColors.buttonTextOnFilled
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
+            contentItem: Item {
+                anchors.fill: parent
+                UiIcon {
+                    anchors.centerIn: parent
+                    name: "close"
+                    size: 20
+                    iconColor: AppColors.errorContainerFg
+                }
             }
 
             onClicked: Qt.quit()
         }
 
+        // Divider
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 70
-            color: AppColors.surface
+            Layout.preferredHeight: 1
+            color: AppColors.dividerLine
+            Layout.margins: 8
+        }
 
-            Rectangle {
-                anchors.top: parent.top
+        // Time and Status Column (Optimized for 7-inch touch)
+        Column {
+            width: parent.width
+            spacing: 16
+
+            // Status Column (Line by Line)
+            Column {
                 width: parent.width
-                height: 1
-                color: AppColors.dividerLine
-            }
+                spacing: 6
 
-            ColumnLayout {
-                anchors.fill: parent
-                anchors.leftMargin: 16
-                anchors.rightMargin: 16
-                spacing: 3
-
-                Text {
-                    id: clockLabel
-                    text: Qt.formatDateTime(new Date(), "dd/MM/yyyy  HH:mm:ss")
-                    font: AppTypography.labelMedium
-                    color: AppColors.onSurfaceVariant
-                }
-
-                Text {
-                    text: MonitorController.statusText
-                    font.pixelSize: AppTypography.labelSmall.pixelSize
-                    font.weight: Font.Bold
-                    color: {
-                        var m = MonitorController.statusMode;
-                        if (m === 1)
-                            return AppColors.success;
-                        if (m === 2)
-                            return AppColors.error;
-                        return AppColors.onSurfaceVariant;
-                    }
-                }
-
+                // Modbus
                 RowLayout {
-                    id: ftpStatusRow
-                    spacing: 5
-
-                    readonly property color statusColor: {
-                        if (!ReportController.isRunning)
-                            return AppColors.onSurfaceVariant;
-                        var s = ReportController.lastStatus;
-                        if (s.indexOf("FAIL") >= 0 || s.indexOf("ERROR") >= 0)
-                            return AppColors.error;
-                        if (s.indexOf("OK") >= 0)
-                            return AppColors.success;
-                        return AppColors.accentColor;
-                    }
-
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    spacing: 6
                     Rectangle {
-                        Layout.preferredWidth: 8
-                        Layout.preferredHeight: 8
-                        radius: 4
-                        color: ftpStatusRow.statusColor
+                        width: 8; height: 8; radius: 4
+                        color: MonitorController.statusMode === 1 ? AppColors.success
+                             : MonitorController.statusMode === 2 ? AppColors.error
+                             : AppColors.onSurfaceVariant
                     }
                     Text {
-                        text: {
-                            if (!ReportController.isRunning)
-                                return "FTP off";
-                            var s = ReportController.lastStatus;
-                            if (s.indexOf("FAIL") >= 0 || s.indexOf("ERROR") >= 0)
-                                return "FTP error";
-                            if (ReportController.pendingCount > 0)
-                                return "FTP (%1 pending)".arg(ReportController.pendingCount);
-                            return "FTP on";
-                        }
-                        font.pixelSize: AppTypography.labelSmall.pixelSize
-                        font.weight: Font.Bold
-                        color: ftpStatusRow.statusColor
+                        text: "Modbus"
+                        font.pixelSize: 10
+                        color: AppColors.onSurfaceVariant
+                        font.bold: true
                     }
+                }
+
+                // FTP
+                RowLayout {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    spacing: 6
+                    Rectangle {
+                        width: 8; height: 8; radius: 4
+                        color: {
+                            if (!ReportController.isRunning) return AppColors.onSurfaceVariant;
+                            var s = ReportController.lastStatus || "";
+                            if (s.indexOf("FAIL") >= 0 || s.indexOf("ERROR") >= 0) return AppColors.error;
+                            if (s.indexOf("OK") >= 0) return AppColors.success;
+                            return AppColors.accentColor;
+                        }
+                    }
+                    Text {
+                        text: "FTP"
+                        font.pixelSize: 10
+                        color: AppColors.onSurfaceVariant
+                        font.bold: true
+                    }
+                }
+            }
+
+            // Clock (Stacked numbers with seconds & year)
+            Column {
+                width: parent.width
+                spacing: 4
+
+                Text {
+                    id: clockTimeLabel
+                    width: parent.width
+                    text: Qt.formatDateTime(new Date(), "HH\n:mm\n:ss")
+                    font.family: AppTypography.labelMedium.family
+                    font.pixelSize: 18
+                    font.bold: true
+                    color: AppColors.primaryText
+                    horizontalAlignment: Text.AlignHCenter
+                    lineHeight: 1.0
+                }
+
+                Text {
+                    id: clockDateLabel
+                    width: parent.width
+                    text: Qt.formatDateTime(new Date(), "dd/MM/yyyy")
+                    font.pixelSize: 11
+                    color: AppColors.onSurfaceVariant
+                    horizontalAlignment: Text.AlignHCenter
                 }
             }
         }
@@ -210,6 +236,9 @@ Rectangle {
         interval: 1000
         running: true
         repeat: true
-        onTriggered: clockLabel.text = Qt.formatDateTime(new Date(), "dd/MM/yyyy  HH:mm:ss")
+        onTriggered: {
+            clockTimeLabel.text = Qt.formatDateTime(new Date(), "HH\n:mm\n:ss")
+            clockDateLabel.text = Qt.formatDateTime(new Date(), "dd/MM/yyyy")
+        }
     }
 }

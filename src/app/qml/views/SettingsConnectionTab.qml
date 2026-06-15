@@ -108,11 +108,29 @@ Item {
                                                 onEditTextChanged: { if (ready) { SettingsController.serialPort = editText; root.configChanged = true } }
                                                 onActivated: function(index) { SettingsController.serialPort = currentText; root.configChanged = true }
                                             }
-                                            ThemedToolButton {
-                                                icon.source: "qrc:/qt/qml/DataLogger/Components/resources/icons/refresh.svg"
-                                                icon.width: 18
-                                                icon.height: 18
+                                            Button {
+                                                id: refreshPortsBtn
+                                                implicitWidth: 32
+                                                implicitHeight: 32
+                                                Layout.preferredWidth: 32
+                                                Layout.preferredHeight: 32
                                                 onClicked: TesterController.refresh_ports()
+                                                
+                                                contentItem: Item {
+                                                    anchors.fill: parent
+                                                    UiIcon {
+                                                        anchors.centerIn: parent
+                                                        name: "refresh"
+                                                        size: 18
+                                                        iconColor: AppColors.buttonIconOnFilled
+                                                    }
+                                                }
+                                                background: Rectangle {
+                                                    anchors.fill: parent
+                                                    color: !refreshPortsBtn.enabled ? Theme.btnBgDisabled : Theme.accent
+                                                    radius: Theme.radiusMedium
+                                                    opacity: refreshPortsBtn.pressed ? 0.75 : 1.0
+                                                }
                                             }
                                         }
 
@@ -438,9 +456,7 @@ Item {
                                     }
                                     ThemedToolButton {
                                         enabled: SettingsController.provisionQrAvailable
-                                        icon.source: "qrc:/qt/qml/DataLogger/Components/resources/icons/qr.svg"
-                                        icon.width: 18
-                                        icon.height: 18
+                                        iconName: "qrCode"
                                         onClicked: {
                                             provisionQrPopup.refresh()
                                             provisionQrPopup.open()

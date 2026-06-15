@@ -47,44 +47,45 @@ ApplicationWindow {
         if (currentTab !== 1) HistoryViewModel.clear()
     }
 
-    ColumnLayout {
+    RowLayout {
         anchors.fill: parent
         spacing: 0
 
-        MainHeaderChrome {
-            id: headerChrome
-            Layout.fillWidth: true
+        AppSideBar {
+            Layout.preferredWidth: AppTheme.railWidth
+            Layout.fillHeight: true
             currentTab: root.currentTab
-            scanProgCur: root.scanProgCur
-            scanProgTot: root.scanProgTot
-            appRoot: root
-            tabContent: tabContent
+            onSelectTab: function (i) {
+                // If leaving Settings while Add/Edit form is open, cancel it
+                if (root.currentTab === 3 && i !== 3) {
+                    if (tabContent.settingsTabIndex() === 4) {
+                        tabContent.closeSettingsSensorForm()
+                    }
+                }
+                root.currentTab = i
+            }
         }
 
-        // ── Sidebar + Content ────────────────────────────────────────────
-        RowLayout {
+        ColumnLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
             spacing: 0
 
-            AppSideBar {
-                Layout.preferredWidth: 200
-                Layout.fillHeight: true
+            MainHeaderChrome {
+                id: headerChrome
+                Layout.fillWidth: true
                 currentTab: root.currentTab
-                onSelectTab: function (i) {
-                    // If leaving Settings while Add/Edit form is open, cancel it
-                    if (root.currentTab === 3 && i !== 3) {
-                        if (tabContent.settingsTabIndex() === 4) {
-                            tabContent.closeSettingsSensorForm()
-                        }
-                    }
-                    root.currentTab = i
-                }
+                scanProgCur: root.scanProgCur
+                scanProgTot: root.scanProgTot
+                appRoot: root
+                tabContent: tabContent
             }
 
             MainTabContent {
                 id: tabContent
                 currentTab: root.currentTab
+                Layout.fillWidth: true
+                Layout.fillHeight: true
             }
         }
     }

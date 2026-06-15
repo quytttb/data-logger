@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import DataLogger.Theme
 import DataLogger.Core
+import DataLogger.Components
 
 ColumnLayout {
     id: headerChromeRoot
@@ -34,34 +35,7 @@ ColumnLayout {
         Layout.maximumHeight: 64
         spacing: 0
 
-        Rectangle {
-            Layout.preferredWidth: 200
-            Layout.fillHeight: true
-            color: AppColors.surface
 
-            Row {
-                anchors.centerIn: parent
-                spacing: 10
-
-                Image {
-                    height: 40
-                    width: height
-                    fillMode: Image.PreserveAspectFit
-                    source: (headerChromeRoot.appIconUrl.length > 0) ? headerChromeRoot.appIconUrl : ""
-                    visible: source.toString().length > 0
-                    asynchronous: true
-                }
-
-                Text {
-                    text: "Data Logger"
-                    font.pixelSize: 15
-                    font.weight: Font.Black
-                    font.letterSpacing: 1
-                    color: AppColors.primaryText
-                    anchors.verticalCenter: parent.verticalCenter
-                }
-            }
-        }
 
         Rectangle {
             Layout.fillWidth: true
@@ -143,10 +117,7 @@ ColumnLayout {
         visible: Layout.preferredHeight > 0
         spacing: 0
 
-        Item {
-            Layout.preferredWidth: 200
-            Layout.fillHeight: true
-        }
+
 
         Item {
             Layout.fillWidth: true

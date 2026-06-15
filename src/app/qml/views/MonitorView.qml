@@ -30,6 +30,7 @@ Rectangle {
             clip: true
             boundsBehavior: Flickable.StopAtBounds
             model: MonitorModel
+            visible: count > 0
 
             readonly property int columns: Math.max(1, Math.floor(width / cellWidth))
             leftMargin: Math.max(0, Math.floor((width - columns * cellWidth) / 2))
@@ -247,15 +248,12 @@ Rectangle {
             }
         }
 
-        Text {
-            Layout.alignment: Qt.AlignHCenter | Qt.AlignVCenter
+        EmptyStatePlaceholder {
+            Layout.fillWidth: true
             Layout.fillHeight: true
             visible: sensorGrid.count === 0
-            text: "No active sensors.\nOpen Settings to add sensors, then press Start monitoring."
-            color: Theme.textSecondary
-            font.pixelSize: 16
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
+            message: "No active sensors.\nOpen Settings to add sensors, then press Start monitoring."
+            iconName: "chip"
         }
     }
 }

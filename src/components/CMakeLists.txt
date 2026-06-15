@@ -1,10 +1,13 @@
 set_source_files_properties(layout/AppNotifier.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
+set_source_files_properties(shell/MaterialIcons.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
 
 qt_add_qml_module(datalogger_components
     URI DataLogger.Components
     VERSION 1.0
     STATIC
     QML_FILES
+        shell/MaterialIcons.qml
+        shell/UiIcon.qml
         shell/AppSideBar.qml
         shell/MainHeaderChrome.qml
         shell/MonitorTaskBar.qml
@@ -23,7 +26,6 @@ qt_add_qml_module(datalogger_components
         layout/DatePickerPopup.qml
         layout/DateField.qml
         layout/ElevatedPane.qml
-        layout/InlineBanner.qml
         layout/EmptyStatePlaceholder.qml
         layout/TableContentStack.qml
         table/AppTableView.qml
@@ -39,19 +41,8 @@ qt_add_qml_module(datalogger_components
         sensor/SensorDigitalIOTab.qml
         sensor/ProvisionQrPopup.qml
     RESOURCES
-        ../../resources/icons/monitor.svg
-        ../../resources/icons/history.svg
-        ../../resources/icons/chart.svg
-        ../../resources/icons/settings.svg
-        ../../resources/icons/tester.svg
-        ../../resources/icons/connection.svg
-        ../../resources/icons/export.svg
-        ../../resources/icons/sensors.svg
-        ../../resources/icons/delete.svg
-        ../../resources/icons/edit.svg
-        ../../resources/icons/search.svg
-        ../../resources/icons/refresh.svg
-        ../../resources/icons/qr.svg
+        ../../resources/icons/brand_4m_technologies_blue.svg
+        ../../resources/fonts/MaterialSymbols/MaterialSymbolsOutlined.ttf
     DEPENDENCIES
         datalogger_theme
         datalogger_core

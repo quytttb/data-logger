@@ -9,10 +9,8 @@ QtObject {
     readonly property int accent:  Material.Indigo
     readonly property int primary: Material.Teal
 
-    readonly property int materialTheme:
-        SettingsController.theme === "light" ? Material.Light : Material.Dark
-
-    readonly property bool isLightTheme: SettingsController.theme === "light"
+    readonly property int materialTheme: Material.Dark
+    readonly property bool isLightTheme: false
 
     readonly property int railWidth:            80
     readonly property int topBarHeight:         80

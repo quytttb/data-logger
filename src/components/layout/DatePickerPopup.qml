@@ -3,6 +3,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import DataLogger.Theme
+import DataLogger.Components
 
 Popup {
     id: datePicker
@@ -32,11 +33,11 @@ Popup {
             Layout.fillWidth: true
             spacing: 4
 
-            ThemedButton {
-                text: "◀"
-                flat: true
-                font.pixelSize: 16
-                Layout.preferredWidth: 40
+            Button {
+                id: prevMonthBtn
+                implicitWidth: 36
+                implicitHeight: 36
+                Layout.preferredWidth: 36
                 Layout.preferredHeight: 36
                 onClicked: {
                     var m = monthGrid.month - 1;
@@ -44,6 +45,23 @@ Popup {
                     if (m < 0) { m = 11; y--; }
                     monthGrid.month = m;
                     monthGrid.year = y;
+                }
+                contentItem: Item {
+                    anchors.fill: parent
+                    UiIcon {
+                        anchors.centerIn: parent
+                        name: "chevron_left"
+                        size: 24
+                        iconColor: Theme.accent
+                        opacity: prevMonthBtn.pressed ? 0.7 : 1.0
+                    }
+                }
+                background: Rectangle {
+                    anchors.fill: parent
+                    color: prevMonthBtn.pressed || prevMonthBtn.hovered ? AppColors.hoverFill : "transparent"
+                    border.color: Theme.borderDefault
+                    border.width: 1
+                    radius: Theme.radiusMedium
                 }
             }
 
@@ -56,11 +74,11 @@ Popup {
                 color: Theme.textPrimary
             }
 
-            ThemedButton {
-                text: "▶"
-                flat: true
-                font.pixelSize: 16
-                Layout.preferredWidth: 40
+            Button {
+                id: nextMonthBtn
+                implicitWidth: 36
+                implicitHeight: 36
+                Layout.preferredWidth: 36
                 Layout.preferredHeight: 36
                 onClicked: {
                     var m = monthGrid.month + 1;
@@ -68,6 +86,23 @@ Popup {
                     if (m > 11) { m = 0; y++; }
                     monthGrid.month = m;
                     monthGrid.year = y;
+                }
+                contentItem: Item {
+                    anchors.fill: parent
+                    UiIcon {
+                        anchors.centerIn: parent
+                        name: "chevron_right"
+                        size: 24
+                        iconColor: Theme.accent
+                        opacity: nextMonthBtn.pressed ? 0.7 : 1.0
+                    }
+                }
+                background: Rectangle {
+                    anchors.fill: parent
+                    color: nextMonthBtn.pressed || nextMonthBtn.hovered ? AppColors.hoverFill : "transparent"
+                    border.color: Theme.borderDefault
+                    border.width: 1
+                    radius: Theme.radiusMedium
                 }
             }
         }
@@ -144,11 +179,8 @@ Popup {
             }
         }
 
-        ThemedButton {
-            text: "Today"
-            flat: true
-            font.pixelSize: 13
-            font.bold: true
+        Button {
+            id: todayBtn
             Layout.alignment: Qt.AlignHCenter
             onClicked: {
                 var now = new Date();
@@ -156,6 +188,16 @@ Popup {
                 datePicker.datePicked(now);
                 datePicker.close();
             }
+            contentItem: Text {
+                text: "Today (" + Qt.formatDate(new Date(), "dd/MM") + ")"
+                font.pixelSize: 13
+                font.bold: true
+                color: Theme.accent
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+                opacity: todayBtn.pressed ? 0.7 : 1.0
+            }
+            background: Item {}
         }
     }
 }

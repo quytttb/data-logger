@@ -87,6 +87,7 @@ Item {
         ComboBox {
             id: sensorFilter
             Layout.preferredWidth: 160
+            Layout.preferredHeight: 40
             model: HistoryViewModel.sensorNames
             currentIndex: 0
             Layout.alignment: Qt.AlignVCenter
@@ -94,17 +95,25 @@ Item {
 
         Button {
             id: searchBtn
+            implicitWidth: 44
+            implicitHeight: 44
             Layout.preferredWidth: 44
             Layout.preferredHeight: 44
             enabled: !HistoryViewModel.isLoading && SensorListModel.count > 0
-            icon.source: "qrc:/qt/qml/DataLogger/Components/resources/icons/search.svg"
-            icon.color: AppColors.buttonIconOnFilled
-            icon.width: 16
-            icon.height: 16
+            contentItem: Item {
+                anchors.fill: parent
+                UiIcon {
+                    anchors.centerIn: parent
+                    name: "magnify"
+                    size: 18
+                    iconColor: AppColors.buttonIconOnFilled
+                }
+            }
             background: Rectangle {
+                anchors.fill: parent
                 color: !searchBtn.enabled ? Theme.btnBgDisabled : Theme.accent
                 radius: Theme.radiusMedium
-                opacity: searchBtn.pressed ? 0.7 : 1.0
+                opacity: searchBtn.pressed ? 0.75 : 1.0
             }
             onClicked: root.doSearch()
             Layout.alignment: Qt.AlignVCenter
@@ -112,48 +121,64 @@ Item {
 
         Button {
             id: refreshBtn
+            implicitWidth: 44
+            implicitHeight: 44
             Layout.preferredWidth: 44
             Layout.preferredHeight: 44
             enabled: !HistoryViewModel.isLoading && SensorListModel.count > 0
-            icon.source: "qrc:/qt/qml/DataLogger/Components/resources/icons/refresh.svg"
-            icon.color: AppColors.buttonIcon
-            icon.width: 16
-            icon.height: 16
-            background: Rectangle {
-                color: !refreshBtn.enabled ? Theme.btnBgMuted : Theme.bgPanel
-                border.color: Theme.borderDefault
-                border.width: 1
-                radius: Theme.radiusMedium
-                opacity: refreshBtn.pressed ? 0.7 : 1.0
-            }
             onClicked: root.doSearch()
             Layout.alignment: Qt.AlignVCenter
 
-            RotationAnimator {
-                target: refreshBtn.contentItem
-                from: 0
-                to: 360
-                duration: 1000
-                loops: Animation.Infinite
-                running: HistoryViewModel.isLoading
+            contentItem: Item {
+                anchors.fill: parent
+                UiIcon {
+                    id: refreshIcon
+                    anchors.centerIn: parent
+                    name: "refresh"
+                    size: 18
+                    iconColor: AppColors.buttonIconOnFilled
+                    
+                    RotationAnimator on rotation {
+                        from: 0
+                        to: 360
+                        duration: 1000
+                        loops: Animation.Infinite
+                        running: HistoryViewModel.isLoading
+                    }
+                }
+            }
+
+            background: Rectangle {
+                anchors.fill: parent
+                color: !refreshBtn.enabled ? Theme.btnBgDisabled : Theme.accent
+                radius: Theme.radiusMedium
+                opacity: refreshBtn.pressed ? 0.75 : 1.0
             }
         }
 
         Button {
             id: exportBtn
+            implicitWidth: 44
+            implicitHeight: 44
             Layout.preferredWidth: 44
             Layout.preferredHeight: 44
             enabled: HistoryViewModel.recordCount > 0
-            icon.source: "qrc:/qt/qml/DataLogger/Components/resources/icons/export.svg"
-            icon.color: AppColors.buttonIcon
-            icon.width: 16
-            icon.height: 16
+            contentItem: Item {
+                anchors.fill: parent
+                UiIcon {
+                    anchors.centerIn: parent
+                    name: "download"
+                    size: 18
+                    iconColor: AppColors.buttonIcon
+                }
+            }
             background: Rectangle {
+                anchors.fill: parent
                 color: !exportBtn.enabled ? Theme.btnBgMuted : Theme.bgPanel
                 border.color: Theme.borderDefault
                 border.width: 1
                 radius: Theme.radiusMedium
-                opacity: exportBtn.pressed ? 0.7 : 1.0
+                opacity: exportBtn.pressed ? 0.75 : 1.0
             }
             onClicked: csvSaveDialog.open()
             Layout.alignment: Qt.AlignVCenter

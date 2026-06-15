@@ -28,10 +28,10 @@ Popup {
 
     function semanticIcon(semantic) {
         switch (semantic) {
-        case "success": return "\u2713"
-        case "warning": return "\u26A0"
-        case "error":   return "\u2717"
-        default:        return "\u2139"
+        case "success": return "checkCircle"
+        case "warning": return "warning"
+        case "error":   return "error"
+        default:        return "info"
         }
     }
 
@@ -82,10 +82,10 @@ Popup {
             width: parent.width - 32
             spacing: 10
 
-            Text {
-                text: root.semanticIcon(AppNotifier.toastSemantic)
-                color: root.semanticColor(AppNotifier.toastSemantic)
-                font.pixelSize: 18
+            UiIcon {
+                name: root.semanticIcon(AppNotifier.toastSemantic)
+                iconColor: root.semanticColor(AppNotifier.toastSemantic)
+                size: 18
                 Layout.alignment: Qt.AlignVCenter
             }
 
@@ -106,10 +106,10 @@ Popup {
                 font: AppTypography.labelLarge
             }
 
-            Text {
-                text: "\u2715"
-                color: AppColors.textMuted
-                font.pixelSize: 16
+            UiIcon {
+                name: "close"
+                iconColor: AppColors.textMuted
+                size: 16
                 Layout.alignment: Qt.AlignVCenter
 
                 MouseArea {

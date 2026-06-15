@@ -217,12 +217,7 @@ Item {
                         onActivated: { SettingsController.ftpProtocol = currentText; root.configChanged = true }
                     }
 
-                    InlineBanner {
-                        Layout.fillWidth: true
-                        visible: protocolCombo.currentText === "sftp"
-                        semantic: "warning"
-                        message: qsTr("SFTP is not yet supported — uploads use plain FTP until libssh integration is added.")
-                    }
+
 
                 }
 
