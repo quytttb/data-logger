@@ -11,6 +11,10 @@
 #include <cmath>
 #include <utility>
 
+namespace {
+constexpr int kHeartbeatIntervalMs = 5000;  // liveness ping to MonitorController
+}
+
 ModbusWorker::ModbusWorker(QObject *parent) : QObject(parent) {}
 
 ModbusWorker::~ModbusWorker() {
@@ -48,7 +52,7 @@ void ModbusWorker::start() {
     m_client = new QModbusRtuSerialClient(this);
 
     m_heartbeatTimer = new QTimer(this);
-    m_heartbeatTimer->setInterval(5000);
+    m_heartbeatTimer->setInterval(kHeartbeatIntervalMs);
     connect(m_heartbeatTimer, &QTimer::timeout, this, &ModbusWorker::onHeartbeatTimer);
     m_heartbeatTimer->start();
 
@@ -169,7 +173,7 @@ void ModbusWorker::pollAnalog(const QVariantMap &cfg) {
     QModbusDataUnit request(regEnum, address, count);
     auto *reply = m_client->sendReadRequest(request, slaveId);
     if (!reply) {
-        emit modbusError(QStringLiteral("No reply for sensor %1").arg(sensorId));
+        emit modbusError(QStringLiteral("sensor %1: no reply").arg(sensorId));
         return;
     }
 
@@ -179,7 +183,7 @@ void ModbusWorker::pollAnalog(const QVariantMap &cfg) {
     loop.exec();
 
     if (reply->error() != QModbusDevice::NoError) {
-        emit modbusError(QStringLiteral("Modbus error sensor %1: %2")
+        emit modbusError(QStringLiteral("sensor %1: %2")
                          .arg(sensorId).arg(reply->errorString()));
         reply->deleteLater();
         return;

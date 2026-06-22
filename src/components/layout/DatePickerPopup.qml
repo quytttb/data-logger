@@ -9,7 +9,7 @@ Popup {
     id: datePicker
     width: 320
     height: 380
-    padding: 12
+    padding: Theme.spacingSM
     modal: true
     focus: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
@@ -52,7 +52,7 @@ Popup {
                 Layout.fillWidth: true
                 text: monthGrid.title
                 horizontalAlignment: Text.AlignHCenter
-                font.pixelSize: 15
+                font.pixelSize: AppTypography.titleSmall.pixelSize
                 font.bold: true
                 color: Theme.textPrimary
             }
@@ -81,7 +81,7 @@ Popup {
                 required property string shortName
                 text: shortName
                 horizontalAlignment: Text.AlignHCenter
-                font.pixelSize: 12
+                font.pixelSize: AppTypography.labelMedium.pixelSize
                 font.bold: true
                 color: Theme.textSecondary
             }
@@ -101,7 +101,7 @@ Popup {
 
                 width: Math.floor(monthGrid.width / 7)
                 height: Math.floor((monthGrid.height) / 6)
-                radius: 4
+                radius: Theme.radiusTiny
 
                 readonly property bool isCurrentMonth: model.month === monthGrid.month
                 readonly property bool isToday: {
@@ -124,7 +124,7 @@ Popup {
                 Text {
                     anchors.centerIn: parent
                     text: dayCell.model.day
-                    font.pixelSize: 14
+                    font.pixelSize: AppTypography.bodyMedium.pixelSize
                     font.bold: dayCell.isToday
                     color: !dayCell.isCurrentMonth ? Theme.textFaint
                          : dayCell.isSelected ? Theme.textOnColoredBtn
@@ -148,7 +148,7 @@ Popup {
         AppButton {
             text: "Today (" + Qt.formatDate(new Date(), "dd/MM") + ")"
             variant: "tonal"
-            font.pixelSize: 13
+            font.pixelSize: AppTypography.bodySmall.pixelSize
             font.bold: true
             Layout.alignment: Qt.AlignHCenter
             onClicked: {

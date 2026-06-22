@@ -36,8 +36,10 @@ private:
     QTimer *m_heartbeatTimer = nullptr;
     QNetworkAccessManager *m_nam = nullptr;
 
+    static constexpr int kDefaultPort = 21;  // FTP control port
+
     QString m_address;
-    int     m_port = 21;
+    int     m_port = kDefaultPort;
     QString m_username;
     QString m_password;
     QString m_remotePath;

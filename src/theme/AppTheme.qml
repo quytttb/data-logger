@@ -10,7 +10,6 @@ QtObject {
     readonly property int primary: Material.Teal
 
     readonly property int materialTheme: Material.Dark
-    readonly property bool isLightTheme: false
 
     readonly property int railWidth:            80
     readonly property int topBarHeight:         80
@@ -32,12 +31,21 @@ QtObject {
     readonly property int cardRadius:         12          // pane / card chrome
     readonly property int chipRadius:           12          // chips, badges
     readonly property int listItemRadius:        8          // dense list rows, tooltips
-    readonly property int buttonHeight:       40
-    readonly property int buttonRadius:       20          // full round ends on 40dp buttons
+    readonly property int buttonHeight:       48          // M3 min touch target (≥48dp) for finger input
+    readonly property int buttonRadius:       24          // full round ends on 48dp buttons
     readonly property int buttonPaddingH:     24
+    readonly property int iconButtonSize:     48          // square icon-only touch target (≥48dp)
+    readonly property int iconSizeSm:         16          // dense inline icons
+    readonly property int iconSizeMd:         20          // default action icons
+    readonly property int iconSizeLg:         24          // prominent / nav icons
     readonly property int navPillHeight:        32
     readonly property int navPillWidth:         56
     readonly property int navPillRadius:        16
+
+    // Motion durations (ms)
+    readonly property int motionFast:          120         // state-layer / color transitions
+    readonly property int motionStandard:      150         // standard color/opacity transitions
+    readonly property int motionPulse:        1000         // looping spinner / pulse
 
     /// Distribute totalWidth across columns: each gets at least minimums[i].
     /// Extra width goes only to columns with weights[i] > 0 (0 = fixed at minimum).

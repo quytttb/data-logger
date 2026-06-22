@@ -35,11 +35,11 @@ Rectangle {
 
     RowLayout {
         anchors.fill: parent; anchors.margins: 20
-        spacing: 25
+        spacing: Theme.spacingL
 
         ColumnLayout {
             Layout.fillWidth: true; Layout.alignment: Qt.AlignTop; spacing: 8
-            Text { text: "Basic Info"; color: Theme.accentText; font.bold: true; font.pixelSize: 15 }
+            Text { text: "Basic Info"; color: Theme.accentText; font.bold: true; font.pixelSize: AppTypography.titleSmall.pixelSize }
             Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.borderDefault }
 
             RowLayout {
@@ -76,17 +76,17 @@ Rectangle {
 
         ColumnLayout {
             Layout.fillWidth: true; Layout.alignment: Qt.AlignTop; spacing: 8
-            Text { text: "Modbus Settings"; color: Theme.accentText; font.bold: true; font.pixelSize: 15 }
+            Text { text: "Modbus Settings"; color: Theme.accentText; font.bold: true; font.pixelSize: AppTypography.titleSmall.pixelSize }
             Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.borderDefault }
 
             RowLayout {
-                spacing: 10; Layout.fillWidth: true
+                spacing: Theme.spacingS; Layout.fillWidth: true
                 Text { text: "Slave ID:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; Layout.preferredWidth: 80 }
                 SpinBox { id: dSlave; from: 1; to: 247; value: 1; Layout.fillWidth: true }
             }
 
             RowLayout {
-                spacing: 10; Layout.fillWidth: true
+                spacing: Theme.spacingS; Layout.fillWidth: true
                 Text { text: "Address:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; Layout.preferredWidth: 80 }
                 SpinBox { id: dAddr; from: 0; to: 65535; value: 0; Layout.fillWidth: true; editable: true }
             }

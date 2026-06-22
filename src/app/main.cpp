@@ -19,6 +19,10 @@
 #include "core/TesterController.h"
 #include "core/ReportController.h"
 
+namespace {
+constexpr int kThreadJoinMs = 5000;  // graceful FTP thread join on quit
+}
+
 int main(int argc, char *argv[]) {
     qputenv("QT_QUICK_CONTROLS_STYLE", "Material");
     qputenv("QT_QUICK_CONTROLS_MATERIAL_THEME", "Dark");
@@ -152,7 +156,7 @@ int main(int argc, char *argv[]) {
         monitorCtrl->stopPollingSync();
         QMetaObject::invokeMethod(ftpWorker, "stop", Qt::BlockingQueuedConnection);
         ftpThread->quit();
-        ftpThread->wait(5000);
+        ftpThread->wait(kThreadJoinMs);
         modbusTcp->stop();
         restApi->stop();
     });

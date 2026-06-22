@@ -15,7 +15,7 @@ Item {
     ColumnLayout {
         anchors.centerIn: parent
         width: Math.min(root.width > 0 ? root.width * 0.85 : 320, 400)
-        spacing: 12
+        spacing: Theme.spacingSM
 
         UiIcon {
             Layout.alignment: Qt.AlignHCenter

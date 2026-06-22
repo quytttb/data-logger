@@ -40,7 +40,7 @@ Item {
                     Rectangle {
                         width: 12
                         height: 12
-                        radius: 6
+                        radius: width / 2
                         color: chip.modelData.color
                         anchors.verticalCenter: parent.verticalCenter
                     }
@@ -51,7 +51,7 @@ Item {
                               ? (chip.modelData.name + " (" + chip.modelData.unit + ")")
                               : chip.modelData.name
                         color: Theme.textPrimary
-                        font.pixelSize: 13
+                        font.pixelSize: AppTypography.bodySmall.pixelSize
                         font.bold: true
                     }
                 }
@@ -66,7 +66,7 @@ Item {
         verticalAlignment: Text.AlignVCenter
         text: "No active sensors"
         color: Theme.textSecondary
-        font.pixelSize: 13
+        font.pixelSize: AppTypography.bodySmall.pixelSize
         font.italic: true
     }
 }

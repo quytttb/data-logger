@@ -16,7 +16,7 @@ Popup {
     parent: Overlay.overlay
     anchors.centerIn: parent
     width: Math.min(400, parent ? parent.width - 32 : 400)
-    padding: 18
+    padding: Theme.spacingM
     modal: true
     focus: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
@@ -33,12 +33,12 @@ Popup {
     }
 
     contentItem: ColumnLayout {
-        spacing: 10
+        spacing: Theme.spacingS
 
         Text {
             text: "Provisioning QR"
             font.bold: true
-            font.pixelSize: 17
+            font.pixelSize: AppTypography.titleLarge.pixelSize
             color: Theme.textPrimary
             Layout.fillWidth: true
             horizontalAlignment: Text.AlignHCenter

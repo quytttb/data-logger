@@ -21,9 +21,9 @@ class RestApiService : public QObject {
     Q_PROPERTY(QString listeningEndpoint READ listeningEndpoint NOTIFY stateChanged)
 
 public:
-    static constexpr const char* STATE_STOPPED  = "stopped";
-    static constexpr const char* STATE_LISTENING= "listening";
-    static constexpr const char* STATE_ERROR    = "error";
+    static inline const QString STATE_STOPPED   = QStringLiteral("stopped");
+    static inline const QString STATE_LISTENING = QStringLiteral("listening");
+    static inline const QString STATE_ERROR     = QStringLiteral("error");
 
     explicit RestApiService(QObject *parent);
 
@@ -56,8 +56,11 @@ private:
     QHttpServer  *m_server    = nullptr;
     QTcpServer   *m_tcpServer = nullptr;
 
-    QString m_bind  = "0.0.0.0";
-    int     m_port  = 8080;
+    static inline const QString kDefaultBind = QStringLiteral("0.0.0.0");
+    static constexpr int        kDefaultPort = 8080;
+
+    QString m_bind  = kDefaultBind;
+    int     m_port  = kDefaultPort;
     QString m_token;
     QString m_state = STATE_STOPPED;
     QString m_lastError;

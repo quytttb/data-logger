@@ -65,7 +65,7 @@ Item {
                 visible: root.indicatorMode
                 Layout.preferredWidth: 10
                 Layout.preferredHeight: 10
-                radius: 5
+                radius: width / 2
                 color: root.indicatorActive ? root.indicatorActiveColor : root.indicatorInactiveColor
             }
 

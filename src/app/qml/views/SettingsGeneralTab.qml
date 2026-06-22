@@ -23,13 +23,13 @@ Item {
             RowLayout {
                 id: formContent
                 anchors.fill: parent; anchors.margins: 20
-                spacing: 25
+                spacing: Theme.spacingL
 
                 // ── COLUMN 1: Device ──
                 ColumnLayout {
                     Layout.fillWidth: true; Layout.alignment: Qt.AlignTop; spacing: 8
 
-                    Text { text: "Device Information"; color: Theme.accentText; font.bold: true; font.pixelSize: 15 }
+                    Text { text: "Device Information"; color: Theme.accentText; font.bold: true; font.pixelSize: AppTypography.titleSmall.pixelSize }
                     Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.borderDefault }
 
                     Text { text: "Device ID:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
@@ -77,7 +77,7 @@ Item {
                 ColumnLayout {
                     Layout.fillWidth: true; Layout.alignment: Qt.AlignTop; spacing: 8
 
-                    Text { text: "Date & Time"; color: Theme.accentText; font.bold: true; font.pixelSize: 15 }
+                    Text { text: "Date & Time"; color: Theme.accentText; font.bold: true; font.pixelSize: AppTypography.titleSmall.pixelSize }
                     Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.borderDefault }
 
                     Text { text: "Time format:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }

@@ -136,7 +136,8 @@ private:
     bool              m_isStopping        = false;
     bool              m_recoveryInProgress = false;
     int      m_statusMode = STATUS_IDLE;
-    int      m_errorCount = 0;
+    int      m_errorCount = 0;          // cumulative Modbus errors since polling started (UI badge)
+    int      m_consecutiveErrors = 0;   // back-to-back errors; reset on any successful read
     QString  m_statusTag  = "ready";
     float    m_cpuTemp    = 0.0f;
     QString  m_watchdogStatus = "N/A";

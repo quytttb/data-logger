@@ -80,12 +80,12 @@ Popup {
             id: contentRow
             anchors.centerIn: parent
             width: parent.width - 32
-            spacing: 10
+            spacing: Theme.spacingS
 
             UiIcon {
                 name: root.semanticIcon(AppNotifier.toastSemantic)
                 iconColor: root.semanticColor(AppNotifier.toastSemantic)
-                size: 18
+                size: AppTheme.iconSizeSm
                 Layout.alignment: Qt.AlignVCenter
             }
 
@@ -109,7 +109,7 @@ Popup {
             UiIcon {
                 name: "close"
                 iconColor: AppColors.textMuted
-                size: 16
+                size: AppTheme.iconSizeSm
                 Layout.alignment: Qt.AlignVCenter
 
                 MouseArea {

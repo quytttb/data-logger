@@ -20,14 +20,14 @@ TabButton {
     rightInset: 0
 
     background: Rectangle {
-        implicitHeight: 40
+        implicitHeight: AppTheme.buttonHeight
         color: root.checked ? AppColors.accentContainer
              : root.hovered ? AppColors.hoverFill
              : "transparent"
         radius: Theme.radiusMedium
         
         Behavior on color {
-            ColorAnimation { duration: 150 }
+            ColorAnimation { duration: AppTheme.motionStandard }
         }
     }
 

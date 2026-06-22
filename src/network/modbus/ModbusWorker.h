@@ -57,18 +57,25 @@ private:
     QTimer                  *m_pollTimer = nullptr;
     QTimer                  *m_heartbeatTimer = nullptr;
 
+    static constexpr int kDefaultBaudrate       = 9600;
+    static constexpr int kDefaultBytesize       = 8;
+    static constexpr int kDefaultStopbits       = 1;
+    static constexpr int kDefaultTimeoutMs      = 1000;
+    static constexpr int kDefaultPollIntervalMs = 3000;
+    static constexpr int kInitialBackoffMs      = 1000;
+    static constexpr int kBackoffMax            = 30000;
+
     QString  m_port;
-    int      m_baudrate = 9600;
-    int      m_bytesize = 8;
+    int      m_baudrate = kDefaultBaudrate;
+    int      m_bytesize = kDefaultBytesize;
     QString  m_parity   = "N";
-    int      m_stopbits = 1;
-    int      m_timeout  = 1000;      // ms
-    int      m_defaultPollInterval = 3000; // ms
+    int      m_stopbits = kDefaultStopbits;
+    int      m_timeout  = kDefaultTimeoutMs;            // ms
+    int      m_defaultPollInterval = kDefaultPollIntervalMs; // ms
 
     bool     m_running = false;
     bool     m_connected = false;
-    int      m_backoffMs = 1000;
-    static constexpr int kBackoffMax = 30000;
+    int      m_backoffMs = kInitialBackoffMs;
 
     QList<QVariantMap>           m_sensors;
     QHash<int, QList<QVariantMap>> m_digitalIos;

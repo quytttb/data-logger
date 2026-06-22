@@ -91,28 +91,28 @@ Rectangle {
 
     RowLayout {
         anchors.fill: parent; anchors.margins: 20
-        spacing: 20
+        spacing: Theme.spacingL
 
         ColumnLayout {
             Layout.fillHeight: true
             Layout.fillWidth: true
             Layout.preferredWidth: 1
-            spacing: 12
+            spacing: Theme.spacingSM
 
             ColumnLayout {
                 visible: root.selectedLink !== null
                 Layout.fillWidth: true
-                spacing: 10
+                spacing: Theme.spacingS
 
                 Text {
                     text: "Edit attachment"
-                    color: Theme.accentText; font.bold: true; font.pixelSize: 14
+                    color: Theme.accentText; font.bold: true; font.pixelSize: AppTypography.bodyMedium.pixelSize
                 }
                 Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.borderDefault }
 
                 Text {
                     text: root.selectedLink ? root.selectedLink.label : ""
-                    color: Theme.textPrimary; font.pixelSize: 14; font.bold: true
+                    color: Theme.textPrimary; font.pixelSize: AppTypography.bodyMedium.pixelSize; font.bold: true
                     Layout.fillWidth: true; elide: Text.ElideRight
                 }
                 Text {
@@ -120,7 +120,7 @@ Rectangle {
                     text: root.selectedLink
                         ? "Slave " + root.selectedLink.slaveId + " · Addr " + root.selectedLink.address
                         : ""
-                    color: Theme.textSecondary; font.pixelSize: 12
+                    color: Theme.textSecondary; font.pixelSize: AppTypography.labelMedium.pixelSize
                 }
 
                 ColumnLayout {
@@ -178,7 +178,7 @@ Rectangle {
             ColumnLayout {
                 visible: root.selectedLink === null
                 Layout.fillWidth: true
-                spacing: 12
+                spacing: Theme.spacingSM
 
                 TabBar {
                     id: attachTypeBar
@@ -190,19 +190,19 @@ Rectangle {
 
                 ColumnLayout {
                     visible: attachTypeBar.currentIndex === 0
-                    Layout.fillWidth: true; spacing: 10
+                    Layout.fillWidth: true; spacing: Theme.spacingS
 
                     ColumnLayout {
                         visible: root.diSensors.length === 0
                         Layout.fillWidth: true; spacing: 8
                         Text {
                             text: "No Digital Input sensors configured."
-                            color: Theme.textFaint; font.pixelSize: 13
+                            color: Theme.textFaint; font.pixelSize: AppTypography.bodySmall.pixelSize
                             wrapMode: Text.WordWrap; Layout.fillWidth: true
                         }
                         Text {
                             text: "Go to the Sensors tab and add a sensor with register type Discrete Inputs."
-                            color: Theme.textFaint; font.pixelSize: 12
+                            color: Theme.textFaint; font.pixelSize: AppTypography.labelMedium.pixelSize
                             wrapMode: Text.WordWrap; Layout.fillWidth: true
                         }
                     }
@@ -242,19 +242,19 @@ Rectangle {
 
                 ColumnLayout {
                     visible: attachTypeBar.currentIndex === 1
-                    Layout.fillWidth: true; spacing: 10
+                    Layout.fillWidth: true; spacing: Theme.spacingS
 
                     ColumnLayout {
                         visible: root.doSensors.length === 0
                         Layout.fillWidth: true; spacing: 8
                         Text {
                             text: "No Digital Output sensors available."
-                            color: Theme.textFaint; font.pixelSize: 13
+                            color: Theme.textFaint; font.pixelSize: AppTypography.bodySmall.pixelSize
                             wrapMode: Text.WordWrap; Layout.fillWidth: true
                         }
                         Text {
                             text: "Add a Coils sensor in the Sensors tab, or all DOs are linked to other analogs."
-                            color: Theme.textFaint; font.pixelSize: 12
+                            color: Theme.textFaint; font.pixelSize: AppTypography.labelMedium.pixelSize
                             wrapMode: Text.WordWrap; Layout.fillWidth: true
                         }
                     }
@@ -304,12 +304,12 @@ Rectangle {
                 Layout.fillWidth: true
                 Text {
                     text: "Attached sensors"
-                    color: Theme.accentText; font.bold: true; font.pixelSize: 14
+                    color: Theme.accentText; font.bold: true; font.pixelSize: AppTypography.bodyMedium.pixelSize
                 }
                 Item { Layout.fillWidth: true }
                 Text {
                     text: dioRepeater.count > 0 ? dioRepeater.count + "" : ""
-                    color: Theme.textSecondary; font.pixelSize: 13
+                    color: Theme.textSecondary; font.pixelSize: AppTypography.bodySmall.pixelSize
                 }
             }
             Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.borderDefault }
@@ -329,8 +329,8 @@ Rectangle {
 
                     width: ListView.view.width
                     height: 48
-                    radius: 4
-                    color: linkRow.modelData.ioType === "DO" ? "#301010" : "#103010"
+                    radius: Theme.radiusTiny
+                    color: linkRow.modelData.ioType === "DO" ? AppColors.doTint : AppColors.diTint
                     border.color: ListView.view.currentIndex === linkRow.index ? Theme.accent : "transparent"
                     border.width: ListView.view.currentIndex === linkRow.index ? 2 : 0
 
@@ -343,27 +343,27 @@ Rectangle {
                         anchors.fill: parent
                         anchors.leftMargin: 10
                         anchors.rightMargin: 10
-                        spacing: 12
+                        spacing: Theme.spacingSM
 
                         Rectangle {
                             Layout.preferredWidth: 38
                             Layout.preferredHeight: 26
                             Layout.alignment: Qt.AlignVCenter
-                            radius: 4
+                            radius: Theme.radiusTiny
                             color: linkRow.modelData.ioType === "DO" ? Theme.btnStop : Theme.btnStart
                             Text {
                                 anchors.centerIn: parent
                                 text: linkRow.modelData.ioType
                                 color: "#FFF"
                                 font.bold: true
-                                font.pixelSize: 13
+                                font.pixelSize: AppTypography.bodySmall.pixelSize
                             }
                         }
 
                         Text {
                             text: linkRow.modelData.label
                             color: Theme.textPrimary
-                            font.pixelSize: 15
+                            font.pixelSize: AppTypography.titleSmall.pixelSize
                             Layout.fillWidth: true
                             Layout.minimumWidth: 60
                             elide: Text.ElideRight
@@ -408,7 +408,7 @@ Rectangle {
                     anchors.centerIn: parent
                     width: parent.width - 20
                     text: "No digital sensors attached.\nSelect DI or DO on the left to attach."
-                    color: Theme.textFaint; font.pixelSize: 14
+                    color: Theme.textFaint; font.pixelSize: AppTypography.bodyMedium.pixelSize
                     horizontalAlignment: Text.AlignHCenter
                     wrapMode: Text.WordWrap
                 }

@@ -5,6 +5,12 @@
 
 namespace AppPaths {
 
+namespace {
+const QString kDataSubdir   = QStringLiteral("/data");
+const QString kConfigSubdir = QStringLiteral("/config");
+const QString kLogSubdir    = QStringLiteral("/logs");
+}
+
 static QString binDir() {
     return QCoreApplication::applicationDirPath();
 }
@@ -12,19 +18,19 @@ static QString binDir() {
 QString dataDir() {
     auto env = QProcessEnvironment::systemEnvironment();
     QString override = env.value("DATALOGGER_DATA_DIR");
-    return override.isEmpty() ? binDir() + "/data" : override;
+    return override.isEmpty() ? binDir() + kDataSubdir : override;
 }
 
 QString configDir() {
     auto env = QProcessEnvironment::systemEnvironment();
     QString override = env.value("DATALOGGER_CONFIG_DIR");
-    return override.isEmpty() ? binDir() + "/config" : override;
+    return override.isEmpty() ? binDir() + kConfigSubdir : override;
 }
 
 QString logDir() {
     auto env = QProcessEnvironment::systemEnvironment();
     QString override = env.value("DATALOGGER_LOG_DIR");
-    return override.isEmpty() ? binDir() + "/logs" : override;
+    return override.isEmpty() ? binDir() + kLogSubdir : override;
 }
 
 QString appIconPath() {

@@ -25,7 +25,7 @@ Item {
     ColumnLayout {
         id: col
         width: root.width
-        spacing: 10
+        spacing: Theme.spacingS
 
         GridLayout {
             Layout.fillWidth: true

@@ -11,6 +11,10 @@
 
 IMPLEMENT_QML_SINGLETON(TesterController)
 
+namespace {
+constexpr int kThreadJoinMs = 3000;  // graceful worker-thread join timeout
+}
+
 TesterController::TesterController(QObject *parent) : QObject(parent)
 {
     m_worker       = new TesterWorker();
@@ -43,7 +47,7 @@ TesterController::TesterController(QObject *parent) : QObject(parent)
 TesterController::~TesterController() {
     QMetaObject::invokeMethod(m_worker, "doDisconnect", Qt::BlockingQueuedConnection);
     m_workerThread->quit();
-    m_workerThread->wait(3000);
+    m_workerThread->wait(kThreadJoinMs);
 }
 
 // ── Property setters ───────────────────────────────────────────────────────

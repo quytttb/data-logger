@@ -27,7 +27,7 @@ Rectangle {
         anchors.top: parent.top; anchors.margins: 20
         spacing: 8
 
-        Text { text: "Scaling & Alarms"; color: Theme.accentText; font.bold: true; font.pixelSize: 15 }
+        Text { text: "Scaling & Alarms"; color: Theme.accentText; font.bold: true; font.pixelSize: AppTypography.titleSmall.pixelSize }
         Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.borderDefault }
 
         // Use a 2-column grid for compact threshold + scaling layout
@@ -62,7 +62,7 @@ Rectangle {
                 TextField { id: dLinearB; Layout.fillWidth: true; text: "0" }
             }
             ColumnLayout {
-                spacing: 6
+                spacing: Theme.spacingS
                 RowLayout {
                     spacing: 8
                     Text { text: "RawMin:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; Layout.preferredWidth: 60 }

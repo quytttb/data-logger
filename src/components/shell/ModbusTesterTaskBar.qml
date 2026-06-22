@@ -27,7 +27,7 @@ Item {
             RowLayout {
                 anchors.left: parent.left
                 anchors.verticalCenter: parent.verticalCenter
-                spacing: 6
+                spacing: Theme.spacingS
                 width: implicitWidth
 
                 BusyIndicator {
@@ -45,7 +45,7 @@ Item {
                     text: TesterController.isConnecting ? "Connecting…"
                         : MonitorController.isPolling ? "Monitor is running"
                         : TesterController.isConnected ? "Disconnect" : "Connect"
-                    font.pixelSize: 12
+                    font.pixelSize: AppTypography.labelMedium.pixelSize
                     font.bold: true
                     accent: TesterController.isConnected ? Theme.btnStop : Theme.accent
                     onClicked: {
@@ -59,7 +59,7 @@ Item {
                     Layout.preferredHeight: 44
                     visible: TesterController.isConnected
                     text: "Save new sensor"
-                    font.pixelSize: 11
+                    font.pixelSize: AppTypography.labelSmall.pixelSize
                     font.bold: true
                     accent: Theme.btnStart
                     onClicked: {
@@ -80,7 +80,7 @@ Item {
             RowLayout {
                 anchors.right: parent.right
                 anchors.verticalCenter: parent.verticalCenter
-                spacing: 6
+                spacing: Theme.spacingS
 
                 // ── Mode Toggle (Read / Write) ──
                 RowLayout {
@@ -91,7 +91,7 @@ Item {
                         text: "Read"
                         Layout.preferredHeight: 44
                         Layout.preferredWidth: 70
-                        font.pixelSize: 12
+                        font.pixelSize: AppTypography.labelMedium.pixelSize
                         font.bold: true
                         variant: root.isReadMode ? "filled" : "outlined"
                         accent: AppColors.primaryColor
@@ -104,7 +104,7 @@ Item {
                         text: "Write"
                         Layout.preferredHeight: 44
                         Layout.preferredWidth: 70
-                        font.pixelSize: 12
+                        font.pixelSize: AppTypography.labelMedium.pixelSize
                         font.bold: true
                         variant: !root.isReadMode ? "filled" : "outlined"
                         accent: AppColors.warning
@@ -128,7 +128,7 @@ Item {
                     Label {
                         text: "Hide 0"
                         color: Theme.textSecondary
-                        font.pixelSize: 11
+                        font.pixelSize: AppTypography.labelSmall.pixelSize
                     }
                     Switch {
                         id: hideZerosSwitch
@@ -143,7 +143,7 @@ Item {
                 AppButton {
                     text: "Clear table"
                     Layout.preferredHeight: 44
-                    font.pixelSize: 11
+                    font.pixelSize: AppTypography.labelSmall.pixelSize
                     font.bold: true
                     enabled: root.testerView !== null && !TesterController.isScanning
                     accent: Theme.btnClear
@@ -157,7 +157,7 @@ Item {
                 AppButton {
                     Layout.preferredHeight: 44
                     Layout.preferredWidth: 100
-                    font.pixelSize: 12
+                    font.pixelSize: AppTypography.labelMedium.pixelSize
                     font.bold: true
                     enabled: root.testerView !== null && !TesterController.isStopping
 

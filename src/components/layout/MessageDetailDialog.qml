@@ -10,7 +10,7 @@ Popup {
     parent: Overlay.overlay
     anchors.centerIn: parent
     width: Math.min(440, parent.width - 32)
-    padding: 20
+    padding: Theme.spacingL
     modal: true
     focus: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
@@ -35,7 +35,7 @@ Popup {
     }
 
     contentItem: ColumnLayout {
-        spacing: 12
+        spacing: Theme.spacingSM
 
         Label {
             text: root.detailTitle

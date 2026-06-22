@@ -18,10 +18,14 @@
 
 IMPLEMENT_QML_SINGLETON(ReportController)
 
+namespace {
+constexpr int kScheduleTickMs = 60 * 1000;  // report scheduler tick (1 min)
+}
+
 ReportController::ReportController(QObject *parent) : QObject(parent)
 {
     m_scheduleTimer = new QTimer(this);
-    m_scheduleTimer->setInterval(60 * 1000);
+    m_scheduleTimer->setInterval(kScheduleTickMs);
     connect(m_scheduleTimer, &QTimer::timeout, this, &ReportController::onScheduleTick);
     m_scheduleTimer->start();
 }

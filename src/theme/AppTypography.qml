@@ -9,10 +9,22 @@ QtObject {
         weight: Font.Normal
     })
 
+    // Prominent headings: clock, popup/taskbar titles
+    readonly property font titleLarge: Qt.font({
+        pixelSize: 18,
+        weight: Font.Medium
+    })
+
     // Section titles, table headers
     readonly property font titleMedium: Qt.font({
         pixelSize: 16,
         weight: Font.Medium
+    })
+
+    // Sub-section titles (DemiBold accents)
+    readonly property font titleSmall: Qt.font({
+        pixelSize: 15,
+        weight: Font.DemiBold
     })
 
     readonly property font titleMediumBold: Qt.font({
@@ -38,11 +50,26 @@ QtObject {
         weight: Font.Medium
     })
 
+    // Secondary text in tables / dense rows
+    readonly property font bodySmall: Qt.font({
+        pixelSize: 13,
+        weight: Font.Normal
+    })
+
     // Chips, tooltips, form hints
     readonly property font labelSmall: Qt.font({
         pixelSize: 11,
         weight: Font.Medium
     })
+
+    // Smallest badge/status labels
+    readonly property font labelTiny: Qt.font({
+        pixelSize: 10,
+        weight: Font.Medium
+    })
+
+    // Monospace family for numeric/raw values (use instead of literal "monospace")
+    readonly property string monoFamily: "monospace"
 
     // StatCard labels — overline style
     readonly property font overline: Qt.font({

@@ -80,7 +80,7 @@ Item {
         BusyIndicator {
             anchors.right: parent.right
             anchors.top: parent.top
-            anchors.margins: 12
+            anchors.margins: Theme.spacingSM
             width: 20
             height: 20
             running: root.loading

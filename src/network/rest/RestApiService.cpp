@@ -30,7 +30,7 @@ void RestApiService::setReadingsProvider(std::function<QVariantMap()> provider) 
 void RestApiService::start(const QString &bind, int port, const QString &token) {
     if (isListening()) stop();
 
-    m_bind  = bind.isEmpty() ? "0.0.0.0" : bind;
+    m_bind  = bind.isEmpty() ? kDefaultBind : bind;
     m_port  = port;
     setToken(token);
 
@@ -38,7 +38,7 @@ void RestApiService::start(const QString &bind, int port, const QString &token) 
     if (m_server)    { delete m_server;    m_server    = nullptr; }
 
     m_tcpServer = new QTcpServer(this);
-    QHostAddress addr = (m_bind == "0.0.0.0") ? QHostAddress::Any : QHostAddress(m_bind);
+    QHostAddress addr = (m_bind == kDefaultBind) ? QHostAddress::Any : QHostAddress(m_bind);
     if (!m_tcpServer->listen(addr, quint16(m_port))) {
         setState(STATE_ERROR, QStringLiteral("Cannot bind %1:%2").arg(m_bind).arg(m_port));
         qCritical() << "RestApiService: cannot listen on" << m_bind << m_port;

@@ -14,6 +14,13 @@
 
 IMPLEMENT_QML_SINGLETON(SettingsController)
 
+namespace {
+const QString kDefaultTheme    = QStringLiteral("dark");
+const QString kBindAnyIPv4     = QStringLiteral("0.0.0.0");
+const QString kBindAnyIPv6     = QStringLiteral("::");
+const QString kProvisionSchema = QStringLiteral("central-logger-provision/v1");
+}
+
 SettingsController::SettingsController(QObject *parent) : QObject(parent) {}
 
 QString SettingsController::ftpPassword() const {
@@ -32,7 +39,7 @@ void SettingsController::setServerActive(bool v) {
 }
 
 void SettingsController::setTheme(const QString &v) {
-    const QString normalized = v.isEmpty() ? QStringLiteral("dark") : v;
+    const QString normalized = v.isEmpty() ? kDefaultTheme : v;
     if (m_cfg.theme == normalized)
         return;
     m_cfg.theme = normalized;
@@ -128,8 +135,8 @@ bool SettingsController::provisionQrStale() const
 QString SettingsController::provisionHost() const
 {
     const QString bind = m_cfg.restApiBind.trimmed();
-    if (!bind.isEmpty() && bind != QStringLiteral("0.0.0.0")
-        && bind != QStringLiteral("::"))
+    if (!bind.isEmpty() && bind != kBindAnyIPv4
+        && bind != kBindAnyIPv6)
         return bind;
     return LanIp::primaryLanIp();
 }
@@ -137,7 +144,7 @@ QString SettingsController::provisionHost() const
 QString SettingsController::buildProvisionJson() const
 {
     QJsonObject obj{
-        {QStringLiteral("schema"), QStringLiteral("central-logger-provision/v1")},
+        {QStringLiteral("schema"), kProvisionSchema},
         {QStringLiteral("api_token"), m_cfg.restApiToken},
         {QStringLiteral("host"), provisionHost()},
         {QStringLiteral("api_port"), m_cfg.restApiPort},

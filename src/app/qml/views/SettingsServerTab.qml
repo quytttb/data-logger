@@ -35,7 +35,7 @@ Item {
                 anchors.right: parent.right
                 anchors.margins: 20
                 height: 40
-                spacing: 15
+                spacing: Theme.spacingM
 
                 Text {
                     text: "Remote path:"
@@ -59,7 +59,7 @@ Item {
                         anchors.rightMargin: 12
                         verticalAlignment: Text.AlignVCenter
                         color: Theme.accent
-                        font.pixelSize: 13
+                        font.pixelSize: AppTypography.bodySmall.pixelSize
                         font.bold: true
                         elide: Text.ElideRight
                         text: {
@@ -106,17 +106,17 @@ Item {
                 anchors.bottom: parent.bottom
                 anchors.margins: 20
                 anchors.topMargin: 10
-                spacing: 25
+                spacing: Theme.spacingL
 
                 // ── COLUMN 1: General ──
                 ColumnLayout {
                     Layout.fillWidth: true; Layout.alignment: Qt.AlignTop; spacing: 8
 
-                    Text { text: "General"; color: Theme.accentText; font.bold: true; font.pixelSize: 15 }
+                    Text { text: "General"; color: Theme.accentText; font.bold: true; font.pixelSize: AppTypography.titleSmall.pixelSize }
                     Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.borderDefault }
 
                     RowLayout {
-                        Layout.fillWidth: true; spacing: 10
+                        Layout.fillWidth: true; spacing: Theme.spacingS
                         Text {
                             text: "Active"
                             color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize
@@ -169,7 +169,7 @@ Item {
                 ColumnLayout {
                     Layout.fillWidth: true; Layout.alignment: Qt.AlignTop; spacing: 8
 
-                    Text { text: "FTP Connection"; color: Theme.accentText; font.bold: true; font.pixelSize: 15 }
+                    Text { text: "FTP Connection"; color: Theme.accentText; font.bold: true; font.pixelSize: AppTypography.titleSmall.pixelSize }
                     Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.borderDefault }
 
                     Text { text: "Host:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
@@ -211,7 +211,7 @@ Item {
                 ColumnLayout {
                     Layout.fillWidth: true; Layout.alignment: Qt.AlignTop; spacing: 8
 
-                    Text { text: "File & Folder Naming"; color: Theme.accentText; font.bold: true; font.pixelSize: 15 }
+                    Text { text: "File & Folder Naming"; color: Theme.accentText; font.bold: true; font.pixelSize: AppTypography.titleSmall.pixelSize }
                     Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.borderDefault }
 
                     Text { text: "Base folder:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }

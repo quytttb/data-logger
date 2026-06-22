@@ -16,6 +16,11 @@ find_package(Qt6 6.11 REQUIRED COMPONENTS
 
 qt_standard_project_setup(REQUIRES 6.11)
 
+# QML sources live in subdirectories (qml/views, shell, layout, chart, ...).
+# Opt into the Qt 6.8+ behaviour that generates a qmldir per subdirectory so
+# components can resolve each other via the implicit import (silences QTP0004).
+qt_policy(SET QTP0004 NEW)
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)

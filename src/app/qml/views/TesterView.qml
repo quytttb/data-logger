@@ -191,11 +191,11 @@ Item {
                         anchors.fill: parent; anchors.margins: 8; spacing: 4
                         Text {
                             text: "Serial: " + SettingsController.serialPort + " @ " + SettingsController.serialBaudrate + " baud"
-                            color: Theme.textPrimary; font.pixelSize: 13; font.bold: true
+                            color: Theme.textPrimary; font.pixelSize: AppTypography.bodySmall.pixelSize; font.bold: true
                         }
                         Text {
                             text: SettingsController.serialBytesize + "bit, Parity:" + SettingsController.serialParity + ", Stop:" + SettingsController.serialStopbits
-                            color: Theme.textSecondary; font.pixelSize: 12
+                            color: Theme.textSecondary; font.pixelSize: AppTypography.labelMedium.pixelSize
                         }
                     }
                 }
@@ -217,13 +217,13 @@ Item {
         }
 
         Pane {
-            Layout.fillWidth: true; Layout.fillHeight: true; padding: 10
+            Layout.fillWidth: true; Layout.fillHeight: true; padding: Theme.spacingS
             background: null
 
             ColumnLayout {
                 anchors.fill: parent; spacing: 8
 
-                Label { text: "Scan results"; font.pixelSize: 14; font.bold: true; color: Theme.accentText; Layout.fillWidth: true }
+                Label { text: "Scan results"; font.pixelSize: AppTypography.bodyMedium.pixelSize; font.bold: true; color: Theme.accentText; Layout.fillWidth: true }
 
                 Rectangle {
                     Layout.fillWidth: true; Layout.fillHeight: true
@@ -282,8 +282,8 @@ Item {
                                     anchors.fill: parent
                                     anchors.leftMargin: 16; anchors.rightMargin: 16
                                     spacing: 8
-                                    Text { text: resultRow.address; color: AppColors.tableCellMuted; font.pixelSize: 14; font.family: "monospace"; Layout.preferredWidth: 100 }
-                                    Text { text: resultRow.value; color: AppColors.success; font.pixelSize: 14; font.family: "monospace"; font.weight: Font.DemiBold; Layout.fillWidth: true; elide: Text.ElideRight }
+                                    Text { text: resultRow.address; color: AppColors.tableCellMuted; font.pixelSize: AppTypography.bodyMedium.pixelSize; font.family: AppTypography.monoFamily; Layout.preferredWidth: 100 }
+                                    Text { text: resultRow.value; color: AppColors.success; font.pixelSize: AppTypography.bodyMedium.pixelSize; font.family: AppTypography.monoFamily; font.weight: Font.DemiBold; Layout.fillWidth: true; elide: Text.ElideRight }
                                 }
                             }
                         }

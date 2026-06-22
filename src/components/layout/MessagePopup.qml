@@ -18,7 +18,7 @@ Popup {
     parent: Overlay.overlay
     anchors.centerIn: parent
     width: Math.min(440, parent.width - 32)
-    padding: 18
+    padding: Theme.spacingM
     modal: true
     focus: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
@@ -48,12 +48,12 @@ Popup {
     }
 
     contentItem: ColumnLayout {
-        spacing: 12
+        spacing: Theme.spacingSM
 
         Text {
             text: root.popupTitle
             font.bold: true
-            font.pixelSize: 18
+            font.pixelSize: AppTypography.titleLarge.pixelSize
             color: root.isConfirmMode && root.confirmButtonColor === Theme.btnStop ? Theme.statusErr : Theme.textPrimary
             Layout.fillWidth: true
             wrapMode: Text.WordWrap
@@ -65,7 +65,7 @@ Popup {
             text: root.popupMessage
             wrapMode: Text.WordWrap
             color: Theme.accentText
-            font.pixelSize: 14
+            font.pixelSize: AppTypography.bodyMedium.pixelSize
             Layout.fillWidth: true
             horizontalAlignment: Text.AlignHCenter
         }
@@ -81,7 +81,7 @@ Popup {
         RowLayout {
             visible: root.isConfirmMode
             Layout.fillWidth: true
-            spacing: 10
+            spacing: Theme.spacingS
 
             AppButton {
                 text: root.cancelButtonText

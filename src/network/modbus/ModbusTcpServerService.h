@@ -20,10 +20,10 @@ class ModbusTcpServerService : public QObject {
     Q_PROPERTY(QString listeningEndpoint READ listeningEndpoint NOTIFY stateChanged)
 
 public:
-    static constexpr const char* STATE_STOPPED  = "stopped";
-    static constexpr const char* STATE_STARTING = "starting";
-    static constexpr const char* STATE_LISTENING= "listening";
-    static constexpr const char* STATE_ERROR    = "error";
+    static inline const QString STATE_STOPPED   = QStringLiteral("stopped");
+    static inline const QString STATE_STARTING  = QStringLiteral("starting");
+    static inline const QString STATE_LISTENING = QStringLiteral("listening");
+    static inline const QString STATE_ERROR     = QStringLiteral("error");
 
     explicit ModbusTcpServerService(QObject *parent);
     ~ModbusTcpServerService();
@@ -63,9 +63,13 @@ private:
     // (data map is owned by m_server)
     QMutex             m_mutex;
 
-    QString m_bind = "0.0.0.0";
-    int     m_port = 5020;
-    int     m_unitId = 1;
+    static inline const QString kDefaultBind    = QStringLiteral("0.0.0.0");
+    static constexpr int        kDefaultPort    = 5020;
+    static constexpr int        kDefaultUnitId  = 1;
+
+    QString m_bind = kDefaultBind;
+    int     m_port = kDefaultPort;
+    int     m_unitId = kDefaultUnitId;
     QString m_state = STATE_STOPPED;
     QString m_lastError;
 

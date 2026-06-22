@@ -8,6 +8,10 @@
 #include <cmath>
 #include <cstring>
 
+namespace {
+constexpr int kClientTimeoutMs = 1000;  // Modbus client response timeout
+}
+
 TesterWorker::TesterWorker(QObject *parent) : QObject(parent) {}
 
 TesterWorker::~TesterWorker() {
@@ -35,7 +39,7 @@ void TesterWorker::doConnect(const QString &port, int baudrate,
         parity == "E" ? QSerialPort::EvenParity :
         parity == "O" ? QSerialPort::OddParity  : QSerialPort::NoParity);
     m_client->setConnectionParameter(QModbusDevice::SerialStopBitsParameter, stopbits);
-    m_client->setTimeout(1000);
+    m_client->setTimeout(kClientTimeoutMs);
     m_client->setNumberOfRetries(1);
 
     if (m_client->connectDevice()) {

@@ -9,6 +9,11 @@
 #include <QUrl>
 #include <QDebug>
 
+namespace {
+constexpr int kTickIntervalMs      = 60 * 1000;  // scan pending reports each minute
+constexpr int kHeartbeatIntervalMs = 30 * 1000;  // liveness ping to MonitorController
+}
+
 FtpWorker::FtpWorker(QObject *parent) : QObject(parent) {}
 
 void FtpWorker::configure(const QString &address, int port,
@@ -30,14 +35,14 @@ void FtpWorker::start() {
 
     if (!m_tickTimer) {
         m_tickTimer = new QTimer(this);
-        m_tickTimer->setInterval(60 * 1000);
+        m_tickTimer->setInterval(kTickIntervalMs);
         connect(m_tickTimer, &QTimer::timeout, this, &FtpWorker::tick);
     }
     m_tickTimer->start();
 
     if (!m_heartbeatTimer) {
         m_heartbeatTimer = new QTimer(this);
-        m_heartbeatTimer->setInterval(30 * 1000);
+        m_heartbeatTimer->setInterval(kHeartbeatIntervalMs);
         connect(m_heartbeatTimer, &QTimer::timeout, this, &FtpWorker::onHeartbeat);
     }
     m_heartbeatTimer->start();

@@ -26,6 +26,16 @@ static const QHash<QString, QString> kDiTypeNames = {
     {"00","Monitoring"},{"01","Calibrating"},{"02","Error"},{"03","Maintenance"}
 };
 
+namespace {
+constexpr int kCpuPollMs       = 10000;  // CPU temperature poll
+constexpr int kWatchdogMs      = 5000;   // worker heartbeat check
+constexpr int kThreadCheckMs   = 50;     // async stop: re-poll thread state
+constexpr int kThreadJoinMs    = 3000;   // graceful worker-thread join timeout
+constexpr int kRecoveryDelayMs = 2000;   // delay before auto-restart after worker death
+constexpr int kModbusTimeoutSec = 1;     // ModbusWorker::configure expects timeout in seconds
+constexpr int kMaxConsecutiveErrors = 10; // auto-stop monitoring after this many back-to-back Modbus errors
+}
+
 MonitorController::MonitorController(MonitorModel *model,
                                       ModbusTcpServerService *modbusTcp,
                                       QObject *parent)
@@ -38,12 +48,12 @@ MonitorController::MonitorController(MonitorModel *model,
     });
 
     m_cpuTimer = new QTimer(this);
-    m_cpuTimer->setInterval(10000);
+    m_cpuTimer->setInterval(kCpuPollMs);
     connect(m_cpuTimer, &QTimer::timeout, this, &MonitorController::readCpuTemp);
     m_cpuTimer->start();
 
     m_watchdogTimer = new QTimer(this);
-    m_watchdogTimer->setInterval(5000);
+    m_watchdogTimer->setInterval(kWatchdogMs);
     connect(m_watchdogTimer, &QTimer::timeout, this, &MonitorController::checkWatchdog);
 }
 
@@ -100,6 +110,7 @@ void MonitorController::startPolling() {
 
     m_isPolling  = true;
     m_errorCount = 0;
+    m_consecutiveErrors = 0;
     applyStatus("monitoring", STATUS_OK);
     emit pollingChanged();
     emit errorCountChanged();
@@ -213,7 +224,7 @@ void MonitorController::startWorkerThreads(const AppConfig &cfg,
     // Start ModbusWorker
     auto *mbWorker = new ModbusWorker();
     mbWorker->configure(cfg.serialPort, cfg.serialBaudrate, cfg.serialBytesize,
-                        cfg.serialParity, cfg.serialStopbits, 1, cfg.pollInterval);
+                        cfg.serialParity, cfg.serialStopbits, kModbusTimeoutSec, cfg.pollInterval);
     mbWorker->setSensors(pollSensors);
     mbWorker->setDigitalIos(digitalIoMap);
 
@@ -252,7 +263,7 @@ void MonitorController::checkThreadsFinished() {
     bool mb = (!m_modbusThread || !m_modbusThread->isRunning());
     bool db = (!m_dbThread     || !m_dbThread->isRunning());
     if (mb && db) { finalizeStop(); return; }
-    QTimer::singleShot(50, this, &MonitorController::checkThreadsFinished);
+    QTimer::singleShot(kThreadCheckMs, this, &MonitorController::checkThreadsFinished);
 }
 
 void MonitorController::finalizeStop() {
@@ -279,13 +290,13 @@ void MonitorController::stopPollingSync() {
         QMetaObject::invokeMethod(m_dbWorker, "stop", Qt::BlockingQueuedConnection);
     if (m_modbusThread) {
         m_modbusThread->quit();
-        m_modbusThread->wait(3000);
+        m_modbusThread->wait(kThreadJoinMs);
         delete m_modbusThread;
         m_modbusThread = nullptr;
     }
     if (m_dbThread) {
         m_dbThread->quit();
-        m_dbThread->wait(3000);
+        m_dbThread->wait(kThreadJoinMs);
         delete m_dbThread;
         m_dbThread = nullptr;
     }
@@ -358,6 +369,7 @@ QVariantMap MonitorController::readingsSnapshot() const {
 
 void MonitorController::onDataReady(QVariantMap payload) {
     if (!m_isPolling || m_isStopping) return;
+    m_consecutiveErrors = 0; // a successful read clears the back-to-back error streak
 
     QVariantList rawDi = payload.value("di_states").toList();
     QVariantList coloredDi;
@@ -404,8 +416,19 @@ void MonitorController::onDataReady(QVariantMap payload) {
 void MonitorController::onModbusError(QString msg) {
     if (m_isStopping) return;
     ++m_errorCount;
+    ++m_consecutiveErrors;
     emit errorCountChanged();
-    qWarning() << "Modbus error #" << m_errorCount << ":" << msg;
+    qWarning().noquote() << QStringLiteral("Modbus warning #%1 — %2").arg(m_errorCount).arg(msg);
+
+    if (m_consecutiveErrors >= kMaxConsecutiveErrors) {
+        qCritical().noquote()
+            << QStringLiteral("Auto-stopping monitoring after %1 consecutive Modbus errors")
+                   .arg(m_consecutiveErrors);
+        emit messageSent(QStringLiteral("Monitoring"),
+                         QStringLiteral("Auto-stopped after %1 consecutive Modbus timeouts/errors.")
+                             .arg(m_consecutiveErrors));
+        stopPolling();
+    }
 }
 
 void MonitorController::onConnectionChanged(bool connected) {
@@ -429,7 +452,7 @@ void MonitorController::onModbusStopped() {
     }
 }
 
-void MonitorController::onDbError(QString msg) { qCritical() << "DB error:" << msg; }
+void MonitorController::onDbError(QString msg) { qCritical().noquote() << "DB error:" << msg; }
 void MonitorController::onRecordsSaved(int count) { emit recordsCommitted(count); }
 void MonitorController::onAlarmChanged(QVariantMap info) {
     qInfo() << "Alarm changed sensor=" << info["sensor_id"].toInt()
@@ -470,7 +493,7 @@ void MonitorController::checkWatchdog() {
                 && m_isPolling && !m_recoveryInProgress) {
             m_recoveryInProgress = true;
             stopPollingSync();
-            QTimer::singleShot(2000, this, [this]() {
+            QTimer::singleShot(kRecoveryDelayMs, this, [this]() {
                 m_recoveryInProgress = false;
                 startPolling();
             });

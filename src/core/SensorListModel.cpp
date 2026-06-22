@@ -10,6 +10,9 @@
 
 namespace {
 
+constexpr int kDefaultPollIntervalSec = 3;  // sensor poll interval default (seconds)
+constexpr int kDefaultReportIndex     = 0;  // "no report" sentinel
+
 bool thresholdVariantEnabled(const QVariant &v)
 {
     return !v.isNull() && !v.toString().trimmed().isEmpty();
@@ -146,8 +149,8 @@ Sensor SensorListModel::variantToSensor(const QVariantMap &p, int existingId) co
     if (thresholdVariantEnabled(minV)) s.minThreshold = minV.toDouble();
     auto maxV = p.value("maxThreshold");
     if (thresholdVariantEnabled(maxV)) s.maxThreshold = maxV.toDouble();
-    s.pollInterval   = p.value("pollInterval", 3).toInt();
-    s.reportIndex    = p.value("reportIndex", 0).toInt();
+    s.pollInterval   = p.value("pollInterval", kDefaultPollIntervalSec).toInt();
+    s.reportIndex    = p.value("reportIndex", kDefaultReportIndex).toInt();
     s.decimals       = p.value("decimals", 4).toInt();
     s.sensorType     = sensorTypeFromString(p.value("sensorType", "ANALOG").toString());
     s.active         = p.value("active", true).toBool();

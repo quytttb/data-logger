@@ -14,7 +14,7 @@ Item {
         parent: Overlay.overlay
         anchors.centerIn: parent
         width: Math.min(400, parent.width - 32)
-        padding: 18
+        padding: Theme.spacingM
         modal: true
         focus: true
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
@@ -27,11 +27,11 @@ Item {
         }
 
         contentItem: ColumnLayout {
-            spacing: 12
+            spacing: Theme.spacingSM
 
             Text {
                 text: "DI Status"
-                font.bold: true; font.pixelSize: 18
+                font.bold: true; font.pixelSize: AppTypography.titleLarge.pixelSize
                 color: Theme.textPrimary
                 Layout.fillWidth: true
                 horizontalAlignment: Text.AlignHCenter
@@ -46,18 +46,18 @@ Item {
                     id: legendItem
                     required property var modelData
                     Layout.fillWidth: true
-                    spacing: 10
+                    spacing: Theme.spacingS
 
                     Rectangle {
                         Layout.preferredWidth: 12
                         Layout.preferredHeight: 12
-                        radius: 6
+                        radius: width / 2
                         color: legendItem.modelData.color
                     }
                     Text {
                         text: legendItem.modelData.label
                         color: Theme.textPrimary
-                        font.pixelSize: 14
+                        font.pixelSize: AppTypography.bodyMedium.pixelSize
                         Layout.fillWidth: true
                     }
                 }
@@ -67,7 +67,7 @@ Item {
                 visible: !MonitorController.diLegend || MonitorController.diLegend.length === 0
                 text: "No DI channels configured."
                 color: Theme.textSecondary
-                font.pixelSize: 14
+                font.pixelSize: AppTypography.bodyMedium.pixelSize
                 Layout.fillWidth: true
                 horizontalAlignment: Text.AlignHCenter
             }
@@ -87,7 +87,7 @@ Item {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
-        spacing: 10
+        spacing: Theme.spacingS
 
         // Status pill: live monitoring state (read-only indicator, not a control)
         Rectangle {
@@ -107,12 +107,12 @@ Item {
             RowLayout {
                 id: statusRow
                 anchors.centerIn: parent
-                spacing: 10
+                spacing: Theme.spacingS
 
                 Rectangle {
                     Layout.preferredWidth: 14
                     Layout.preferredHeight: 14
-                    radius: 7
+                    radius: width / 2
                     color: statusPill.stateColor
                     Layout.alignment: Qt.AlignVCenter
                 }
@@ -120,7 +120,7 @@ Item {
                 Label {
                     text: MonitorController.statusText
                     color: statusPill.stateColor
-                    font.pixelSize: 16
+                    font.pixelSize: AppTypography.titleMedium.pixelSize
                     font.bold: true
                     elide: Text.ElideRight
                     wrapMode: Text.NoWrap
@@ -137,7 +137,7 @@ Item {
             onClicked: diLegendPopup.open()
 
             contentItem: Row {
-                spacing: 6
+                spacing: Theme.spacingS
                 anchors.verticalCenter: parent.verticalCenter
 
                 Repeater {
@@ -145,7 +145,7 @@ Item {
                     Rectangle {
                         id: diDot
                         required property var modelData
-                        width: 8; height: 8; radius: 4
+                        width: 8; height: 8; radius: width / 2
                         color: diDot.modelData.color
                         anchors.verticalCenter: parent.verticalCenter
                     }
@@ -154,7 +154,7 @@ Item {
                 Text {
                     text: "DI Status"
                     color: AppColors.buttonText
-                    font.pixelSize: 12; font.bold: true
+                    font.pixelSize: AppTypography.labelMedium.pixelSize; font.bold: true
                     anchors.verticalCenter: parent.verticalCenter
                 }
             }
@@ -189,7 +189,7 @@ Item {
                     return "No read errors";
                 }
                 color: (MonitorController.watchdogStatus !== "OK" && MonitorController.watchdogStatus !== "N/A") || MonitorController.errorCount > 0 ? Theme.statusErr : Theme.textSecondary
-                font.pixelSize: 12
+                font.pixelSize: AppTypography.labelMedium.pixelSize
                 font.bold: true
             }
         }

@@ -27,7 +27,7 @@ Item {
         TabBar {
             id: connectionTabBar
             Layout.alignment: Qt.AlignLeft
-            Layout.bottomMargin: 10
+            Layout.bottomMargin: Theme.spacingS
             
             background: Rectangle { 
                 color: "transparent"
@@ -57,7 +57,7 @@ Item {
                 ColumnLayout {
                     id: lsFormContent
                     width: parent.width
-                    spacing: 15
+                    spacing: Theme.spacingM
 
                     Rectangle {
                         Layout.fillWidth: true
@@ -68,7 +68,7 @@ Item {
                         RowLayout {
                             id: lsRow
                             anchors.fill: parent; anchors.margins: 20
-                            spacing: 25
+                            spacing: Theme.spacingL
 
                             // ── Modbus RTU (Serial + Framing) ─────────────────────
                             ColumnLayout {
@@ -76,16 +76,16 @@ Item {
 
                                 Text {
                                     text: "Modbus RTU"
-                                    color: Theme.accentText; font.bold: true; font.pixelSize: 15
+                                    color: Theme.accentText; font.bold: true; font.pixelSize: AppTypography.titleSmall.pixelSize
                                 }
                                 Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.borderDefault }
 
                                 RowLayout {
-                                    Layout.fillWidth: true; spacing: 25
+                                    Layout.fillWidth: true; spacing: Theme.spacingL
 
                                     ColumnLayout {
                                         Layout.fillWidth: true; Layout.alignment: Qt.AlignTop; spacing: 8
-                                        Text { text: "Serial"; color: Theme.accentText; font.bold: true; font.pixelSize: 13 }
+                                        Text { text: "Serial"; color: Theme.accentText; font.bold: true; font.pixelSize: AppTypography.bodySmall.pixelSize }
 
                                         Text { text: "Port:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
                                         RowLayout {
@@ -121,7 +121,7 @@ Item {
                                                     UiIcon {
                                                         anchors.centerIn: parent
                                                         name: "refresh"
-                                                        size: 18
+                                                        size: AppTheme.iconSizeSm
                                                         iconColor: AppColors.buttonIconOnFilled
                                                     }
                                                 }
@@ -165,7 +165,7 @@ Item {
 
                                     ColumnLayout {
                                         Layout.fillWidth: true; Layout.alignment: Qt.AlignTop; spacing: 8
-                                        Text { text: "Data framing"; color: Theme.accentText; font.bold: true; font.pixelSize: 13 }
+                                        Text { text: "Data framing"; color: Theme.accentText; font.bold: true; font.pixelSize: AppTypography.bodySmall.pixelSize }
 
                                         Text { text: "Data bits:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
                                         ComboBox {
@@ -204,7 +204,7 @@ Item {
                 ColumnLayout {
                     id: nsFormContent
                     width: parent.width
-                    spacing: 15
+                    spacing: Theme.spacingM
 
                     Rectangle {
                         Layout.fillWidth: true
@@ -215,7 +215,7 @@ Item {
                         RowLayout {
                             id: nsRow
                             anchors.fill: parent; anchors.margins: 20
-                            spacing: 25
+                            spacing: Theme.spacingL
 
                             // ── Modbus TCP Server ──────────────────────────────────
                             ColumnLayout {
@@ -225,11 +225,11 @@ Item {
                                     Layout.fillWidth: true; spacing: 8
                                     Text {
                                         text: "Modbus TCP Server"
-                                        color: Theme.accentText; font.bold: true; font.pixelSize: 15
+                                        color: Theme.accentText; font.bold: true; font.pixelSize: AppTypography.titleSmall.pixelSize
                                         Layout.fillWidth: true
                                     }
                                     Rectangle {
-                                        implicitWidth: 10; implicitHeight: 10; radius: 5
+                                        implicitWidth: 10; implicitHeight: 10; radius: width / 2
                                         color: ModbusTcpServerService.state === "listening" ? AppColors.success
                                              : ModbusTcpServerService.state === "error" ? AppColors.error
                                              : ModbusTcpServerService.state === "starting" ? AppColors.warning
@@ -246,7 +246,7 @@ Item {
                                 Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.borderDefault }
 
                                 RowLayout {
-                                    Layout.fillWidth: true; spacing: 10
+                                    Layout.fillWidth: true; spacing: Theme.spacingS
                                     Text {
                                         text: "Active"
                                         color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize
@@ -347,11 +347,11 @@ Item {
                                     Layout.fillWidth: true; spacing: 8
                                     Text {
                                         text: "HTTP REST Server"
-                                        color: Theme.accentText; font.bold: true; font.pixelSize: 15
+                                        color: Theme.accentText; font.bold: true; font.pixelSize: AppTypography.titleSmall.pixelSize
                                         Layout.fillWidth: true
                                     }
                                     Rectangle {
-                                        implicitWidth: 10; implicitHeight: 10; radius: 5
+                                        implicitWidth: 10; implicitHeight: 10; radius: width / 2
                                         color: RestApiService.state === "listening" ? AppColors.success
                                              : RestApiService.state === "error" ? AppColors.error
                                              : RestApiService.state === "starting" ? AppColors.warning
@@ -368,7 +368,7 @@ Item {
                                 Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.borderDefault }
 
                                 RowLayout {
-                                    Layout.fillWidth: true; spacing: 10
+                                    Layout.fillWidth: true; spacing: Theme.spacingS
                                     Text {
                                         text: "Active"
                                         color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize
@@ -428,7 +428,7 @@ Item {
 
                                 Text { text: "API token:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
                                 RowLayout {
-                                    Layout.fillWidth: true; spacing: 6
+                                    Layout.fillWidth: true; spacing: Theme.spacingS
                                     TextField {
                                         id: restTokenField
                                         Layout.fillWidth: true

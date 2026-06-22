@@ -10,10 +10,20 @@ import DataLogger.Components
 Rectangle {
     id: sideBarRoot
     implicitWidth: AppTheme.railWidth
-    color: AppColors.surfaceContainer
+    color: AppColors.navRail
 
     property int currentTab: 0
     signal selectTab(int index)
+
+    // Right-edge divider separating the rail from the main canvas.
+    Rectangle {
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        width: 1
+        color: AppColors.dividerLine
+        z: 1
+    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -42,7 +52,7 @@ Rectangle {
         Column {
             id: navColumn
             Layout.fillWidth: true
-            spacing: AppTheme.navItemSpacing + 8
+            spacing: AppTheme.navItemSpacing
 
             Repeater {
                 model: 5
@@ -61,7 +71,6 @@ Rectangle {
 
                     contentItem: ColumnLayout {
                         spacing: 4
-                        anchors.fill: parent
 
                         Item {
                             Layout.preferredWidth: AppTheme.navPillWidth
@@ -89,7 +98,7 @@ Rectangle {
                             UiIcon {
                                 anchors.centerIn: parent
                                 name: ["viewDashboard", "history", "showChart", "cog", "codeBlocks"][navDelegate.index]
-                                size: 24
+                                size: AppTheme.iconSizeLg
                                 iconColor: navDelegate.isActive
                                          ? AppColors.accentContainerFg
                                          : AppColors.onSurfaceVariant
@@ -122,8 +131,8 @@ Rectangle {
             id: exitBtn
             Layout.alignment: Qt.AlignHCenter
             Layout.bottomMargin: 8
-            implicitWidth: 44
-            implicitHeight: 44
+            implicitWidth: AppTheme.iconButtonSize
+            implicitHeight: AppTheme.iconButtonSize
 
             background: Rectangle {
                 anchors.fill: parent
@@ -136,7 +145,7 @@ Rectangle {
                 UiIcon {
                     anchors.centerIn: parent
                     name: "close"
-                    size: 20
+                    size: AppTheme.iconSizeMd
                     iconColor: AppColors.errorContainerFg
                 }
             }
@@ -156,26 +165,26 @@ Rectangle {
         Column {
             width: parent.width
             spacing: 16
-            Layout.bottomMargin: 12
+            Layout.bottomMargin: Theme.spacingSM
 
             // Status Column (Line by Line)
             Column {
                 width: parent.width
-                spacing: 6
+                spacing: Theme.spacingS
 
                 // Modbus
                 RowLayout {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    spacing: 6
+                    spacing: Theme.spacingS
                     Rectangle {
-                        width: 8; height: 8; radius: 4
+                        width: 8; height: 8; radius: width / 2
                         color: MonitorController.statusMode === 1 ? AppColors.success
                              : MonitorController.statusMode === 2 ? AppColors.error
                              : AppColors.onSurfaceVariant
                     }
                     Text {
                         text: "Modbus"
-                        font.pixelSize: 10
+                        font.pixelSize: AppTypography.labelTiny.pixelSize
                         color: AppColors.onSurfaceVariant
                         font.bold: true
                     }
@@ -184,9 +193,9 @@ Rectangle {
                 // FTP
                 RowLayout {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    spacing: 6
+                    spacing: Theme.spacingS
                     Rectangle {
-                        width: 8; height: 8; radius: 4
+                        width: 8; height: 8; radius: width / 2
                         color: {
                             if (!ReportController.isRunning) return AppColors.onSurfaceVariant;
                             var s = ReportController.lastStatus || "";
@@ -197,7 +206,7 @@ Rectangle {
                     }
                     Text {
                         text: "FTP"
-                        font.pixelSize: 10
+                        font.pixelSize: AppTypography.labelTiny.pixelSize
                         color: AppColors.onSurfaceVariant
                         font.bold: true
                     }
@@ -214,7 +223,7 @@ Rectangle {
                     width: parent.width
                     text: Qt.formatDateTime(new Date(), "HH\n:mm\n:ss")
                     font.family: AppTypography.labelMedium.family
-                    font.pixelSize: 18
+                    font.pixelSize: AppTypography.titleLarge.pixelSize
                     font.bold: true
                     color: AppColors.primaryText
                     horizontalAlignment: Text.AlignHCenter
@@ -225,7 +234,7 @@ Rectangle {
                     id: clockDateLabel
                     width: parent.width
                     text: Qt.formatDateTime(new Date(), "dd/MM/yyyy")
-                    font.pixelSize: 11
+                    font.pixelSize: AppTypography.labelSmall.pixelSize
                     color: AppColors.onSurfaceVariant
                     horizontalAlignment: Text.AlignHCenter
                 }

@@ -6,6 +6,10 @@
 #include <QDebug>
 #include <utility>
 
+namespace {
+constexpr int kHeartbeatIntervalMs = 5000;  // liveness ping to MonitorController
+}
+
 DatabaseWorker::DatabaseWorker(QObject *parent) : QObject(parent) {}
 
 void DatabaseWorker::enqueue(const QVariantMap &payload) {
@@ -27,7 +31,7 @@ void DatabaseWorker::start() {
     m_flushTimer->start();
 
     m_heartbeatTimer = new QTimer(this);
-    m_heartbeatTimer->setInterval(5000);
+    m_heartbeatTimer->setInterval(kHeartbeatIntervalMs);
     connect(m_heartbeatTimer, &QTimer::timeout, this, &DatabaseWorker::onHeartbeatTimer);
     m_heartbeatTimer->start();
 }

@@ -70,6 +70,7 @@ QtObject {
 
     readonly property int spacingXS:   4
     readonly property int spacingS:    8
+    readonly property int spacingSM:  12
     readonly property int spacingM:   16
     readonly property int spacingL:   24
     readonly property int sectionSpacing: AppTheme.sectionSpacing

@@ -49,7 +49,7 @@ Item {
 
         RowLayout {
             visible: root.settingsTabIndex === 4
-            spacing: 10
+            spacing: Theme.spacingS
 
             TabBar {
                 id: sensorSubTabBar
@@ -83,7 +83,7 @@ Item {
 
             AppButton {
                 text: "Save"
-                font.pixelSize: 12; font.bold: true
+                font.pixelSize: AppTypography.labelMedium.pixelSize; font.bold: true
                 Layout.preferredHeight: 44
                 accent: Theme.btnStart
                 onClicked: root.saveConfig()
@@ -111,7 +111,7 @@ Item {
 
             AppButton {
                 text: "+ Add"
-                font.pixelSize: 12; font.bold: true
+                font.pixelSize: AppTypography.labelMedium.pixelSize; font.bold: true
                 Layout.preferredHeight: 44
                 accent: Theme.btnStart
                 onClicked: root.addSensor()
@@ -147,7 +147,7 @@ Item {
 
             AppButton {
                 text: "Save"
-                font.pixelSize: 12; font.bold: true
+                font.pixelSize: AppTypography.labelMedium.pixelSize; font.bold: true
                 Layout.preferredHeight: 44
                 accent: Theme.btnStart
                 onClicked: root.saveSensorForm()

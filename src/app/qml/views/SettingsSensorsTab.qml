@@ -127,10 +127,10 @@ Rectangle {
                     anchors.leftMargin: root.colMarginH
                     anchors.rightMargin: root.colMarginH
                     spacing: root.colSpacing
-                    Text { text: sensorRow.name; color: AppColors.primaryText; font.pixelSize: 14; font.weight: Font.DemiBold; Layout.preferredWidth: 120; elide: Text.ElideRight }
+                    Text { text: sensorRow.name; color: AppColors.primaryText; font.pixelSize: AppTypography.bodyMedium.pixelSize; font.weight: Font.DemiBold; Layout.preferredWidth: 120; elide: Text.ElideRight }
                     Text { text: sensorRow.unit; color: AppColors.tableCellMuted; font: AppTypography.bodyMedium; Layout.preferredWidth: 50; elide: Text.ElideRight }
-                    Text { text: sensorRow.slaveId; color: AppColors.tableCellMuted; font.pixelSize: 14; font.family: "monospace"; Layout.preferredWidth: 45; horizontalAlignment: Text.AlignHCenter }
-                    Text { text: sensorRow.registerAddress; color: AppColors.tableCellMuted; font.pixelSize: 14; font.family: "monospace"; Layout.preferredWidth: 45; horizontalAlignment: Text.AlignHCenter }
+                    Text { text: sensorRow.slaveId; color: AppColors.tableCellMuted; font.pixelSize: AppTypography.bodyMedium.pixelSize; font.family: AppTypography.monoFamily; Layout.preferredWidth: 45; horizontalAlignment: Text.AlignHCenter }
+                    Text { text: sensorRow.registerAddress; color: AppColors.tableCellMuted; font.pixelSize: AppTypography.bodyMedium.pixelSize; font.family: AppTypography.monoFamily; Layout.preferredWidth: 45; horizontalAlignment: Text.AlignHCenter }
                     Text {
                         text: {
                             var t = String(sensorRow.registerType).toLowerCase().trim()
@@ -179,7 +179,7 @@ Rectangle {
                     Item {
                         Layout.preferredWidth: 50; Layout.fillHeight: true
                         Rectangle {
-                            width: 12; height: 12; radius: 6
+                            width: 12; height: 12; radius: width / 2
                             anchors.centerIn: parent
                             color: sensorRow.active ? AppColors.success : AppColors.error
                             border.color: AppColors.outlineVariant; border.width: 1

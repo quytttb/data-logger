@@ -41,7 +41,7 @@ AbstractButton {
 
     readonly property bool iconOnly: text === "" && iconName !== ""
 
-    font.pixelSize: 14
+    font.pixelSize: AppTypography.bodyMedium.pixelSize
     font.weight: Font.Medium
     hoverEnabled: true
 
@@ -50,11 +50,11 @@ AbstractButton {
     leftInset: 0
     rightInset: 0
 
-    implicitHeight: 44
+    implicitHeight: AppTheme.buttonHeight
     implicitWidth: iconOnly
-        ? 44
+        ? AppTheme.iconButtonSize
         : (contentRow.implicitWidth + leftPadding + rightPadding)
-    padding: iconOnly ? 0 : 16
+    padding: iconOnly ? 0 : Theme.spacingM
 
     // Content color: filled sits on a strong fill (black-on-tint in dark mode);
     // tonal/outlined sit on dark surfaces, so use light text — accent fg when active.
@@ -86,7 +86,7 @@ AbstractButton {
         }
 
         Behavior on color {
-            ColorAnimation { duration: 120 }
+            ColorAnimation { duration: AppTheme.motionFast }
         }
     }
 
@@ -97,7 +97,7 @@ AbstractButton {
         RowLayout {
             id: contentRow
             anchors.centerIn: parent
-            spacing: 6
+            spacing: Theme.spacingS
 
             UiIcon {
                 id: btnIcon
@@ -112,7 +112,7 @@ AbstractButton {
                     target: btnIcon
                     from: 0
                     to: 360
-                    duration: 1000
+                    duration: AppTheme.motionPulse
                     loops: Animation.Infinite
                     running: control.iconSpinning
                     onStopped: btnIcon.rotation = 0
