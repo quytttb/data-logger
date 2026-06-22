@@ -1,20 +1,29 @@
+# Python artefacts (legacy)
 .venv/
 venv-build/
-dist/
-build/
 *.egg-info/
-
-# Nuitka / packaging artifacts
-datalogger
-main.bin
-main.build/
-main.dist/
-main.onefile-build/
-*.deb
 __pycache__/
 *.py[cod]
 .pytest_cache/
 .ruff_cache/
+assets/
+
+# Nuitka / PyInstaller packaging artefacts
+main.bin
+main.build/
+main.dist/
+main.onefile-build/
+
+# C++ / CMake build output
+build/
+build-*/
+cmake-build-*/
+CMakeUserPresets.json
+
+# Qt deployment
+dist/
+*.deb
+*.AppImage
 
 # Runtime data (generated on device)
 data/
@@ -22,6 +31,7 @@ logs/
 config/
 var/
 
-# i18n compiled (removed — English only)
-i18n/
-data/
+# IDE
+.idea/
+.qmlls.ini
+.directory

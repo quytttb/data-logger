@@ -1,23 +1,112 @@
 # Data Logger
 
-Ứng dụng giám sát cảm biến công nghiệp **chỉ triển khai và chạy trên Raspberry Pi 4** (GUI cảm ứng, Modbus, SQLite).  
-Hỗ trợ tích hợp phần cứng đọc dữ liệu qua **Modbus RTU**, lưu trữ liên tục với **SQLite (WAL)**, hiển thị biểu đồ realtime thông qua **PySide6/QML**, và tự động kết xuất **CSV/TXT** hoặc đồng bộ lên hệ thống máy chủ bằng **FTP/sFTP/MQTT**.
+Ứng dụng giám sát cảm biến công nghiệp chạy trên **Raspberry Pi 4** (GUI cảm ứng, Modbus RTU, SQLite).
 
-Đặc biệt tự hào với hệ thống **CI/CD và OTA Updater**, cho phép nâng cấp phiên bản phần mềm từ xa mà không cần thay thẻ nhớ hoặc khởi động lại bằng rsync thủ công.
+Đọc dữ liệu qua **Modbus RTU (RS-485)**, lưu trữ liên tục với **SQLite (WAL)**, hiển thị biểu đồ realtime qua **Qt 6.11 / QML**, và tự động kết xuất báo cáo **TXT** hoặc đồng bộ lên máy chủ bằng **FTP**.
 
 ---
 
-## Modbus TCP Server (xuất dữ liệu cho hệ tập trung)
+## Stack công nghệ
 
-Kiến trúc:
+| Thành phần | Công nghệ |
+|---|---|
+| **Backend** | C++20 |
+| **Giao diện (UI)** | Qt 6.11 + QML (Qt Quick Controls 2 Material) |
+| **Cơ sở dữ liệu** | SQLite 3 (WAL) — `QSqlDatabase` |
+| **Giao thức công nghiệp** | Modbus RTU — `QModbusRtuSerialClient`; Modbus TCP Server — `QModbusTcpServer` |
+| **REST API** | `QHttpServer` (Qt HTTP Server) |
+| **Build** | CMake 3.16+ với `qt_standard_project_setup` / `qt_add_qml_module` |
+| **CI/CD** | GitHub Actions — build C++ + Qt apt on `ubuntu-latest` |
+
+---
+
+## Cấu trúc project
 
 ```
-Cảm biến  ──(Modbus RTU / RS-485)──▶  Data Logger (Master + TCP Slave)  ──(Modbus TCP / LAN)──▶  Central App / SCADA
+src/
+├── app/           # Entry point + QML shell (Main.qml, views/)
+├── components/    # QML tái sử dụng (shell/, layout/, sensor/)
+├── core/          # Controllers + QML models
+├── data/          # SQLite, models, repositories
+├── network/       # Modbus RTU/TCP, REST API, workers
+├── theme/         # Theme singleton (Material 3)
+└── utils/         # AppPaths, Crypto, Formula, …
+resources/         # Icons, app icon
 ```
 
-Bật trong **Settings → Connection → Modbus TCP Server** (toggle Enable, Bind, Port, Unit ID).
+Build layers (CMake): `utils → data → network → core → theme → components → app`
 
-**Register map v1** — Holding Registers, **Big-endian / ABCD cố định**, độc lập với `data_format` của từng cảm biến:
+---
+
+- **Phần cứng**: Raspberry Pi 4/5 (ARM64), màn hình cảm ứng 7", USB-RS485 Dongle.
+- **OS**: Raspberry Pi OS 64-bit (Bookworm trở lên)
+- **Qt**: 6.11+ từ [Qt Online Installer](https://www.qt.io/download), hoặc Qt 6.10+ từ apt (Ubuntu 25.04+)
+- **Compiler**: GCC 15+ (`g++-15`)
+
+---
+
+## Build
+
+### Cài dependencies (Ubuntu / Raspberry Pi OS Bookworm)
+
+```bash
+sudo apt-get install -y \
+  cmake g++-15 \
+  qt6-base-dev qt6-declarative-dev qt6-quickcontrols2-dev \
+  qt6-serialbus-dev qt6-serialport-dev \
+  qt6-httpserver-dev qt6-websockets-dev \
+  qt6-graphs-dev qt6-quick3d-dev
+```
+
+### Sử dụng Qt Online Installer (khuyến nghị — Qt 6.11)
+
+```bash
+# Đặt đường dẫn Qt kit
+export QT_DIR=$HOME/Qt/6.11.1/gcc_64
+
+./build.sh Release
+```
+
+### Build thủ công với CMake
+
+```bash
+cmake -B build-release \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_C_COMPILER=gcc-15 \
+  -DCMAKE_CXX_COMPILER=g++-15 \
+  -DCMAKE_PREFIX_PATH=$HOME/Qt/6.11.1/gcc_64   # bỏ nếu dùng apt
+
+cmake --build build-release --parallel $(nproc)
+```
+
+Binary đầu ra: `build-release/bin/DataLogger`
+
+---
+
+## Chạy
+
+```bash
+# Qt từ Online Installer cần chỉ thư viện runtime
+export LD_LIBRARY_PATH=$HOME/Qt/6.11.1/gcc_64/lib:$LD_LIBRARY_PATH
+
+./build-release/bin/DataLogger
+```
+
+Nếu build với Qt từ apt thì không cần `LD_LIBRARY_PATH`.
+
+---
+
+## Modbus TCP Server
+
+Xuất dữ liệu realtime cho hệ tập trung (SCADA / Central App):
+
+```
+Cảm biến ──(Modbus RTU / RS-485)──▶ Data Logger (Master + TCP Slave) ──(Modbus TCP / LAN)──▶ Central App
+```
+
+Bật trong **Settings → Connection → Modbus TCP Server** (Enable, Bind, Port, Unit ID).
+
+**Register map v1** — Holding Registers, Big-endian ABCD:
 
 | Địa chỉ HR | Nội dung |
 |------------|----------|
@@ -28,25 +117,14 @@ Bật trong **Settings → Connection → Modbus TCP Server** (toggle Enable, Bi
 | `10 + i*8 + 0` | sensor_id (uint16) |
 | `10 + i*8 + 1` | Per-sensor flags — bit0 valid, bit1 alarm, bit2 stale |
 | `10 + i*8 + 2..3` | Giá trị (float32, ABCD) |
-| `10 + i*8 + 4..7` | Dự phòng |
 
-Sensor được sắp theo `id` tăng dần (chỉ ANALOG/top-level). Đổi danh sách cảm biến cần Stop/Start polling để rebuild map.
+**Cổng mặc định**: `5020`. Để dùng cổng 502 chuẩn Modbus:
 
-**Cổng & quyền (Linux):**
+```bash
+sudo setcap 'cap_net_bind_service=+ep' build-release/DataLogger
+```
 
-- Mặc định **5020** để tránh privileged port (<1024).
-- Muốn dùng **502** chuẩn Modbus: cấp capability cho binary hoặc chạy bằng systemd với `AmbientCapabilities=CAP_NET_BIND_SERVICE`. Ví dụ thủ công:
-  ```bash
-  sudo setcap 'cap_net_bind_service=+ep' /path/to/python  # hoặc binary Nuitka
-  ```
-
-**An toàn:**
-
-- Modbus TCP không mã hoá, không xác thực — chỉ mở trong **LAN tin cậy / VLAN**.
-- Mặc định bind `0.0.0.0`; nếu chỉ muốn cho một interface, đặt IP cụ thể.
-- Firewall LAN nên hạn chế nguồn IP được phép kết nối.
-
-**Test nhanh từ máy khác** (cần `pymodbus` hoặc `modpoll`):
+Test từ máy khác:
 
 ```bash
 modpoll -m tcp -a 1 -p 5020 -r 0 -c 10 -t 4 <ip_logger>
@@ -54,97 +132,61 @@ modpoll -m tcp -a 1 -p 5020 -r 0 -c 10 -t 4 <ip_logger>
 
 ---
 
-## HTTP REST API (cấu hình từ xa cho Central App)
+## HTTP REST API
 
-Kênh **độc lập** với Modbus TCP — chỉ dùng cho **chỉnh cấu hình** trong **LAN nội bộ nhà máy**:
+Bật trong **Settings → Connection → HTTP REST Server**.
 
-```
-Central App  ──(HTTP REST / JSON, LAN)──▶  Data Logger  ──(SQLite)──▶  Workers (Modbus / Reports)
-```
+| Method | Path | Auth | Mục đích |
+|--------|------|------|----------|
+| GET | `/api/v1/readings` | Bearer | Snapshot giá trị cảm biến hiện tại |
+| GET | `/api/v1/config` | Bearer | Đọc cấu hình (gồm cả cấu hình từng cảm biến) |
+| POST | `/api/v1/config` | Bearer | Cập nhật cấu hình từ xa (chỉ các trường app-config) |
 
-Bật trong **Settings → Connection → Network Services → HTTP REST Server** (toggle Active, Bind, Port, API token).
-
-**Mặc định**: port `8080`, bind `0.0.0.0`. API token được sinh tự động lần đầu khi bật (xem ô **API token** trong UI, có nút **Regenerate**).
-
-### Endpoints (API v1)
-
-| Method | Path                  | Auth     | Mục đích |
-|--------|-----------------------|----------|----------|
-| GET    | `/api/v1/health`      | không    | Liveness + `revision` hiện tại (Central ping rẻ) |
-| GET    | `/api/v1/config`      | Bearer   | Đọc snapshot cấu hình (root + `sensors[]`) |
-| POST   | `/api/v1/config`      | Bearer   | Apply cấu hình mới (optimistic concurrency) |
-| GET    | `/api/v1/docs`        | không    | Swagger UI (tự sinh từ FastAPI) |
-| GET    | `/api/v1/openapi.json`| không    | OpenAPI schema |
-
-**HTTP status chuẩn**: `200` thành công, `400` validation, `401` auth, `409` revision conflict, `413` body > 1 MB, `500` lỗi server.
-
-**Contract POST `/api/v1/config`**:
-
-```json
-{
-  "api_version": 1,
-  "request_id": "<uuid>",
-  "expected_revision": 12,
-  "config": {
-    "poll_interval": 3,
-    "modbus_tcp_enabled": true,
-    "sensors": [ { "sensor_type": "ANALOG", "name": "pH", "slave_id": 1, "register_address": 0 } ]
-  }
-}
-```
-
-- **Root config**: partial update — chỉ key xuất hiện trong `config` được cập nhật.
-- **`sensors[]`**: replace **toàn bộ** bảng sensor (atomic, rollback nếu lỗi).
-- **`expected_revision`** phải khớp `revision` hiện tại trên edge, sai → `409`.
-
-**Bảo mật trên LAN nhà máy:**
-
-- Bearer token bắt buộc; so sánh constant-time. Đổi token bằng nút **Regenerate** trong UI.
-- Token **không** ghi vào log; field `config_revision` xuất hiện nhưng `rest_api_token` không được trả qua `GET /api/v1/config`.
-- Bind mặc định `0.0.0.0` — hạn chế IP Central bằng **firewall**:
-  ```bash
-  sudo ufw allow from <IP_CENTRAL> to any port 8080 proto tcp
-  sudo ufw deny 8080/tcp
-  ```
-- Không thiết kế đi ra Internet. Nếu nhà máy yêu cầu TLS: đặt reverse proxy nội bộ (nginx/caddy) trước Uvicorn, port 8443.
-
-**Sinh lại OpenAPI schema** (sau khi đổi Pydantic model):
-
-```bash
-python tools/dump_openapi.py
-# → openapi-v1.yaml, openapi-v1.json (gốc repo)
-```
-
-**Test nhanh từ máy khác** (cần `curl`):
+Test nhanh:
 
 ```bash
 TOKEN="<bearer-token-từ-UI>"
-curl http://<ip_logger>:8080/api/v1/health
-curl -H "Authorization: Bearer $TOKEN" http://<ip_logger>:8080/api/v1/config
+curl http://<ip_logger>:8080/api/v1/readings -H "Authorization: Bearer $TOKEN"
 ```
 
-### Provisioning QR (ghép Central App qua LAN)
+### `GET /api/v1/config` — response
 
-Trong **Settings → Connection → Network Services → HTTP REST Server**, khi REST **Active** và đã có **API token**:
+data-logger (edge) là **Source of Truth** cho cấu hình cảm biến. Mảng `sensors[]`
+được Central App đọc **read-only** (ví dụ `decimals` — số chữ số thập phân hiển thị).
+`POST /api/v1/config` **không** ghi các trường cảm biến (decimals sửa tại edge).
 
-- Nút **QR** (icon, cạnh Regenerate) — mở dialog QR chứa JSON schema `central-logger-provision/v1` (token + host LAN + cổng REST/Modbus + mã trạm).
-
-Sau **Regenerate** token, quét lại QR (caption trong dialog). Token **không** có trong `GET /api/v1/config` và **không** ghi log.
-
-Chi tiết schema: [`docs/provision-qr-v1.md`](docs/provision-qr-v1.md). Mẫu JSON cố định: [`tests/fixtures/provision-qr-sample.json`](tests/fixtures/provision-qr-sample.json).
-
-```bash
-# Kiểm tra token từ QR (thay host/port/token từ JSON sau khi decode)
-curl -s -H "Authorization: Bearer <api_token>" "http://<host>:<api_port>/api/v1/health"
+```json
+{
+  "station_code": "DL-001",
+  "station_name": "Data Logger",
+  "poll_interval": 3,
+  "serial_port": "/dev/ttyUSB0",
+  "serial_baudrate": 9600,
+  "config_revision": 12,
+  "sensors": [
+    {
+      "id": 1,
+      "name": "Nhiệt độ",
+      "unit": "°C",
+      "sensor_type": "ANALOG",
+      "decimals": 2,
+      "report_index": 0,
+      "slave_id": 1,
+      "register_address": 0
+    }
+  ]
+}
 ```
 
-Test unit QR (cần `libzbar0` trên Linux cho decode round-trip):
+Khóa join với dữ liệu Modbus của edge:
 
-```bash
-uv sync --extra dev
-sudo apt install libzbar0   # Debian/Ubuntu (có thể là gói libzbar0t64)
-uv run pytest tests/test_provision_qr.py -v
-```
+- **ANALOG**: `sensors[].id` **==** `sensor_id` trên wire FC03 (cùng là primary key DB). Central
+  gắn live value + `decimals` + history theo khóa này.
+- **DI/DO**: map theo **bit index** của FC02/FC01, bằng `sensors[].register_address`.
+  (`decimals` không áp dụng cho DI/DO — hiển thị ON/OFF.)
+
+> `config_revision` tăng mỗi khi cấu hình thay đổi — **bao gồm cả thêm/sửa/xóa cảm biến**
+> (đổi `decimals`, threshold, scaling...) — để Central có thể phát hiện drift nếu cần.
 
 ---
 
@@ -152,115 +194,34 @@ uv run pytest tests/test_provision_qr.py -v
 
 | Module | Mô tả |
 |---|---|
-| **Modbus Tester** | Kiểm tra kết nối cổng serial, quét slave ID, đọc/ghi thủ công |
-| **Modbus TCP Server** | Xuất dữ liệu realtime cho hệ tập trung (SCADA / Central App) qua Ethernet — logger là TCP Slave, Central là TCP Master |
-| **Cài đặt** | Cấu hình thông số trạm, giao thức Modbus, danh sách cảm biến, FTP server, MQTT, và cập nhật OTA |
-| **Dashboard** | Polling tự động, hiển thị giá trị realtime, tự động tính toán qua công thức tuyến tính/đa thức `y = ax + b` |
-| **Lịch sử** | Tra cứu dữ liệu quá khứ theo dải thời gian, cho phép kết xuất CSV (UTF-8 BOM) |
-| **Báo cáo** | Sinh file báo cáo TXT (Chuẩn Phụ lục 15 - TT10/2021) và gửi định kỳ tự động qua sFTP |
-| **Bảo mật** | Mã hóa an toàn mật khẩu (AES-128 Fernet) lưu trữ dưới database |
+| **Modbus Tester** | Kiểm tra cổng serial, quét slave ID, đọc/ghi thủ công |
+| **Modbus TCP Server** | Xuất dữ liệu realtime cho SCADA / Central App qua LAN |
+| **Monitor** | Polling tự động, hiển thị giá trị realtime, trending chart (Qt Graphs) |
+| **Lịch sử** | Tra cứu dữ liệu quá khứ theo dải thời gian |
+| **Báo cáo** | Sinh file báo cáo TXT và gửi định kỳ qua FTP |
+| **Settings** | Cấu hình trạm, Modbus, cảm biến, FTP, REST API |
+| **Bảo mật** | Mật khẩu mã hóa AES lưu trong SQLite |
 
 ---
 
-## Yêu cầu hệ thống
+## Log
 
-- **Phần cứng**: Raspberry Pi 4/5 (ARM64), màn hình cảm ứng 7", USB-RS485 Dongle.
-- **OS**: Raspberry Pi OS 64-bit (Bookworm trở lên)
-- **Môi trường chạy**: App chạy trực tiếp dưới dạng **Binary Standalone** (biên dịch bằng Nuitka) thông qua Systemd. Do thiết lập này, **Không khuyến khích chạy trực tiếp chế độ Production trên máy dev (Windows/Mac)**.
-
----
-
-## CI/CD & OTA Workflow (Quy trình triển khai)
-
-Dự án này sử dụng kiến trúc **Tích hợp liên tục và Triển khai tự động (Continuous Deployment - CI/CD)** mạnh mẽ tích hợp sâu vào GitHub Actions.
-
-### 1. Trên máy phát triển (Laptop/PC)
-File `deploy.sh` giờ đây đóng vai trò như một **App Manager Interactive** giúp tự động hóa quá trình đẩy code lên Pi để build:
-
-1. Chạy lệnh:
-   ```bash
-   ./deploy.sh
-   ```
-2. Chọn Option `1` (Release phiên bản mới).
-3. Nhập số Version (Ví dụ: `v1.0.0`).
-4. Script sẽ tự động tạo Git Tag và vòng lặp `git push origin v1.0.0`.
-
-### 2. Trên GitHub Actions
-Ngay khi có một Tag `v*.*.*` mới được đẩy lên, Github Actions sẽ:
-- Trigger workflow `ci-cd.yml` (Đã cấu hình sử dụng môi trường Node.js 24 native).
-- Đẩy yêu cầu lệnh Build về lại một **Self-Hosted Runner (Máy Raspberry Pi 4 ARM64)**.
-- Raspberry Pi tự động chạy `Nuitka3` biên dịch toàn bộ source code thành 1 file nhị phân duy nhất (`datalogger`) trong vòng 10-15 phút.
-- Github Actions sẽ tự động đóng gói file binary này cùng giao diện (thư mục `ui/`, `config/`, và `deploy.sh`) thành 1 file `datalogger-release-v1.0.0.tar.gz`.
-- Cuối cùng, file này được đính kèm vào mục **Releases** của Repository.
-
-### 3. Cập nhật OTA trên Edge Device (Máy Pi của Khách hàng)
-Phần mềm Data Logger đang chạy tại nhà máy hoàn toàn có khả năng tự cập nhật bản thân nó thông qua mạng Internet:
-
-1. Vào tab **Settings > General** trên ứng dụng Data Logger.
-2. Nhấn nút **"Kiểm tra cập nhật (OTA)"**.
-3. App (Thông qua `core/updater.py`) sẽ gọi lên GitHub API để tìm bản Release mới nhất.
-4. Nếu có bản mới, nó sẽ tự bật thông báo xác nhận an toàn (`QMessageBox`).
-5. Nếu người dùng **Đồng ý**, app tải file `.tar.gz` về `/tmp` và gọi `deploy.sh --ota`.
-   - Dừng service `datalogger` an toàn.
-   - Trích xuất dữ liệu, RSync đè file mới (cam kết bảo vệ `datalogger.db`, thư mục `config`, `logs`).
-   - Tự động daemon-reload và khởi động lại.
-
----
-
-## Các thao tác với `deploy.sh` dành cho System Admin
-
-Tất cả các tính năng quản lý thiết bị đều nằm gọn trong script thần thánh báo cáo này. 
-
-Mở Terminal trên máy Pi (hoặc chạy qua SSH) và gõ:
 ```bash
-./deploy.sh
-```
+# Application log
+tail -f logs/app.log
 
-Menu Interactive sẽ hiển thị như sau:
-```text
-===========================================
-    DATA LOGGER - DEPLOY & OTA MANAGER     
-===========================================
- 1. Release phiên bản mới (Git Tag -> CI/CD)
- 2. Build binary Nuitka thủ công trên Pi
- 3. Cài đặt SystemD service (--service)
- 4. Cập nhật OTA cài File thủ công (--ota)
- 5. Xem version hiện tại
- 6. Thoát
-===========================================
+# SystemD (khi chạy dưới service)
+journalctl -u datalogger -f
 ```
-
-**Các Argument truyền thẳng (Dành cho Auto-script):**
-- `./deploy.sh --service`: Thiết lập file `/etc/systemd/system/datalogger.service`, enable tự khởi động cùng OS.
-- `./deploy.sh --ota /tmp/file.tar.gz`: Giải nén, thiết lập RSync loại trừ (-exclude) đè bản cập nhật Firmware, khởi động lại app.
-- `./deploy.sh --version`: Xem bản `VERSION` hiện tại.
 
 ---
 
-## Log & Maintenance
+## CI/CD
 
-Toàn bộ log được chia ra làm 2 hệ thống rõ ràng:
-1. **Application Log** (Các lỗi do phần mềm như Modbus timeout, FTP fail):
-   ```bash
-   tail -f var/logs/app.log
-   ```
-2. **SystemD Log** (Các lỗi liên quan tới hệ điều hành, crash daemon, permission):
-   ```bash
-   journalctl -u datalogger -f
-   ```
+Tag `v*.*.*` → GitHub Actions trigger `release-build.yml`:
+1. Self-hosted runner (ARM64) cài Qt 6 từ apt
+2. Build C++ bằng CMake
+3. Đóng gói `DataLogger` + `config/` + `resources/` → `datalogger-release-vX.Y.Z.tar.gz`
+4. Đính kèm vào GitHub Releases
 
----
-
-## Stack công nghệ cốt lõi
-
-| Thành phần | Công nghệ |
-|---|---|
-| **Core & OOP** | Python 3.12+ |
-| **Giao diện (UI)** | PySide6 6.x + QML (Qt Quick Controls 2) |
-| **Cơ sở dữ liệu** | SQLite 3 (Cấu hình High-Performance **WAL** Mode & Custom Cache -20000) thông qua **SQLModel** |
-| **Giao thức Công nghiệp**| pymodbus 3.x (Hỗ trợ USB-RS485 RTU). Cơ chế Auto-Polling đa luồng bằng `QThread` |
-| **Bảo mật** | cryptography (Fernet AES-128) để giấu mật khẩu đăng nhập, chống đọc ngược SQL |
-| **Internet & Cloud** | asyncssh (sFTP) + paho-mqtt (Telemetry Gateway Skeleton) |
-| **DevOps & Build**| **Nuitka standalone** biên dịch C++, đóng gói bằng **GitHub Actions** Self-hosted runner. |
-
-*(Dự án được bảo trì nội bộ).*
+*(Dự án được bảo trì nội bộ.)*

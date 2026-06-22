@@ -2,16 +2,16 @@ name: Dev Build
 
 on:
   push:
-    branches:
-      - main
+    branches: [main, master, dev]
     paths:
-      - '**.py'
-      - '**.qml'
-      - '**.sh'
-      - '**.toml'
-      - '**.ini'
-      - 'scripts/**'
-      - '.github/workflows/dev-build.yml'
+      - "**.cpp"
+      - "**.h"
+      - "**.qml"
+      - "CMakeLists.txt"
+      - "cmake/**"
+      - "packaging/**"
+      - "resources/**"
+      - ".github/workflows/**"
   workflow_dispatch:
 
 concurrency:
@@ -20,92 +20,114 @@ concurrency:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  QT_VERSION: "6.11.1"
+  QT_MODULES: qtserialbus qtserialport qtgraphs qttasktree qtquick3d qtshadertools qthttpserver
+  AQT_SOURCE: git+https://github.com/miurahr/aqtinstall.git@8c3695d4a4e1ceabf6a74dc6c79681656dc6b74b
+
+permissions:
+  contents: read
 
 jobs:
-  build-dev:
-    name: Build & Package (Dev)
+  build-deb:
     if: "!contains(github.event.head_commit.message, 'chore(release):')"
-    runs-on: [self-hosted, linux, arm64]
-
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
 
-      - name: Install System Dependencies
+      - name: Read version
+        id: meta
+        run: |
+          VERSION=$(grep -E '^project\(DataLogger VERSION' CMakeLists.txt \
+            | sed -E 's/.*VERSION ([0-9.]+).*/\1/')
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Install system packages
         run: |
           sudo apt-get update
-          sudo apt-get install -y patchelf ccache rsync
+          sudo apt-get install -y \
+            build-essential libgl1-mesa-dev libfontconfig1-dev libdbus-1-dev libxkbcommon-dev \
+            libegl1 libgl1 libglib2.0-0 libxkbcommon0 libxkbcommon-x11-0 \
+            libdbus-1-3 libfontconfig1 libxcb-cursor0 libxcb-icccm4 \
+            libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 \
+            libxcb-shape0 libxcb-sync1 libxcb-xfixes0 libxcb-xkb1 \
+            patchelf dpkg-dev
 
-      - name: Cache pip
-        uses: actions/cache@v5
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4.3.1
         with:
-          path: ~/.cache/pip
-          key: pip-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pyproject.toml') }}
-          restore-keys: |
-            pip-${{ runner.os }}-${{ runner.arch }}-
+          version: ${{ env.QT_VERSION }}
+          host: linux
+          target: desktop
+          arch: linux_gcc_64
+          modules: ${{ env.QT_MODULES }}
+          dir: ${{ runner.workspace }}
+          install-deps: false
+          aqtsource: ${{ env.AQT_SOURCE }}
+          cache: true
+          cache-key-prefix: qt611-linux
 
-      - name: Cache Nuitka
-        uses: actions/cache@v5
+      - name: Build .deb
+        run: |
+          chmod +x packaging/linux/cpack_deb.sh
+          packaging/linux/cpack_deb.sh
+
+      - name: Upload .deb artifact
+        uses: actions/upload-artifact@v6
         with:
-          path: ~/.cache/Nuitka
-          key: nuitka-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pyproject.toml', 'scripts/build_nuitka.sh', 'scripts/strip_pyside_qml_static.sh') }}
-          restore-keys: |
-            nuitka-${{ runner.os }}-${{ runner.arch }}-
-
-      - name: Setup Virtual Environment & Verify Python
-        run: |
-          python3 -m venv venv-build
-          venv-build/bin/python --version
-          venv-build/bin/pip install --upgrade pip
-
-      - name: Install dependencies
-        run: |
-          venv-build/bin/pip install -e .
-          venv-build/bin/pip install "Nuitka[onefile]"
-
-      - name: Build Standalone Binary with Nuitka
-        run: |
-          chmod +x scripts/build_nuitka.sh scripts/strip_pyside_qml_static.sh
-          PYTHON="${{ github.workspace }}/venv-build/bin/python" scripts/build_nuitka.sh
-
-      - name: Generate VERSION file & Package
-        run: |
-          set -euo pipefail
-          mkdir -p release_package
-
-          # Sinh VERSION và gắn mác dev cùng hash của commit
-          PYTHONPATH=. venv-build/bin/python -c "import core._version as v; print(v.__version__)" > VERSION.tmp
-          echo "v$(cat VERSION.tmp)-dev-${GITHUB_SHA::7}" > VERSION
-
-          # Copy các file cần thiết
-          cp VERSION deploy.sh release_package/
-          if [ -f datalogger ]; then
-            cp datalogger release_package/
-          else
-            echo "::error::Nuitka binary 'datalogger' not found"
-            exit 1
-          fi
-          cp -r config ui release_package/
-          [ -d docs ] && cp -r docs release_package/
-
-          # Nén tarball
-          tar -czvf datalogger-dev-snapshot.tar.gz -C release_package .
-
-      - name: Build .deb package
-        run: |
-          chmod +x scripts/build_deb.sh
-          VERSION="$(cat VERSION | tr -d '[:space:]')"
-          VERSION="${VERSION#v}"
-          ARCH="arm64"
-          scripts/build_deb.sh "$VERSION" "$ARCH"
-          echo "DEB_FILE=datalogger_${VERSION}_${ARCH}.deb" >> "$GITHUB_ENV"
-
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: datalogger-dev-${{ github.sha }}
-          path: |
-            datalogger-dev-snapshot.tar.gz
-            *.deb
-          retention-days: 7
+          name: data-logger-dev-deb-${{ github.sha }}
+          path: dist/data-logger-app_${{ steps.meta.outputs.version }}_amd64.deb
           if-no-files-found: error
+          retention-days: 7
+
+  build-deb-arm64:
+    if: "!contains(github.event.head_commit.message, 'chore(release):')"
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Read version
+        id: meta
+        run: |
+          VERSION=$(grep -E '^project\(DataLogger VERSION' CMakeLists.txt \
+            | sed -E 's/.*VERSION ([0-9.]+).*/\1/')
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Install system packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential libgl1-mesa-dev libfontconfig1-dev libdbus-1-dev libxkbcommon-dev \
+            libegl1 libgl1 libglib2.0-0 libxkbcommon0 libxkbcommon-x11-0 \
+            libdbus-1-3 libfontconfig1 libxcb-cursor0 libxcb-icccm4 \
+            libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 \
+            libxcb-shape0 libxcb-sync1 libxcb-xfixes0 libxcb-xkb1 \
+            patchelf dpkg-dev
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4.3.1
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: linux
+          target: desktop
+          arch: linux_gcc_arm64
+          modules: ${{ env.QT_MODULES }}
+          dir: ${{ runner.workspace }}
+          install-deps: false
+          aqtsource: ${{ env.AQT_SOURCE }}
+          cache: true
+          cache-key-prefix: qt611-linux-arm64
+
+      - name: Build .deb
+        run: |
+          chmod +x packaging/linux/cpack_deb.sh
+          packaging/linux/cpack_deb.sh
+
+      - name: Upload .deb artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: data-logger-dev-deb-arm64-${{ github.sha }}
+          path: dist/data-logger-app_${{ steps.meta.outputs.version }}_arm64.deb
+          if-no-files-found: error
+          retention-days: 7

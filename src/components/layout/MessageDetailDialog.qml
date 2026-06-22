@@ -1,0 +1,63 @@
+import QtQuick
+import QtQuick.Controls.Material
+import QtQuick.Layouts
+
+import DataLogger.Theme
+
+Popup {
+    id: root
+
+    parent: Overlay.overlay
+    anchors.centerIn: parent
+    width: Math.min(440, parent.width - 32)
+    padding: Theme.spacingL
+    modal: true
+    focus: true
+    closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+
+    property string detailTitle: ""
+    property string detailBody: ""
+
+    Connections {
+        target: AppNotifier
+        function onDetailRequested(title, body) {
+            root.detailTitle = title
+            root.detailBody = body
+            root.open()
+        }
+    }
+
+    background: Rectangle {
+        color: AppColors.surfaceContainerLow
+        radius: AppTheme.cardRadius
+        border.color: AppColors.elevatedBorder
+        border.width: 1
+    }
+
+    contentItem: ColumnLayout {
+        spacing: Theme.spacingSM
+
+        Label {
+            text: root.detailTitle
+            font: AppTypography.titleMedium
+            color: AppColors.primaryText
+            Layout.fillWidth: true
+            wrapMode: Text.WordWrap
+        }
+
+        Label {
+            text: root.detailBody
+            font: AppTypography.bodyMedium
+            color: AppColors.textSubtle
+            Layout.fillWidth: true
+            wrapMode: Text.WordWrap
+        }
+
+        AppButton {
+            text: qsTr("Close")
+            variant: "tonal"
+            Layout.alignment: Qt.AlignHCenter
+            onClicked: root.close()
+        }
+    }
+}

@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Data Logger
+Comment=Modbus data logger for sensors and transmission
+Exec=DataLogger
+Icon=data-logger
+StartupWMClass=DataLogger
+Terminal=false
+Categories=Utility;
