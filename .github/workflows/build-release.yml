@@ -55,8 +55,6 @@ jobs:
     timeout-minutes: 240
     steps:
       - uses: actions/checkout@v6
-        with:
-          ref: ${{ needs.prepare.outputs.ref }}
 
       - name: Sync CMake project version
         env:
