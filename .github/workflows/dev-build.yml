@@ -31,7 +31,7 @@ jobs:
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 240
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Read version
         id: meta
@@ -42,7 +42,7 @@ jobs:
 
       - name: Restore Qt ${{ env.QT_VERSION }} cache
         id: cache-qt
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ${{ env.QT_INSTALL_DIR }}
           key: qt-${{ env.QT_VERSION }}-arm64-ubuntu2404-v1
@@ -139,7 +139,7 @@ jobs:
           packaging/linux/cpack_deb.sh
 
       - name: Upload .deb artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: data-logger-dev-deb-arm64-${{ github.sha }}
           path: dist/data-logger-app_${{ steps.meta.outputs.version }}_arm64.deb
