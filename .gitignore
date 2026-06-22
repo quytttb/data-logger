@@ -33,4 +33,5 @@ var/
 
 # IDE
 .idea/
+.qmlls.ini
 .directory

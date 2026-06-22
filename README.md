@@ -139,8 +139,8 @@ Bật trong **Settings → Connection → HTTP REST Server**.
 | Method | Path | Auth | Mục đích |
 |--------|------|------|----------|
 | GET | `/api/v1/readings` | Bearer | Snapshot giá trị cảm biến hiện tại |
-| GET | `/api/v1/config` | Bearer | Đọc cấu hình |
-| POST | `/api/v1/config` | Bearer | Cập nhật cấu hình từ xa |
+| GET | `/api/v1/config` | Bearer | Đọc cấu hình (gồm cả cấu hình từng cảm biến) |
+| POST | `/api/v1/config` | Bearer | Cập nhật cấu hình từ xa (chỉ các trường app-config) |
 
 Test nhanh:
 
@@ -148,6 +148,45 @@ Test nhanh:
 TOKEN="<bearer-token-từ-UI>"
 curl http://<ip_logger>:8080/api/v1/readings -H "Authorization: Bearer $TOKEN"
 ```
+
+### `GET /api/v1/config` — response
+
+data-logger (edge) là **Source of Truth** cho cấu hình cảm biến. Mảng `sensors[]`
+được Central App đọc **read-only** (ví dụ `decimals` — số chữ số thập phân hiển thị).
+`POST /api/v1/config` **không** ghi các trường cảm biến (decimals sửa tại edge).
+
+```json
+{
+  "station_code": "DL-001",
+  "station_name": "Data Logger",
+  "poll_interval": 3,
+  "serial_port": "/dev/ttyUSB0",
+  "serial_baudrate": 9600,
+  "config_revision": 12,
+  "sensors": [
+    {
+      "id": 1,
+      "name": "Nhiệt độ",
+      "unit": "°C",
+      "sensor_type": "ANALOG",
+      "decimals": 2,
+      "report_index": 0,
+      "slave_id": 1,
+      "register_address": 0
+    }
+  ]
+}
+```
+
+Khóa join với dữ liệu Modbus của edge:
+
+- **ANALOG**: `sensors[].id` **==** `sensor_id` trên wire FC03 (cùng là primary key DB). Central
+  gắn live value + `decimals` + history theo khóa này.
+- **DI/DO**: map theo **bit index** của FC02/FC01, bằng `sensors[].register_address`.
+  (`decimals` không áp dụng cho DI/DO — hiển thị ON/OFF.)
+
+> `config_revision` tăng mỗi khi cấu hình thay đổi — **bao gồm cả thêm/sửa/xóa cảm biến**
+> (đổi `decimals`, threshold, scaling...) — để Central có thể phát hiện drift nếu cần.
 
 ---
 

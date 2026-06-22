@@ -32,3 +32,6 @@ add_subdirectory(src/core)
 add_subdirectory(src/theme)
 add_subdirectory(src/components)
 add_subdirectory(src/app)
+
+include(${CMAKE_SOURCE_DIR}/cmake/CPackOptions.cmake)
+
