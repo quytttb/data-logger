@@ -70,9 +70,10 @@ Popup {
             horizontalAlignment: Text.AlignHCenter
         }
 
-        ThemedButton {
+        AppButton {
             visible: !root.isConfirmMode
             text: "Close"
+            variant: "tonal"
             Layout.alignment: Qt.AlignHCenter
             onClicked: root.close()
         }
@@ -82,28 +83,18 @@ Popup {
             Layout.fillWidth: true
             spacing: 10
 
-            ThemedButton {
+            AppButton {
                 text: root.cancelButtonText
+                variant: "tonal"
                 Layout.fillWidth: true
                 onClicked: root.close()
             }
 
-            Button {
-                id: confirmBtn
+            AppButton {
                 text: root.confirmButtonText
+                font.bold: true
                 Layout.fillWidth: true
-                background: Rectangle {
-                    color: root.confirmButtonColor
-                    radius: Theme.radiusSmall
-                    opacity: confirmBtn.pressed ? 0.7 : 1.0
-                }
-                contentItem: Text {
-                    text: confirmBtn.text
-                    color: Theme.textOnColoredBtn
-                    font.bold: true
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                }
+                accent: root.confirmButtonColor
                 onClicked: {
                     if (root.confirmCallback) root.confirmCallback()
                     root.close()

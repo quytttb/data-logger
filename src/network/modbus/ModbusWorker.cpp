@@ -1,5 +1,6 @@
 #include "ModbusWorker.h"
 #include "utils/Formula.h"
+#include "utils/ModbusCodec.h"
 #include <QModbusDataUnit>
 #include <QSerialPort>
 #include <QDateTime>
@@ -10,16 +11,12 @@
 #include <cmath>
 #include <utility>
 
-// Forward declaration — defined at end of file
-static double decodeRegisters(const QVector<quint16> &regs, const QString &dataType, const QString &fmt);
-
 ModbusWorker::ModbusWorker(QObject *parent) : QObject(parent) {}
 
 ModbusWorker::~ModbusWorker() {
-    if (m_client) {
-        m_client->disconnectDevice();
-        delete m_client;
-    }
+    // m_client cleanup is handled by stop() which runs on the correct thread.
+    // By the time the destructor is called (via deleteLater after thread finished),
+    // stop() has already run and disconnected/deleted the client.
 }
 
 void ModbusWorker::configure(const QString &port, int baudrate, int bytesize,
@@ -159,21 +156,15 @@ void ModbusWorker::pollAnalog(const QVariantMap &cfg) {
     int sensorId    = cfg["id"].toInt();
     int slaveId     = cfg["slave_id"].toInt();
     int address     = cfg["register_address"].toInt();
-    QString regType = cfg.value("register_type", "holding").toString();
+    const QString regTypeRaw = cfg.value("register_type", "holding").toString();
+    const QString regType    = ModbusCodec::normalizeRegisterType(regTypeRaw);
     QString dataType= cfg.value("data_type", "int16").toString();
     QString dataFmt = cfg.value("data_format", "AB").toString();
     QString coeff   = cfg.value("coefficient", "{}").toString();
 
     // Determine QModbusDataUnit::RegisterType
-    QModbusDataUnit::RegisterType regEnum = QModbusDataUnit::HoldingRegisters;
-    int count = (dataType == "float32" || dataType == "int32" || dataType == "uint32") ? 2 : 1;
-
-    if (regType == "input" || regType == "input register")
-        regEnum = QModbusDataUnit::InputRegisters;
-    else if (regType == "coil")
-        regEnum = QModbusDataUnit::Coils;
-    else if (regType == "discrete_input" || regType == "discrete input")
-        regEnum = QModbusDataUnit::DiscreteInputs;
+    QModbusDataUnit::RegisterType regEnum = ModbusCodec::toRegisterEnum(regType);
+    int count = ModbusCodec::registerCountForDataType(dataType);
 
     QModbusDataUnit request(regEnum, address, count);
     auto *reply = m_client->sendReadRequest(request, slaveId);
@@ -205,7 +196,7 @@ void ModbusWorker::pollAnalog(const QVariantMap &cfg) {
         QVector<quint16> regs;
         for (int i = 0; i < unit.valueCount(); ++i)
             regs.append(unit.value(i));
-        rawValue = decodeRegisters(regs, dataType, dataFmt);
+        rawValue = ModbusCodec::decodeRegisters(regs, dataType, dataFmt);
     }
 
     double value = Formula::applyFormula(rawValue, coeff);
@@ -214,8 +205,10 @@ void ModbusWorker::pollAnalog(const QVariantMap &cfg) {
     QString alarmType;
     auto minTh = cfg.value("min_threshold");
     auto maxTh = cfg.value("max_threshold");
-    if (!minTh.isNull() && value <= minTh.toDouble()) { isAlarm = true; alarmType = "min"; }
-    if (!maxTh.isNull() && value >= maxTh.toDouble()) {
+    const bool hasMin = !minTh.isNull();
+    const bool hasMax = !maxTh.isNull();
+    if (hasMin && value <= minTh.toDouble()) { isAlarm = true; alarmType = "min"; }
+    if (hasMax && value >= maxTh.toDouble()) {
         isAlarm = true;
         alarmType = alarmType.isEmpty() ? "max" : "min+max";
     }
@@ -257,7 +250,7 @@ void ModbusWorker::pollAnalog(const QVariantMap &cfg) {
         {"status",      status},
         {"recorded_at", QDateTime::currentDateTime().toString(Qt::ISODate)},
         {"is_alarm",    isAlarm},
-        {"alarm_type",  alarmType},
+        {"alarm_type",  alarmType.isEmpty() ? QStringLiteral("") : alarmType},
         {"di_states",   diStatesList},
         {"do_states",   doStatesList},
     });
@@ -288,7 +281,7 @@ void ModbusWorker::pollStandaloneDi(const QVariantMap &cfg) {
         {"status",      QString("00")},
         {"recorded_at", QDateTime::currentDateTime().toString(Qt::ISODate)},
         {"is_alarm",    false},
-        {"alarm_type",  QString()},
+        {"alarm_type",  QStringLiteral("")},
         {"di_states",   QVariantList{}},
     });
 }
@@ -319,7 +312,7 @@ void ModbusWorker::pollStandaloneDo(const QVariantMap &cfg) {
         {"status",      state ? QString("ON") : QString("OFF")},
         {"recorded_at", QDateTime::currentDateTime().toString(Qt::ISODate)},
         {"is_alarm",    false},
-        {"alarm_type",  QString()},
+        {"alarm_type",  QStringLiteral("")},
         {"di_states",   QVariantList{}},
     });
 }
@@ -397,23 +390,4 @@ void ModbusWorker::driveDoRelays(int sensorId, bool isAlarm, const QString &alar
             reply->deleteLater();
         }
     }
-}
-
-// Register decoding helper (static free function)
-static double decodeRegisters(const QVector<quint16> &regs, const QString &dataType, const QString &fmt) {
-    if (regs.isEmpty()) return 0.0;
-    QString dt = dataType.toLower();
-    if (dt == "uint16") return regs[0];
-    if (dt == "int16")  { qint16 v = static_cast<qint16>(regs[0]); return v; }
-
-    if (regs.size() < 2) return regs[0];
-    quint32 raw32 = 0;
-    QString f = fmt.toUpper();
-    if (f == "CDAB" || f == "BA") raw32 = (quint32(regs[1]) << 16) | regs[0];
-    else                           raw32 = (quint32(regs[0]) << 16) | regs[1];
-
-    if (dt == "uint32") return static_cast<double>(raw32);
-    if (dt == "int32")  return static_cast<double>(static_cast<qint32>(raw32));
-    if (dt == "float32") { float fv; memcpy(&fv, &raw32, sizeof(float)); return fv; }
-    return regs[0];
 }

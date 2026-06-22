@@ -7,12 +7,16 @@
 #include <QHash>
 #include <QQueue>
 #include <deque>
+#include <atomic>
 #include <QtQmlIntegration/qqmlintegration.h>
+#include "utils/QmlSingleton.h"
 
-class QJSEngine;
-class QQmlEngine;
 class MonitorModel;
 class ModbusTcpServerService;
+class DatabaseWorker;
+struct AppConfig;
+struct Sensor;
+struct AnalogDigitalLink;
 
 // Orchestrates ModbusWorker + DatabaseWorker threads and feeds MonitorModel.
 class MonitorController : public QObject {
@@ -40,9 +44,7 @@ public:
                                 ModbusTcpServerService *modbusTcp = nullptr,
                                 QObject *parent = nullptr);
 
-    static MonitorController *instance();
-    static void setInstance(MonitorController *controller);
-    static MonitorController *create(QQmlEngine *, QJSEngine *);
+    DECLARE_QML_SINGLETON(MonitorController)
 
     bool   isPolling()        const { return m_isPolling; }
     bool   isStopping()       const { return m_isStopping; }
@@ -65,6 +67,9 @@ public slots:
     void stopPolling();
     void stopPollingSync();
     void refreshSensors();
+    // Overload: accepts pre-built sensor maps from SensorListModel to skip
+    // a redundant DB read (called from main.cpp after each model reset).
+    void refreshSensorsFromList(const QList<QVariantMap> &maps);
     void registerHeartbeat(const QString &workerName);
     void writeDo(int sensorId, bool value);
 
@@ -97,6 +102,16 @@ private slots:
     void checkThreadsFinished();
 
 private:
+    // startPolling() helpers — split out for readability.
+    void buildPollSensors(const QList<Sensor> &allSensors,
+                          const QList<AnalogDigitalLink> &allLinks,
+                          QList<QVariantMap> &pollSensors,
+                          QHash<int, QList<QVariantMap>> &digitalIoMap);
+    void configureMbtcp(const QList<Sensor> &allSensors);
+    void startWorkerThreads(const AppConfig &cfg,
+                            const QList<QVariantMap> &pollSensors,
+                            const QHash<int, QList<QVariantMap>> &digitalIoMap);
+
     void finalizeStop();
     void applyStatus(const QString &tag, int mode = -1);
     void resetTrendBuffers(const QList<QVariantMap> &sensors);
@@ -111,13 +126,15 @@ private:
     MonitorModel            *m_model;
     ModbusTcpServerService  *m_mbtcp;
 
-    QThread  *m_modbusThread = nullptr;
-    QThread  *m_dbThread     = nullptr;
-    QObject  *m_modbusWorker = nullptr;
-    QObject  *m_dbWorker     = nullptr;
+    QThread        *m_modbusThread = nullptr;
+    QThread        *m_dbThread     = nullptr;
+    QObject        *m_modbusWorker = nullptr;
+    DatabaseWorker *m_dbWorker     = nullptr;
 
-    bool     m_isPolling  = false;
-    bool     m_isStopping = false;
+    std::atomic<bool> m_isPolling          {false};
+    std::atomic<bool> m_rtuConnected       {false};
+    bool              m_isStopping        = false;
+    bool              m_recoveryInProgress = false;
     int      m_statusMode = STATUS_IDLE;
     int      m_errorCount = 0;
     QString  m_statusTag  = "ready";
@@ -135,7 +152,6 @@ private:
     // REST readings cache
     mutable QMutex           m_readingsMutex;
     QHash<int, QVariantMap>  m_readingsCache;
-    bool                     m_rtuConnected = false;
 
     // Watchdog
     QTimer *m_watchdogTimer = nullptr;

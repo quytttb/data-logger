@@ -12,21 +12,7 @@
 #include <QJSEngine>
 #include <cmath>
 
-static SettingsController *g_settingsInstance = nullptr;
-
-SettingsController *SettingsController::instance() { return g_settingsInstance; }
-
-void SettingsController::setInstance(SettingsController *controller)
-{
-    g_settingsInstance = controller;
-}
-
-SettingsController *SettingsController::create(QQmlEngine *, QJSEngine *)
-{
-    Q_ASSERT(g_settingsInstance);
-    QQmlEngine::setObjectOwnership(g_settingsInstance, QQmlEngine::CppOwnership);
-    return g_settingsInstance;
-}
+IMPLEMENT_QML_SINGLETON(SettingsController)
 
 SettingsController::SettingsController(QObject *parent) : QObject(parent) {}
 
@@ -55,18 +41,17 @@ void SettingsController::setTheme(const QString &v) {
 
 bool SettingsController::saveTheme(const QString &value) {
     setTheme(value);
-    auto db = Database::openConnection();
+    ScopedDbConnection db;
     AppConfigDao dao(db);
-    const bool ok = dao.save(m_cfg);
-    db.close();
-    return ok;
+    return dao.save(m_cfg);
 }
 
 void SettingsController::loadConfig() {
-    auto db = Database::openConnection();
-    AppConfigDao dao(db);
-    m_cfg = dao.load();
-    db.close();
+    {
+        ScopedDbConnection db;
+        AppConfigDao dao(db);
+        m_cfg = dao.load();
+    }
     emit configLoaded();
     emit themeChanged();
     emit provisionQrChanged();
@@ -79,15 +64,17 @@ void SettingsController::saveConfig() {
         return;
     }
 
-    auto db = Database::openConnection();
-    AppConfigDao dao(db);
+    bool ok;
+    {
+        ScopedDbConnection db;
+        AppConfigDao dao(db);
 
-    // Auto-generate REST token on first enable
-    if (m_cfg.restApiEnabled && m_cfg.restApiToken.trimmed().isEmpty())
-        m_cfg.restApiToken = QUuid::createUuid().toString(QUuid::WithoutBraces).remove('-');
+        // Auto-generate REST token on first enable
+        if (m_cfg.restApiEnabled && m_cfg.restApiToken.trimmed().isEmpty())
+            m_cfg.restApiToken = QUuid::createUuid().toString(QUuid::WithoutBraces).remove('-');
 
-    bool ok = dao.save(m_cfg);
-    db.close();
+        ok = dao.save(m_cfg);
+    }
 
     if (ok) {
         emit configLoaded();
@@ -107,19 +94,20 @@ void SettingsController::saveSerialConfig(const QString &port, int baudrate,
     m_cfg.serialParity   = parity;
     m_cfg.serialStopbits = stopbits;
 
-    auto db = Database::openConnection();
-    AppConfigDao dao(db);
-    dao.save(m_cfg);
-    db.close();
+    {
+        ScopedDbConnection db;
+        AppConfigDao dao(db);
+        dao.save(m_cfg);
+    }
     emit configLoaded();
 }
 
 void SettingsController::regenerateRestToken() {
-    auto db = Database::openConnection();
-    AppConfigDao dao(db);
-    QString token = dao.generateAndSaveToken();
-    m_cfg.restApiToken = token;
-    db.close();
+    {
+        ScopedDbConnection db;
+        AppConfigDao dao(db);
+        m_cfg.restApiToken = dao.generateAndSaveToken();
+    }
     emit configLoaded();
     emit configSaved();
     emit provisionQrChanged();
@@ -173,12 +161,6 @@ QString SettingsController::get_provision_qr_base64()
     m_qrTokenSnapshot = m_cfg.restApiToken;
     emit provisionQrChanged();
     return ProvisionQr::pngBase64(buildProvisionJson());
-}
-
-void SettingsController::checkUpdates()
-{
-    emit messageSent(QStringLiteral("Firmware update"),
-                     QStringLiteral("Automatic update check is not configured yet."));
 }
 
 QStringList SettingsController::validate() const {

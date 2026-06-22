@@ -8,9 +8,7 @@
 #include <QMutex>
 #include <functional>
 #include <QtQmlIntegration/qqmlintegration.h>
-
-class QJSEngine;
-class QQmlEngine;
+#include "utils/QmlSingleton.h"
 
 // Embeds a QHttpServer to serve the REST API on the LAN.
 class RestApiService : public QObject {
@@ -29,9 +27,7 @@ public:
 
     explicit RestApiService(QObject *parent);
 
-    static RestApiService *instance();
-    static void setInstance(RestApiService *service);
-    static RestApiService *create(QQmlEngine *, QJSEngine *);
+    DECLARE_QML_SINGLETON(RestApiService)
 
     QString state()             const { return m_state; }
     bool    isListening()       const { return m_state == STATE_LISTENING; }

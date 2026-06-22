@@ -72,6 +72,9 @@ Item {
         )
     }
 
+    property int _pendingWriteAddr: -1
+    property string _pendingWriteVal: ""
+
     function performWrite() {
         if (!TesterController.isConnected) {
             showError("Error", "Not connected to Modbus.")
@@ -83,25 +86,9 @@ Item {
         var regType = o.regTypeCombo.currentText
         var dataType = o.isBooleanType ? "uint16" : o.dataTypeCombo.currentText
         var slaveId = o.slaveSpin.value
-        var result = TesterController.write_single(regType, addr, valStr, slaveId, dataType)
-        if (result === "SUCCESS") {
-            showToast("Write OK", "Wrote " + valStr + " to address " + addr)
-
-            var found = false
-            for (var i = 0; i < scanModel.count; i++) {
-                if (scanModel.get(i).address === addr) {
-                    scanModel.setProperty(i, "value", valStr)
-                    found = true
-                    break
-                }
-            }
-            if (!found) {
-                scanModel.append({ "address": addr, "value": valStr })
-            }
-            _rebuildFiltered()
-        } else {
-            showError("Write Error", result)
-        }
+        testerRoot._pendingWriteAddr = addr
+        testerRoot._pendingWriteVal  = valStr
+        TesterController.write_single(regType, addr, valStr, slaveId, dataType)
     }
 
     function clearResultsTable() { scanModel.clear(); filteredModel.clear() }
@@ -124,6 +111,25 @@ Item {
             scanModel.append({ "address": addr, "value": val })
             if (!testerRoot.hideZeros || !testerRoot._isZeroValue(val))
                 filteredModel.append({ "address": addr, "value": val })
+        }
+        function onWriteResult(result) {
+            if (result.ok) {
+                var addr = testerRoot._pendingWriteAddr
+                var valStr = testerRoot._pendingWriteVal
+                testerRoot.showToast("Write OK", "Wrote " + valStr + " to address " + addr)
+                var found = false
+                for (var i = 0; i < scanModel.count; i++) {
+                    if (scanModel.get(i).address === addr) {
+                        scanModel.setProperty(i, "value", valStr)
+                        found = true
+                        break
+                    }
+                }
+                if (!found) scanModel.append({ "address": addr, "value": valStr })
+                testerRoot._rebuildFiltered()
+            } else {
+                testerRoot.showError("Write Error", result.error || "Write failed")
+            }
         }
     }
 
@@ -156,18 +162,20 @@ Item {
 
     onHideZerosChanged: _rebuildFiltered()
 
-    SplitView {
+    GridLayout {
         id: split
         anchors.fill: parent
-        orientation: testerRoot.narrow ? Qt.Vertical : Qt.Horizontal
+        columns: testerRoot.narrow ? 1 : 3
+        rowSpacing: 0
+        columnSpacing: 0
 
         ScrollView {
-            id: leftScroll; clip: true
-            SplitView.minimumWidth: 260
-            SplitView.preferredWidth: testerRoot.narrow ? -1 : 340
-            SplitView.preferredHeight: testerRoot.narrow ? 380 : -1
-            SplitView.fillWidth: testerRoot.narrow
-            SplitView.fillHeight: !testerRoot.narrow
+            id: leftScroll; clip: true; padding: 24
+            Layout.minimumWidth: testerRoot.narrow ? 0 : 260
+            Layout.preferredWidth: testerRoot.narrow ? -1 : Math.round((split.width - 1) * 0.4)
+            Layout.preferredHeight: testerRoot.narrow ? 380 : -1
+            Layout.fillWidth: testerRoot.narrow
+            Layout.fillHeight: !testerRoot.narrow
 
             ColumnLayout {
                 width: leftScroll.availableWidth; spacing: 8
@@ -199,8 +207,18 @@ Item {
             }
         }
 
+        // Fixed divider (non-draggable)
+        Rectangle {
+            color: AppColors.outlineVariant
+            Layout.fillWidth: testerRoot.narrow
+            Layout.fillHeight: !testerRoot.narrow
+            Layout.preferredWidth: testerRoot.narrow ? -1 : 1
+            Layout.preferredHeight: testerRoot.narrow ? 1 : -1
+        }
+
         Pane {
-            SplitView.fillWidth: true; SplitView.fillHeight: true; padding: 10
+            Layout.fillWidth: true; Layout.fillHeight: true; padding: 10
+            background: null
 
             ColumnLayout {
                 anchors.fill: parent; spacing: 8
@@ -209,33 +227,63 @@ Item {
 
                 Rectangle {
                     Layout.fillWidth: true; Layout.fillHeight: true
-                    color: Theme.bgDeep; border.color: Theme.borderDefault; radius: Theme.radiusSmall
+                    color: AppColors.surfaceContainerLow
+                    border.color: AppColors.elevatedBorder
+                    radius: AppTheme.cardRadius
+                    clip: true
 
                     ColumnLayout {
-                        anchors.fill: parent; anchors.margins: 8; spacing: 0
+                        anchors.fill: parent; spacing: 0
 
-                        RowLayout {
-                            Layout.fillWidth: true; Layout.preferredHeight: 28
-                            Label { text: "Address"; color: Theme.accent; font.bold: true; font.pixelSize: 13; Layout.preferredWidth: 100 }
-                            Label { text: "Value"; color: Theme.accent; font.bold: true; font.pixelSize: 13; Layout.fillWidth: true }
+                        // ── Header ──
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: AppTheme.tableHeaderHeight
+                            color: AppColors.surfaceContainerHigh
+                            topLeftRadius: AppTheme.cardRadius
+                            topRightRadius: AppTheme.cardRadius
+
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.leftMargin: 16; anchors.rightMargin: 16
+                                spacing: 8
+                                Label { text: "Address"; color: AppColors.tableHeaderText; font: AppTypography.labelLarge; Layout.preferredWidth: 100 }
+                                Label { text: "Value"; color: AppColors.tableHeaderText; font: AppTypography.labelLarge; Layout.fillWidth: true }
+                            }
+
+                            Rectangle {
+                                anchors.bottom: parent.bottom
+                                width: parent.width; height: 1
+                                color: AppColors.outline
+                            }
                         }
 
                         ListView {
                             id: resultsListView
                             Layout.fillWidth: true; Layout.fillHeight: true
-                            model: filteredModel; clip: true; spacing: 2
+                            model: filteredModel; clip: true; spacing: 0
+                            boundsBehavior: Flickable.StopAtBounds
                             delegate: Rectangle {
                                 id: resultRow
                                 required property int index
                                 required property int address
                                 required property string value
 
-                                width: ListView.view.width; height: 36
-                                color: resultRow.index % 2 === 0 ? Theme.bgPanel : Theme.bgSeparator
+                                width: ListView.view.width; height: 40
+                                color: "transparent"
+
+                                Rectangle {
+                                    anchors.bottom: parent.bottom
+                                    width: parent.width; height: 1
+                                    color: AppColors.outlineVariant
+                                }
+
                                 RowLayout {
-                                    anchors.fill: parent; anchors.margins: 5
-                                    Text { text: resultRow.address; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; Layout.preferredWidth: 100 }
-                                    Text { text: resultRow.value; color: Theme.statusOk; font.pixelSize: 14; font.bold: true; Layout.fillWidth: true }
+                                    anchors.fill: parent
+                                    anchors.leftMargin: 16; anchors.rightMargin: 16
+                                    spacing: 8
+                                    Text { text: resultRow.address; color: AppColors.tableCellMuted; font.pixelSize: 14; font.family: "monospace"; Layout.preferredWidth: 100 }
+                                    Text { text: resultRow.value; color: AppColors.success; font.pixelSize: 14; font.family: "monospace"; font.weight: Font.DemiBold; Layout.fillWidth: true; elide: Text.ElideRight }
                                 }
                             }
                         }

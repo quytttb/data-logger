@@ -13,7 +13,7 @@ public:
 
     void configure(const QString &address, int port,
                    const QString &username, const QString &password,
-                   const QString &remotePath, const QString &protocol);
+                   const QString &remotePath);
 
 public slots:
     void start();
@@ -41,6 +41,5 @@ private:
     QString m_username;
     QString m_password;
     QString m_remotePath;
-    QString m_protocol = "ftp";
     bool    m_running = false;
 };

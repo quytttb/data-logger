@@ -12,6 +12,7 @@ Rectangle {
     // ── Expose form fields ──
     property alias dMinThreshold: dMinThreshold
     property alias dMaxThreshold: dMaxThreshold
+    property alias dDecimals: dDecimals
     property alias dScalingMode: dScalingMode
     property alias dLinearA: dLinearA
     property alias dLinearB: dLinearB
@@ -37,6 +38,9 @@ Rectangle {
             TextField { id: dMinThreshold; Layout.fillWidth: true; placeholderText: text.length > 0 ? "" : "Empty = disabled"; inputMethodHints: Qt.ImhFormattedNumbersOnly }
             Text { text: "Max threshold:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
             TextField { id: dMaxThreshold; Layout.fillWidth: true; placeholderText: text.length > 0 ? "" : "Empty = disabled"; inputMethodHints: Qt.ImhFormattedNumbersOnly }
+
+            Text { text: "Decimals:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
+            SpinBox { id: dDecimals; from: 0; to: 6; value: 4; Layout.fillWidth: true }
         }
 
         Item { Layout.preferredHeight: 8 }

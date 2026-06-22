@@ -88,7 +88,7 @@ Rectangle {
 
                             UiIcon {
                                 anchors.centerIn: parent
-                                name: ["viewDashboard", "history", "showChart", "cog", "server"][navDelegate.index]
+                                name: ["viewDashboard", "history", "showChart", "cog", "codeBlocks"][navDelegate.index]
                                 size: 24
                                 iconColor: navDelegate.isActive
                                          ? AppColors.accentContainerFg
@@ -156,6 +156,7 @@ Rectangle {
         Column {
             width: parent.width
             spacing: 16
+            Layout.bottomMargin: 12
 
             // Status Column (Line by Line)
             Column {

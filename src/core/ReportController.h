@@ -3,10 +3,10 @@
 #include <QString>
 #include <QDateTime>
 #include <QTimer>
+#include <atomic>
 #include <QtQmlIntegration/qqmlintegration.h>
+#include "utils/QmlSingleton.h"
 
-class QJSEngine;
-class QQmlEngine;
 class FtpWorker;
 class SettingsController;
 
@@ -22,9 +22,7 @@ class ReportController : public QObject {
 public:
     explicit ReportController(QObject *parent);
 
-    static ReportController *instance();
-    static void setInstance(ReportController *controller);
-    static ReportController *create(QQmlEngine *, QJSEngine *);
+    DECLARE_QML_SINGLETON(ReportController)
 
     bool isRunning() const { return m_isRunning; }
     QString lastStatus() const { return m_lastStatus; }
@@ -59,4 +57,5 @@ private:
     bool                m_isRunning = false;
     QString             m_lastStatus = QStringLiteral("Idle");
     int                 m_pendingCount = 0;
+    std::atomic<bool>   m_generating {false};
 };

@@ -8,21 +8,7 @@
 #include <QFile>
 #include <QTextStream>
 
-static HistoryViewModel *g_historyVmInstance = nullptr;
-
-HistoryViewModel *HistoryViewModel::instance() { return g_historyVmInstance; }
-
-void HistoryViewModel::setInstance(HistoryViewModel *vm)
-{
-    g_historyVmInstance = vm;
-}
-
-HistoryViewModel *HistoryViewModel::create(QQmlEngine *, QJSEngine *)
-{
-    Q_ASSERT(g_historyVmInstance);
-    QQmlEngine::setObjectOwnership(g_historyVmInstance, QQmlEngine::CppOwnership);
-    return g_historyVmInstance;
-}
+IMPLEMENT_QML_SINGLETON(HistoryViewModel)
 
 HistoryViewModel::HistoryViewModel(QObject *parent) : QObject(parent)
 {
@@ -60,16 +46,24 @@ void HistoryViewModel::setError(const QString &msg)
 
 void HistoryViewModel::reloadFilters()
 {
-    auto db = Database::openConnection();
+    ScopedDbConnection db;
     SensorDao sensorDao(db);
-    const auto sensors = sensorDao.loadAll(true);
-    db.close();
+    const auto sensors = sensorDao.loadAll(/*activeOnly=*/true);
 
+    QList<QVariantMap> maps;
+    maps.reserve(sensors.size());
+    for (const auto &s : sensors)
+        maps.append({{"id", s.id}, {"name", s.name}});
+    reloadFiltersFromMaps(maps);
+}
+
+void HistoryViewModel::reloadFiltersFromMaps(const QList<QVariantMap> &maps)
+{
     m_sensorNames = {QStringLiteral("All sensors")};
-    m_sensorIds = {0};
-    for (const auto &s : sensors) {
-        m_sensorNames.append(s.name);
-        m_sensorIds.append(s.id);
+    m_sensorIds   = {0};
+    for (const auto &m : maps) {
+        m_sensorNames.append(m.value(QStringLiteral("name")).toString());
+        m_sensorIds.append(m.value(QStringLiteral("id")));
     }
     emit sensorFiltersChanged();
 }
@@ -90,11 +84,15 @@ void HistoryViewModel::search(const QString &fromDate, const QString &toDate, in
     }
 
     setError({});
+    if (m_watcher->isRunning()) {
+        m_watcher->cancel();
+        m_watcher->waitForFinished();
+    }
     setLoading(true);
     m_watcher->setFuture(QtConcurrent::run([sensorId, from, to]() -> HistorySearchResult {
         HistorySearchResult result;
-        auto db = Database::openConnection();
-        if (!db.isOpen()) {
+        ScopedDbConnection db;
+        if (!db.get().isOpen()) {
             result.error = QStringLiteral("Database not open.");
             return result;
         }
@@ -105,7 +103,6 @@ void HistoryViewModel::search(const QString &fromDate, const QString &toDate, in
             sensorMeta.insert(s.id, {s.name, s.unit});
 
         const auto records = dataDao.query(sensorId, from, to, 2000);
-        db.close();
 
         result.rows.reserve(records.size());
         for (const auto &d : records) {

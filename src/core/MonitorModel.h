@@ -4,9 +4,7 @@
 #include <QHash>
 #include <QVariantMap>
 #include <QtQmlIntegration/qqmlintegration.h>
-
-class QJSEngine;
-class QQmlEngine;
+#include "utils/QmlSingleton.h"
 
 // Live sensor card model for MonitorView.
 class MonitorModel : public QAbstractListModel {
@@ -25,9 +23,7 @@ public:
 
     explicit MonitorModel(QObject *parent);
 
-    static MonitorModel *instance();
-    static void setInstance(MonitorModel *model);
-    static MonitorModel *create(QQmlEngine *, QJSEngine *);
+    DECLARE_QML_SINGLETON(MonitorModel)
 
     int      rowCount(const QModelIndex &parent = {}) const override;
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
@@ -47,6 +43,7 @@ signals:
 private:
     struct Item {
         int     sensorId = 0;
+        int     decimals = 4;
         QString name, unit, sensorType;
         QString value = "---", rawValue = "---";
         QString status = "WAIT", lastUpdate;

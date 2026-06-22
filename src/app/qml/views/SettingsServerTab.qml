@@ -182,7 +182,7 @@ Item {
                     Text { text: "Port:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
                     TextField {
                         Layout.fillWidth: true
-                        text: SettingsController ? String(SettingsController.ftpPort) : "22"
+                        text: SettingsController ? String(SettingsController.ftpPort) : "21"
                         inputMethodHints: Qt.ImhDigitsOnly
                         onTextEdited: {
                             var p = parseInt(text)
@@ -204,20 +204,6 @@ Item {
                         text: SettingsController ? SettingsController.ftpPassword : ""
                         onTextEdited: { SettingsController.ftpPassword = text; root.configChanged = true }
                     }
-
-                    Text { text: "Protocol:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
-                    ComboBox {
-                        id: protocolCombo
-                        Layout.fillWidth: true
-                        model: ["ftp", "sftp"]
-                        currentIndex: {
-                            var v = SettingsController ? SettingsController.ftpProtocol : "ftp"
-                            return Math.max(0, model.indexOf(v))
-                        }
-                        onActivated: { SettingsController.ftpProtocol = currentText; root.configChanged = true }
-                    }
-
-
 
                 }
 

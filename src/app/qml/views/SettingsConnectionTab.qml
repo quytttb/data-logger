@@ -443,20 +443,23 @@ Item {
                                             }
                                         }
                                     }
-                                    ThemedToolButton {
+                                    AppButton {
                                         id: tokenShow
                                         checkable: true
                                         text: checked ? "Hide" : "Show"
+                                        variant: "outlined"
                                         font.pixelSize: Theme.fontLabelSize - 1
                                     }
-                                    ThemedToolButton {
+                                    AppButton {
                                         text: "Regenerate"
+                                        variant: "outlined"
                                         font.pixelSize: Theme.fontLabelSize - 1
-                                        onClicked: SettingsController.regenerate_rest_token()
+                                        onClicked: SettingsController.regenerateRestToken()
                                     }
-                                    ThemedToolButton {
+                                    AppButton {
                                         enabled: SettingsController.provisionQrAvailable
                                         iconName: "qrCode"
+                                        variant: "outlined"
                                         onClicked: {
                                             provisionQrPopup.refresh()
                                             provisionQrPopup.open()

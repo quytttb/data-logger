@@ -37,4 +37,5 @@ private:
     bool     m_running = false;
 
     static constexpr int kFlushIntervalMs = 1000;
+    static constexpr int kMaxQueueSize    = 10000;
 };

@@ -7,8 +7,10 @@ import DataLogger.Components
 
 Rectangle {
     id: root
-    color: Theme.bgPanel; radius: Theme.radiusCard
-    border.color: Theme.borderDefault; border.width: 1
+    color: AppColors.surfaceContainerLow
+    radius: AppTheme.cardRadius
+    border.color: AppColors.elevatedBorder
+    border.width: 1
 
     property alias listView: sensorListView
 
@@ -20,25 +22,44 @@ Rectangle {
         }
     }
 
+    // Shared column layout for header + rows (keeps cells aligned).
+    readonly property int colMarginH: 16
+    readonly property int colSpacing: 8
+
     ColumnLayout {
         anchors.fill: parent; spacing: 0
 
+        // ── Header ──
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 36
-            color: Theme.bgSeparator; radius: Theme.radiusTiny
+            Layout.preferredHeight: AppTheme.tableHeaderHeight
+            color: AppColors.surfaceContainerHigh
+            topLeftRadius: AppTheme.cardRadius
+            topRightRadius: AppTheme.cardRadius
+
             RowLayout {
-                anchors.fill: parent; anchors.leftMargin: 15; anchors.rightMargin: 15; spacing: 5
-                Text { text: "Name";     color: Theme.accent; font.bold: true; font.pixelSize: 13; Layout.preferredWidth: 120 }
-                Text { text: "Unit";     color: Theme.accent; font.bold: true; font.pixelSize: 13; Layout.preferredWidth: 50 }
-                Text { text: "Slave";    color: Theme.accent; font.bold: true; font.pixelSize: 13; Layout.preferredWidth: 45; horizontalAlignment: Text.AlignHCenter }
-                Text { text: "Addr";     color: Theme.accent; font.bold: true; font.pixelSize: 13; Layout.preferredWidth: 45; horizontalAlignment: Text.AlignHCenter }
-                Text { text: "Reg";      color: Theme.accent; font.bold: true; font.pixelSize: 13; Layout.preferredWidth: 50; horizontalAlignment: Text.AlignHCenter }
-                Text { text: "Type";     color: Theme.accent; font.bold: true; font.pixelSize: 13; Layout.preferredWidth: 65; horizontalAlignment: Text.AlignHCenter }
-                Text { text: "Format";   color: Theme.accent; font.bold: true; font.pixelSize: 13; Layout.preferredWidth: 55; horizontalAlignment: Text.AlignHCenter }
-                Text { text: "Intv";     color: Theme.accent; font.bold: true; font.pixelSize: 13; Layout.preferredWidth: 45; horizontalAlignment: Text.AlignHCenter }
-                Text { text: "Thresholds"; color: Theme.accent; font.bold: true; font.pixelSize: 13; Layout.fillWidth: true; horizontalAlignment: Text.AlignHCenter }
-                Text { text: "Active";   color: Theme.accent; font.bold: true; font.pixelSize: 13; Layout.preferredWidth: 50; horizontalAlignment: Text.AlignHCenter }
+                anchors.fill: parent
+                anchors.leftMargin: root.colMarginH
+                anchors.rightMargin: root.colMarginH
+                spacing: root.colSpacing
+
+                Text { text: "Name";       color: AppColors.tableHeaderText; font: AppTypography.labelLarge; Layout.preferredWidth: 120 }
+                Text { text: "Unit";       color: AppColors.tableHeaderText; font: AppTypography.labelLarge; Layout.preferredWidth: 50 }
+                Text { text: "Slave";      color: AppColors.tableHeaderText; font: AppTypography.labelLarge; Layout.preferredWidth: 45; horizontalAlignment: Text.AlignHCenter }
+                Text { text: "Addr";       color: AppColors.tableHeaderText; font: AppTypography.labelLarge; Layout.preferredWidth: 45; horizontalAlignment: Text.AlignHCenter }
+                Text { text: "Reg";        color: AppColors.tableHeaderText; font: AppTypography.labelLarge; Layout.preferredWidth: 50; horizontalAlignment: Text.AlignHCenter }
+                Text { text: "Type";       color: AppColors.tableHeaderText; font: AppTypography.labelLarge; Layout.preferredWidth: 65; horizontalAlignment: Text.AlignHCenter }
+                Text { text: "Format";     color: AppColors.tableHeaderText; font: AppTypography.labelLarge; Layout.preferredWidth: 55; horizontalAlignment: Text.AlignHCenter }
+                Text { text: "Intv";       color: AppColors.tableHeaderText; font: AppTypography.labelLarge; Layout.preferredWidth: 45; horizontalAlignment: Text.AlignHCenter }
+                Text { text: "Thresholds"; color: AppColors.tableHeaderText; font: AppTypography.labelLarge; Layout.fillWidth: true; horizontalAlignment: Text.AlignHCenter }
+                Text { text: "Active";     color: AppColors.tableHeaderText; font: AppTypography.labelLarge; Layout.preferredWidth: 50; horizontalAlignment: Text.AlignHCenter }
+            }
+
+            Rectangle {
+                anchors.bottom: parent.bottom
+                width: parent.width
+                height: 1
+                color: AppColors.outline
             }
         }
 
@@ -66,25 +87,50 @@ Rectangle {
                 required property int pollInterval
                 required property bool active
 
-                width: ListView.view.width; height: 44
-                color: sensorRow.index % 2 === 0 ? "transparent" : Theme.bgDeep
-                border.color: ListView.isCurrentItem ? Theme.accent : "transparent"
-                border.width: ListView.isCurrentItem ? 2 : 0
+                width: ListView.view.width; height: 40
+                // Tap-to-select highlight (no hover state — touch device).
+                color: ListView.isCurrentItem
+                       ? AppColors.withAlpha(AppColors.primaryColor, 0.16)
+                       : "transparent"
+
+                // Left accent bar marks the selected row clearly on touch.
+                Rectangle {
+                    anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
+                    width: 3
+                    visible: sensorRow.ListView.isCurrentItem
+                    color: AppColors.primaryColor
+                }
+
+                Rectangle {
+                    anchors.bottom: parent.bottom
+                    width: parent.width
+                    height: 1
+                    color: AppColors.outlineVariant
+                }
+
+                // Called from nested MouseArea so that ListView.view is
+                // resolved in the delegate root's context (not MouseArea's).
+                function toggleSelection() {
+                    var lv = ListView.view
+                    if (!lv) return
+                    lv.currentIndex = (lv.currentIndex === sensorRow.index) ? -1 : sensorRow.index
+                }
 
                 MouseArea {
                     anchors.fill: parent
-                    onClicked: {
-                        ListView.view.currentIndex = (ListView.view.currentIndex === sensorRow.index) ? -1 : sensorRow.index
-                    }
+                    onClicked: sensorRow.toggleSelection()
                     onDoubleClicked: root.sensorDoubleClicked()
                 }
 
                 RowLayout {
-                    anchors.fill: parent; anchors.leftMargin: 15; anchors.rightMargin: 15; spacing: 5
-                    Text { text: sensorRow.name; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; font.bold: true; Layout.preferredWidth: 120; elide: Text.ElideRight }
-                    Text { text: sensorRow.unit; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; Layout.preferredWidth: 50; elide: Text.ElideRight }
-                    Text { text: sensorRow.slaveId; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; Layout.preferredWidth: 45; horizontalAlignment: Text.AlignHCenter }
-                    Text { text: sensorRow.registerAddress; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; Layout.preferredWidth: 45; horizontalAlignment: Text.AlignHCenter }
+                    anchors.fill: parent
+                    anchors.leftMargin: root.colMarginH
+                    anchors.rightMargin: root.colMarginH
+                    spacing: root.colSpacing
+                    Text { text: sensorRow.name; color: AppColors.primaryText; font.pixelSize: 14; font.weight: Font.DemiBold; Layout.preferredWidth: 120; elide: Text.ElideRight }
+                    Text { text: sensorRow.unit; color: AppColors.tableCellMuted; font: AppTypography.bodyMedium; Layout.preferredWidth: 50; elide: Text.ElideRight }
+                    Text { text: sensorRow.slaveId; color: AppColors.tableCellMuted; font.pixelSize: 14; font.family: "monospace"; Layout.preferredWidth: 45; horizontalAlignment: Text.AlignHCenter }
+                    Text { text: sensorRow.registerAddress; color: AppColors.tableCellMuted; font.pixelSize: 14; font.family: "monospace"; Layout.preferredWidth: 45; horizontalAlignment: Text.AlignHCenter }
                     Text {
                         text: {
                             var t = String(sensorRow.registerType).toLowerCase().trim()
@@ -95,7 +141,7 @@ Rectangle {
                             if (t.indexOf("invalid") >= 0) return "INV"
                             return t.substring(0, 4).toUpperCase()
                         }
-                        color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; Layout.preferredWidth: 50; horizontalAlignment: Text.AlignHCenter
+                        color: AppColors.tableCellMuted; font: AppTypography.bodyMedium; Layout.preferredWidth: 50; horizontalAlignment: Text.AlignHCenter
                     }
                     Text {
                         readonly property bool isBool: {
@@ -103,7 +149,7 @@ Rectangle {
                             return t.indexOf("coil") >= 0 || t.indexOf("discrete") >= 0
                         }
                         text: isBool ? "" : sensorRow.dataType
-                        color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; Layout.preferredWidth: 65; horizontalAlignment: Text.AlignHCenter
+                        color: AppColors.tableCellMuted; font: AppTypography.bodyMedium; Layout.preferredWidth: 65; horizontalAlignment: Text.AlignHCenter
                     }
                     Text {
                         readonly property bool isBool: {
@@ -111,7 +157,7 @@ Rectangle {
                             return t.indexOf("coil") >= 0 || t.indexOf("discrete") >= 0
                         }
                         text: isBool ? "" : sensorRow.dataFormat
-                        color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; Layout.preferredWidth: 55; horizontalAlignment: Text.AlignHCenter
+                        color: AppColors.tableCellMuted; font: AppTypography.bodyMedium; Layout.preferredWidth: 55; horizontalAlignment: Text.AlignHCenter
                     }
                     Text {
                         readonly property bool isBool: {
@@ -119,7 +165,7 @@ Rectangle {
                             return t.indexOf("coil") >= 0 || t.indexOf("discrete") >= 0
                         }
                         text: isBool ? "" : (sensorRow.pollInterval + "s")
-                        color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; Layout.preferredWidth: 45; horizontalAlignment: Text.AlignHCenter
+                        color: AppColors.tableCellMuted; font: AppTypography.bodyMedium; Layout.preferredWidth: 45; horizontalAlignment: Text.AlignHCenter
                     }
                     Text {
                         text: {
@@ -128,15 +174,15 @@ Rectangle {
                             if (isBool) return ""
                             return (sensorRow.minThreshold !== undefined && sensorRow.minThreshold !== "" ? sensorRow.minThreshold : "-") + "  →  " + (sensorRow.maxThreshold !== undefined && sensorRow.maxThreshold !== "" ? sensorRow.maxThreshold : "-")
                         }
-                        color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; Layout.fillWidth: true; elide: Text.ElideRight; horizontalAlignment: Text.AlignHCenter
+                        color: AppColors.tableCellMuted; font: AppTypography.bodyMedium; Layout.fillWidth: true; elide: Text.ElideRight; horizontalAlignment: Text.AlignHCenter
                     }
                     Item {
                         Layout.preferredWidth: 50; Layout.fillHeight: true
                         Rectangle {
                             width: 12; height: 12; radius: 6
                             anchors.centerIn: parent
-                            color: sensorRow.active ? Theme.statusOk : Theme.btnStop
-                            border.color: Theme.borderDefault; border.width: 1
+                            color: sensorRow.active ? AppColors.success : AppColors.error
+                            border.color: AppColors.outlineVariant; border.width: 1
                         }
                     }
                 }

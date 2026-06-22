@@ -9,6 +9,8 @@ qt_add_library(utils STATIC
     LanIp.h
     Formula.cpp
     Formula.h
+    ModbusCodec.cpp
+    ModbusCodec.h
     ProvisionQr.cpp
     ProvisionQr.h
     third_party/qrcodegen.cpp
@@ -20,6 +22,6 @@ target_include_directories(utils PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/third_party
 )
 
-target_link_libraries(utils PUBLIC Qt6::Core Qt6::Network Qt6::Gui)
+target_link_libraries(utils PUBLIC Qt6::Core Qt6::Network Qt6::Gui Qt6::SerialBus)
 
 add_library(datalogger::utils ALIAS utils)

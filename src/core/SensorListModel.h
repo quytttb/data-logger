@@ -3,9 +3,7 @@
 #include <QList>
 #include <QtQmlIntegration/qqmlintegration.h>
 #include "data/models/Sensor.h"
-
-class QJSEngine;
-class QQmlEngine;
+#include "utils/QmlSingleton.h"
 
 // Exposes the sensor list (from DB) to QML for the Settings sensor table.
 class SensorListModel : public QAbstractListModel {
@@ -29,6 +27,7 @@ public:
         MaxThresholdRole,
         PollIntervalRole,
         ReportIndexRole,
+        DecimalsRole,
         SensorTypeRole,
         ActiveRole,
         DiTypeRole,
@@ -36,9 +35,7 @@ public:
 
     explicit SensorListModel(QObject *parent);
 
-    static SensorListModel *instance();
-    static void setInstance(SensorListModel *model);
-    static SensorListModel *create(QQmlEngine *, QJSEngine *);
+    DECLARE_QML_SINGLETON(SensorListModel)
 
     int rowCount(const QModelIndex &parent = {}) const override;
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
@@ -46,27 +43,13 @@ public:
 
     Q_INVOKABLE void refresh();
     Q_INVOKABLE bool addSensor(const QVariantMap &props);
+
+    // Returns monitor-ready maps for active sensors from the in-memory cache —
+    // no extra DB round-trip needed when MonitorController refreshes after a save.
+    QList<QVariantMap> activeMonitorMaps() const;
     Q_INVOKABLE bool updateSensor(int id, const QVariantMap &props);
     Q_INVOKABLE bool removeSensor(int id);
     Q_INVOKABLE QVariantMap sensorAt(int row) const;
-
-    // Python-era QML wrappers (delegate to camelCase implementations)
-    Q_INVOKABLE QVariantMap get_sensor(int row) const { return sensorAt(row); }
-    Q_INVOKABLE bool remove_sensor(int id) { return removeSensor(id); }
-    Q_INVOKABLE bool add_sensor(const QString &name, const QString &unit, int slaveId,
-                                int registerAddress, const QString &registerType,
-                                const QString &dataType, const QString &dataFormat,
-                                const QString &coefficient, int pollInterval, int reportIndex,
-                                bool active, const QVariant &minThreshold,
-                                const QVariant &maxThreshold,
-                                const QString &sensorType = QStringLiteral("ANALOG"));
-    Q_INVOKABLE bool update_sensor(int id, const QString &name, const QString &unit,
-                                   int slaveId, int registerAddress,
-                                   const QString &registerType, const QString &dataType,
-                                   const QString &dataFormat, const QString &coefficient,
-                                   int pollInterval, int reportIndex, bool active,
-                                   const QVariant &minThreshold, const QVariant &maxThreshold,
-                                   const QString &sensorType = QStringLiteral("ANALOG"));
 
     Q_INVOKABLE QVariantList get_analog_links(int analogSensorId) const;
     Q_INVOKABLE QVariantList list_di_sensors() const;
@@ -80,6 +63,9 @@ public:
 signals:
     void countChanged();
     void messageSent(QString title, QString body);
+    // Emitted after any DI/DO link add/update/remove so that MonitorController
+    // and other observers can refresh their link-derived state (diLegend, etc.).
+    void linksChanged();
 
 private:
     void loadFromDb();

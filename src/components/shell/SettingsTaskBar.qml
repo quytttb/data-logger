@@ -73,29 +73,19 @@ Item {
             visible: root.settingsTabIndex >= 0 && root.settingsTabIndex <= 2 && root.isConfigChanged
             spacing: 8
 
-            ThemedButton {
+            AppButton {
                 text: "Cancel"
+                variant: "tonal"
                 font.bold: true
                 Layout.preferredHeight: 44
                 onClicked: root.cancelConfig()
             }
 
-            Button {
-                id: saveConfigBtn
+            AppButton {
                 text: "Save"
                 font.pixelSize: 12; font.bold: true
                 Layout.preferredHeight: 44
-                background: Rectangle {
-                    radius: Theme.radiusSmall
-                    color: Theme.btnStart
-                    opacity: saveConfigBtn.pressed ? 0.75 : 1.0
-                }
-                contentItem: Text {
-                    text: saveConfigBtn.text; font: saveConfigBtn.font
-                    color: Theme.textOnColoredBtn
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                }
+                accent: Theme.btnStart
                 onClicked: root.saveConfig()
             }
         }
@@ -105,72 +95,25 @@ Item {
             visible: root.settingsTabIndex === 3
             spacing: 8
 
-            Button {
-                id: deleteSensorBtn
+            AppButton {
                 visible: root.hasSelectedSensor
-                implicitWidth: 44
-                implicitHeight: 44
-                Layout.preferredWidth: 44
-                Layout.preferredHeight: 44
-                contentItem: Item {
-                    anchors.fill: parent
-                    UiIcon {
-                        anchors.centerIn: parent
-                        name: "trashCan"
-                        size: 18
-                        iconColor: AppColors.buttonIconOnFilled
-                    }
-                }
-                background: Rectangle {
-                    anchors.fill: parent
-                    radius: Theme.radiusMedium
-                    color: Theme.btnStop
-                    opacity: deleteSensorBtn.pressed ? 0.75 : 1.0
-                }
+                iconName: "trashCan"
+                accent: Theme.btnStop
                 onClicked: root.deleteSelectedSensor()
             }
 
-            Button {
-                id: editSensorBtn
+            AppButton {
                 visible: root.hasSelectedSensor
-                implicitWidth: 44
-                implicitHeight: 44
-                Layout.preferredWidth: 44
-                Layout.preferredHeight: 44
-                contentItem: Item {
-                    anchors.fill: parent
-                    UiIcon {
-                        anchors.centerIn: parent
-                        name: "pencil"
-                        size: 18
-                        iconColor: AppColors.buttonIconOnFilled
-                    }
-                }
-                background: Rectangle {
-                    anchors.fill: parent
-                    radius: Theme.radiusMedium
-                    color: Theme.accent
-                    opacity: editSensorBtn.pressed ? 0.75 : 1.0
-                }
+                iconName: "pencil"
+                accent: Theme.accent
                 onClicked: root.editSelectedSensor()
             }
 
-            Button {
-                id: addBtn
+            AppButton {
                 text: "+ Add"
                 font.pixelSize: 12; font.bold: true
                 Layout.preferredHeight: 44
-                background: Rectangle {
-                    radius: Theme.radiusSmall
-                    color: Theme.btnStart
-                    opacity: addBtn.pressed ? 0.75 : 1.0
-                }
-                contentItem: Text {
-                    text: addBtn.text; font: addBtn.font
-                    color: Theme.textOnColoredBtn
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                }
+                accent: Theme.btnStart
                 onClicked: root.addSensor()
             }
         }
@@ -180,28 +123,10 @@ Item {
             visible: root.settingsTabIndex === 4
             spacing: 8
 
-            Button {
-                id: deleteDioBtn
+            AppButton {
                 visible: root.sensorSubTabIndex === 2 && root.hasSelectedDio
-                implicitWidth: 44
-                implicitHeight: 44
-                Layout.preferredWidth: 44
-                Layout.preferredHeight: 44
-                contentItem: Item {
-                    anchors.fill: parent
-                    UiIcon {
-                        anchors.centerIn: parent
-                        name: "trashCan"
-                        size: 18
-                        iconColor: AppColors.buttonIconOnFilled
-                    }
-                }
-                background: Rectangle {
-                    anchors.fill: parent
-                    radius: Theme.radiusMedium
-                    color: Theme.btnStop
-                    opacity: deleteDioBtn.pressed ? 0.75 : 1.0
-                }
+                iconName: "trashCan"
+                accent: Theme.btnStop
                 onClicked: root.deleteSelectedDio()
             }
 
@@ -212,29 +137,19 @@ Item {
                 visible: root.sensorSubTabIndex === 2 && root.hasSelectedDio
             }
 
-            ThemedButton {
+            AppButton {
                 text: "Cancel"
+                variant: "tonal"
                 font.bold: true
                 Layout.preferredHeight: 44
                 onClicked: root.cancelSensorForm()
             }
 
-            Button {
-                id: saveSensorFormBtn
+            AppButton {
                 text: "Save"
                 font.pixelSize: 12; font.bold: true
                 Layout.preferredHeight: 44
-                background: Rectangle {
-                    radius: Theme.radiusSmall
-                    color: Theme.btnStart
-                    opacity: saveSensorFormBtn.pressed ? 0.75 : 1.0
-                }
-                contentItem: Text {
-                    text: saveSensorFormBtn.text; font: saveSensorFormBtn.font
-                    color: Theme.textOnColoredBtn
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                }
+                accent: Theme.btnStart
                 onClicked: root.saveSensorForm()
             }
         }

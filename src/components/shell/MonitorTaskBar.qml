@@ -74,7 +74,7 @@ Item {
 
             Item { Layout.preferredHeight: 4 }
 
-            ThemedButton {
+            AppButton {
                 text: "OK"
                 Layout.alignment: Qt.AlignHCenter
                 Layout.preferredWidth: 100
@@ -89,66 +89,44 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         spacing: 10
 
-        Button {
-            id: monitorBtn
-            Layout.preferredWidth: 200
-            Layout.preferredHeight: 44
-            enabled: !MonitorController.isStopping && (MonitorController.isPolling || MonitorController.hasActiveSensors)
-            text: MonitorController.isStopping ? "Stopping…"
-                : MonitorController.isPolling ? "Stop monitoring" : "Start monitoring"
-            font.pixelSize: 14
-            font.bold: true
-            background: Rectangle {
-                radius: Theme.radiusMedium
-                color: !monitorBtn.enabled ? Theme.btnBgDisabled
-                     : MonitorController.isPolling ? Theme.btnStop : Theme.btnStart
-                opacity: monitorBtn.pressed ? 0.75 : 1.0
-            }
-            contentItem: Text {
-                text: monitorBtn.text
-                font: monitorBtn.font
-                color: Theme.textOnColoredBtn
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
-                elide: Text.ElideRight
-            }
-            onClicked: {
-                if (MonitorController.isPolling)
-                    MonitorController.stopPolling()
-                else
-                    MonitorController.startPolling()
-            }
-            Layout.alignment: Qt.AlignVCenter
-        }
-
-        BusyIndicator {
-            running: MonitorController.isStopping
-            visible: MonitorController.isStopping
-            Layout.preferredWidth: 28
-            Layout.preferredHeight: 28
-            Layout.alignment: Qt.AlignVCenter
-        }
-
+        // Status pill: live monitoring state (read-only indicator, not a control)
         Rectangle {
-            Layout.preferredWidth: 12
-            Layout.preferredHeight: 12
-            radius: 6
-            color: {
-                if (!MonitorController.isPolling)
-                    return Theme.textSecondary
-                return MonitorController.statusMode === 2 ? Theme.statusErrBright : Theme.statusOk
-            }
-            Layout.alignment: Qt.AlignVCenter
-        }
+            id: statusPill
+            readonly property color stateColor: !MonitorController.isPolling
+                ? Theme.textSecondary
+                : MonitorController.statusMode === 2 ? Theme.statusErrBright : Theme.statusOk
 
-        Label {
-            text: MonitorController.statusText
-            color: Theme.textPrimary
-            font.pixelSize: 14
-            font.bold: true
-            Layout.minimumWidth: 80
-            elide: Text.ElideRight
-            wrapMode: Text.NoWrap
+            Layout.preferredHeight: 44
+            Layout.preferredWidth: statusRow.implicitWidth + 36
+            radius: Theme.radiusMedium
+            color: Theme.bgSeparator
+            border.width: 1
+            border.color: Qt.rgba(statusPill.stateColor.r, statusPill.stateColor.g, statusPill.stateColor.b, 0.5)
+            Layout.alignment: Qt.AlignVCenter
+
+            RowLayout {
+                id: statusRow
+                anchors.centerIn: parent
+                spacing: 10
+
+                Rectangle {
+                    Layout.preferredWidth: 14
+                    Layout.preferredHeight: 14
+                    radius: 7
+                    color: statusPill.stateColor
+                    Layout.alignment: Qt.AlignVCenter
+                }
+
+                Label {
+                    text: MonitorController.statusText
+                    color: statusPill.stateColor
+                    font.pixelSize: 16
+                    font.bold: true
+                    elide: Text.ElideRight
+                    wrapMode: Text.NoWrap
+                    Layout.alignment: Qt.AlignVCenter
+                }
+            }
         }
 
         Button {
@@ -214,6 +192,25 @@ Item {
                 font.pixelSize: 12
                 font.bold: true
             }
+        }
+
+        // Start/Stop control: placed far right to avoid accidental presses
+        AppButton {
+            enabled: !MonitorController.isStopping && (MonitorController.isPolling || MonitorController.hasActiveSensors)
+            iconName: MonitorController.isStopping ? "refresh"
+                : MonitorController.isPolling ? "stop" : "playArrow"
+            iconSpinning: MonitorController.isStopping
+            text: MonitorController.isStopping ? "Stopping…"
+                : MonitorController.isPolling ? "Stop" : "Start"
+            font.bold: true
+            accent: MonitorController.isPolling ? Theme.btnStop : Theme.btnStart
+            onClicked: {
+                if (MonitorController.isPolling)
+                    MonitorController.stopPolling()
+                else
+                    MonitorController.startPolling()
+            }
+            Layout.alignment: Qt.AlignVCenter
         }
     }
 }

@@ -7,9 +7,7 @@
 #include <QFutureWatcher>
 #include <QtQmlIntegration/qqmlintegration.h>
 #include "core/history/HistoryTableModel.h"
-
-class QJSEngine;
-class QQmlEngine;
+#include "utils/QmlSingleton.h"
 
 struct HistorySearchResult {
     QList<HistoryRow> rows;
@@ -33,9 +31,7 @@ public:
     explicit HistoryViewModel(QObject *parent = nullptr);
     ~HistoryViewModel() override;
 
-    static HistoryViewModel *instance();
-    static void setInstance(HistoryViewModel *vm);
-    static HistoryViewModel *create(QQmlEngine *, QJSEngine *);
+    DECLARE_QML_SINGLETON(HistoryViewModel)
 
     HistoryTableModel *tableModel() { return &m_model; }
     bool loading() const { return m_loading; }
@@ -49,6 +45,9 @@ public slots:
     Q_INVOKABLE void search(const QString &fromDate, const QString &toDate, int sensorId);
     Q_INVOKABLE void load_sensors() { reloadFilters(); }
     Q_INVOKABLE void reloadFilters();
+    // No-DB overload: build sensor filter list from pre-loaded maps (avoids a
+    // redundant DB round-trip when called from main.cpp after SensorListModel changes).
+    void reloadFiltersFromMaps(const QList<QVariantMap> &maps);
     Q_INVOKABLE void clear();
     Q_INVOKABLE void exportCsv(const QUrl &fileUrl);
 

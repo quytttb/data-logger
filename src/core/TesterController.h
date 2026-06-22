@@ -1,15 +1,16 @@
 #pragma once
 #include <QObject>
+#include <QThread>
 #include <QString>
 #include <QStringList>
 #include <QVariantMap>
-#include <QModbusRtuSerialClient>
 #include <QtQmlIntegration/qqmlintegration.h>
+#include "utils/QmlSingleton.h"
 
-class QJSEngine;
-class QQmlEngine;
+class TesterWorker;
 
-// Interactive Modbus tester — read/write individual registers.
+// QML-facing singleton that forwards invokable calls to TesterWorker (which
+// runs on a dedicated thread) and exposes state properties back to QML.
 class TesterController : public QObject {
     Q_OBJECT
     QML_ELEMENT
@@ -24,9 +25,7 @@ class TesterController : public QObject {
 public:
     explicit TesterController(QObject *parent);
 
-    static TesterController *instance();
-    static void setInstance(TesterController *controller);
-    static TesterController *create(QQmlEngine *, QJSEngine *);
+    DECLARE_QML_SINGLETON(TesterController)
 
     ~TesterController();
 
@@ -54,9 +53,9 @@ public slots:
                                     const QString &dataFormat,
                                     double value);
 
-    Q_INVOKABLE QString write_single(const QString &registerType, int address,
-                                     const QString &valueStr, int slaveId,
-                                     const QString &dataType);
+    Q_INVOKABLE void write_single(const QString &registerType, int address,
+                                  const QString &valueStr, int slaveId,
+                                  const QString &dataType);
 
     Q_INVOKABLE void writeCoil(int slaveId, int address, bool value);
     Q_INVOKABLE void scanSlaves(int startId, int endId);
@@ -79,18 +78,24 @@ signals:
     void scanResultReceived(int address, const QString &value);
     void scanProgress(int current, int total);
 
+private slots:
+    void onConnectionResult(bool connected, const QString &statusText);
+    void onReadCompleted(const QVariantMap &result);
+    void onWriteCompleted(const QVariantMap &result);
+    void onScanResultEmitted(const QVariantMap &result);
+    void onScanResultByAddress(int address, const QString &value);
+    void onScanProgressUpdated(int current, int total);
+    void onScanFinished();
+
 private:
-    static QString normalizeRegisterType(const QString &uiLabel);
-    static int registerCountForDataType(const QString &dataType);
-    double decodeRegisters(const QVector<quint16> &regs, const QString &dataType,
-                           const QString &dataFormat) const;
-    QString formatDecodedValue(double raw, const QString &dataType) const;
     void setScanning(bool v);
     void setConnecting(bool v);
     void setStopping(bool v);
     void setStatus(const QString &s);
 
-    QModbusRtuSerialClient *m_client = nullptr;
+    TesterWorker *m_worker       = nullptr;
+    QThread      *m_workerThread = nullptr;
+
     bool    m_connected   = false;
     bool    m_connecting  = false;
     bool    m_scanning    = false;

@@ -17,7 +17,6 @@ Rectangle {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 15
         spacing: 12
 
         // ── Sensor Cards Grid (centered) ─────────────────────────────
@@ -25,15 +24,25 @@ Rectangle {
             id: sensorGrid
             Layout.fillWidth: true
             Layout.fillHeight: true
-            cellWidth: 240
-            cellHeight: 150
             clip: true
             boundsBehavior: Flickable.StopAtBounds
             model: MonitorModel
             visible: count > 0
 
-            readonly property int columns: Math.max(1, Math.floor(width / cellWidth))
-            leftMargin: Math.max(0, Math.floor((width - columns * cellWidth) / 2))
+            // Padding lives on the scroll content (Flickable margins): it only
+            // appears before the first row / after the last row, and scrolls with
+            // the content — no rigid dead-band around the viewport.
+            readonly property int outerMargin: 15
+            leftMargin: outerMargin
+            rightMargin: outerMargin
+            topMargin: outerMargin
+            bottomMargin: outerMargin
+
+            // Responsive grid: stretch cells to fill the available width (no centering gap).
+            readonly property int minCellWidth: 240
+            readonly property int columns: Math.max(1, Math.floor((width - 2 * outerMargin) / minCellWidth))
+            cellWidth: Math.floor((width - 2 * outerMargin) / columns)
+            cellHeight: 150
 
             delegate: Item {
                 id: card
@@ -134,7 +143,7 @@ Rectangle {
                             Text {
                                 visible: card.isAnalog
                                 text: card.unit
-                                color: Theme.textOnColoredBtn
+                                color: Theme.textSecondary
                                 font.pixelSize: 13; font.bold: true
                                 horizontalAlignment: Text.AlignRight
                                 wrapMode: Text.NoWrap
@@ -216,7 +225,7 @@ Rectangle {
                             Text {
                                 visible: card.isAnalog
                                 text: (card.rawValue !== "" && card.rawValue !== "---") ? "RAW " + card.rawValue : ""
-                                color: Theme.textOnColoredBtn
+                                color: Theme.textSecondary
                                 font.pixelSize: 10; font.family: "Monospace"
                             }
 
@@ -239,7 +248,7 @@ Rectangle {
 
                             Text {
                                 text: card.lastUpdate || ""
-                                color: Theme.textOnColoredBtn
+                                color: Theme.textSecondary
                                 font.pixelSize: 11
                             }
                         }

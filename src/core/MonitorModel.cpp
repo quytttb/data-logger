@@ -2,23 +2,8 @@
 #include <QDateTime>
 #include <QQmlEngine>
 #include <QJSEngine>
-#include <cmath>
 
-static MonitorModel *g_monitorModelInstance = nullptr;
-
-MonitorModel *MonitorModel::instance() { return g_monitorModelInstance; }
-
-void MonitorModel::setInstance(MonitorModel *model)
-{
-    g_monitorModelInstance = model;
-}
-
-MonitorModel *MonitorModel::create(QQmlEngine *, QJSEngine *)
-{
-    Q_ASSERT(g_monitorModelInstance);
-    QQmlEngine::setObjectOwnership(g_monitorModelInstance, QQmlEngine::CppOwnership);
-    return g_monitorModelInstance;
-}
+IMPLEMENT_QML_SINGLETON(MonitorModel)
 
 MonitorModel::MonitorModel(QObject *parent) : QAbstractListModel(parent) {}
 
@@ -69,6 +54,7 @@ void MonitorModel::loadSensors(const QList<QVariantMap> &sensors) {
         it.sensorId   = s["id"].toInt();
         it.name       = s["name"].toString();
         it.unit       = s["unit"].toString();
+        it.decimals   = s.value("decimals", 4).toInt();
         it.sensorType = s.value("sensor_type", "ANALOG").toString();
         m_items.append(it);
         m_idToRow[it.sensorId] = i;
@@ -93,8 +79,13 @@ void MonitorModel::updateValue(int sensorId, double value, double rawValue,
         it.isAlarm  = false;
         it.alarmType.clear();
     } else {
-        it.value    = QString::number(std::round(value * 10000.0) / 10000.0, 'f', 4);
-        it.rawValue = QString::number(rawValue);
+        it.value    = QString::number(value, 'f', it.decimals);
+        // RAW is the unscaled register reading — show it faithfully (no rounding):
+        // integer register types as integers, float32 at full single-precision.
+        const qint64 rawAsInt = static_cast<qint64>(rawValue);
+        it.rawValue = (static_cast<double>(rawAsInt) == rawValue)
+                          ? QString::number(rawAsInt)
+                          : QString::number(rawValue, 'g', 7);
         it.status   = isAlarm ? "ALARM" : "OK";
         it.isAlarm  = isAlarm;
         it.alarmType= alarmType;

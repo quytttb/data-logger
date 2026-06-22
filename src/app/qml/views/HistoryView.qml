@@ -32,7 +32,7 @@ Rectangle {
                 Layout.fillHeight: true
                 model: HistoryViewModel.tableModel
                 loading: HistoryViewModel.isLoading
-                reuseItems: false
+                reuseItems: true
                 hasData: HistoryViewModel.tableModel.rowsSize > 0
                 colWeights: [0.28, 0.22, 0.12, 0.18, 0.2]
                 colMinimums: [140, 100, 60, 80, 80]
@@ -55,10 +55,10 @@ Rectangle {
 
                     implicitHeight: 40
                     padding: 0
-                    hoverEnabled: true
+                    hoverEnabled: false
 
                     background: TableCellBackground {
-                        cellHovered: histCell.hovered
+                        cellHovered: false
                     }
 
                     contentItem: Label {

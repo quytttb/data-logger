@@ -34,6 +34,7 @@ struct Sensor {
     std::optional<double> maxThreshold;
     int pollInterval = 3;              // seconds
     int reportIndex = 0;
+    int decimals = 4;                  // decimal places for displayed/reported value
     QString diType;
     bool active = true;
     QDateTime createdAt;

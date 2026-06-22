@@ -13,27 +13,33 @@ FtpWorker::FtpWorker(QObject *parent) : QObject(parent) {}
 
 void FtpWorker::configure(const QString &address, int port,
                            const QString &username, const QString &password,
-                           const QString &remotePath, const QString &protocol) {
+                           const QString &remotePath) {
     m_address    = address;
     m_port       = port;
     m_username   = username;
     m_password   = password;
     m_remotePath = remotePath;
-    m_protocol   = protocol.toLower();
 }
 
 void FtpWorker::start() {
+    if (m_running) return;
     m_running = true;
-    m_nam = new QNetworkAccessManager(this);
 
-    m_tickTimer = new QTimer(this);
-    m_tickTimer->setInterval(60 * 1000); // check every minute
-    connect(m_tickTimer, &QTimer::timeout, this, &FtpWorker::tick);
+    if (!m_nam)
+        m_nam = new QNetworkAccessManager(this);
+
+    if (!m_tickTimer) {
+        m_tickTimer = new QTimer(this);
+        m_tickTimer->setInterval(60 * 1000);
+        connect(m_tickTimer, &QTimer::timeout, this, &FtpWorker::tick);
+    }
     m_tickTimer->start();
 
-    m_heartbeatTimer = new QTimer(this);
-    m_heartbeatTimer->setInterval(30 * 1000);
-    connect(m_heartbeatTimer, &QTimer::timeout, this, &FtpWorker::onHeartbeat);
+    if (!m_heartbeatTimer) {
+        m_heartbeatTimer = new QTimer(this);
+        m_heartbeatTimer->setInterval(30 * 1000);
+        connect(m_heartbeatTimer, &QTimer::timeout, this, &FtpWorker::onHeartbeat);
+    }
     m_heartbeatTimer->start();
 
     tick(); // immediate first attempt
@@ -43,6 +49,7 @@ void FtpWorker::stop() {
     m_running = false;
     if (m_tickTimer)      m_tickTimer->stop();
     if (m_heartbeatTimer) m_heartbeatTimer->stop();
+
     emit workerStopped();
 }
 
@@ -53,26 +60,26 @@ void FtpWorker::onHeartbeat() {
 void FtpWorker::tick() {
     if (!m_running || m_address.isEmpty()) return;
 
-    auto db = Database::openConnection();
-    if (!db.isOpen()) return;
-
-    ReportLogDao dao(db);
-    auto pending = dao.loadPending(5);
-    db.close();
+    QList<ReportLog> pending;
+    {
+        ScopedDbConnection db;
+        if (!db.get().isOpen())
+            return;
+        ReportLogDao dao(db);
+        pending = dao.loadPending(5);
+    }
 
     for (auto &log : pending) {
         if (!m_running) break;
         if (uploadFile(log.filePath, m_remotePath)) {
-            auto db2 = Database::openConnection();
+            ScopedDbConnection db2;
             ReportLogDao dao2(db2);
             dao2.updateStatus(log.id, "success");
-            db2.close();
             emit uploadSuccess(log.filePath, m_remotePath);
         } else {
-            auto db2 = Database::openConnection();
+            ScopedDbConnection db2;
             ReportLogDao dao2(db2);
             dao2.updateStatus(log.id, "failed", log.retryCount + 1);
-            db2.close();
             emit uploadFailed(log.filePath, "upload failed");
         }
     }
@@ -86,11 +93,8 @@ bool FtpWorker::uploadFile(const QString &localPath, const QString &remoteDir) {
     }
 
     QFileInfo fi(localPath);
-    const QString scheme = (m_protocol == QStringLiteral("sftp"))
-        ? QStringLiteral("ftp")   // SFTP not implemented — fall back to FTP
-        : QStringLiteral("ftp");
     QUrl url;
-    url.setScheme(scheme);
+    url.setScheme(QStringLiteral("ftp"));
     url.setHost(m_address);
     url.setPort(m_port);
     url.setUserName(m_username);

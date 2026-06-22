@@ -48,6 +48,7 @@ Item {
     property alias coeffJson: scalingTab.dCoeffJson
     property alias minThreshold: scalingTab.dMinThreshold
     property alias maxThreshold: scalingTab.dMaxThreshold
+    property alias decimals: scalingTab.dDecimals
 
     property alias dioRepeaterRef: dioTab.dioRepeaterRef
 
@@ -65,6 +66,7 @@ Item {
         scalingTab.dCoeffJson.text = "{}"
         basicTab.dPollInterval.value = 3; basicTab.dReportIdx.value = 0; basicTab.dActive.checked = true
         scalingTab.dMinThreshold.text = ""; scalingTab.dMaxThreshold.text = ""
+        scalingTab.dDecimals.value = 4
     }
 
     function loadData(s, uiState) {
@@ -96,6 +98,7 @@ Item {
         basicTab.dReportIdx.value = s.reportIndex; basicTab.dActive.checked = s.active
         scalingTab.dMinThreshold.text = s.minThreshold !== undefined && s.minThreshold !== "" ? String(s.minThreshold) : ""
         scalingTab.dMaxThreshold.text = s.maxThreshold !== undefined && s.maxThreshold !== "" ? String(s.maxThreshold) : ""
+        scalingTab.dDecimals.value = s.decimals !== undefined ? s.decimals : 4
     }
 
     // Load link list + available DI/DO dropdowns for the Digital I/O tab.
@@ -128,6 +131,7 @@ Item {
             active: basicTab.dActive.checked,
             minThreshold: isAnalog ? scalingTab.dMinThreshold.text : "",
             maxThreshold: isAnalog ? scalingTab.dMaxThreshold.text : "",
+            decimals: scalingTab.dDecimals.value,
             sensorType: root.sensorType
         }
     }

@@ -15,8 +15,7 @@ qt_add_qml_module(datalogger_components
         shell/SettingsTaskBar.qml
         shell/TrendingTaskBar.qml
         shell/ModbusTesterTaskBar.qml
-        shell/ThemedButton.qml
-        shell/ThemedToolButton.qml
+        shell/AppButton.qml
         shell/ThemedTabButton.qml
         layout/AppTextField.qml
         layout/AppNotifier.qml

@@ -24,6 +24,7 @@ Sensor SensorDao::rowToSensor(const QSqlRecord &r) {
         s.maxThreshold = r.value("max_threshold").toDouble();
     s.pollInterval    = r.value("poll_interval").toInt();
     s.reportIndex     = r.value("report_index").toInt();
+    s.decimals        = r.value("decimals").toInt();
     s.diType          = r.value("di_type").toString();
     s.active          = r.value("active").toBool();
     s.createdAt       = QDateTime::fromString(r.value("created_at").toString(), Qt::ISODate);
@@ -71,18 +72,18 @@ bool SensorDao::save(Sensor &s) {
             (sensor_type, name, unit, slave_id, register_address,
              register_type, data_type, data_format, coefficient,
              min_threshold, max_threshold, poll_interval, report_index,
-             di_type, active)
+             decimals, di_type, active)
             VALUES (:st, :nm, :un, :sid, :ra,
                     :rt, :dt, :df, :co,
                     :mn, :mx, :pi, :ri,
-                    :dit, :act))");
+                    :dec, :dit, :act))");
     } else {
         q.prepare(R"(UPDATE sensor SET
             sensor_type=:st, name=:nm, unit=:un, slave_id=:sid,
             register_address=:ra, register_type=:rt, data_type=:dt,
             data_format=:df, coefficient=:co, min_threshold=:mn,
             max_threshold=:mx, poll_interval=:pi, report_index=:ri,
-            di_type=:dit, active=:act WHERE id=:id)");
+            decimals=:dec, di_type=:dit, active=:act WHERE id=:id)");
         q.bindValue(":id", s.id);
     }
 
@@ -99,6 +100,7 @@ bool SensorDao::save(Sensor &s) {
     q.bindValue(":mx",  s.maxThreshold.has_value() ? QVariant(*s.maxThreshold) : QVariant());
     q.bindValue(":pi",  s.pollInterval);
     q.bindValue(":ri",  s.reportIndex);
+    q.bindValue(":dec", s.decimals);
     q.bindValue(":dit", s.diType.isEmpty() ? QVariant() : QVariant(s.diType));
     q.bindValue(":act", s.active ? 1 : 0);
 

@@ -53,8 +53,9 @@ Popup {
             wrapMode: Text.WordWrap
         }
 
-        ThemedButton {
+        AppButton {
             text: qsTr("Close")
+            variant: "tonal"
             Layout.alignment: Qt.AlignHCenter
             onClicked: root.close()
         }

@@ -22,7 +22,7 @@ struct AppConfig {
     QString ftpPassword;   // stored encrypted
     QString ftpRemotePath = "/";
     QString ftpPrefix;
-    QString ftpProtocol = "ftp";
+    QString ftpProtocol = QStringLiteral("sftp");  // "ftp" | "sftp"
 
     // Server / Transmission
     bool serverActive          = false;

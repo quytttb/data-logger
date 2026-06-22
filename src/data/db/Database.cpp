@@ -4,9 +4,8 @@
 #include <QSqlRecord>
 #include <QDebug>
 #include <QUuid>
-#include <atomic>
+#include <QThread>
 
-static std::atomic<int> s_connCounter{0};
 static QString s_dbPath;
 
 bool Database::init(const QString &dbPath) {
@@ -29,13 +28,34 @@ bool Database::init(const QString &dbPath) {
 }
 
 QSqlDatabase Database::openConnection() {
-    int n = ++s_connCounter;
-    QString connName = QStringLiteral("conn_%1").arg(n);
+    // Use the thread pointer as the connection name so each thread always
+    // reuses a single named connection — avoids Qt's "still in use" warning
+    // that fires when removeDatabase is called while a DAO copy is alive.
+    QString connName = QStringLiteral("thread_%1")
+                           .arg(reinterpret_cast<quintptr>(QThread::currentThread()), 0, 16);
+
+    if (QSqlDatabase::contains(connName)) {
+        QSqlDatabase db = QSqlDatabase::database(connName, /*open=*/false);
+        if (!db.isOpen()) {
+            db.open();
+            applyPragmas(db);
+        }
+        return db;
+    }
+
     QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE", connName);
     db.setDatabaseName(s_dbPath);
     db.open();
     applyPragmas(db);
     return db;
+}
+
+void Database::closeConnection(QSqlDatabase &db) {
+    // With thread-local reuse the connection stays open between calls.
+    // Just close and null the caller's handle; removeDatabase is NOT called
+    // so DAO copies on the stack never trigger Qt's "still in use" warning.
+    db.close();
+    db = QSqlDatabase();
 }
 
 void Database::applyPragmas(QSqlDatabase &db) {
@@ -109,6 +129,7 @@ bool Database::createTables(QSqlDatabase &db) {
             max_threshold REAL DEFAULT NULL,
             poll_interval INTEGER NOT NULL DEFAULT 3,
             report_index INTEGER NOT NULL DEFAULT 0,
+            decimals INTEGER NOT NULL DEFAULT 4,
             di_type TEXT DEFAULT NULL,
             active INTEGER NOT NULL DEFAULT 1,
             created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -165,6 +186,7 @@ bool Database::migrate(QSqlDatabase &db) {
     // Ensure all columns from later revisions exist on old databases.
     struct ColDef { const char *table, *col, *def; };
     const ColDef additions[] = {
+        {"sensor",      "decimals",      "INTEGER NOT NULL DEFAULT 4"},
         {"sensor_data", "status",        "TEXT DEFAULT NULL"},
         {"app_config",  "ui_locale",     "TEXT NOT NULL DEFAULT 'vi'"},
         {"app_config",  "ftp_prefix",    "TEXT NOT NULL DEFAULT ''"},
@@ -185,6 +207,12 @@ bool Database::migrate(QSqlDatabase &db) {
         if (!addColumnIfMissing(db, a.table, a.col, a.def))
             return false;
     }
+
+    // Legacy: empty thresholds were saved as 0.0 instead of NULL.
+    QSqlQuery fix(db);
+    fix.exec("UPDATE sensor SET min_threshold=NULL, max_threshold=NULL "
+             "WHERE min_threshold=0 AND max_threshold=0");
+
     return true;
 }
 

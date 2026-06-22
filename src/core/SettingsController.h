@@ -3,9 +3,7 @@
 #include <QString>
 #include <QtQmlIntegration/qqmlintegration.h>
 #include "data/models/AppConfig.h"
-
-class QJSEngine;
-class QQmlEngine;
+#include "utils/QmlSingleton.h"
 
 // Exposes AppConfig to QML and handles save/load.
 class SettingsController : public QObject {
@@ -31,7 +29,6 @@ class SettingsController : public QObject {
     Q_PROPERTY(QString ftpPassword   READ ftpPassword   WRITE setFtpPassword   NOTIFY configLoaded)
     Q_PROPERTY(QString ftpRemotePath READ ftpRemotePath WRITE setFtpRemotePath NOTIFY configLoaded)
     Q_PROPERTY(QString ftpPrefix     READ ftpPrefix     WRITE setFtpPrefix     NOTIFY configLoaded)
-    Q_PROPERTY(QString ftpProtocol   READ ftpProtocol   WRITE setFtpProtocol   NOTIFY configLoaded)
 
     // Polling
     Q_PROPERTY(int    pollInterval   READ pollInterval  WRITE setPollInterval  NOTIFY configLoaded)
@@ -72,9 +69,7 @@ class SettingsController : public QObject {
 public:
     explicit SettingsController(QObject *parent);
 
-    static SettingsController *instance();
-    static void setInstance(SettingsController *controller);
-    static SettingsController *create(QQmlEngine *, QJSEngine *);
+    DECLARE_QML_SINGLETON(SettingsController)
 
     // Property getters
     QString stationCode()   const { return m_cfg.stationCode; }
@@ -90,7 +85,6 @@ public:
     QString ftpPassword()   const;  // decrypts on read
     QString ftpRemotePath() const { return m_cfg.ftpRemotePath; }
     QString ftpPrefix()     const { return m_cfg.ftpPrefix; }
-    QString ftpProtocol()   const { return m_cfg.ftpProtocol; }
     int    pollInterval()   const { return m_cfg.pollInterval; }
     QString serialPort()    const { return m_cfg.serialPort; }
     int    serialBaudrate() const { return m_cfg.serialBaudrate; }
@@ -132,7 +126,6 @@ public:
     void setFtpPassword(const QString &v);  // encrypts before storing
     void setFtpRemotePath(const QString &v) { m_cfg.ftpRemotePath = v; }
     void setFtpPrefix(const QString &v)     { m_cfg.ftpPrefix = v; }
-    void setFtpProtocol(const QString &v)   { m_cfg.ftpProtocol = v; }
     void setPollInterval(int v)             { m_cfg.pollInterval = v; }
     void setSerialPort(const QString &v)    { m_cfg.serialPort = v; }
     void setSerialBaudrate(int v)           { m_cfg.serialBaudrate = v; }
@@ -165,9 +158,7 @@ public slots:
     Q_INVOKABLE void saveSerialConfig(const QString &port, int baudrate,
                                       int bytesize, const QString &parity, int stopbits);
     Q_INVOKABLE void regenerateRestToken();
-    Q_INVOKABLE void regenerate_rest_token() { regenerateRestToken(); }
     Q_INVOKABLE QString get_provision_qr_base64();
-    Q_INVOKABLE void checkUpdates();
     Q_INVOKABLE bool saveTheme(const QString &value);
     Q_INVOKABLE QVariantMap coefficientUiState(const QString &coeffJson) const;
     Q_INVOKABLE QString buildCoefficientJson(int mode, const QString &legacyJson,

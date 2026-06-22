@@ -78,15 +78,15 @@ Rectangle {
                         var label = s.unit && s.unit.length > 0
                                     ? (s.name + " (" + s.unit + ")")
                                     : s.name
+                        var buf = MonitorController.getTrendBuffer(s.id)
                         var series = lineSeriesComponent.createObject(graphsView, {
                             seriesName: label,
                             seriesColor: s.color,
-                            initialBuffer: MonitorController.getTrendBuffer(s.id)
+                            initialBuffer: buf
                         })
                         graphsView.addSeries(series)
                         chartHolder.seriesMap[s.id] = series
 
-                        var buf = MonitorController.getTrendBuffer(s.id)
                         for (var j = 0; j < buf.length; j++) {
                             if (buf[j].y < yLo) yLo = buf[j].y
                             if (buf[j].y > yHi) yHi = buf[j].y

@@ -38,28 +38,16 @@ Item {
                     Layout.alignment: Qt.AlignVCenter
                 }
 
-                Button {
-                    id: connectBtn
+                AppButton {
                     Layout.preferredHeight: 44
                     enabled: root.testerView !== null && !TesterController.isConnecting
+                             && !MonitorController.isPolling
                     text: TesterController.isConnecting ? "Connecting…"
+                        : MonitorController.isPolling ? "Monitor is running"
                         : TesterController.isConnected ? "Disconnect" : "Connect"
                     font.pixelSize: 12
                     font.bold: true
-                    background: Rectangle {
-                        radius: Theme.radiusSmall
-                        color: TesterController.isConnecting ? Theme.btnBgDisabled
-                             : TesterController.isConnected ? Theme.btnStop : Theme.accent
-                        opacity: connectBtn.pressed ? 0.75 : 1.0
-                    }
-                    contentItem: Text {
-                        text: connectBtn.text
-                        font: connectBtn.font
-                        color: AppColors.buttonTextOnFilled
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                        elide: Text.ElideRight
-                    }
+                    accent: TesterController.isConnected ? Theme.btnStop : Theme.accent
                     onClicked: {
                         if (root.testerView)
                             root.testerView.connectOrDisconnect()
@@ -67,26 +55,13 @@ Item {
                     Layout.alignment: Qt.AlignVCenter
                 }
 
-                Button {
-                    id: saveSensorBtn
+                AppButton {
                     Layout.preferredHeight: 44
                     visible: TesterController.isConnected
                     text: "Save new sensor"
                     font.pixelSize: 11
                     font.bold: true
-                    background: Rectangle {
-                        radius: Theme.radiusSmall
-                        color: Theme.btnStart
-                        opacity: saveSensorBtn.pressed ? 0.75 : 1.0
-                    }
-                    contentItem: Text {
-                        text: saveSensorBtn.text
-                        font: saveSensorBtn.font
-                        color: AppColors.buttonTextOnFilled
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                        elide: Text.ElideRight
-                    }
+                    accent: Theme.btnStart
                     onClicked: {
                         if (root.testerView)
                             root.testerView.openSaveSensorInSettings()
@@ -112,51 +87,27 @@ Item {
                     spacing: 0
                     Layout.alignment: Qt.AlignVCenter
 
-                    Button {
-                        id: readModeBtn
+                    AppButton {
                         text: "Read"
                         Layout.preferredHeight: 44
                         Layout.preferredWidth: 70
                         font.pixelSize: 12
                         font.bold: true
-                        background: Rectangle {
-                            radius: Theme.radiusSmall
-                            color: root.isReadMode ? AppColors.primaryColor : AppColors.surface
-                            border.color: AppColors.outlineVariant
-                            border.width: 1
-                        }
-                        contentItem: Text {
-                            text: readModeBtn.text
-                            font: readModeBtn.font
-                            color: root.isReadMode ? AppColors.buttonTextOnFilled : AppColors.onSurfaceVariant
-                            horizontalAlignment: Text.AlignHCenter
-                            verticalAlignment: Text.AlignVCenter
-                        }
+                        variant: root.isReadMode ? "filled" : "outlined"
+                        accent: AppColors.primaryColor
                         onClicked: {
                             if (root.testerView && root.testerView.opsItem)
                                 root.testerView.opsItem.isReadMode = true
                         }
                     }
-                    Button {
-                        id: writeModeBtn
+                    AppButton {
                         text: "Write"
                         Layout.preferredHeight: 44
                         Layout.preferredWidth: 70
                         font.pixelSize: 12
                         font.bold: true
-                        background: Rectangle {
-                            radius: Theme.radiusSmall
-                            color: !root.isReadMode ? AppColors.warning : AppColors.surface
-                            border.color: AppColors.outlineVariant
-                            border.width: 1
-                        }
-                        contentItem: Text {
-                            text: writeModeBtn.text
-                            font: writeModeBtn.font
-                            color: !root.isReadMode ? AppColors.buttonTextOnFilled : AppColors.onSurfaceVariant
-                            horizontalAlignment: Text.AlignHCenter
-                            verticalAlignment: Text.AlignVCenter
-                        }
+                        variant: !root.isReadMode ? "filled" : "outlined"
+                        accent: AppColors.warning
                         onClicked: {
                             if (root.testerView && root.testerView.opsItem)
                                 root.testerView.opsItem.isReadMode = false
@@ -189,27 +140,13 @@ Item {
                     }
                 }
 
-                Button {
-                    id: clearBtn
+                AppButton {
                     text: "Clear table"
                     Layout.preferredHeight: 44
                     font.pixelSize: 11
                     font.bold: true
                     enabled: root.testerView !== null && !TesterController.isScanning
-                    background: Rectangle {
-                        radius: Theme.radiusSmall
-                        color: Theme.btnClear
-                        opacity: clearBtn.pressed ? 0.8 : 1.0
-                    }
-                    contentItem: Text {
-                        text: clearBtn.text
-                        font: clearBtn.font
-                        color: Theme.btnClearText
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                        elide: Text.ElideNone
-                        wrapMode: Text.NoWrap
-                    }
+                    accent: Theme.btnClear
                     onClicked: {
                         if (root.testerView)
                             root.testerView.clearResultsTable()
@@ -217,8 +154,7 @@ Item {
                     Layout.alignment: Qt.AlignVCenter
                 }
 
-                Button {
-                    id: actionBtn
+                AppButton {
                     Layout.preferredHeight: 44
                     Layout.preferredWidth: 100
                     font.pixelSize: 12
@@ -234,26 +170,10 @@ Item {
                         }
                     }
 
-                    background: Rectangle {
-                        radius: Theme.radiusSmall
-                        color: {
-                            if (!actionBtn.enabled) return Theme.btnBgDisabled;
-                            if (root.isReadMode) {
-                                return TesterController.isScanning ? Theme.btnStop : Theme.accent
-                            } else {
-                                return AppColors.warning
-                            }
-                        }
-                        opacity: actionBtn.pressed ? 0.75 : 1.0
-                    }
-                    contentItem: Text {
-                        text: actionBtn.text
-                        font: actionBtn.font
-                        color: AppColors.buttonTextOnFilled
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                        elide: Text.ElideNone
-                        wrapMode: Text.NoWrap
+                    accent: {
+                        if (root.isReadMode)
+                            return TesterController.isScanning ? Theme.btnStop : Theme.accent
+                        return AppColors.warning
                     }
                     onClicked: {
                         if (root.testerView) {

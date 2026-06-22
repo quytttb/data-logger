@@ -2,6 +2,7 @@
 #include "utils/LanIp.h"
 #include "data/db/Database.h"
 #include "data/repositories/AppConfigDao.h"
+#include "data/repositories/SensorDao.h"
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
@@ -12,21 +13,7 @@
 #include <QJSEngine>
 #include <QTcpServer>
 
-static RestApiService *g_restApiInstance = nullptr;
-
-RestApiService *RestApiService::instance() { return g_restApiInstance; }
-
-void RestApiService::setInstance(RestApiService *service)
-{
-    g_restApiInstance = service;
-}
-
-RestApiService *RestApiService::create(QQmlEngine *, QJSEngine *)
-{
-    Q_ASSERT(g_restApiInstance);
-    QQmlEngine::setObjectOwnership(g_restApiInstance, QQmlEngine::CppOwnership);
-    return g_restApiInstance;
-}
+IMPLEMENT_QML_SINGLETON(RestApiService)
 
 RestApiService::RestApiService(QObject *parent) : QObject(parent) {}
 
@@ -111,10 +98,11 @@ void RestApiService::setupRoutes() {
             if (!checkAuth(req))
                 return QHttpServerResponse(R"({"error":"Unauthorized"})",
                                            QHttpServerResponse::StatusCode::Unauthorized);
-            auto db = Database::openConnection();
+            ScopedDbConnection db;
             AppConfigDao dao(db);
             auto cfg = dao.load();
-            db.close();
+            SensorDao sensorDao(db);
+            auto sensors = sensorDao.loadAll();
 
             QJsonObject obj;
             obj["station_code"] = cfg.stationCode;
@@ -123,6 +111,26 @@ void RestApiService::setupRoutes() {
             obj["serial_port"]  = cfg.serialPort;
             obj["serial_baudrate"] = cfg.serialBaudrate;
             obj["config_revision"] = cfg.configRevision;
+
+            // Per-sensor config. data-logger (edge) is the source of truth;
+            // Central consumes these read-only (e.g. `decimals` display precision).
+            QJsonArray sensorArr;
+            for (const auto &s : sensors) {
+                QJsonObject so;
+                so["id"]          = s.id;
+                so["name"]        = s.name;
+                so["unit"]        = s.unit;
+                so["sensor_type"] = sensorTypeToString(s.sensorType);
+                so["decimals"]    = s.decimals;
+                so["report_index"]= s.reportIndex;
+                // Modbus identity so Central can join FC03/FC02/FC01 samples:
+                // ANALOG → FC03 sensor_id == id; DI/DO → FC02/FC01 bit index == register_address.
+                so["slave_id"]        = s.slaveId;
+                so["register_address"]= s.registerAddress;
+                sensorArr.append(so);
+            }
+            obj["sensors"] = sensorArr;
+
             QHttpServerResponse resp("application/json",
                                      QJsonDocument(obj).toJson(QJsonDocument::Compact));
             return resp;
@@ -141,7 +149,7 @@ void RestApiService::setupRoutes() {
                 return QHttpServerResponse(R"({"error":"Invalid JSON"})",
                                            QHttpServerResponse::StatusCode::BadRequest);
 
-            auto db = Database::openConnection();
+            ScopedDbConnection db;
             AppConfigDao dao(db);
             auto cfg = dao.load();
             QJsonObject body = doc.object();
@@ -156,7 +164,6 @@ void RestApiService::setupRoutes() {
             cfg.configRevision++;
             dao.save(cfg);
             int rev = cfg.configRevision;
-            db.close();
 
             emit configApplied(rev);
 

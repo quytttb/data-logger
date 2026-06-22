@@ -93,93 +93,24 @@ Item {
             Layout.alignment: Qt.AlignVCenter
         }
 
-        Button {
-            id: searchBtn
-            implicitWidth: 44
-            implicitHeight: 44
-            Layout.preferredWidth: 44
-            Layout.preferredHeight: 44
+        AppButton {
+            iconName: "magnify"
             enabled: !HistoryViewModel.isLoading && SensorListModel.count > 0
-            contentItem: Item {
-                anchors.fill: parent
-                UiIcon {
-                    anchors.centerIn: parent
-                    name: "magnify"
-                    size: 18
-                    iconColor: AppColors.buttonIconOnFilled
-                }
-            }
-            background: Rectangle {
-                anchors.fill: parent
-                color: !searchBtn.enabled ? Theme.btnBgDisabled : Theme.accent
-                radius: Theme.radiusMedium
-                opacity: searchBtn.pressed ? 0.75 : 1.0
-            }
             onClicked: root.doSearch()
             Layout.alignment: Qt.AlignVCenter
         }
 
-        Button {
-            id: refreshBtn
-            implicitWidth: 44
-            implicitHeight: 44
-            Layout.preferredWidth: 44
-            Layout.preferredHeight: 44
+        AppButton {
+            iconName: "refresh"
+            iconSpinning: HistoryViewModel.isLoading
             enabled: !HistoryViewModel.isLoading && SensorListModel.count > 0
             onClicked: root.doSearch()
             Layout.alignment: Qt.AlignVCenter
-
-            contentItem: Item {
-                anchors.fill: parent
-                UiIcon {
-                    id: refreshIcon
-                    anchors.centerIn: parent
-                    name: "refresh"
-                    size: 18
-                    iconColor: AppColors.buttonIconOnFilled
-                    
-                    RotationAnimator on rotation {
-                        from: 0
-                        to: 360
-                        duration: 1000
-                        loops: Animation.Infinite
-                        running: HistoryViewModel.isLoading
-                    }
-                }
-            }
-
-            background: Rectangle {
-                anchors.fill: parent
-                color: !refreshBtn.enabled ? Theme.btnBgDisabled : Theme.accent
-                radius: Theme.radiusMedium
-                opacity: refreshBtn.pressed ? 0.75 : 1.0
-            }
         }
 
-        Button {
-            id: exportBtn
-            implicitWidth: 44
-            implicitHeight: 44
-            Layout.preferredWidth: 44
-            Layout.preferredHeight: 44
+        AppButton {
+            iconName: "download"
             enabled: HistoryViewModel.recordCount > 0
-            contentItem: Item {
-                anchors.fill: parent
-                UiIcon {
-                    anchors.centerIn: parent
-                    name: "download"
-                    size: 18
-                    iconColor: AppColors.buttonIcon
-                }
-            }
-            background: Rectangle {
-                anchors.fill: parent
-                color: !exportBtn.enabled ? Theme.btnBgMuted : Theme.bgPanel
-                border.color: Theme.borderDefault
-                border.width: 1
-                radius: Theme.radiusMedium
-                opacity: exportBtn.pressed ? 0.75 : 1.0
-            }
             onClicked: csvSaveDialog.open()
             Layout.alignment: Qt.AlignVCenter
         }

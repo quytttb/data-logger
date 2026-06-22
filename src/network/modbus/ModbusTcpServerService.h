@@ -7,9 +7,7 @@
 #include <QList>
 #include <QVector>
 #include <QtQmlIntegration/qqmlintegration.h>
-
-class QJSEngine;
-class QQmlEngine;
+#include "utils/QmlSingleton.h"
 
 // Manages a QModbusTcpServer exposing sensor readings to SCADA / Central App.
 class ModbusTcpServerService : public QObject {
@@ -30,9 +28,7 @@ public:
     explicit ModbusTcpServerService(QObject *parent);
     ~ModbusTcpServerService();
 
-    static ModbusTcpServerService *instance();
-    static void setInstance(ModbusTcpServerService *service);
-    static ModbusTcpServerService *create(QQmlEngine *, QJSEngine *);
+    DECLARE_QML_SINGLETON(ModbusTcpServerService)
 
     QString state()             const { return m_state; }
     bool    isListening()       const { return m_state == STATE_LISTENING; }

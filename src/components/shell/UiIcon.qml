@@ -7,7 +7,7 @@ import DataLogger.Theme
  * Requires MaterialSymbolsOutlined.ttf loaded via QFontDatabase in main.cpp.
  *
  * Usage:
- *   UiIcon { name: "menu"; size: 20; iconColor: AppColors.primaryText }
+ *   UiIcon { name: "history"; size: 20; iconColor: AppColors.primaryText }
  */
 Text {
     id: root

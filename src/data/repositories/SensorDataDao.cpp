@@ -34,7 +34,8 @@ bool SensorDataDao::insertBatch(const QList<SensorData> &records) {
         q.bindValue(":v",   d.value.has_value() ? QVariant(*d.value) : QVariant());
         q.bindValue(":st",  d.status);
         q.bindValue(":ia",  d.isAlarm ? 1 : 0);
-        q.bindValue(":at",  d.alarmType);
+        // Qt/SQLite may bind empty QString as NULL; schema requires NOT NULL.
+        q.bindValue(":at",  d.alarmType.isEmpty() ? QStringLiteral("") : d.alarmType);
         q.bindValue(":ra",  d.recordedAt.toString(Qt::ISODate));
         if (!q.exec()) {
             qWarning() << "SensorDataDao::insertBatch error:" << q.lastError().text();
@@ -65,9 +66,11 @@ QList<SensorData> SensorDataDao::query(int sensorId,
     q.bindValue(":lim", limit);
     q.exec();
 
+    // Query is ORDER BY recorded_at DESC (newest first); keep that order so the
+    // History table shows newest → oldest, matching central_logger.
     QList<SensorData> result;
     while (q.next())
-        result.prepend(rowToData(q.record()));
+        result.append(rowToData(q.record()));
     return result;
 }
 

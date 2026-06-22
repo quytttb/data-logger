@@ -10,21 +10,7 @@
 #include <algorithm>
 #include <utility>
 
-static ModbusTcpServerService *g_modbusTcpInstance = nullptr;
-
-ModbusTcpServerService *ModbusTcpServerService::instance() { return g_modbusTcpInstance; }
-
-void ModbusTcpServerService::setInstance(ModbusTcpServerService *service)
-{
-    g_modbusTcpInstance = service;
-}
-
-ModbusTcpServerService *ModbusTcpServerService::create(QQmlEngine *, QJSEngine *)
-{
-    Q_ASSERT(g_modbusTcpInstance);
-    QQmlEngine::setObjectOwnership(g_modbusTcpInstance, QQmlEngine::CppOwnership);
-    return g_modbusTcpInstance;
-}
+IMPLEMENT_QML_SINGLETON(ModbusTcpServerService)
 
 ModbusTcpServerService::ModbusTcpServerService(QObject *parent) : QObject(parent) {}
 

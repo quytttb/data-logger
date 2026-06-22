@@ -1,5 +1,6 @@
 #include "MonitorController.h"
 #include "MonitorModel.h"
+#include "SettingsController.h"
 #include "network/modbus/ModbusTcpServerService.h"
 #include "data/db/Database.h"
 #include "data/repositories/SensorDao.h"
@@ -14,21 +15,7 @@
 #include <QQmlEngine>
 #include <QJSEngine>
 
-static MonitorController *g_monitorInstance = nullptr;
-
-MonitorController *MonitorController::instance() { return g_monitorInstance; }
-
-void MonitorController::setInstance(MonitorController *controller)
-{
-    g_monitorInstance = controller;
-}
-
-MonitorController *MonitorController::create(QQmlEngine *, QJSEngine *)
-{
-    Q_ASSERT(g_monitorInstance);
-    QQmlEngine::setObjectOwnership(g_monitorInstance, QQmlEngine::CppOwnership);
-    return g_monitorInstance;
-}
+IMPLEMENT_QML_SINGLETON(MonitorController)
 
 // Colour palette for trending series and DI legend (M3 graph series — dark baseline).
 static const QStringList kPalette = {
@@ -45,6 +32,10 @@ MonitorController::MonitorController(MonitorModel *model,
     : QObject(parent), m_model(model), m_mbtcp(modbusTcp) {
 
     m_heartbeats = {{"ModbusWorker", {}}, {"DatabaseWorker", {}}, {"FtpWorker", {}}};
+
+    connect(this, &MonitorController::watchdogAlert, this, [this](const QString &msg) {
+        emit messageSent(QStringLiteral("Watchdog"), msg);
+    });
 
     m_cpuTimer = new QTimer(this);
     m_cpuTimer->setInterval(10000);
@@ -72,19 +63,53 @@ QString MonitorController::statusText() const {
 void MonitorController::startPolling() {
     if (m_isPolling) return;
 
-    auto db = Database::openConnection();
-    AppConfigDao cfgDao(db);
-    auto cfg = cfgDao.load();
-    SensorDao sDao(db);
-    auto allSensors = sDao.loadAll(/*activeOnly=*/true);
-    auto allLinks   = sDao.loadAllLinks();
-    db.close();
+    AppConfig cfg;
+    QList<Sensor> allSensors;
+    QList<AnalogDigitalLink> allLinks;
+    {
+        ScopedDbConnection db;
+        AppConfigDao cfgDao(db);
+        cfg = cfgDao.load();
+        SensorDao sDao(db);
+        allSensors = sDao.loadAll(/*activeOnly=*/true);
+        allLinks   = sDao.loadAllLinks();
+    }
 
     if (allSensors.isEmpty()) {
         emit messageSent("Error", "No active sensors. Open Settings to add sensors.");
         return;
     }
 
+    QList<QVariantMap> pollSensors;
+    QHash<int, QList<QVariantMap>> digitalIoMap;
+    buildPollSensors(allSensors, allLinks, pollSensors, digitalIoMap);
+
+    configureMbtcp(allSensors);
+
+    startWorkerThreads(cfg, pollSensors, digitalIoMap);
+    m_watchdogTimer->start();
+
+    qint64 now = QDateTime::currentMSecsSinceEpoch();
+    for (auto it = m_heartbeats.begin(); it != m_heartbeats.end(); ++it) {
+        // FtpWorker is optional — only monitored while Server upload is active.
+        if (it.key() == QLatin1String("FtpWorker"))
+            continue;
+        it->lastTime = now / 1000.0;
+        it->misses = 0;
+    }
+
+    m_isPolling  = true;
+    m_errorCount = 0;
+    applyStatus("monitoring", STATUS_OK);
+    emit pollingChanged();
+    emit errorCountChanged();
+    qInfo() << "Polling started:" << allSensors.size() << "sensors";
+}
+
+void MonitorController::buildPollSensors(const QList<Sensor> &allSensors,
+                                          const QList<AnalogDigitalLink> &allLinks,
+                                          QList<QVariantMap> &pollSensors,
+                                          QHash<int, QList<QVariantMap>> &digitalIoMap) {
     // Build digital link maps
     QHash<int, QVariantMap> digitalById;
     for (const auto &s : allSensors)
@@ -95,7 +120,6 @@ void MonitorController::startPolling() {
     for (const auto &l : allLinks)
         linkedDigitalIds.insert(l.digitalSensorId);
 
-    QHash<int, QList<QVariantMap>> digitalIoMap;
     for (const auto &l : allLinks) {
         auto dsIt = digitalById.find(l.digitalSensorId);
         if (dsIt == digitalById.end()) continue;
@@ -115,13 +139,13 @@ void MonitorController::startPolling() {
     QList<QVariantMap> monitorSensorMaps;
     for (const auto &s : allSensors)
         monitorSensorMaps.append({{"id", s.id}, {"name", s.name}, {"unit", s.unit},
+                                   {"decimals", s.decimals},
                                    {"sensor_type", sensorTypeToString(s.sensorType)}});
     m_model->loadSensors(monitorSensorMaps);
     clearReadingsCache();
     m_rtuConnected = false;
 
     // Poll sensors: analog + standalone DI/DO
-    QList<QVariantMap> pollSensors;
     for (const auto &s : allSensors) {
         bool isAnalog = (s.sensorType == SensorType::Analog);
         bool isDigital= (s.sensorType == SensorType::DI || s.sensorType == SensorType::DO);
@@ -155,25 +179,31 @@ void MonitorController::startPolling() {
     for (const auto &l : allLinks)
         linkMaps.append({{"digital_sensor_id", l.digitalSensorId}, {"di_type", l.diType}});
     buildDiLegend(linkedDi, linkMaps);
+}
 
-    if (m_mbtcp) {
-        QList<int> analogIds;
-        QHash<int,int> diMap, doMap;
-        for (const auto &s : allSensors) {
-            if (s.sensorType == SensorType::Analog) analogIds.append(s.id);
-            if (s.sensorType == SensorType::DI) diMap[s.id] = s.registerAddress;
-            if (s.sensorType == SensorType::DO) doMap[s.id] = s.registerAddress;
-        }
-        m_mbtcp->setSensorMap(analogIds);
-        m_mbtcp->setDiDoMap(diMap, doMap);
-        m_mbtcp->setLoggerStatus(true, false);
+void MonitorController::configureMbtcp(const QList<Sensor> &allSensors) {
+    if (!m_mbtcp) return;
+    QList<int> analogIds;
+    QHash<int,int> diMap, doMap;
+    for (const auto &s : allSensors) {
+        if (s.sensorType == SensorType::Analog) analogIds.append(s.id);
+        if (s.sensorType == SensorType::DI) diMap[s.id] = s.registerAddress;
+        if (s.sensorType == SensorType::DO) doMap[s.id] = s.registerAddress;
     }
+    m_mbtcp->setSensorMap(analogIds);
+    m_mbtcp->setDiDoMap(diMap, doMap);
+    m_mbtcp->setLoggerStatus(true, false);
+}
 
+void MonitorController::startWorkerThreads(const AppConfig &cfg,
+                                           const QList<QVariantMap> &pollSensors,
+                                           const QHash<int, QList<QVariantMap>> &digitalIoMap) {
     // Start DatabaseWorker
     auto *dbWorker = new DatabaseWorker();
     m_dbThread = new QThread(this);
     dbWorker->moveToThread(m_dbThread);
-    connect(m_dbThread, &QThread::started, dbWorker, &DatabaseWorker::start);
+    connect(m_dbThread, &QThread::started,            dbWorker, &DatabaseWorker::start);
+    connect(m_dbThread, &QThread::finished,           dbWorker, &QObject::deleteLater);
     connect(dbWorker, &DatabaseWorker::workerStopped, m_dbThread, &QThread::quit);
     connect(dbWorker, &DatabaseWorker::dbError,       this, &MonitorController::onDbError);
     connect(dbWorker, &DatabaseWorker::recordsSaved,  this, &MonitorController::onRecordsSaved);
@@ -189,28 +219,18 @@ void MonitorController::startPolling() {
 
     m_modbusThread = new QThread(this);
     mbWorker->moveToThread(m_modbusThread);
-    connect(m_modbusThread, &QThread::started,        mbWorker, &ModbusWorker::start);
-    connect(mbWorker, &ModbusWorker::workerStopped,   this, &MonitorController::onModbusStopped);
-    connect(mbWorker, &ModbusWorker::dataReady,       this, &MonitorController::onDataReady);
-    connect(mbWorker, &ModbusWorker::modbusError,     this, &MonitorController::onModbusError);
+    connect(m_modbusThread, &QThread::started,          mbWorker, &ModbusWorker::start);
+    connect(m_modbusThread, &QThread::finished,         mbWorker, &QObject::deleteLater);
+    connect(mbWorker, &ModbusWorker::workerStopped,     this, &MonitorController::onModbusStopped);
+    connect(mbWorker, &ModbusWorker::dataReady,         this, &MonitorController::onDataReady);
+    connect(mbWorker, &ModbusWorker::modbusError,       this, &MonitorController::onModbusError);
     connect(mbWorker, &ModbusWorker::connectionChanged, this, &MonitorController::onConnectionChanged);
-    connect(mbWorker, &ModbusWorker::alarmChanged,    this, &MonitorController::onAlarmChanged);
-    connect(mbWorker, &ModbusWorker::heartbeat,       this, &MonitorController::registerHeartbeat);
+    connect(mbWorker, &ModbusWorker::alarmChanged,      this, &MonitorController::onAlarmChanged);
+    connect(mbWorker, &ModbusWorker::heartbeat,         this, &MonitorController::registerHeartbeat);
     m_modbusWorker = mbWorker;
 
     m_dbThread->start();
     m_modbusThread->start();
-    m_watchdogTimer->start();
-
-    qint64 now = QDateTime::currentMSecsSinceEpoch();
-    for (auto &hb : m_heartbeats) hb.lastTime = now / 1000.0;
-
-    m_isPolling  = true;
-    m_errorCount = 0;
-    applyStatus("monitoring", STATUS_OK);
-    emit pollingChanged();
-    emit errorCountChanged();
-    qInfo() << "Polling started:" << allSensors.size() << "sensors";
 }
 
 void MonitorController::stopPolling() {
@@ -253,25 +273,49 @@ void MonitorController::finalizeStop() {
 void MonitorController::stopPollingSync() {
     if (!m_isPolling) return;
     m_watchdogTimer->stop();
-    if (m_modbusWorker) QMetaObject::invokeMethod(m_modbusWorker, "stop");
-    if (m_dbWorker)     QMetaObject::invokeMethod(m_dbWorker, "stop");
-    if (m_modbusThread) { m_modbusThread->quit(); m_modbusThread->wait(3000); }
-    if (m_dbThread)     { m_dbThread->quit();     m_dbThread->wait(3000); }
-    m_isPolling = false; m_isStopping = false;
+    if (m_modbusWorker)
+        QMetaObject::invokeMethod(m_modbusWorker, "stop", Qt::BlockingQueuedConnection);
+    if (m_dbWorker)
+        QMetaObject::invokeMethod(m_dbWorker, "stop", Qt::BlockingQueuedConnection);
+    if (m_modbusThread) {
+        m_modbusThread->quit();
+        m_modbusThread->wait(3000);
+        delete m_modbusThread;
+        m_modbusThread = nullptr;
+    }
+    if (m_dbThread) {
+        m_dbThread->quit();
+        m_dbThread->wait(3000);
+        delete m_dbThread;
+        m_dbThread = nullptr;
+    }
+    // Workers are deleted automatically via thread->finished → deleteLater
+    m_modbusWorker = nullptr;
+    m_dbWorker     = nullptr;
+    m_isPolling    = false;
+    m_isStopping   = false;
     if (m_mbtcp) m_mbtcp->setLoggerStatus(false, false);
 }
 
 void MonitorController::refreshSensors() {
     if (m_isPolling) return;
-    auto db = Database::openConnection();
-    SensorDao dao(db);
-    auto sensors = dao.loadAll(true);
-    db.close();
+    QList<Sensor> sensors;
+    {
+        ScopedDbConnection db;
+        SensorDao dao(db);
+        sensors = dao.loadAll(/*activeOnly=*/true);
+    }
 
     QList<QVariantMap> maps;
+    maps.reserve(sensors.size());
     for (const auto &s : sensors)
         maps.append({{"id", s.id}, {"name", s.name}, {"unit", s.unit},
                       {"sensor_type", sensorTypeToString(s.sensorType)}});
+    refreshSensorsFromList(maps);
+}
+
+void MonitorController::refreshSensorsFromList(const QList<QVariantMap> &maps) {
+    if (m_isPolling) return;
     m_model->loadSensors(maps);
     resetTrendBuffers(maps);
     emit activeSensorsChanged();
@@ -301,12 +345,13 @@ QVariantList MonitorController::getTrendBuffer(int sensorId) const {
 }
 
 QVariantMap MonitorController::readingsSnapshot() const {
+    bool polling = m_isPolling.load(std::memory_order_relaxed);
+    bool rtu     = m_rtuConnected.load(std::memory_order_relaxed);
     QMutexLocker lock(&m_readingsMutex);
     QVariantList sensors;
     for (auto it = m_readingsCache.cbegin(); it != m_readingsCache.cend(); ++it)
         sensors.append(it.value());
-    return {{"ok", true}, {"polling", m_isPolling},
-            {"rtu_connected", m_rtuConnected}, {"sensors", sensors}};
+    return {{"ok", true}, {"polling", polling}, {"rtu_connected", rtu}, {"sensors", sensors}};
 }
 
 // ── Internal slots ─────────────────────────────────────────────────────────
@@ -339,7 +384,7 @@ void MonitorController::onDataReady(QVariantMap payload) {
     pushTrendPoint(sensorId, recAt, value);
 
     if (m_dbWorker)
-        QMetaObject::invokeMethod(m_dbWorker, "enqueue", Q_ARG(QVariantMap, payload));
+        m_dbWorker->enqueue(payload); // enqueue is mutex-protected, safe to call directly
 
     if (m_mbtcp) {
         m_mbtcp->updateValue(sensorId, float(value), isAlarm);
@@ -402,9 +447,15 @@ void MonitorController::readCpuTemp() {
 void MonitorController::checkWatchdog() {
     double now = QDateTime::currentMSecsSinceEpoch() / 1000.0;
     QStringList misses;
+    const bool ftpExpected = SettingsController::instance()
+        && SettingsController::instance()->serverActive();
     for (auto it = m_heartbeats.begin(); it != m_heartbeats.end(); ++it) {
         const QString &wn = it.key();
-        double limit = (wn == "FtpWorker") ? 120.0 : 6.0;
+        if (wn == QLatin1String("FtpWorker") && !ftpExpected) {
+            it->misses = 0;
+            continue;
+        }
+        double limit = (wn == QLatin1String("FtpWorker")) ? 120.0 : 6.0;
         if (it->lastTime > 0 && (now - it->lastTime) > limit) {
             it->misses++;
             if (it->misses > 3) misses << wn;
@@ -415,9 +466,14 @@ void MonitorController::checkWatchdog() {
     if (!misses.isEmpty()) {
         m_watchdogStatus = "ERR: " + misses.join(',');
         for (const auto &m : misses) emit watchdogAlert("Worker dead: " + m);
-        if ((misses.contains("ModbusWorker") || misses.contains("DatabaseWorker")) && m_isPolling) {
+        if ((misses.contains("ModbusWorker") || misses.contains("DatabaseWorker"))
+                && m_isPolling && !m_recoveryInProgress) {
+            m_recoveryInProgress = true;
             stopPollingSync();
-            QTimer::singleShot(2000, this, &MonitorController::startPolling);
+            QTimer::singleShot(2000, this, [this]() {
+                m_recoveryInProgress = false;
+                startPolling();
+            });
         }
     } else {
         m_watchdogStatus = "OK";

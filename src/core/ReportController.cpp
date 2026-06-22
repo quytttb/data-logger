@@ -13,23 +13,10 @@
 #include <QDebug>
 #include <QQmlEngine>
 #include <QJSEngine>
+#include <QThreadPool>
 #include <algorithm>
 
-static ReportController *g_reportInstance = nullptr;
-
-ReportController *ReportController::instance() { return g_reportInstance; }
-
-void ReportController::setInstance(ReportController *controller)
-{
-    g_reportInstance = controller;
-}
-
-ReportController *ReportController::create(QQmlEngine *, QJSEngine *)
-{
-    Q_ASSERT(g_reportInstance);
-    QQmlEngine::setObjectOwnership(g_reportInstance, QQmlEngine::CppOwnership);
-    return g_reportInstance;
-}
+IMPLEMENT_QML_SINGLETON(ReportController)
 
 ReportController::ReportController(QObject *parent) : QObject(parent)
 {
@@ -69,6 +56,10 @@ void ReportController::setSettingsController(SettingsController *settings)
     if (m_settings) {
         connect(m_settings, &SettingsController::configSaved,
                 this, &ReportController::applyServerConfig);
+        connect(m_settings, &SettingsController::serverActiveChanged, this, [this]() {
+            if (m_settings && !m_settings->serverActive())
+                applyServerConfig();
+        });
     }
 }
 
@@ -90,10 +81,11 @@ void ReportController::setLastStatus(const QString &s)
 
 void ReportController::refreshStatus()
 {
-    auto db = Database::openConnection();
-    ReportLogDao dao(db);
-    m_pendingCount = dao.loadPending(1000).size();
-    db.close();
+    {
+        ScopedDbConnection db;
+        ReportLogDao dao(db);
+        m_pendingCount = dao.loadPending(1000).size();
+    }
     setRunning(m_ftpWorker != nullptr && m_settings && m_settings->serverActive());
     if (m_pendingCount > 0 && m_lastStatus == QStringLiteral("Idle"))
         setLastStatus(QStringLiteral("Pending upload"));
@@ -106,8 +98,9 @@ void ReportController::applyServerConfig()
         return;
 
     const AppConfig &cfg = m_settings->config();
+
     if (!cfg.serverActive || cfg.ftpAddress.trimmed().isEmpty()) {
-        m_ftpWorker->stop();
+        QMetaObject::invokeMethod(m_ftpWorker, "stop", Qt::BlockingQueuedConnection);
         setRunning(false);
         setLastStatus(QStringLiteral("Stopped"));
         refreshStatus();
@@ -117,17 +110,14 @@ void ReportController::applyServerConfig()
     const QString password = cfg.ftpPassword.isEmpty()
         ? QString()
         : Crypto::decrypt(cfg.ftpPassword);
-    QString protocol = cfg.ftpProtocol.trimmed().toLower();
-    if (protocol.isEmpty())
-        protocol = QStringLiteral("ftp");
 
+    // Stop worker first so configure() is safe (worker not in tick())
+    QMetaObject::invokeMethod(m_ftpWorker, "stop", Qt::BlockingQueuedConnection);
     m_ftpWorker->configure(cfg.ftpAddress, cfg.ftpPort, cfg.ftpUsername,
-                           password, cfg.ftpRemotePath, protocol);
-    m_ftpWorker->start();
+                           password, cfg.ftpRemotePath);
+    QMetaObject::invokeMethod(m_ftpWorker, "start", Qt::QueuedConnection);
     setRunning(true);
-    setLastStatus(protocol == QStringLiteral("sftp")
-                      ? QStringLiteral("Running (SFTP not supported — using FTP)")
-                      : QStringLiteral("Running"));
+    setLastStatus(QStringLiteral("Running"));
     refreshStatus();
 }
 
@@ -174,67 +164,75 @@ void ReportController::onScheduleTick()
             return;
     }
 
-    const QDateTime to = now;
+    const QDateTime to   = now;
     const QDateTime from = to.addSecs(-cfg.serverSendInterval * 60);
-    generateReport(from, to);
     s_lastGenerated = now;
+
+    if (m_generating.load(std::memory_order_relaxed))
+        return; // previous report still in progress
+
+    m_generating.store(true, std::memory_order_relaxed);
+    QThreadPool::globalInstance()->start([this, from, to]() {
+        generateReport(from, to);
+        m_generating.store(false, std::memory_order_relaxed);
+    });
 }
 
 void ReportController::generateReport(const QDateTime &from, const QDateTime &to) {
-    auto db = Database::openConnection();
-    SensorDao sDao(db);
-    SensorDataDao sdDao(db);
-    ReportLogDao logDao(db);
-
-    auto sensors = sDao.loadAll(true);
-
-    std::sort(sensors.begin(), sensors.end(),
-              [](const Sensor &a, const Sensor &b){ return a.reportIndex < b.reportIndex; });
-
-    QString fname = from.toString("yyyyMMdd_HHmmss") + ".txt";
+    const QString fname = from.toString("yyyyMMdd_HHmmss") + ".txt";
     QDir().mkpath(AppPaths::dataDir());
-    QString path = AppPaths::dataDir() + "/" + fname;
+    const QString path = AppPaths::dataDir() + "/" + fname;
 
-    QFile file(path);
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-        emit messageSent("Error", "Cannot write report file: " + path);
-        db.close();
-        return;
-    }
+    {
+        ScopedDbConnection db;
+        SensorDao sDao(db);
+        SensorDataDao sdDao(db);
+        ReportLogDao logDao(db);
 
-    QTextStream out(&file);
-    out.setEncoding(QStringConverter::Utf8);
+        auto sensors = sDao.loadAll(true);
 
-    out << "Thoi gian: " << from.toString("dd/MM/yyyy HH:mm:ss")
-        << " - " << to.toString("dd/MM/yyyy HH:mm:ss") << "\n";
-    out << "STT";
-    for (const auto &s : sensors)
-        out << "\t" << s.name + " (" + s.unit + ")";
-    out << "\n";
+        std::sort(sensors.begin(), sensors.end(),
+                  [](const Sensor &a, const Sensor &b){ return a.reportIndex < b.reportIndex; });
 
-    QDateTime cursor = from;
-    int row = 1;
-    while (cursor <= to) {
-        QDateTime next = cursor.addSecs(60);
-        out << row++;
-        for (const auto &s : sensors) {
-            auto data = sdDao.query(s.id, cursor, next, 60);
-            if (data.isEmpty()) { out << "\t---"; continue; }
-            double sum = 0; int cnt = 0;
-            for (const auto &d : data)
-                if (d.value.has_value()) { sum += *d.value; ++cnt; }
-            if (cnt > 0) out << "\t" << QString::number(sum/cnt, 'f', 4);
-            else          out << "\t---";
+        QFile file(path);
+        if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+            emit messageSent("Error", "Cannot write report file: " + path);
+            return;
         }
-        out << "\n";
-        cursor = next;
-    }
-    file.close();
 
-    ReportLog log;
-    log.filePath = path;
-    logDao.insert(log);
-    db.close();
+        QTextStream out(&file);
+        out.setEncoding(QStringConverter::Utf8);
+
+        out << "Thoi gian: " << from.toString("dd/MM/yyyy HH:mm:ss")
+            << " - " << to.toString("dd/MM/yyyy HH:mm:ss") << "\n";
+        out << "STT";
+        for (const auto &s : sensors)
+            out << "\t" << s.name + " (" + s.unit + ")";
+        out << "\n";
+
+        QDateTime cursor = from;
+        int row = 1;
+        while (cursor <= to) {
+            QDateTime next = cursor.addSecs(60);
+            out << row++;
+            for (const auto &s : sensors) {
+                auto data = sdDao.query(s.id, cursor, next, 60);
+                if (data.isEmpty()) { out << "\t---"; continue; }
+                double sum = 0; int cnt = 0;
+                for (const auto &d : data)
+                    if (d.value.has_value()) { sum += *d.value; ++cnt; }
+                if (cnt > 0) out << "\t" << QString::number(sum/cnt, 'f', s.decimals);
+                else          out << "\t---";
+            }
+            out << "\n";
+            cursor = next;
+        }
+        file.close();
+
+        ReportLog log;
+        log.filePath = path;
+        logDao.insert(log);
+    }
 
     refreshStatus();
     emit reportGenerated(path);

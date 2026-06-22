@@ -7,8 +7,6 @@ import DataLogger.Core
 Item {
     id: root
     property bool configChanged: false
-    /** Set from SettingsView — shared MessagePopup for firmware confirm. */
-    property var settingsMessagePopup: null
 
     Flickable {
         id: flick
@@ -27,7 +25,7 @@ Item {
                 anchors.fill: parent; anchors.margins: 20
                 spacing: 25
 
-                // ── COLUMN 1: Device + Firmware ──
+                // ── COLUMN 1: Device ──
                 ColumnLayout {
                     Layout.fillWidth: true; Layout.alignment: Qt.AlignTop; spacing: 8
 
@@ -73,41 +71,6 @@ Item {
                         }
                     }
 
-                    Item { Layout.preferredHeight: 8 }
-
-                    Text { text: "Firmware update"; color: Theme.accentText; font.bold: true; font.pixelSize: 15 }
-                    Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.borderDefault }
-
-                    Button {
-                        id: checkUpdatesBtn
-                        text: "Check for updates"
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 40
-                        onClicked: {
-                            if (root.settingsMessagePopup) {
-                                root.settingsMessagePopup.showConfirm(
-                                    "Firmware update",
-                                    "The application will contact GitHub to check for updates. " +
-                                    "If a newer build is available, it will be downloaded and applied; the app may restart.\n\nContinue?",
-                                    function() { SettingsController.checkUpdates() },
-                                    "Continue",
-                                    Theme.accent
-                                )
-                            } else {
-                                SettingsController.checkUpdates()
-                            }
-                        }
-                        background: Rectangle {
-                            color: Theme.accent
-                            radius: Theme.radiusMedium
-                        }
-                        contentItem: Text {
-                            text: checkUpdatesBtn.text
-                            color: Theme.textOnColoredBtn
-                            horizontalAlignment: Text.AlignHCenter
-                            verticalAlignment: Text.AlignVCenter
-                        }
-                    }
                 }
 
                 // ── COLUMN 2: Date & Time ──

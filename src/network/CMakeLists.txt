@@ -5,6 +5,8 @@ qt_add_library(network STATIC
     workers/DatabaseWorker.h
     workers/FtpWorker.cpp
     workers/FtpWorker.h
+    workers/TesterWorker.cpp
+    workers/TesterWorker.h
 )
 
 set_target_properties(network PROPERTIES AUTOMOC ON)

@@ -1,17 +1,9 @@
 #pragma once
+#include "data/models/ReportLog.h"
 #include <QSqlDatabase>
 #include <QString>
 #include <QList>
 #include <QDateTime>
-
-struct ReportLog {
-    int id = 0;
-    QString filePath;
-    QString status = "pending";  // "pending" | "success" | "failed"
-    int retryCount = 0;
-    QDateTime createdAt;
-    QDateTime updatedAt;
-};
 
 class ReportLogDao {
 public:

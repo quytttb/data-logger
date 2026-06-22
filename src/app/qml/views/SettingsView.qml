@@ -74,7 +74,7 @@ Rectangle {
 
     function editSelectedSensor() {
         if (sensorsTab.listView.currentIndex < 0) return
-        var s = SensorListModel.get_sensor(sensorsTab.listView.currentIndex)
+        var s = SensorListModel.sensorAt(sensorsTab.listView.currentIndex)
         if (!s || !s.sensorId) return
 
         isAddMode = false
@@ -95,14 +95,14 @@ Rectangle {
 
     function deleteSelectedSensor() {
         if (sensorsTab.listView.currentIndex < 0) return
-        var s = SensorListModel.get_sensor(sensorsTab.listView.currentIndex)
+        var s = SensorListModel.sensorAt(sensorsTab.listView.currentIndex)
         if (!s || !s.sensorId) return
 
         var msg = "Delete sensor \"" + s.name + "\"?"
         settingsPopup.showConfirm(
             "Confirm delete",
             msg,
-            function() { SensorListModel.remove_sensor(s.sensorId) },
+            function() { SensorListModel.removeSensor(s.sensorId) },
             "Delete",
             Theme.btnStop
         )
@@ -118,16 +118,19 @@ Rectangle {
         )
         if (coeff.length === 0) return
 
+        var props = {
+            "name": d.name, "unit": d.unit, "slaveId": d.slaveId,
+            "registerAddress": d.registerAddress, "registerType": d.registerType,
+            "dataType": d.dataType, "dataFormat": d.dataFormat,
+            "coefficient": coeff, "pollInterval": d.pollInterval,
+            "reportIndex": d.reportIndex, "active": d.active,
+            "minThreshold": d.minThreshold, "maxThreshold": d.maxThreshold,
+            "decimals": d.decimals, "sensorType": d.sensorType
+        }
         if (isAddMode) {
-            SensorListModel.add_sensor(d.name, d.unit, d.slaveId, d.registerAddress,
-                d.registerType, d.dataType, d.dataFormat,
-                coeff, d.pollInterval, d.reportIndex, d.active,
-                d.minThreshold, d.maxThreshold, d.sensorType)
+            SensorListModel.addSensor(props)
         } else {
-            SensorListModel.update_sensor(editSensorId, d.name, d.unit,
-                d.slaveId, d.registerAddress, d.registerType, d.dataType,
-                d.dataFormat, coeff, d.pollInterval, d.reportIndex,
-                d.active, d.minThreshold, d.maxThreshold, d.sensorType)
+            SensorListModel.updateSensor(editSensorId, props)
         }
         _navigateBack()
     }
@@ -162,8 +165,8 @@ Rectangle {
         id: settingsPopup
     }
 
-    Component.onCompleted: { SensorListModel.refresh() }
-
+    // SensorListModel loads from DB in its C++ constructor and stays in sync
+    // via modelReset wiring in main.cpp — no explicit refresh needed here.
 
     ColumnLayout {
         anchors.fill: parent
@@ -179,7 +182,6 @@ Rectangle {
             SettingsGeneralTab {
                 id: generalTab
                 Layout.fillWidth: true; Layout.fillHeight: true
-                settingsMessagePopup: settingsPopup
                 onConfigChangedChanged: { if (configChanged) settingsRoot.isConfigChanged = true }
             }
 

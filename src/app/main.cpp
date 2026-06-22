@@ -2,6 +2,7 @@
 #include <QQmlApplicationEngine>
 #include <QIcon>
 #include <QFontDatabase>
+#include <QTimer>
 #include <QtDebug>
 
 #include "utils/AppPaths.h"
@@ -67,7 +68,12 @@ int main(int argc, char *argv[]) {
     auto *historyVm      = new HistoryViewModel(&app);
     auto *testerCtrl    = new TesterController(&app);
     auto *reportCtrl    = new ReportController(&app);
-    auto *ftpWorker     = new FtpWorker(&app);
+
+    auto *ftpWorker  = new FtpWorker();          // no parent — owned by ftpThread
+    auto *ftpThread  = new QThread(&app);
+    ftpWorker->moveToThread(ftpThread);
+    QObject::connect(ftpThread, &QThread::finished, ftpWorker, &QObject::deleteLater);
+    ftpThread->start();
 
     ModbusTcpServerService::setInstance(modbusTcp);
     RestApiService::setInstance(restApi);
@@ -84,6 +90,27 @@ int main(int argc, char *argv[]) {
     QObject::connect(ftpWorker, &FtpWorker::workerHeartbeat,
                      monitorCtrl, &MonitorController::registerHeartbeat);
 
+    // Keep the Monitor dashboard in sync with sensor add/edit/delete.
+    // modelReset is emitted automatically by endResetModel() on every save/delete.
+    // Pass already-loaded data via activeMonitorMaps() — no extra DB round-trip.
+    QObject::connect(sensorList, &QAbstractItemModel::modelReset,
+                     monitorCtrl, [sensorList, monitorCtrl]() {
+                         monitorCtrl->refreshSensorsFromList(sensorList->activeMonitorMaps());
+                     });
+    // DI/DO link add/update/remove doesn't touch sensor rows, so modelReset is
+    // not emitted. refreshSensors() re-reads the DB to rebuild diLegend and
+    // digitalIoMap — acceptable since link edits are infrequent.
+    QObject::connect(sensorList, &SensorListModel::linksChanged,
+                     monitorCtrl, &MonitorController::refreshSensors);
+    // Keep History sensor filter list in sync — no extra DB read.
+    QObject::connect(sensorList, &QAbstractItemModel::modelReset,
+                     historyVm, [sensorList, historyVm]() {
+                         historyVm->reloadFiltersFromMaps(sensorList->activeMonitorMaps());
+                     });
+    // Populate the dashboard with already-configured sensors at startup.
+    monitorCtrl->refreshSensorsFromList(sensorList->activeMonitorMaps());
+    historyVm->reloadFiltersFromMaps(sensorList->activeMonitorMaps());
+
     settingsCtrl->loadConfig();
     const AppConfig &cfg = settingsCtrl->config();
 
@@ -99,7 +126,8 @@ int main(int argc, char *argv[]) {
 
     reportCtrl->applyServerConfig();
 
-    QObject::connect(settingsCtrl, &SettingsController::configSaved, &app, [&]() {
+    // Reload config and restart affected services when saved from the UI.
+    auto applyConfig = [&]() {
         const AppConfig &c = settingsCtrl->config();
         if (c.modbusTcpEnabled)
             modbusTcp->start(c.modbusTcpBind, c.modbusTcpPort, c.modbusTcpUnitId);
@@ -109,11 +137,22 @@ int main(int argc, char *argv[]) {
             restApi->start(c.restApiBind, c.restApiPort, c.restApiToken);
         else
             restApi->stop();
+        reportCtrl->applyServerConfig();
+    };
+    QObject::connect(settingsCtrl, &SettingsController::configSaved, &app, applyConfig);
+
+    // Also react to config changes coming from the REST API so that the
+    // in-memory SettingsController stays in sync with the DB.
+    QObject::connect(restApi, &RestApiService::configApplied, &app, [&](int /*revision*/) {
+        settingsCtrl->loadConfig();
+        applyConfig();
     });
 
     QObject::connect(&app, &QGuiApplication::aboutToQuit, [&]() {
         monitorCtrl->stopPollingSync();
-        ftpWorker->stop();
+        QMetaObject::invokeMethod(ftpWorker, "stop", Qt::BlockingQueuedConnection);
+        ftpThread->quit();
+        ftpThread->wait(5000);
         modbusTcp->stop();
         restApi->stop();
     });
@@ -129,6 +168,12 @@ int main(int argc, char *argv[]) {
     engine.loadFromModule("DataLogger.App", "Main");
 
     if (engine.rootObjects().isEmpty()) return -1;
+
+    // Auto-start monitoring once the event loop is running, so that the UI is
+    // ready to reflect the polling state and receive any startup messages.
+    QTimer::singleShot(0, monitorCtrl, [monitorCtrl]() {
+        monitorCtrl->startPolling();
+    });
 
     return app.exec();
 }

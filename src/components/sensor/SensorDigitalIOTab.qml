@@ -167,9 +167,9 @@ Rectangle {
                     }
                 }
 
-                ThemedButton {
+                AppButton {
                     text: "Back to attach"
-                    flat: true
+                    variant: "tonal"
                     Layout.fillWidth: true
                     onClicked: dioListView.currentIndex = -1
                 }
@@ -225,7 +225,7 @@ Rectangle {
                             model: ["00 — Monitoring", "01 — Calibrating", "02 — Error", "03 — Maintenance"]
                         }
 
-                        ThemedButton {
+                        AppButton {
                             text: "Attach DI"
                             Layout.fillWidth: true
                             enabled: diSensorCombo.currentIndex >= 0
@@ -276,7 +276,7 @@ Rectangle {
                             CheckBox { id: doTrigMin; text: "Trigger on Min"; checked: true }
                         }
 
-                        ThemedButton {
+                        AppButton {
                             text: "Attach DO"
                             Layout.fillWidth: true
                             enabled: doSensorCombo.currentIndex >= 0

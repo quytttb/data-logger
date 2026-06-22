@@ -10,6 +10,11 @@ DatabaseWorker::DatabaseWorker(QObject *parent) : QObject(parent) {}
 
 void DatabaseWorker::enqueue(const QVariantMap &payload) {
     QMutexLocker lock(&m_mutex);
+    if (!m_running) return;
+    if (m_queue.size() >= kMaxQueueSize) {
+        m_queue.dequeue();
+        qWarning() << "DatabaseWorker: queue overflow — oldest record dropped";
+    }
     m_queue.enqueue(payload);
 }
 
@@ -47,9 +52,12 @@ void DatabaseWorker::flush() {
     }
     if (batch.isEmpty()) return;
 
-    auto db = Database::openConnection();
-    if (!db.isOpen()) {
-        emit dbError("DatabaseWorker: cannot open connection");
+    ScopedDbConnection db;
+    if (!db.get().isOpen()) {
+        QMutexLocker lock(&m_mutex);
+        for (int i = batch.size() - 1; i >= 0; --i)
+            m_queue.prepend(batch[i]);
+        emit dbError("DatabaseWorker: cannot open connection — records requeued");
         return;
     }
 
@@ -63,7 +71,8 @@ void DatabaseWorker::flush() {
                       ? std::optional<double>(p["value"].toDouble()) : std::nullopt;
         d.status    = p.value("status").toString();
         d.isAlarm   = p.value("is_alarm", false).toBool();
-        d.alarmType = p.value("alarm_type").toString();
+        const QVariant alarmVar = p.value(QStringLiteral("alarm_type"));
+        d.alarmType = alarmVar.isNull() ? QString() : alarmVar.toString();
         QString ra  = p.value("recorded_at").toString();
         d.recordedAt = ra.isEmpty()
                        ? QDateTime::currentDateTime()
@@ -72,10 +81,14 @@ void DatabaseWorker::flush() {
     }
 
     SensorDataDao dao(db);
-    if (!dao.insertBatch(records))
-        emit dbError("DatabaseWorker: batch insert failed");
-    else
-        emit recordsSaved(records.size());
+    bool ok = dao.insertBatch(records);
 
-    db.close();
+    if (!ok) {
+        QMutexLocker lock(&m_mutex);
+        for (int i = batch.size() - 1; i >= 0; --i)
+            m_queue.prepend(batch[i]);
+        emit dbError("DatabaseWorker: batch insert failed — retrying next flush");
+    } else {
+        emit recordsSaved(records.size());
+    }
 }
