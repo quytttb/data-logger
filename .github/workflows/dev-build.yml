@@ -47,8 +47,7 @@ jobs:
           path: ${{ env.QT_INSTALL_DIR }}
           key: qt-${{ env.QT_VERSION }}-arm64-ubuntu2404-v1
 
-      - name: Install Qt build dependencies
-        if: steps.cache-qt.outputs.cache-hit != 'true'
+      - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -63,7 +62,7 @@ jobs:
             libxcb-sync-dev libxcb-util-dev libxcb-xfixes0-dev \
             libxcb-xinerama0-dev libxcb-xkb-dev \
             libssl-dev zlib1g-dev libsqlite3-dev libicu-dev \
-            libpcre2-dev libdouble-conversion-dev libglib2.0-dev
+            libpcre2-dev libdouble-conversion-dev libglib2.0-dev dpkg-dev
 
       - name: Build Qt ${{ env.QT_VERSION }} from source
         if: steps.cache-qt.outputs.cache-hit != 'true'
@@ -130,13 +129,7 @@ jobs:
           echo ">>> Cleaning up build tree to save disk space..."
           rm -rf "${SRC_DIR}" "${BUILD_DIR}" "${RUNNER_TEMP}/qt-src.tar.xz"
 
-      - name: Install app build dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential cmake ninja-build \
-            libgl1-mesa-dev libfontconfig1-dev libdbus-1-dev \
-            libxkbcommon-dev dpkg-dev
+
 
       - name: Build .deb
         env:
