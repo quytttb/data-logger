@@ -28,57 +28,7 @@ permissions:
   contents: read
 
 jobs:
-  build-deb:
-    if: "!contains(github.event.head_commit.message, 'chore(release):')"
-    runs-on: ubuntu-latest
-    timeout-minutes: 120
-    steps:
-      - uses: actions/checkout@v6
 
-      - name: Read version
-        id: meta
-        run: |
-          VERSION=$(grep -E '^project\(DataLogger VERSION' CMakeLists.txt \
-            | sed -E 's/.*VERSION ([0-9.]+).*/\1/')
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-
-      - name: Install system packages
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential libgl1-mesa-dev libfontconfig1-dev libdbus-1-dev libxkbcommon-dev \
-            libegl1 libgl1 libglib2.0-0 libxkbcommon0 libxkbcommon-x11-0 \
-            libdbus-1-3 libfontconfig1 libxcb-cursor0 libxcb-icccm4 \
-            libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 \
-            libxcb-shape0 libxcb-sync1 libxcb-xfixes0 libxcb-xkb1 \
-            patchelf dpkg-dev
-
-      - name: Install Qt
-        uses: jurplel/install-qt-action@v4.3.1
-        with:
-          version: ${{ env.QT_VERSION }}
-          host: linux
-          target: desktop
-          arch: linux_gcc_64
-          modules: ${{ env.QT_MODULES }}
-          dir: ${{ runner.workspace }}
-          install-deps: false
-          aqtsource: ${{ env.AQT_SOURCE }}
-          cache: true
-          cache-key-prefix: qt611-linux
-
-      - name: Build .deb
-        run: |
-          chmod +x packaging/linux/cpack_deb.sh
-          packaging/linux/cpack_deb.sh
-
-      - name: Upload .deb artifact
-        uses: actions/upload-artifact@v6
-        with:
-          name: data-logger-dev-deb-${{ github.sha }}
-          path: dist/data-logger-app_${{ steps.meta.outputs.version }}_amd64.deb
-          if-no-files-found: error
-          retention-days: 7
 
   build-deb-arm64:
     if: "!contains(github.event.head_commit.message, 'chore(release):')"
