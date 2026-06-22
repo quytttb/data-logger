@@ -16,7 +16,6 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   QT_VERSION: "6.11.1"
   QT_INSTALL_DIR: /opt/qt6
 
@@ -55,7 +54,7 @@ jobs:
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 240
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ needs.prepare.outputs.ref }}
 
@@ -170,7 +169,7 @@ jobs:
           packaging/linux/cpack_deb.sh
 
       - name: Upload .deb artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: deb-package-arm64
           path: dist/data-logger-app_${{ needs.prepare.outputs.version }}_arm64.deb
@@ -185,7 +184,7 @@ jobs:
       contents: write
     steps:
       - name: Download build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           path: release-assets
           merge-multiple: true
