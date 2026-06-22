@@ -163,7 +163,7 @@ Rectangle {
 
         // Time and Status Column (Optimized for 7-inch touch)
         Column {
-            width: parent.width
+            Layout.fillWidth: true
             spacing: 16
             Layout.bottomMargin: Theme.spacingSM
 
@@ -177,7 +177,7 @@ Rectangle {
                     anchors.horizontalCenter: parent.horizontalCenter
                     spacing: Theme.spacingS
                     Rectangle {
-                        width: 8; height: 8; radius: width / 2
+                        implicitWidth: 8; implicitHeight: 8; radius: implicitWidth / 2
                         color: MonitorController.statusMode === 1 ? AppColors.success
                              : MonitorController.statusMode === 2 ? AppColors.error
                              : AppColors.onSurfaceVariant
@@ -195,7 +195,7 @@ Rectangle {
                     anchors.horizontalCenter: parent.horizontalCenter
                     spacing: Theme.spacingS
                     Rectangle {
-                        width: 8; height: 8; radius: width / 2
+                        implicitWidth: 8; implicitHeight: 8; radius: implicitWidth / 2
                         color: {
                             if (!ReportController.isRunning) return AppColors.onSurfaceVariant;
                             var s = ReportController.lastStatus || "";

@@ -1,8 +1,6 @@
 pragma Singleton
 import QtQuick
 
-import DataLogger.Core
-
 // M3 color roles + state layers (dark theme only).
 // ApplicationWindow sets Material.primary/accent from AppTheme — custom UI uses tokens here only.
 QtObject {

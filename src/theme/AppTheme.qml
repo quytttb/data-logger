@@ -2,8 +2,6 @@ pragma Singleton
 import QtQuick
 import QtQuick.Controls.Material
 
-import DataLogger.Core
-
 // Material palette + layout tokens for ApplicationWindow.
 QtObject {
     readonly property int accent:  Material.Indigo
