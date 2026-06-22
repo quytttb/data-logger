@@ -26,7 +26,7 @@ dist/
 *.AppImage
 
 # Runtime data (generated on device)
-data/
+/data/
 logs/
 config/
 var/
