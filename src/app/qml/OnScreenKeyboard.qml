@@ -1,18 +1,38 @@
 import QtQuick
 import QtQuick.VirtualKeyboard
 
-// On-screen keyboard for touch input.
-//
-// In fullScreenMode the InputPanel grows to fill the entire window (Qt VKB
-// manages the height automatically). We must NOT constrain height — only set
-// width and drive y from the `active` flag:
-//   • inactive  → y = parent.height   (off-screen below)
-//   • active    → y = parent.height - height
-//       - fullScreenMode off: height ≈ keyboard height  → slides up from bottom
-//       - fullScreenMode on:  height = parent.height    → y snaps to 0, fills screen
+// On-screen keyboard for touch input. Slides up from the bottom whenever a text
+// field gains focus and slides back down on blur. It overlays the bottom of the
+// screen, so a focused field sitting low on the page can be covered — this is a
+// known, accepted limitation of the 1024x600 panel.
 InputPanel {
     id: inputPanel
     z: 999
-    width: parent.width
-    y: active ? parent.height - height : parent.height
+
+    // The ApplicationWindow that drives the keyboard geometry. Typed as var
+    // because ApplicationWindow is a Window, not an Item.
+    property var window: null
+
+    width: window ? window.width : 0
+    x: 0
+    y: window ? window.height : 0
+
+    states: State {
+        name: "visible"
+        when: inputPanel.active
+        PropertyChanges {
+            target: inputPanel
+            y: (inputPanel.window ? inputPanel.window.height : 0) - inputPanel.height
+        }
+    }
+    transitions: Transition {
+        from: ""
+        to: "visible"
+        reversible: true
+        NumberAnimation {
+            properties: "y"
+            duration: 250
+            easing.type: Easing.InOutQuad
+        }
+    }
 }

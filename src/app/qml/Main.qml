@@ -3,7 +3,6 @@ import QtQuick.Controls
 import QtQuick.Controls.Material
 import QtQuick.Layouts
 import QtQuick.Window
-import QtQuick.VirtualKeyboard.Settings
 import DataLogger.Theme
 import DataLogger.Core
 import DataLogger.Components
@@ -100,14 +99,7 @@ ApplicationWindow {
         }
     }
 
-    Component.onCompleted: {
-        root.syncModbusTaskBarRef()
-        // Enable the Android-landscape style keyboard: the focused field's text is
-        // mirrored into a large field at the top of the keyboard. Set imperatively
-        // (and as early as possible) — a plain Binding on the singleton was not
-        // reliably picked up by the input method on eglfs.
-        VirtualKeyboardSettings.fullScreenMode = true
-    }
+    Component.onCompleted: root.syncModbusTaskBarRef()
 
     Connections {
         target: TesterController
@@ -164,9 +156,9 @@ ApplicationWindow {
         function onMessageSent(t, m) { root.notifyMessage(t, m) }
     }
 
-    // On-screen keyboard for touch input. Fills the window so fullScreenMode can
-    // render its backdrop + mirror field; only visible while an input is focused.
+    // On-screen keyboard for touch input. Slides up from the bottom on focus.
     OnScreenKeyboard {
         id: inputPanel
+        window: root
     }
 }
