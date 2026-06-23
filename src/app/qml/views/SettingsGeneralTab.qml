@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.VirtualKeyboard
 import DataLogger.Theme
 import DataLogger.Core
 import DataLogger.Components
@@ -38,6 +39,7 @@ Item {
                     Text { text: "Device ID:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
                     TextField {
                         Layout.fillWidth: true
+                        EnterKeyAction.label: qsTr("OK")
                         text: SettingsController ? SettingsController.stationCode : ""
                         onTextEdited: { SettingsController.stationCode = text; root.configChanged = true }
                     }
@@ -45,6 +47,7 @@ Item {
                     Text { text: "Name Device:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
                     TextField {
                         Layout.fillWidth: true
+                        EnterKeyAction.label: qsTr("OK")
                         text: SettingsController ? SettingsController.stationName : ""
                         onTextEdited: { SettingsController.stationName = text; root.configChanged = true }
                     }

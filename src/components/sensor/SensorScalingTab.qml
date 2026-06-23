@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.VirtualKeyboard
 import DataLogger.Theme
 
 // TAB 1: Scaling & Alarms
@@ -35,9 +36,9 @@ Rectangle {
             columns: 4; Layout.fillWidth: true; columnSpacing: 15; rowSpacing: 8
 
             Text { text: "Min threshold:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
-            TextField { id: dMinThreshold; Layout.fillWidth: true; placeholderText: text.length > 0 ? "" : "Empty = disabled"; inputMethodHints: Qt.ImhFormattedNumbersOnly }
+            TextField { id: dMinThreshold; Layout.fillWidth: true; placeholderText: text.length > 0 ? "" : "Empty = disabled"; inputMethodHints: Qt.ImhFormattedNumbersOnly; EnterKeyAction.label: qsTr("OK") }
             Text { text: "Max threshold:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
-            TextField { id: dMaxThreshold; Layout.fillWidth: true; placeholderText: text.length > 0 ? "" : "Empty = disabled"; inputMethodHints: Qt.ImhFormattedNumbersOnly }
+            TextField { id: dMaxThreshold; Layout.fillWidth: true; placeholderText: text.length > 0 ? "" : "Empty = disabled"; inputMethodHints: Qt.ImhFormattedNumbersOnly; EnterKeyAction.label: qsTr("OK") }
 
             Text { text: "Decimals:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
             SpinBox { id: dDecimals; from: 0; to: 6; value: 4; Layout.fillWidth: true }
@@ -57,28 +58,28 @@ Rectangle {
             RowLayout {
                 spacing: 8
                 Text { text: "a:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
-                TextField { id: dLinearA; Layout.fillWidth: true; text: "1" }
+                TextField { id: dLinearA; Layout.fillWidth: true; text: "1"; inputMethodHints: Qt.ImhFormattedNumbersOnly; EnterKeyAction.label: qsTr("OK") }
                 Text { text: "b:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
-                TextField { id: dLinearB; Layout.fillWidth: true; text: "0" }
+                TextField { id: dLinearB; Layout.fillWidth: true; text: "0"; inputMethodHints: Qt.ImhFormattedNumbersOnly; EnterKeyAction.label: qsTr("OK") }
             }
             ColumnLayout {
                 spacing: Theme.spacingS
                 RowLayout {
                     spacing: 8
                     Text { text: "RawMin:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; Layout.preferredWidth: 60 }
-                    TextField { id: dRawMin; text: "4000"; Layout.fillWidth: true }
+                    TextField { id: dRawMin; text: "4000"; Layout.fillWidth: true; inputMethodHints: Qt.ImhFormattedNumbersOnly; EnterKeyAction.label: qsTr("OK") }
                     Text { text: "Max:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
-                    TextField { id: dRawMax; text: "20000"; Layout.fillWidth: true }
+                    TextField { id: dRawMax; text: "20000"; Layout.fillWidth: true; inputMethodHints: Qt.ImhFormattedNumbersOnly; EnterKeyAction.label: qsTr("OK") }
                 }
                 RowLayout {
                     spacing: 8
                     Text { text: "ScaleMin:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; Layout.preferredWidth: 60 }
-                    TextField { id: dScaleMin; text: "4"; Layout.fillWidth: true }
+                    TextField { id: dScaleMin; text: "4"; Layout.fillWidth: true; inputMethodHints: Qt.ImhFormattedNumbersOnly; EnterKeyAction.label: qsTr("OK") }
                     Text { text: "Max:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
-                    TextField { id: dScaleMax; text: "20"; Layout.fillWidth: true }
+                    TextField { id: dScaleMax; text: "20"; Layout.fillWidth: true; inputMethodHints: Qt.ImhFormattedNumbersOnly; EnterKeyAction.label: qsTr("OK") }
                 }
             }
-            TextField { id: dCoeffJson; text: "{}"; Layout.fillWidth: true }
+            TextField { id: dCoeffJson; text: "{}"; Layout.fillWidth: true; EnterKeyAction.label: qsTr("OK") }
         }
     }
 }

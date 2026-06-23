@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.VirtualKeyboard
 import DataLogger.Theme
 import DataLogger.Core
 
@@ -139,6 +140,7 @@ Item {
                     Text { text: "Server name:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
                     TextField {
                         Layout.fillWidth: true
+                        EnterKeyAction.label: qsTr("OK")
                         text: SettingsController ? SettingsController.serverName : ""
                         onTextEdited: { SettingsController.serverName = text; root.configChanged = true }
                     }
@@ -158,6 +160,7 @@ Item {
                     Text { text: "Start time:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
                     TextField {
                         Layout.fillWidth: true
+                        EnterKeyAction.label: qsTr("OK")
                         placeholderText: "00:00"
                         text: SettingsController ? SettingsController.serverStartTime : "00:00"
                         onTextEdited: { SettingsController.serverStartTime = text; root.configChanged = true }
@@ -174,6 +177,7 @@ Item {
                     Text { text: "Host:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
                     TextField {
                         Layout.fillWidth: true
+                        EnterKeyAction.label: qsTr("OK")
                         text: SettingsController ? SettingsController.ftpAddress : ""
                         onTextEdited: { SettingsController.ftpAddress = text; root.configChanged = true }
                     }
@@ -183,6 +187,7 @@ Item {
                         Layout.fillWidth: true
                         text: SettingsController ? String(SettingsController.ftpPort) : "21"
                         inputMethodHints: Qt.ImhDigitsOnly
+                        EnterKeyAction.label: qsTr("OK")
                         onTextEdited: {
                             var p = parseInt(text)
                             if (!isNaN(p)) { SettingsController.ftpPort = p; root.configChanged = true }
@@ -192,6 +197,7 @@ Item {
                     Text { text: "Username:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
                     TextField {
                         Layout.fillWidth: true
+                        EnterKeyAction.label: qsTr("OK")
                         text: SettingsController ? SettingsController.ftpUsername : ""
                         onTextEdited: { SettingsController.ftpUsername = text; root.configChanged = true }
                     }
@@ -200,6 +206,7 @@ Item {
                     TextField {
                         Layout.fillWidth: true
                         echoMode: TextInput.Password
+                        EnterKeyAction.label: qsTr("OK")
                         text: SettingsController ? SettingsController.ftpPassword : ""
                         onTextEdited: { SettingsController.ftpPassword = text; root.configChanged = true }
                     }
@@ -216,6 +223,7 @@ Item {
                     Text { text: "Base folder:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
                     TextField {
                         Layout.fillWidth: true
+                        EnterKeyAction.label: qsTr("OK")
                         text: SettingsController ? SettingsController.serverBaseFolder : ""
                         onTextEdited: { SettingsController.serverBaseFolder = text; root.configChanged = true; root._pathVersion++ }
                     }
@@ -234,6 +242,7 @@ Item {
                     Text { text: "File prefix:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
                     TextField {
                         Layout.fillWidth: true
+                        EnterKeyAction.label: qsTr("OK")
                         text: SettingsController ? SettingsController.ftpPrefix : ""
                         onTextEdited: { SettingsController.ftpPrefix = text; root.configChanged = true; root._pathVersion++ }
                     }

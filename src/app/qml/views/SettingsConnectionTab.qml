@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.VirtualKeyboard
 import DataLogger.Theme
 import DataLogger.Core
 import DataLogger.Network
@@ -270,6 +271,7 @@ Item {
                                 TextField {
                                     id: tcpBindField
                                     Layout.fillWidth: true
+                                    EnterKeyAction.label: qsTr("OK")
                                     text: SettingsController.modbusTcpBind
                                     placeholderText: "0.0.0.0"
                                     selectByMouse: true
@@ -288,6 +290,7 @@ Item {
                                     Layout.fillWidth: true
                                     text: SettingsController ? String(SettingsController.modbusTcpPort) : "5020"
                                     inputMethodHints: Qt.ImhDigitsOnly
+                                    EnterKeyAction.label: qsTr("OK")
                                     selectByMouse: true
                                     Connections {
                                         target: SettingsController
@@ -392,6 +395,7 @@ Item {
                                 TextField {
                                     id: restBindField
                                     Layout.fillWidth: true
+                                    EnterKeyAction.label: qsTr("OK")
                                     text: SettingsController.restApiBind
                                     placeholderText: "0.0.0.0"
                                     selectByMouse: true
@@ -410,6 +414,7 @@ Item {
                                     Layout.fillWidth: true
                                     text: SettingsController ? String(SettingsController.restApiPort) : "8080"
                                     inputMethodHints: Qt.ImhDigitsOnly
+                                    EnterKeyAction.label: qsTr("OK")
                                     selectByMouse: true
                                     Connections {
                                         target: SettingsController

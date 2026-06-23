@@ -25,6 +25,7 @@ QtObject {
     readonly property string codeBlocks:          "\uF84D"  // code_blocks
     readonly property string playArrow:           "\uE037"  // play_arrow
     readonly property string stop:                "\uE047"  // stop
+    readonly property string restartAlt:          "\uF053"  // restart_alt
 
     function glyph(name) {
         switch (name) {
@@ -51,6 +52,7 @@ QtObject {
         case "codeBlocks":          return codeBlocks
         case "playArrow":           return playArrow
         case "stop":                return stop
+        case "restart_alt":         return restartAlt
         default:                    return close
         }
     }

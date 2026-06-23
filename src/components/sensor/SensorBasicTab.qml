@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.VirtualKeyboard
 import DataLogger.Theme
 
 Rectangle {
@@ -49,7 +50,7 @@ Rectangle {
             }
 
             Text { text: "Name:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
-            TextField { id: dName; Layout.fillWidth: true }
+            TextField { id: dName; Layout.fillWidth: true; EnterKeyAction.label: qsTr("OK") }
 
             Text { text: "Unit:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; visible: root.isAnalog }
             ComboBox {

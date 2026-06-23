@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Controls.Material
 import QtQuick.Layouts
 import QtQuick.Window
+import QtQuick.VirtualKeyboard.Settings
 import DataLogger.Theme
 import DataLogger.Core
 import DataLogger.Components
@@ -46,53 +47,45 @@ ApplicationWindow {
         if (currentTab !== 1) HistoryViewModel.clear()
     }
 
-    // Wraps the whole UI so the on-screen keyboard can shift it up to keep the
-    // focused field visible (see OnScreenKeyboard.avoidTarget below).
-    Item {
-        id: contentWrap
+    RowLayout {
         anchors.fill: parent
-        Behavior on y { NumberAnimation { duration: 250; easing.type: Easing.InOutQuad } }
+        spacing: 0
 
-        RowLayout {
-            anchors.fill: parent
+        AppSideBar {
+            Layout.preferredWidth: AppTheme.railWidth
+            Layout.fillHeight: true
+            currentTab: root.currentTab
+            onSelectTab: function (i) {
+                // If leaving Settings while Add/Edit form is open, cancel it
+                if (root.currentTab === 3 && i !== 3) {
+                    if (tabContent.settingsTabIndex() === 4) {
+                        tabContent.closeSettingsSensorForm()
+                    }
+                }
+                root.currentTab = i
+            }
+        }
+
+        ColumnLayout {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
             spacing: 0
 
-            AppSideBar {
-                Layout.preferredWidth: AppTheme.railWidth
-                Layout.fillHeight: true
+            MainHeaderChrome {
+                id: headerChrome
+                Layout.fillWidth: true
                 currentTab: root.currentTab
-                onSelectTab: function (i) {
-                    // If leaving Settings while Add/Edit form is open, cancel it
-                    if (root.currentTab === 3 && i !== 3) {
-                        if (tabContent.settingsTabIndex() === 4) {
-                            tabContent.closeSettingsSensorForm()
-                        }
-                    }
-                    root.currentTab = i
-                }
+                scanProgCur: root.scanProgCur
+                scanProgTot: root.scanProgTot
+                appRoot: root
+                tabContent: tabContent
             }
 
-            ColumnLayout {
+            MainTabContent {
+                id: tabContent
+                currentTab: root.currentTab
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                spacing: 0
-
-                MainHeaderChrome {
-                    id: headerChrome
-                    Layout.fillWidth: true
-                    currentTab: root.currentTab
-                    scanProgCur: root.scanProgCur
-                    scanProgTot: root.scanProgTot
-                    appRoot: root
-                    tabContent: tabContent
-                }
-
-                MainTabContent {
-                    id: tabContent
-                    currentTab: root.currentTab
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                }
             }
         }
     }
@@ -164,11 +157,18 @@ ApplicationWindow {
         function onMessageSent(t, m) { root.notifyMessage(t, m) }
     }
 
-    // On-screen keyboard for touch input. Shifts contentWrap up so the focused
-    // field stays visible above the keyboard.
+    // Fullscreen mode mirrors the focused field's text into a large field at the
+    // top of the keyboard (Android-landscape style), so a covered field is never
+    // a problem on the 1024x600 touch panel.
+    Binding {
+        target: VirtualKeyboardSettings
+        property: "fullScreenMode"
+        value: true
+    }
+
+    // On-screen keyboard for touch input. Slides up from the bottom on focus.
     OnScreenKeyboard {
         id: inputPanel
         window: root
-        avoidTarget: contentWrap
     }
 }
