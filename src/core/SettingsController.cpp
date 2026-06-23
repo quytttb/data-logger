@@ -7,6 +7,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QUuid>
+#include <QProcess>
 #include <QDebug>
 #include <QQmlEngine>
 #include <QJSEngine>
@@ -119,6 +120,17 @@ void SettingsController::regenerateRestToken() {
     emit configSaved();
     emit provisionQrChanged();
     emit messageSent("REST API", "Token changed — scan QR again in Central App.");
+}
+
+void SettingsController::rebootSystem() {
+    qInfo() << "[SettingsController] System reboot requested";
+    // `systemctl reboot` routes through logind; the unprivileged kiosk user is
+    // authorised by the polkit rule shipped with the package.
+    if (!QProcess::startDetached(QStringLiteral("systemctl"), {QStringLiteral("reboot")})) {
+        qWarning() << "[SettingsController] Failed to invoke 'systemctl reboot'";
+        emit messageSent(QStringLiteral("Error"),
+                         QStringLiteral("Failed to reboot the system."));
+    }
 }
 
 bool SettingsController::provisionQrAvailable() const

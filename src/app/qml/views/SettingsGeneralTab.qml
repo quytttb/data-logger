@@ -3,10 +3,13 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import DataLogger.Theme
 import DataLogger.Core
+import DataLogger.Components
 
 Item {
     id: root
     property bool configChanged: false
+
+    MessagePopup { id: rebootConfirm }
 
     Flickable {
         id: flick
@@ -122,6 +125,29 @@ Item {
                     Switch {
                         checked: SettingsController ? SettingsController.autoSyncTime : false
                         onToggled: { SettingsController.autoSyncTime = checked; root.configChanged = true }
+                    }
+                }
+
+                // ── COLUMN 3: System ──
+                ColumnLayout {
+                    Layout.fillWidth: true; Layout.alignment: Qt.AlignTop; spacing: 8
+
+                    Text { text: "System"; color: Theme.accentText; font.bold: true; font.pixelSize: AppTypography.titleSmall.pixelSize }
+                    Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.borderDefault }
+
+                    Text { text: "Restart this device:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
+                    AppButton {
+                        Layout.fillWidth: true
+                        text: "System Reboot"
+                        iconName: "restart_alt"
+                        variant: "filled"
+                        accent: Theme.btnStop
+                        onClicked: rebootConfirm.showConfirm(
+                            "Confirm reboot",
+                            "Reboot this device now? The application will start again automatically after boot.",
+                            function() { if (SettingsController) SettingsController.rebootSystem() },
+                            "Reboot",
+                            Theme.btnStop)
                     }
                 }
             }

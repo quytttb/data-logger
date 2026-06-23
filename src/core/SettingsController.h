@@ -164,6 +164,9 @@ public slots:
     Q_INVOKABLE QString buildCoefficientJson(int mode, const QString &legacyJson,
                                               const QString &s0, const QString &s1,
                                               const QString &s2, const QString &s3);
+    // Reboot the host machine (kiosk has no exit button). Relies on a polkit rule
+    // shipped in the package so the unprivileged kiosk user may reboot.
+    Q_INVOKABLE void rebootSystem();
 
 signals:
     void configLoaded();

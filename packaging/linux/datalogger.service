@@ -7,6 +7,10 @@ Conflicts=getty@tty1.service
 [Service]
 Type=simple
 User=pi
+# Grant serial access explicitly so USB-RS485/RS232 converters (/dev/ttyUSB*,
+# /dev/ttyACM*, group 'dialout', mode 0660) can be opened without depending on
+# the kiosk user being a member of 'dialout' — no manual `usermod -aG` needed.
+SupplementaryGroups=dialout
 # Bind to the primary VT so eglfs/KMS can become DRM master on a headless image.
 TTYPath=/dev/tty1
 StandardInput=tty

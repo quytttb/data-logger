@@ -84,6 +84,13 @@ install(FILES ${CMAKE_SOURCE_DIR}/packaging/linux/datalogger.service
     DESTINATION lib/systemd/system
 )
 
+# polkit rule so the unprivileged kiosk user may reboot/power off via the in-app
+# "System Reboot" button (the service has no login session, so logind would
+# otherwise require admin auth). polkit reads rules from /usr/share/polkit-1/rules.d.
+install(FILES ${CMAKE_SOURCE_DIR}/packaging/linux/polkit/49-datalogger-reboot.rules
+    DESTINATION share/polkit-1/rules.d
+)
+
 # --- Headless / framebuffer support (e.g. Raspberry Pi OS Lite, no X11/Wayland) ---
 # qt_generate_deploy_qml_app_script() only ships the desktop (xcb) platform plugin
 # and skips ICU (treated as a system library). Running directly on DRM/KMS without

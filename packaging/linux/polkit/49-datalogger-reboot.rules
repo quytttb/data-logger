@@ -1,0 +1,18 @@
+// Allow the Data Logger kiosk user ("pi") to reboot / power off the machine
+// without interactive authentication.
+//
+// The app runs as a headless systemd service (no login session/seat), so logind
+// would otherwise prompt for admin credentials when the in-app "System Reboot"
+// button calls `systemctl reboot`. This rule grants just the reboot/power-off
+// actions to that single user.
+polkit.addRule(function(action, subject) {
+    if (subject.user !== "pi")
+        return;
+    switch (action.id) {
+        case "org.freedesktop.login1.reboot":
+        case "org.freedesktop.login1.reboot-multiple-sessions":
+        case "org.freedesktop.login1.power-off":
+        case "org.freedesktop.login1.power-off-multiple-sessions":
+            return polkit.Result.YES;
+    }
+});
