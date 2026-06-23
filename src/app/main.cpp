@@ -32,6 +32,13 @@ int main(int argc, char *argv[]) {
     qputenv("QT_IM_MODULE", "qtvirtualkeyboard");
     qputenv("QT_QPA_EGLFS_HIDECURSOR", "1");
 
+    // Force "application" integration. On a Linux build the virtual keyboard
+    // defaults to "desktop" integration (a separate popup top-level window),
+    // which eglfs cannot host — so the embedded InputPanel renders but
+    // VirtualKeyboardSettings.fullScreenMode is silently ignored. Disabling
+    // desktop integration hands fullscreen layout to our InputPanel.
+    qputenv("QT_VIRTUALKEYBOARD_DESKTOP_DISABLE", "1");
+
     QGuiApplication app(argc, argv);
     app.setApplicationName("DataLogger");
 

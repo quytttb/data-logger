@@ -50,7 +50,7 @@ Rectangle {
             }
 
             Text { text: "Name:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
-            TextField { id: dName; Layout.fillWidth: true; EnterKeyAction.label: qsTr("OK") }
+            TextField { id: dName; Layout.fillWidth: true; EnterKeyAction.actionId: EnterKeyAction.None; EnterKeyAction.label: qsTr("OK") }
 
             Text { text: "Unit:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; visible: root.isAnalog }
             ComboBox {
