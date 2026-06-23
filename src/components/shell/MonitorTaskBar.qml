@@ -9,80 +9,6 @@ Item {
     id: root
     implicitHeight: 64
 
-    Popup {
-        id: diLegendPopup
-        parent: Overlay.overlay
-        anchors.centerIn: parent
-        width: Math.min(400, parent.width - 32)
-        padding: Theme.spacingM
-        modal: true
-        focus: true
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-
-        background: Rectangle {
-            color: Theme.bgPanel
-            radius: Theme.radiusCard
-            border.color: Theme.accent
-            border.width: 1
-        }
-
-        contentItem: ColumnLayout {
-            spacing: Theme.spacingSM
-
-            Text {
-                text: "DI Status"
-                font.bold: true; font.pixelSize: AppTypography.titleLarge.pixelSize
-                color: Theme.textPrimary
-                Layout.fillWidth: true
-                horizontalAlignment: Text.AlignHCenter
-            }
-
-            Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.borderDefault }
-
-            Repeater {
-                model: MonitorController.diLegend
-
-                RowLayout {
-                    id: legendItem
-                    required property var modelData
-                    Layout.fillWidth: true
-                    spacing: Theme.spacingS
-
-                    Rectangle {
-                        Layout.preferredWidth: 12
-                        Layout.preferredHeight: 12
-                        radius: width / 2
-                        color: legendItem.modelData.color
-                    }
-                    Text {
-                        text: legendItem.modelData.label
-                        color: Theme.textPrimary
-                        font.pixelSize: AppTypography.bodyMedium.pixelSize
-                        Layout.fillWidth: true
-                    }
-                }
-            }
-
-            Text {
-                visible: !MonitorController.diLegend || MonitorController.diLegend.length === 0
-                text: "No DI channels configured."
-                color: Theme.textSecondary
-                font.pixelSize: AppTypography.bodyMedium.pixelSize
-                Layout.fillWidth: true
-                horizontalAlignment: Text.AlignHCenter
-            }
-
-            Item { Layout.preferredHeight: 4 }
-
-            AppButton {
-                text: "OK"
-                Layout.alignment: Qt.AlignHCenter
-                Layout.preferredWidth: 100
-                onClicked: diLegendPopup.close()
-            }
-        }
-    }
-
     RowLayout {
         anchors.left: parent.left
         anchors.right: parent.right
@@ -126,45 +52,6 @@ Item {
                     wrapMode: Text.NoWrap
                     Layout.alignment: Qt.AlignVCenter
                 }
-            }
-        }
-
-        Button {
-            id: diLegendBtn
-            visible: MonitorController.isPolling && MonitorController.diLegend && MonitorController.diLegend.length > 0
-            Layout.preferredHeight: 44
-            Layout.alignment: Qt.AlignVCenter
-            onClicked: diLegendPopup.open()
-
-            contentItem: Row {
-                spacing: Theme.spacingS
-                anchors.verticalCenter: parent.verticalCenter
-
-                Repeater {
-                    model: MonitorController.diLegend
-                    Rectangle {
-                        id: diDot
-                        required property var modelData
-                        width: 8; height: 8; radius: width / 2
-                        color: diDot.modelData.color
-                        anchors.verticalCenter: parent.verticalCenter
-                    }
-                }
-
-                Text {
-                    text: "DI Status"
-                    color: AppColors.buttonText
-                    font.pixelSize: AppTypography.labelMedium.pixelSize; font.bold: true
-                    anchors.verticalCenter: parent.verticalCenter
-                }
-            }
-
-            background: Rectangle {
-                radius: Theme.radiusSmall
-                color: Theme.bgSeparator
-                border.color: Theme.borderDefault
-                border.width: 1
-                opacity: diLegendBtn.pressed ? 0.7 : 1.0
             }
         }
 
