@@ -1,38 +1,16 @@
 import QtQuick
 import QtQuick.VirtualKeyboard
 
-// On-screen keyboard for touch input. Slides up from the bottom whenever a text
-// field gains focus and slides back down on blur. With VirtualKeyboardSettings
-// fullScreenMode enabled (see Main.qml) the panel also shows a large mirror of
-// the focused field's text at its top, so covered fields are never an issue.
+// On-screen keyboard for touch input.
+//
+// For VirtualKeyboardSettings.fullScreenMode (enabled in Main.qml) to work the
+// InputPanel MUST be free to use the whole window: it draws a dimmed backdrop
+// plus a large mirror of the focused field at the top and the keys at the
+// bottom. Squeezing it to a bottom strip (manual y/height) silently disables
+// fullscreen rendering, so we fill the parent and just toggle visibility.
 InputPanel {
     id: inputPanel
     z: 999
-
-    // The ApplicationWindow that drives the keyboard geometry. Typed as var
-    // because ApplicationWindow is a Window, not an Item.
-    property var window: null
-
-    width: window ? window.width : 0
-    x: 0
-    y: window ? window.height : 0
-
-    states: State {
-        name: "visible"
-        when: inputPanel.active
-        PropertyChanges {
-            target: inputPanel
-            y: (inputPanel.window ? inputPanel.window.height : 0) - inputPanel.height
-        }
-    }
-    transitions: Transition {
-        from: ""
-        to: "visible"
-        reversible: true
-        NumberAnimation {
-            properties: "y"
-            duration: 250
-            easing.type: Easing.InOutQuad
-        }
-    }
+    anchors.fill: parent
+    visible: active
 }

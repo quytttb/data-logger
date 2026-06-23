@@ -100,7 +100,14 @@ ApplicationWindow {
         }
     }
 
-    Component.onCompleted: root.syncModbusTaskBarRef()
+    Component.onCompleted: {
+        root.syncModbusTaskBarRef()
+        // Enable the Android-landscape style keyboard: the focused field's text is
+        // mirrored into a large field at the top of the keyboard. Set imperatively
+        // (and as early as possible) — a plain Binding on the singleton was not
+        // reliably picked up by the input method on eglfs.
+        VirtualKeyboardSettings.fullScreenMode = true
+    }
 
     Connections {
         target: TesterController
@@ -157,18 +164,9 @@ ApplicationWindow {
         function onMessageSent(t, m) { root.notifyMessage(t, m) }
     }
 
-    // Fullscreen mode mirrors the focused field's text into a large field at the
-    // top of the keyboard (Android-landscape style), so a covered field is never
-    // a problem on the 1024x600 touch panel.
-    Binding {
-        target: VirtualKeyboardSettings
-        property: "fullScreenMode"
-        value: true
-    }
-
-    // On-screen keyboard for touch input. Slides up from the bottom on focus.
+    // On-screen keyboard for touch input. Fills the window so fullScreenMode can
+    // render its backdrop + mirror field; only visible while an input is focused.
     OnScreenKeyboard {
         id: inputPanel
-        window: root
     }
 }
