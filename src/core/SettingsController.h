@@ -19,7 +19,6 @@ class SettingsController : public QObject {
     Q_PROPERTY(QString timeFormat    READ timeFormat    WRITE setTimeFormat    NOTIFY configLoaded)
     Q_PROPERTY(QString dateFormat    READ dateFormat    WRITE setDateFormat    NOTIFY configLoaded)
     Q_PROPERTY(QString timezone      READ timezone      WRITE setTimezone      NOTIFY configLoaded)
-    Q_PROPERTY(bool   autoSyncTime   READ autoSyncTime  WRITE setAutoSyncTime  NOTIFY configLoaded)
     Q_PROPERTY(bool   buzzerEnable   READ buzzerEnable  WRITE setBuzzerEnable  NOTIFY configLoaded)
 
     // FTP
@@ -77,7 +76,6 @@ public:
     QString timeFormat()    const { return m_cfg.timeFormat; }
     QString dateFormat()    const { return m_cfg.dateFormat; }
     QString timezone()      const { return m_cfg.timezone; }
-    bool   autoSyncTime()   const { return m_cfg.autoSyncTime; }
     bool   buzzerEnable()   const { return m_cfg.buzzerEnable; }
     QString ftpAddress()    const { return m_cfg.ftpAddress; }
     int    ftpPort()        const { return m_cfg.ftpPort; }
@@ -118,7 +116,6 @@ public:
     void setTimeFormat(const QString &v)    { m_cfg.timeFormat = v; }
     void setDateFormat(const QString &v)    { m_cfg.dateFormat = v; }
     void setTimezone(const QString &v)      { m_cfg.timezone = v; }
-    void setAutoSyncTime(bool v)            { m_cfg.autoSyncTime = v; }
     void setBuzzerEnable(bool v)            { m_cfg.buzzerEnable = v; }
     void setFtpAddress(const QString &v)    { m_cfg.ftpAddress = v; }
     void setFtpPort(int v)                  { m_cfg.ftpPort = v; }
@@ -182,10 +179,10 @@ private:
 
     QStringList validate() const;
 
-    // Push the stored time settings (timezone + NTP auto-sync) down to the OS via
-    // `timedatectl`. Authorised for the kiosk user by the shipped polkit rule.
-    // Returns false if any timedatectl call failed. m_cfg.timezone is expected to
-    // hold an IANA zone id (e.g. "Etc/GMT-7") that timedatectl accepts directly.
+    // Push the stored timezone down to the OS via `timedatectl`. Authorised for
+    // the kiosk user by the shipped polkit rule. Returns false on failure.
+    // m_cfg.timezone is expected to hold an IANA zone id (e.g. "Etc/GMT-7") that
+    // timedatectl accepts directly.
     bool applyTimeSettings();
     bool runTimedatectl(const QStringList &args);
 

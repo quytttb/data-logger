@@ -1,16 +1,15 @@
-// Allow the Data Logger kiosk user ("pi") to change the system timezone and
-// toggle NTP auto-sync without interactive authentication.
+// Allow the Data Logger kiosk user ("pi") to change the system timezone
+// without interactive authentication.
 //
 // The app runs as a headless systemd service (no login session/seat), so
 // timedated would otherwise prompt for admin credentials when the in-app
-// "Timezone" / "Auto sync time" settings call `timedatectl`. This rule grants
-// just the time/date actions to that single user.
+// "Timezone" setting calls `timedatectl set-timezone`. This rule grants just
+// the time/date actions to that single user.
 polkit.addRule(function(action, subject) {
     if (subject.user !== "pi")
         return;
     switch (action.id) {
         case "org.freedesktop.timedate1.set-timezone":
-        case "org.freedesktop.timedate1.set-ntp":
         case "org.freedesktop.timedate1.set-time":
             return polkit.Result.YES;
     }

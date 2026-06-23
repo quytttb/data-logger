@@ -91,9 +91,8 @@ void SettingsController::saveConfig() {
         emit messageSent("Success", "Configuration saved.");
         if (!applyTimeSettings())
             emit messageSent(QStringLiteral("Warning"),
-                             QStringLiteral("Configuration saved, but the system clock "
-                                            "settings (timezone / auto-sync) could not be "
-                                            "applied to the OS."));
+                             QStringLiteral("Configuration saved, but the system timezone "
+                                            "could not be applied to the OS."));
     } else {
         emit messageSent("Error", "Failed to save configuration.");
     }
@@ -120,21 +119,14 @@ bool SettingsController::runTimedatectl(const QStringList &args) {
 }
 
 bool SettingsController::applyTimeSettings() {
-    // Toggle NTP first; timezone can be set regardless of the NTP state.
-    bool ok = runTimedatectl({QStringLiteral("set-ntp"),
-                              m_cfg.autoSyncTime ? QStringLiteral("true")
-                                                 : QStringLiteral("false")});
-
     // m_cfg.timezone already stores an IANA zone id (e.g. "Etc/GMT-7") that
     // timedatectl accepts directly — see SettingsGeneralTab.qml combo box.
     const QString zone = m_cfg.timezone.trimmed();
     if (zone.isEmpty()) {
         qWarning() << "[SettingsController] Empty timezone; skipping set-timezone";
-        ok = false;
-    } else {
-        ok = runTimedatectl({QStringLiteral("set-timezone"), zone}) && ok;
+        return false;
     }
-    return ok;
+    return runTimedatectl({QStringLiteral("set-timezone"), zone});
 }
 
 void SettingsController::saveSerialConfig(const QString &port, int baudrate,

@@ -147,12 +147,6 @@ Item {
                         }
                         onActivated: { SettingsController.timezone = currentValue; root.configChanged = true }
                     }
-
-                    Text { text: "Auto sync time:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
-                    Switch {
-                        checked: SettingsController ? SettingsController.autoSyncTime : false
-                        onToggled: { SettingsController.autoSyncTime = checked; root.configChanged = true }
-                    }
                 }
 
                 // ── COLUMN 3: System ──

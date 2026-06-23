@@ -86,7 +86,7 @@ install(FILES ${CMAKE_SOURCE_DIR}/packaging/linux/datalogger.service
 )
 
 # polkit rules so the unprivileged kiosk user may reboot/power off (System
-# Reboot button) and change the system clock (Timezone / Auto sync time) via the
+# Reboot button) and change the system timezone (Timezone setting) via the
 # in-app settings. The service has no login session, so logind/timedated would
 # otherwise require admin auth. polkit reads rules from /usr/share/polkit-1/rules.d.
 install(FILES

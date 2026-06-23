@@ -79,7 +79,6 @@ bool Database::createTables(QSqlDatabase &db) {
             time_format TEXT NOT NULL DEFAULT 'HH:mm:ss',
             date_format TEXT NOT NULL DEFAULT 'dd/MM/yyyy',
             timezone TEXT NOT NULL DEFAULT 'Etc/GMT-7',
-            auto_sync_time INTEGER NOT NULL DEFAULT 0,
             buzzer_enable INTEGER NOT NULL DEFAULT 0,
             ftp_address TEXT NOT NULL DEFAULT '',
             ftp_port INTEGER NOT NULL DEFAULT 21,
@@ -237,6 +236,10 @@ bool Database::migrate(QSqlDatabase &db) {
         tz.exec();
     }
 
+    // The "auto sync time" (NTP toggle) feature was removed; drop its column.
+    if (!dropColumnIfExists(db, "app_config", "auto_sync_time"))
+        return false;
+
     return true;
 }
 
@@ -251,6 +254,30 @@ bool Database::addColumnIfMissing(QSqlDatabase &db, const QString &table,
     QString stmt = QStringLiteral("ALTER TABLE %1 ADD COLUMN %2 %3").arg(table, column, definition);
     if (!q.exec(stmt)) {
         qWarning() << "addColumnIfMissing error:" << q.lastError().text();
+        return false;
+    }
+    return true;
+}
+
+bool Database::dropColumnIfExists(QSqlDatabase &db, const QString &table,
+                                   const QString &column) {
+    QSqlQuery q(db);
+    q.exec(QStringLiteral("PRAGMA table_info(%1)").arg(table));
+    bool present = false;
+    while (q.next()) {
+        if (q.value("name").toString() == column) {
+            present = true;
+            break;
+        }
+    }
+    if (!present)
+        return true; // already gone
+
+    // Requires SQLite >= 3.35 (bundled with Qt 6). The column is not indexed or
+    // referenced by a FK, so a plain DROP COLUMN is safe.
+    QString stmt = QStringLiteral("ALTER TABLE %1 DROP COLUMN %2").arg(table, column);
+    if (!q.exec(stmt)) {
+        qWarning() << "dropColumnIfExists error:" << q.lastError().text();
         return false;
     }
     return true;

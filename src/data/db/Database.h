@@ -29,6 +29,8 @@ private:
     static void applyPragmas(QSqlDatabase &db);
     static bool addColumnIfMissing(QSqlDatabase &db, const QString &table,
                                    const QString &column, const QString &definition);
+    static bool dropColumnIfExists(QSqlDatabase &db, const QString &table,
+                                   const QString &column);
 };
 
 // RAII wrapper around Database::openConnection()/closeConnection(). The

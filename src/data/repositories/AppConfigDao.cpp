@@ -22,7 +22,6 @@ AppConfig AppConfigDao::rowToConfig(const QSqlRecord &r) {
     c.timeFormat        = r.value("time_format").toString();
     c.dateFormat        = r.value("date_format").toString();
     c.timezone          = r.value("timezone").toString();
-    c.autoSyncTime      = r.value("auto_sync_time").toBool();
     c.buzzerEnable      = r.value("buzzer_enable").toBool();
     c.ftpAddress        = r.value("ftp_address").toString();
     c.ftpPort           = r.value("ftp_port").toInt();
@@ -83,7 +82,7 @@ bool AppConfigDao::save(const AppConfig &c) {
     if (c.id == 0) {
         q.prepare(R"(INSERT INTO app_config (
             station_code, station_name, time_format, date_format, timezone,
-            auto_sync_time, buzzer_enable, ftp_address, ftp_port, ftp_username,
+            buzzer_enable, ftp_address, ftp_port, ftp_username,
             ftp_password, ftp_remote_path, ftp_prefix, ftp_protocol, poll_interval,
             serial_port, serial_baudrate, serial_bytesize, serial_parity, serial_stopbits,
             server_active, server_device_type, server_name, server_send_interval,
@@ -93,7 +92,7 @@ bool AppConfigDao::save(const AppConfig &c) {
             config_revision, ui_locale, theme
         ) VALUES (
             :sc, :sn, :tf, :df, :tz,
-            :ast, :be, :fa, :fp, :fu,
+            :be, :fa, :fp, :fu,
             :fpw, :frp, :fpfx, :fprot, :pi,
             :sp, :sb, :sbs, :spar, :ssb,
             :sact, :sdt, :snm, :ssi,
@@ -105,7 +104,7 @@ bool AppConfigDao::save(const AppConfig &c) {
     } else {
         q.prepare(R"(UPDATE app_config SET
             station_code=:sc, station_name=:sn, time_format=:tf, date_format=:df,
-            timezone=:tz, auto_sync_time=:ast, buzzer_enable=:be, ftp_address=:fa,
+            timezone=:tz, buzzer_enable=:be, ftp_address=:fa,
             ftp_port=:fp, ftp_username=:fu, ftp_password=:fpw, ftp_remote_path=:frp,
             ftp_prefix=:fpfx, ftp_protocol=:fprot, poll_interval=:pi, serial_port=:sp, serial_baudrate=:sb,
             serial_bytesize=:sbs, serial_parity=:spar, serial_stopbits=:ssb,
@@ -125,7 +124,6 @@ bool AppConfigDao::save(const AppConfig &c) {
     q.bindValue(":tf",   nnText(c.timeFormat));
     q.bindValue(":df",   nnText(c.dateFormat));
     q.bindValue(":tz",   nnText(c.timezone));
-    q.bindValue(":ast",  c.autoSyncTime ? 1 : 0);
     q.bindValue(":be",   c.buzzerEnable ? 1 : 0);
     q.bindValue(":fa",   nnText(c.ftpAddress));
     q.bindValue(":fp",   c.ftpPort);
