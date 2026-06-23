@@ -89,9 +89,52 @@ void SettingsController::saveConfig() {
         emit configSaved();
         emit provisionQrChanged();
         emit messageSent("Success", "Configuration saved.");
+        if (!applyTimeSettings())
+            emit messageSent(QStringLiteral("Warning"),
+                             QStringLiteral("Configuration saved, but the system clock "
+                                            "settings (timezone / auto-sync) could not be "
+                                            "applied to the OS."));
     } else {
         emit messageSent("Error", "Failed to save configuration.");
     }
+}
+
+bool SettingsController::runTimedatectl(const QStringList &args) {
+    QProcess proc;
+    proc.start(QStringLiteral("timedatectl"), args);
+    if (!proc.waitForStarted(2000)) {
+        qWarning() << "[SettingsController] 'timedatectl' not available for" << args;
+        return false;
+    }
+    if (!proc.waitForFinished(5000)) {
+        proc.kill();
+        qWarning() << "[SettingsController] 'timedatectl' timed out for" << args;
+        return false;
+    }
+    if (proc.exitStatus() != QProcess::NormalExit || proc.exitCode() != 0) {
+        qWarning() << "[SettingsController] 'timedatectl'" << args << "failed:"
+                   << proc.readAllStandardError().trimmed();
+        return false;
+    }
+    return true;
+}
+
+bool SettingsController::applyTimeSettings() {
+    // Toggle NTP first; timezone can be set regardless of the NTP state.
+    bool ok = runTimedatectl({QStringLiteral("set-ntp"),
+                              m_cfg.autoSyncTime ? QStringLiteral("true")
+                                                 : QStringLiteral("false")});
+
+    // m_cfg.timezone already stores an IANA zone id (e.g. "Etc/GMT-7") that
+    // timedatectl accepts directly — see SettingsGeneralTab.qml combo box.
+    const QString zone = m_cfg.timezone.trimmed();
+    if (zone.isEmpty()) {
+        qWarning() << "[SettingsController] Empty timezone; skipping set-timezone";
+        ok = false;
+    } else {
+        ok = runTimedatectl({QStringLiteral("set-timezone"), zone}) && ok;
+    }
+    return ok;
 }
 
 void SettingsController::saveSerialConfig(const QString &port, int baudrate,

@@ -108,17 +108,44 @@ Item {
                     Text { text: "Timezone:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
                     ComboBox {
                         Layout.fillWidth: true
+                        textRole: "label"
+                        valueRole: "value"
+                        // Fixed UTC offsets mapped to IANA zone ids that timedatectl
+                        // accepts directly. Etc/GMT signs are inverted (UTC+7 == Etc/GMT-7)
+                        // and carry no DST — ideal for stable logger timestamps.
                         model: [
-                            "UTC-12", "UTC-11", "UTC-10", "UTC-9", "UTC-8", "UTC-7", "UTC-6", "UTC-5",
-                            "UTC-4", "UTC-3", "UTC-2", "UTC-1", "UTC+0", "UTC+1", "UTC+2", "UTC+3",
-                            "UTC+4", "UTC+5", "UTC+5:30", "UTC+6", "UTC+7", "UTC+8", "UTC+9", "UTC+10",
-                            "UTC+11", "UTC+12"
+                            { label: "UTC-12", value: "Etc/GMT+12" },
+                            { label: "UTC-11", value: "Etc/GMT+11" },
+                            { label: "UTC-10", value: "Etc/GMT+10" },
+                            { label: "UTC-9",  value: "Etc/GMT+9" },
+                            { label: "UTC-8",  value: "Etc/GMT+8" },
+                            { label: "UTC-7",  value: "Etc/GMT+7" },
+                            { label: "UTC-6",  value: "Etc/GMT+6" },
+                            { label: "UTC-5",  value: "Etc/GMT+5" },
+                            { label: "UTC-4",  value: "Etc/GMT+4" },
+                            { label: "UTC-3",  value: "Etc/GMT+3" },
+                            { label: "UTC-2",  value: "Etc/GMT+2" },
+                            { label: "UTC-1",  value: "Etc/GMT+1" },
+                            { label: "UTC+0",  value: "Etc/GMT" },
+                            { label: "UTC+1",  value: "Etc/GMT-1" },
+                            { label: "UTC+2",  value: "Etc/GMT-2" },
+                            { label: "UTC+3",  value: "Etc/GMT-3" },
+                            { label: "UTC+4",  value: "Etc/GMT-4" },
+                            { label: "UTC+5",  value: "Etc/GMT-5" },
+                            { label: "UTC+5:30", value: "Asia/Kolkata" },
+                            { label: "UTC+6",  value: "Etc/GMT-6" },
+                            { label: "UTC+7",  value: "Etc/GMT-7" },
+                            { label: "UTC+8",  value: "Etc/GMT-8" },
+                            { label: "UTC+9",  value: "Etc/GMT-9" },
+                            { label: "UTC+10", value: "Etc/GMT-10" },
+                            { label: "UTC+11", value: "Etc/GMT-11" },
+                            { label: "UTC+12", value: "Etc/GMT-12" }
                         ]
                         currentIndex: {
-                            var tz = SettingsController ? SettingsController.timezone : "UTC+7"
-                            return Math.max(0, model.indexOf(tz))
+                            var tz = SettingsController ? SettingsController.timezone : "Etc/GMT-7"
+                            return Math.max(0, indexOfValue(tz))
                         }
-                        onActivated: { SettingsController.timezone = currentText; root.configChanged = true }
+                        onActivated: { SettingsController.timezone = currentValue; root.configChanged = true }
                     }
 
                     Text { text: "Auto sync time:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }

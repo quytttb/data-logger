@@ -182,6 +182,13 @@ private:
 
     QStringList validate() const;
 
+    // Push the stored time settings (timezone + NTP auto-sync) down to the OS via
+    // `timedatectl`. Authorised for the kiosk user by the shipped polkit rule.
+    // Returns false if any timedatectl call failed. m_cfg.timezone is expected to
+    // hold an IANA zone id (e.g. "Etc/GMT-7") that timedatectl accepts directly.
+    bool applyTimeSettings();
+    bool runTimedatectl(const QStringList &args);
+
     AppConfig m_cfg;
     QString   m_qrTokenSnapshot;
 };

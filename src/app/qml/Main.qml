@@ -3,7 +3,6 @@ import QtQuick.Controls
 import QtQuick.Controls.Material
 import QtQuick.Layouts
 import QtQuick.Window
-import QtQuick.VirtualKeyboard
 import DataLogger.Theme
 import DataLogger.Core
 import DataLogger.Components
@@ -47,45 +46,53 @@ ApplicationWindow {
         if (currentTab !== 1) HistoryViewModel.clear()
     }
 
-    RowLayout {
+    // Wraps the whole UI so the on-screen keyboard can shift it up to keep the
+    // focused field visible (see OnScreenKeyboard.avoidTarget below).
+    Item {
+        id: contentWrap
         anchors.fill: parent
-        spacing: 0
+        Behavior on y { NumberAnimation { duration: 250; easing.type: Easing.InOutQuad } }
 
-        AppSideBar {
-            Layout.preferredWidth: AppTheme.railWidth
-            Layout.fillHeight: true
-            currentTab: root.currentTab
-            onSelectTab: function (i) {
-                // If leaving Settings while Add/Edit form is open, cancel it
-                if (root.currentTab === 3 && i !== 3) {
-                    if (tabContent.settingsTabIndex() === 4) {
-                        tabContent.closeSettingsSensorForm()
-                    }
-                }
-                root.currentTab = i
-            }
-        }
-
-        ColumnLayout {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
+        RowLayout {
+            anchors.fill: parent
             spacing: 0
 
-            MainHeaderChrome {
-                id: headerChrome
-                Layout.fillWidth: true
+            AppSideBar {
+                Layout.preferredWidth: AppTheme.railWidth
+                Layout.fillHeight: true
                 currentTab: root.currentTab
-                scanProgCur: root.scanProgCur
-                scanProgTot: root.scanProgTot
-                appRoot: root
-                tabContent: tabContent
+                onSelectTab: function (i) {
+                    // If leaving Settings while Add/Edit form is open, cancel it
+                    if (root.currentTab === 3 && i !== 3) {
+                        if (tabContent.settingsTabIndex() === 4) {
+                            tabContent.closeSettingsSensorForm()
+                        }
+                    }
+                    root.currentTab = i
+                }
             }
 
-            MainTabContent {
-                id: tabContent
-                currentTab: root.currentTab
+            ColumnLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
+                spacing: 0
+
+                MainHeaderChrome {
+                    id: headerChrome
+                    Layout.fillWidth: true
+                    currentTab: root.currentTab
+                    scanProgCur: root.scanProgCur
+                    scanProgTot: root.scanProgTot
+                    appRoot: root
+                    tabContent: tabContent
+                }
+
+                MainTabContent {
+                    id: tabContent
+                    currentTab: root.currentTab
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                }
             }
         }
     }
@@ -157,32 +164,11 @@ ApplicationWindow {
         function onMessageSent(t, m) { root.notifyMessage(t, m) }
     }
 
-    // On-screen keyboard for touch input. Slides up from the bottom whenever a
-    // text field gains focus and slides back down on blur.
-    InputPanel {
+    // On-screen keyboard for touch input. Shifts contentWrap up so the focused
+    // field stays visible above the keyboard.
+    OnScreenKeyboard {
         id: inputPanel
-        z: 999
-        x: 0
-        y: root.height
-        width: root.width
-
-        states: State {
-            name: "visible"
-            when: inputPanel.active
-            PropertyChanges {
-                target: inputPanel
-                y: root.height - inputPanel.height
-            }
-        }
-        transitions: Transition {
-            from: ""
-            to: "visible"
-            reversible: true
-            NumberAnimation {
-                properties: "y"
-                duration: 250
-                easing.type: Easing.InOutQuad
-            }
-        }
+        window: root
+        avoidTarget: contentWrap
     }
 }

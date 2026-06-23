@@ -14,6 +14,7 @@ qt_add_qml_module(app
     VERSION 1.0
     QML_FILES
         qml/Main.qml
+        qml/OnScreenKeyboard.qml
         qml/MainTabContent.qml
         qml/views/MonitorView.qml
         qml/views/HistoryView.qml
@@ -84,10 +85,13 @@ install(FILES ${CMAKE_SOURCE_DIR}/packaging/linux/datalogger.service
     DESTINATION lib/systemd/system
 )
 
-# polkit rule so the unprivileged kiosk user may reboot/power off via the in-app
-# "System Reboot" button (the service has no login session, so logind would
-# otherwise require admin auth). polkit reads rules from /usr/share/polkit-1/rules.d.
-install(FILES ${CMAKE_SOURCE_DIR}/packaging/linux/polkit/49-datalogger-reboot.rules
+# polkit rules so the unprivileged kiosk user may reboot/power off (System
+# Reboot button) and change the system clock (Timezone / Auto sync time) via the
+# in-app settings. The service has no login session, so logind/timedated would
+# otherwise require admin auth. polkit reads rules from /usr/share/polkit-1/rules.d.
+install(FILES
+        ${CMAKE_SOURCE_DIR}/packaging/linux/polkit/49-datalogger-reboot.rules
+        ${CMAKE_SOURCE_DIR}/packaging/linux/polkit/49-datalogger-timedate.rules
     DESTINATION share/polkit-1/rules.d
 )
 

@@ -11,7 +11,7 @@ struct AppConfig {
     // General
     QString timeFormat  = "HH:mm:ss";
     QString dateFormat  = "dd/MM/yyyy";
-    QString timezone    = "UTC+7";
+    QString timezone    = "Etc/GMT-7";  // IANA id for UTC+7 (POSIX sign inverted)
     bool autoSyncTime   = false;
     bool buzzerEnable   = false;
 

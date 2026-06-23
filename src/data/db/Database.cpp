@@ -78,7 +78,7 @@ bool Database::createTables(QSqlDatabase &db) {
             station_name TEXT NOT NULL DEFAULT '',
             time_format TEXT NOT NULL DEFAULT 'HH:mm:ss',
             date_format TEXT NOT NULL DEFAULT 'dd/MM/yyyy',
-            timezone TEXT NOT NULL DEFAULT 'UTC+7',
+            timezone TEXT NOT NULL DEFAULT 'Etc/GMT-7',
             auto_sync_time INTEGER NOT NULL DEFAULT 0,
             buzzer_enable INTEGER NOT NULL DEFAULT 0,
             ftp_address TEXT NOT NULL DEFAULT '',
@@ -212,6 +212,30 @@ bool Database::migrate(QSqlDatabase &db) {
     QSqlQuery fix(db);
     fix.exec("UPDATE sensor SET min_threshold=NULL, max_threshold=NULL "
              "WHERE min_threshold=0 AND max_threshold=0");
+
+    // Legacy: timezone was stored as an offset label ("UTC+7"). It is now an
+    // IANA zone id that `timedatectl` accepts directly ("Etc/GMT-7"; the POSIX
+    // sign is inverted). Rewrite any old rows in place.
+    struct TzMigration { const char *legacy, *iana; };
+    static const TzMigration tzMigrations[] = {
+        {"UTC-12", "Etc/GMT+12"}, {"UTC-11", "Etc/GMT+11"}, {"UTC-10", "Etc/GMT+10"},
+        {"UTC-9",  "Etc/GMT+9"},  {"UTC-8",  "Etc/GMT+8"},  {"UTC-7",  "Etc/GMT+7"},
+        {"UTC-6",  "Etc/GMT+6"},  {"UTC-5",  "Etc/GMT+5"},  {"UTC-4",  "Etc/GMT+4"},
+        {"UTC-3",  "Etc/GMT+3"},  {"UTC-2",  "Etc/GMT+2"},  {"UTC-1",  "Etc/GMT+1"},
+        {"UTC+0",  "Etc/GMT"},    {"UTC+1",  "Etc/GMT-1"},  {"UTC+2",  "Etc/GMT-2"},
+        {"UTC+3",  "Etc/GMT-3"},  {"UTC+4",  "Etc/GMT-4"},  {"UTC+5",  "Etc/GMT-5"},
+        {"UTC+5:30", "Asia/Kolkata"},
+        {"UTC+6",  "Etc/GMT-6"},  {"UTC+7",  "Etc/GMT-7"},  {"UTC+8",  "Etc/GMT-8"},
+        {"UTC+9",  "Etc/GMT-9"},  {"UTC+10", "Etc/GMT-10"}, {"UTC+11", "Etc/GMT-11"},
+        {"UTC+12", "Etc/GMT-12"},
+    };
+    QSqlQuery tz(db);
+    for (const auto &m : tzMigrations) {
+        tz.prepare("UPDATE app_config SET timezone=:iana WHERE timezone=:legacy");
+        tz.bindValue(":iana", QString::fromLatin1(m.iana));
+        tz.bindValue(":legacy", QString::fromLatin1(m.legacy));
+        tz.exec();
+    }
 
     return true;
 }
