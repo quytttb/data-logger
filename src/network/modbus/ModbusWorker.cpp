@@ -2,12 +2,15 @@
 #include "utils/Formula.h"
 #include "utils/ModbusCodec.h"
 #include <QModbusDataUnit>
+#include <QModbusReply>
 #include <QSerialPort>
 #include <QDateTime>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QThread>
 #include <QtDebug>
+#include <QSet>
+#include <QPair>
 #include <cmath>
 #include <utility>
 
@@ -95,6 +98,7 @@ bool ModbusWorker::connectToPort() {
         m_backoffMs = 1000;
         emit connectionChanged(true);
         qInfo() << "ModbusWorker: connected to" << m_port;
+        resetDoCoils();  // start from a known-OFF coil state on every (re)connect
         return true;
     }
 
@@ -218,11 +222,13 @@ void ModbusWorker::pollAnalog(const QVariantMap &cfg) {
     }
 
     bool prevAlarm = m_alarmStates.value(sensorId, false);
-    if (isAlarm != prevAlarm) {
-        m_alarmStates[sensorId] = isAlarm;
+    m_alarmStates[sensorId] = isAlarm;
+    m_alarmTypes[sensorId]  = alarmType;
+    if (isAlarm != prevAlarm)
         emit alarmChanged({{"sensor_id", sensorId}, {"is_alarm", isAlarm}, {"alarm_type", alarmType}});
-        driveDoRelays(sensorId, isAlarm, alarmType);
-    }
+    // Converge relays every poll (idempotent) so the physical coil always
+    // reflects the current alarm state, even after a restart with no transition.
+    updateDoCoils();
 
     QList<QVariantMap> diStates = readDiStates(sensorId);
 
@@ -372,25 +378,82 @@ QList<QVariantMap> ModbusWorker::readDiStates(int sensorId) {
     return results;
 }
 
-void ModbusWorker::driveDoRelays(int sensorId, bool isAlarm, const QString &alarmType) {
+void ModbusWorker::updateDoCoils() {
     if (!m_client || m_client->state() != QModbusDevice::ConnectedState) return;
-    for (const auto &ch : m_digitalIos.value(sensorId)) {
-        if (ch.value("io_type") != "DO" || !ch.value("active", true).toBool()) continue;
-        int addr    = ch.value("address", ch.value("register_address", 0)).toInt();
-        int slaveId = ch["slave_id"].toInt();
-        bool coilValue = false;
-        if (isAlarm) {
-            if (ch.value("trigger_on_max", true).toBool() && alarmType.contains("max")) coilValue = true;
-            if (ch.value("trigger_on_min", true).toBool() && alarmType.contains("min")) coilValue = true;
+
+    // Aggregate the desired ON state for every DO across all analogs it is
+    // attached to (a DO linked to multiple analogs is ON if ANY of them wants it).
+    QHash<int, bool> desired;                 // doSensorId -> desired ON
+    QHash<int, QPair<int, int>> coilAddr;     // doSensorId -> (slaveId, address)
+    for (auto it = m_digitalIos.constBegin(); it != m_digitalIos.constEnd(); ++it) {
+        const int analogId       = it.key();
+        const bool analogAlarm   = m_alarmStates.value(analogId, false);
+        const QString analogType = m_alarmTypes.value(analogId);
+        for (const auto &ch : it.value()) {
+            if (ch.value("io_type") != "DO" || !ch.value("active", true).toBool())
+                continue;
+            const int doId    = ch.value("id").toInt();
+            const int addr    = ch.value("address", ch.value("register_address", 0)).toInt();
+            const int slaveId = ch.value("slave_id").toInt();
+            coilAddr[doId] = qMakePair(slaveId, addr);
+            bool on = false;
+            if (analogAlarm) {
+                if (ch.value("trigger_on_max", true).toBool() && analogType.contains("max")) on = true;
+                if (ch.value("trigger_on_min", true).toBool() && analogType.contains("min")) on = true;
+            }
+            desired[doId] = desired.value(doId, false) || on;
         }
-        QModbusDataUnit unit(QModbusDataUnit::Coils, addr, 1);
-        unit.setValue(0, coilValue ? 1 : 0);
-        auto *reply = m_client->sendWriteRequest(unit, slaveId);
-        if (reply) {
+    }
+
+    for (auto it = desired.constBegin(); it != desired.constEnd(); ++it) {
+        const int doId  = it.key();
+        const bool want = it.value();
+        // Skip only when we are certain the coil already holds the desired value.
+        if (m_doStates.contains(doId) && m_doStates.value(doId) == want)
+            continue;
+        const QPair<int, int> sa = coilAddr.value(doId);
+        QModbusDataUnit unit(QModbusDataUnit::Coils, sa.second, 1);
+        unit.setValue(0, want ? 1 : 0);
+        auto *reply = m_client->sendWriteRequest(unit, sa.first);
+        if (!reply) continue;
+        QEventLoop loop;
+        connect(reply, &QModbusReply::finished, &loop, &QEventLoop::quit);
+        loop.exec();
+        if (reply->error() == QModbusDevice::NoError)
+            m_doStates[doId] = want;  // only trust state on a confirmed write
+        reply->deleteLater();
+    }
+}
+
+void ModbusWorker::resetDoCoils() {
+    // Forget cached alarm/coil state so the next poll re-establishes everything.
+    m_alarmStates.clear();
+    m_alarmTypes.clear();
+    if (!m_client || m_client->state() != QModbusDevice::ConnectedState) {
+        m_doStates.clear();  // unknown physical state; force a rewrite on first poll
+        return;
+    }
+
+    QSet<int> done;
+    for (auto it = m_digitalIos.constBegin(); it != m_digitalIos.constEnd(); ++it) {
+        for (const auto &ch : it.value()) {
+            if (ch.value("io_type") != "DO") continue;
+            const int doId = ch.value("id").toInt();
+            if (done.contains(doId)) continue;
+            done.insert(doId);
+            const int addr    = ch.value("address", ch.value("register_address", 0)).toInt();
+            const int slaveId = ch.value("slave_id").toInt();
+            QModbusDataUnit unit(QModbusDataUnit::Coils, addr, 1);
+            unit.setValue(0, 0);
+            auto *reply = m_client->sendWriteRequest(unit, slaveId);
+            if (!reply) { m_doStates.remove(doId); continue; }
             QEventLoop loop;
             connect(reply, &QModbusReply::finished, &loop, &QEventLoop::quit);
             loop.exec();
-            m_doStates[ch["id"].toInt()] = coilValue;
+            if (reply->error() == QModbusDevice::NoError)
+                m_doStates[doId] = false;
+            else
+                m_doStates.remove(doId);  // leave unknown so updateDoCoils retries
             reply->deleteLater();
         }
     }

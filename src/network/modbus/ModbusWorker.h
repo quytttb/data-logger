@@ -51,7 +51,12 @@ private:
     void pollStandaloneDo(const QVariantMap &cfg);
 
     QList<QVariantMap>       readDiStates(int sensorId);
-    void                     driveDoRelays(int sensorId, bool isAlarm, const QString &alarmType);
+    // Converge physical DO coils to the desired state aggregated across every
+    // analog they are attached to (idempotent: only writes when state differs).
+    void                     updateDoCoils();
+    // Force all DO coils OFF on (re)connect so a stale latched relay can never
+    // disagree with the app's reported state.
+    void                     resetDoCoils();
 
     QModbusRtuSerialClient  *m_client = nullptr;
     QTimer                  *m_pollTimer = nullptr;
@@ -80,6 +85,7 @@ private:
     QList<QVariantMap>           m_sensors;
     QHash<int, QList<QVariantMap>> m_digitalIos;
     QHash<int, bool>             m_alarmStates;
+    QHash<int, QString>          m_alarmTypes;  // sensor_id -> current alarm type ("min"/"max"/...)
     QHash<int, bool>             m_doStates;
     QHash<int, qint64>           m_nextPollMs; // sensor_id -> epoch ms of next poll
 };

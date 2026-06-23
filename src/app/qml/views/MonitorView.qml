@@ -10,11 +10,6 @@ Rectangle {
     id: monitorRoot
     color: "transparent"
 
-    // Helper to pass DI states to Repeater (avoids model shadowing in delegate)
-    function getDisForDelegate(diStates) {
-        return diStates && diStates.length > 0 ? diStates : []
-    }
-
     ColumnLayout {
         anchors.fill: parent
         spacing: Theme.spacingSM
@@ -58,7 +53,6 @@ Rectangle {
                 required property bool   isAlarm
                 required property string alarmType
                 required property string sensorType
-                required property var    diStates
 
                 readonly property bool isAnalog: card.sensorType === "ANALOG"
                 readonly property bool isDI: card.sensorType === "DI"
@@ -102,18 +96,6 @@ Rectangle {
                                     text: card.isDI ? "DI" : "DO"
                                     color: AppColors.onPrimary; font.bold: true; font.pixelSize: AppTypography.labelTiny.pixelSize
                                 }
-                            }
-
-                            StatusChip {
-                                visible: card.isAnalog && card.status.length > 0
-                                displayStatus: card.status
-                                Layout.alignment: Qt.AlignVCenter
-                            }
-
-                            Rectangle {
-                                visible: card.isAnalog && card.status.length === 0
-                                implicitWidth: 10; implicitHeight: 10; radius: width / 2
-                                color: card.isAlarm ? Theme.statusErr : Theme.textSecondary
                             }
 
                             Text {
@@ -227,21 +209,6 @@ Rectangle {
                                 text: (card.rawValue !== "" && card.rawValue !== "---") ? "RAW " + card.rawValue : ""
                                 color: Theme.textSecondary
                                 font.pixelSize: AppTypography.labelTiny.pixelSize; font.family: AppTypography.monoFamily
-                            }
-
-                            Row {
-                                spacing: 4
-                                visible: card.isAnalog && card.diStates && card.diStates.length > 0
-                                Layout.leftMargin: Theme.spacingS
-
-                                Repeater {
-                                    model: monitorRoot.getDisForDelegate(card.diStates)
-                                    Rectangle {
-                                        required property var modelData
-                                        implicitWidth: 10; implicitHeight: 10; radius: width / 2
-                                        color: modelData.color || AppColors.ioFallback
-                                    }
-                                }
                             }
 
                             Item { Layout.fillWidth: true }
