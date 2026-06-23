@@ -9,8 +9,9 @@ InputPanel {
     id: inputPanel
     z: 999
 
-    // The window whose geometry/active-focus drives the keyboard placement.
-    property Item window: parent
+    // The ApplicationWindow whose geometry/active-focus drives the keyboard
+    // placement. Typed as var because ApplicationWindow is a Window, not an Item.
+    property var window: null
     // The content item to shift up so the focused field stays above the keyboard.
     property Item avoidTarget: null
     // Gap left between the focused field and the top edge of the keyboard.
