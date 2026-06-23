@@ -18,8 +18,11 @@ set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Data Logger — industrial sensors monito
 set(CPACK_DEBIAN_PACKAGE_SECTION utils)
 # OFF: Qt deploy bundles optional SQL/ODBC plugins; shlibdeps fails on CI without libmysqlclient, libpq, …
 set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS OFF)
+# libgbm1/libdrm2/libinput10 are needed by the eglfs KMS/GBM integration so the
+# app can render directly on DRM (Raspberry Pi OS Lite, no desktop). fonts-dejavu-core
+# guarantees a usable system font on a minimal image.
 set(CPACK_DEBIAN_PACKAGE_DEPENDS
-    "libxkbcommon0, libegl1, libgl1, libfontconfig1, libdbus-1-3"
+    "libxkbcommon0, libegl1, libgl1, libopengl0, libfontconfig1, libdbus-1-3, libgbm1, libdrm2, libinput10, fonts-dejavu-core"
 )
 set(CPACK_PACKAGING_INSTALL_PREFIX "/usr")
 

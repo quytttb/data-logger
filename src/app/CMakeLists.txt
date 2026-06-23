@@ -77,3 +77,46 @@ install(FILES ${CMAKE_SOURCE_DIR}/resources/app-icon.png
     DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/256x256/apps
     RENAME data-logger.png
 )
+
+# --- Headless / framebuffer support (e.g. Raspberry Pi OS Lite, no X11/Wayland) ---
+# qt_generate_deploy_qml_app_script() only ships the desktop (xcb) platform plugin
+# and skips ICU (treated as a system library). Running directly on DRM/KMS without
+# a desktop environment additionally needs the eglfs platform plugin + a KMS/GBM
+# device integration, and a bundled ICU so the app does not depend on the target's
+# ICU major version matching the build host.
+if(UNIX AND NOT APPLE AND NOT ANDROID AND NOT IOS)
+    if(DEFINED QT6_INSTALL_PREFIX)
+        set(_dl_qt_prefix "${QT6_INSTALL_PREFIX}")
+    else()
+        get_filename_component(_dl_qt_prefix "${Qt6_DIR}/../../.." ABSOLUTE)
+    endif()
+
+    if(DEFINED QT6_INSTALL_PLUGINS)
+        set(_dl_qt_plugins "${_dl_qt_prefix}/${QT6_INSTALL_PLUGINS}")
+    else()
+        set(_dl_qt_plugins "${_dl_qt_prefix}/plugins")
+    endif()
+
+    # eglfs QPA platform plugin (loads libQt6EglFSDeviceIntegration, already deployed).
+    install(FILES "${_dl_qt_plugins}/platforms/libqeglfs.so"
+        DESTINATION plugins/platforms
+        OPTIONAL)
+
+    # KMS/GBM (and EGLDevice) integrations — backend used by eglfs on the Pi GPU.
+    install(DIRECTORY "${_dl_qt_plugins}/egldeviceintegrations/"
+        DESTINATION plugins/egldeviceintegrations
+        FILES_MATCHING PATTERN "libqeglfs-kms*-integration.so")
+
+    # Bundle ICU next to the Qt libraries (app RPATH already resolves /usr/lib).
+    file(GLOB _dl_icu_libs
+        "${_dl_qt_prefix}/lib/libicudata.so.*"
+        "${_dl_qt_prefix}/lib/libicui18n.so.*"
+        "${_dl_qt_prefix}/lib/libicuuc.so.*"
+        "/usr/lib/${CMAKE_LIBRARY_ARCHITECTURE}/libicudata.so.*"
+        "/usr/lib/${CMAKE_LIBRARY_ARCHITECTURE}/libicui18n.so.*"
+        "/usr/lib/${CMAKE_LIBRARY_ARCHITECTURE}/libicuuc.so.*")
+    if(_dl_icu_libs)
+        install(FILES ${_dl_icu_libs}
+            DESTINATION ${CMAKE_INSTALL_LIBDIR})
+    endif()
+endif()
