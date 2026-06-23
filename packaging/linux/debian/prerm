@@ -1,0 +1,14 @@
+#!/bin/sh
+# Stop and disable the kiosk service before the package is removed.
+set -e
+
+case "$1" in
+    remove|deconfigure)
+        if [ -d /run/systemd/system ]; then
+            systemctl stop datalogger.service >/dev/null 2>&1 || true
+            systemctl disable datalogger.service >/dev/null 2>&1 || true
+        fi
+        ;;
+esac
+
+exit 0

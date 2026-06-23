@@ -1,7 +1,7 @@
 #include "AppPaths.h"
 #include <QCoreApplication>
 #include <QFileInfo>
-#include <QProcessEnvironment>
+#include <QStandardPaths>
 
 namespace AppPaths {
 
@@ -9,6 +9,17 @@ namespace {
 const QString kDataSubdir   = QStringLiteral("/data");
 const QString kConfigSubdir = QStringLiteral("/config");
 const QString kLogSubdir    = QStringLiteral("/logs");
+
+// Per-user writable base, e.g. ~/.local/share/DATALOGGER/DataLogger.
+// Used when no explicit DATALOGGER_*_DIR override is set, so the app keeps
+// working when installed read-only under /usr (Debian package / kiosk mode)
+// instead of writing next to the binary in /usr/bin.
+QString writableBase() {
+    QString base = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    if (base.isEmpty())
+        base = QDir::homePath() + QStringLiteral("/.datalogger");
+    return base;
+}
 }
 
 static QString binDir() {
@@ -16,21 +27,18 @@ static QString binDir() {
 }
 
 QString dataDir() {
-    auto env = QProcessEnvironment::systemEnvironment();
-    QString override = env.value("DATALOGGER_DATA_DIR");
-    return override.isEmpty() ? binDir() + kDataSubdir : override;
+    QString override = qEnvironmentVariable("DATALOGGER_DATA_DIR");
+    return override.isEmpty() ? writableBase() + kDataSubdir : override;
 }
 
 QString configDir() {
-    auto env = QProcessEnvironment::systemEnvironment();
-    QString override = env.value("DATALOGGER_CONFIG_DIR");
-    return override.isEmpty() ? binDir() + kConfigSubdir : override;
+    QString override = qEnvironmentVariable("DATALOGGER_CONFIG_DIR");
+    return override.isEmpty() ? writableBase() + kConfigSubdir : override;
 }
 
 QString logDir() {
-    auto env = QProcessEnvironment::systemEnvironment();
-    QString override = env.value("DATALOGGER_LOG_DIR");
-    return override.isEmpty() ? binDir() + kLogSubdir : override;
+    QString override = qEnvironmentVariable("DATALOGGER_LOG_DIR");
+    return override.isEmpty() ? writableBase() + kLogSubdir : override;
 }
 
 QString appIconPath() {

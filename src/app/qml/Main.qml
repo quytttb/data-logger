@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Controls.Material
 import QtQuick.Layouts
 import QtQuick.Window
+import QtQuick.VirtualKeyboard
 import DataLogger.Theme
 import DataLogger.Core
 import DataLogger.Components
@@ -28,13 +29,12 @@ ApplicationWindow {
             tabContent.openSettingsAddSensorWithData(data)
         })
     }
-    // Kích thước fallback khi thoát fullscreen (F11 / Alt+F4 vẫn đóng được tùy WM)
+    // Kích thước fallback cho màn hình 7" (1024x600) khi không chạy fullscreen
     width: 1024
     height: 600
     title: "Data Logger"
     color: AppColors.surface
-    // Toàn màn hình khi mở: che taskbar + không thanh tiêu đề (decoration)
-    // Tạm thời tắt — bật lại: bỏ comment dòng dưới
+    // Kiosk mode: luôn toàn màn hình trên EGLFS, không thanh tiêu đề / không thoát
     visibility: Window.FullScreen
 
     // ── Navigation state ─────────────────────────────────────────────────
@@ -155,5 +155,34 @@ ApplicationWindow {
     Connections {
         target: ReportController
         function onMessageSent(t, m) { root.notifyMessage(t, m) }
+    }
+
+    // On-screen keyboard for touch input. Slides up from the bottom whenever a
+    // text field gains focus and slides back down on blur.
+    InputPanel {
+        id: inputPanel
+        z: 999
+        x: 0
+        y: root.height
+        width: root.width
+
+        states: State {
+            name: "visible"
+            when: inputPanel.active
+            PropertyChanges {
+                target: inputPanel
+                y: root.height - inputPanel.height
+            }
+        }
+        transitions: Transition {
+            from: ""
+            to: "visible"
+            reversible: true
+            NumberAnimation {
+                properties: "y"
+                duration: 250
+                easing.type: Easing.InOutQuad
+            }
+        }
     }
 }

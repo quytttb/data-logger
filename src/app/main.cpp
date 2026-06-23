@@ -27,6 +27,11 @@ int main(int argc, char *argv[]) {
     qputenv("QT_QUICK_CONTROLS_STYLE", "Material");
     qputenv("QT_QUICK_CONTROLS_MATERIAL_THEME", "Dark");
 
+    // Touch kiosk: route text input through the on-screen Qt Virtual Keyboard
+    // and hide the mouse pointer when rendering directly on DRM/KMS (eglfs).
+    qputenv("QT_IM_MODULE", "qtvirtualkeyboard");
+    qputenv("QT_QPA_EGLFS_HIDECURSOR", "1");
+
     QGuiApplication app(argc, argv);
     app.setApplicationName("DataLogger");
 

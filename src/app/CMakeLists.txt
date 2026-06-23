@@ -78,6 +78,12 @@ install(FILES ${CMAKE_SOURCE_DIR}/resources/app-icon.png
     RENAME data-logger.png
 )
 
+# systemd unit for headless kiosk autostart (installed to /usr/lib/systemd/system).
+# Enabled/started automatically by the Debian maintainer scripts (see CPackOptions).
+install(FILES ${CMAKE_SOURCE_DIR}/packaging/linux/datalogger.service
+    DESTINATION lib/systemd/system
+)
+
 # --- Headless / framebuffer support (e.g. Raspberry Pi OS Lite, no X11/Wayland) ---
 # qt_generate_deploy_qml_app_script() only ships the desktop (xcb) platform plugin
 # and skips ICU (treated as a system library). Running directly on DRM/KMS without
@@ -101,6 +107,13 @@ if(UNIX AND NOT APPLE AND NOT ANDROID AND NOT IOS)
     install(FILES "${_dl_qt_plugins}/platforms/libqeglfs.so"
         DESTINATION plugins/platforms
         OPTIONAL)
+
+    # Qt Virtual Keyboard input-context plugin — required so QT_IM_MODULE=
+    # qtvirtualkeyboard resolves on the target (the on-screen touch keyboard).
+    # The accompanying QML/runtime modules are handled by the deploy script above.
+    install(DIRECTORY "${_dl_qt_plugins}/platforminputcontexts/"
+        DESTINATION plugins/platforminputcontexts
+        FILES_MATCHING PATTERN "libqtvirtualkeyboardplugin.so")
 
     # KMS/GBM (and EGLDevice) integrations — backend used by eglfs on the Pi GPU.
     install(DIRECTORY "${_dl_qt_plugins}/egldeviceintegrations/"

@@ -26,4 +26,11 @@ set(CPACK_DEBIAN_PACKAGE_DEPENDS
 )
 set(CPACK_PACKAGING_INSTALL_PREFIX "/usr")
 
+# Maintainer scripts: auto-enable/start the systemd kiosk service on install and
+# stop/disable it on removal. STRICT_PERMISSION forces 0755 so dpkg accepts them.
+set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA
+    "${CMAKE_SOURCE_DIR}/packaging/linux/debian/postinst;${CMAKE_SOURCE_DIR}/packaging/linux/debian/prerm;${CMAKE_SOURCE_DIR}/packaging/linux/debian/postrm"
+)
+set(CPACK_DEBIAN_PACKAGE_CONTROL_STRICT_PERMISSION ON)
+
 include(CPack)

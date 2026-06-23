@@ -2,7 +2,6 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import QtQuick.Window
 import DataLogger.Theme
 import DataLogger.Core
 import DataLogger.Components
@@ -38,14 +37,6 @@ Rectangle {
                 source: "qrc:/qt/qml/DataLogger/Components/resources/icons/brand_4m_technologies_blue.svg"
                 sourceSize: Qt.size(60, 60)
                 fillMode: Image.PreserveAspectFit
-            }
-
-            MouseArea {
-                anchors.fill: parent
-                onPressed: mouse => {
-                    if (mouse.button === Qt.LeftButton && Window.window)
-                        Window.window.startSystemMove()
-                }
             }
         }
 
@@ -125,33 +116,6 @@ Rectangle {
         }
 
         Item { Layout.fillHeight: true }
-
-        // Exit Button (Centered flat icon button)
-        Button {
-            id: exitBtn
-            Layout.alignment: Qt.AlignHCenter
-            Layout.bottomMargin: 8
-            implicitWidth: AppTheme.iconButtonSize
-            implicitHeight: AppTheme.iconButtonSize
-
-            background: Rectangle {
-                anchors.fill: parent
-                radius: Theme.radiusMedium
-                color: exitBtn.pressed ? AppColors.error : AppColors.errorContainer
-            }
-
-            contentItem: Item {
-                anchors.fill: parent
-                UiIcon {
-                    anchors.centerIn: parent
-                    name: "close"
-                    size: AppTheme.iconSizeMd
-                    iconColor: AppColors.errorContainerFg
-                }
-            }
-
-            onClicked: Qt.quit()
-        }
 
         // Divider
         Rectangle {

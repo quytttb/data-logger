@@ -45,7 +45,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ${{ env.QT_INSTALL_DIR }}
-          key: qt-${{ env.QT_VERSION }}-arm64-ubuntu2404-v2-eglfs-kms
+          key: qt-${{ env.QT_VERSION }}-arm64-ubuntu2404-v3-virtualkeyboard
 
       - name: Install system dependencies
         run: |
@@ -107,7 +107,7 @@ jobs:
             -DBUILD_qtsensors=OFF \
             -DBUILD_qtspeech=OFF \
             -DBUILD_qttranslations=OFF \
-            -DBUILD_qtvirtualkeyboard=OFF \
+            -DBUILD_qtvirtualkeyboard=ON \
             -DBUILD_qtwayland=OFF \
             -DBUILD_qtwebchannel=OFF \
             -DBUILD_qtwebengine=OFF \

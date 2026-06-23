@@ -1,0 +1,22 @@
+[Unit]
+Description=Data Logger (Qt EGLFS kiosk)
+# Take over the primary console: stop the login prompt so the app owns tty1/DRM.
+After=systemd-user-sessions.service getty@tty1.service network.target
+Conflicts=getty@tty1.service
+
+[Service]
+Type=simple
+User=pi
+# Bind to the primary VT so eglfs/KMS can become DRM master on a headless image.
+TTYPath=/dev/tty1
+StandardInput=tty
+StandardOutput=journal
+StandardError=journal
+# Render directly on the GPU via DRM/KMS — no X11 or Wayland needed.
+Environment=QT_QPA_PLATFORM=eglfs
+ExecStart=/usr/bin/DataLogger
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
