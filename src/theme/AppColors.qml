@@ -66,7 +66,7 @@ QtObject {
     readonly property color outline:        "#938F99"
     readonly property color outlineVariant: "#49454F"
 
-    readonly property color error:            "#FFB4AB"
+    readonly property color error:            "#EF5350"
     readonly property color errorContainer:   "#93000A"
     readonly property color errorContainerFg: "#FFDAD6"
 
