@@ -105,19 +105,26 @@ void RestApiService::setupRoutes() {
             auto sensors = sensorDao.loadAll();
 
             QJsonObject obj;
+            obj["ok"]           = true;
+            // "revision" is the Contract v1 field name consumed by Central Logger.
+            // A value < 0 causes Central to abort saving; default in DB is 1.
+            obj["revision"]     = cfg.configRevision;
             obj["station_code"] = cfg.stationCode;
             obj["station_name"] = cfg.stationName;
-            obj["poll_interval"]= cfg.pollInterval;
-            obj["serial_port"]  = cfg.serialPort;
-            obj["serial_baudrate"] = cfg.serialBaudrate;
-            obj["config_revision"] = cfg.configRevision;
+            obj["poll_interval"]      = cfg.pollInterval;
+            obj["serial_port"]        = cfg.serialPort;
+            obj["serial_baudrate"]    = cfg.serialBaudrate;
+            obj["modbus_tcp_enabled"] = cfg.modbusTcpEnabled;
+            obj["modbus_tcp_bind"]    = cfg.modbusTcpBind;
+            obj["modbus_tcp_unit_id"] = cfg.modbusTcpUnitId;
 
             // Per-sensor config. data-logger (edge) is the source of truth;
             // Central consumes these read-only (e.g. `decimals` display precision).
             QJsonArray sensorArr;
             for (const auto &s : sensors) {
                 QJsonObject so;
-                so["id"]          = s.id;
+                // "sensor_id" matches the Contract v1 field name used by Central Logger.
+                so["sensor_id"]   = s.id;
                 so["name"]        = s.name;
                 so["unit"]        = s.unit;
                 so["sensor_type"] = sensorTypeToString(s.sensorType);
@@ -155,11 +162,20 @@ void RestApiService::setupRoutes() {
             QJsonObject body = doc.object();
 
             // Apply writable fields
-            if (body.contains("station_code"))   cfg.stationCode    = body["station_code"].toString();
             if (body.contains("station_name"))   cfg.stationName    = body["station_name"].toString();
             if (body.contains("poll_interval"))  cfg.pollInterval   = body["poll_interval"].toInt();
             if (body.contains("serial_port"))    cfg.serialPort     = body["serial_port"].toString();
             if (body.contains("serial_baudrate"))cfg.serialBaudrate = body["serial_baudrate"].toInt();
+
+            // station_code is a required identifier — reject the request if the caller
+            // attempts to set it to an empty string.
+            if (body.contains("station_code")) {
+                QString sc = body["station_code"].toString().trimmed();
+                if (sc.isEmpty())
+                    return QHttpServerResponse(R"({"error":"station_code must not be empty"})",
+                                               QHttpServerResponse::StatusCode::BadRequest);
+                cfg.stationCode = sc;
+            }
 
             cfg.configRevision++;
             dao.save(cfg);
@@ -168,8 +184,9 @@ void RestApiService::setupRoutes() {
             emit configApplied(rev);
 
             QJsonObject resp;
-            resp["ok"] = true;
-            resp["config_revision"] = rev;
+            resp["ok"]       = true;
+            // "revision" matches the Contract v1 field name expected by Central Logger.
+            resp["revision"] = rev;
             return QHttpServerResponse("application/json",
                                        QJsonDocument(resp).toJson(QJsonDocument::Compact));
         });
