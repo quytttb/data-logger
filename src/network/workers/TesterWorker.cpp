@@ -1,5 +1,5 @@
 #include "TesterWorker.h"
-#include "utils/ModbusCodec.h"
+#include "utils/modbus/ModbusCodec.h"
 #include <QModbusDataUnit>
 #include <QModbusReply>
 #include <QSerialPort>

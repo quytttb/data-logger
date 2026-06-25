@@ -7,7 +7,7 @@
 #include <QFutureWatcher>
 #include <QtQmlIntegration/qqmlintegration.h>
 #include "core/history/HistoryTableModel.h"
-#include "utils/QmlSingleton.h"
+#include "utils/qml/QmlSingleton.h"
 
 struct HistorySearchResult {
     QList<HistoryRow> rows;

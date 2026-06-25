@@ -1,5 +1,5 @@
 #include "Database.h"
-#include "utils/AppPaths.h"
+#include "utils/system/AppPaths.h"
 #include <QSqlQuery>
 #include <QSqlRecord>
 #include <QDebug>

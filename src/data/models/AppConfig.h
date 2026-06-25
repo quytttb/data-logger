@@ -4,8 +4,9 @@
 struct AppConfig {
     int id = 0;
 
-    // Station info
-    QString stationCode = QStringLiteral("DL-001");
+    // Station info — stationCode is left empty here so AppConfigDao::load()
+    // assigns a device-derived ID (DeviceId::stationCode()) on first use.
+    QString stationCode;
     QString stationName = QStringLiteral("Data Logger");
 
     // General

@@ -5,7 +5,7 @@
 #include <QTimer>
 #include <atomic>
 #include <QtQmlIntegration/qqmlintegration.h>
-#include "utils/QmlSingleton.h"
+#include "utils/qml/QmlSingleton.h"
 
 class FtpWorker;
 class SettingsController;

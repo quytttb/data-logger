@@ -5,8 +5,8 @@
 #include <QTimer>
 #include <QtDebug>
 
-#include "utils/AppPaths.h"
-#include "utils/LogSetup.h"
+#include "utils/system/AppPaths.h"
+#include "utils/system/LogSetup.h"
 #include "data/db/Database.h"
 #include "network/modbus/ModbusTcpServerService.h"
 #include "network/rest/RestApiService.h"

@@ -8,7 +8,7 @@
 #include <QMutex>
 #include <functional>
 #include <QtQmlIntegration/qqmlintegration.h>
-#include "utils/QmlSingleton.h"
+#include "utils/qml/QmlSingleton.h"
 
 // Embeds a QHttpServer to serve the REST API on the LAN.
 class RestApiService : public QObject {

@@ -1,5 +1,5 @@
 #include "ModbusTcpServerService.h"
-#include "utils/LanIp.h"
+#include "utils/network/LanIp.h"
 #include <QModbusDataUnit>
 #include <QDateTime>
 #include <QMutexLocker>

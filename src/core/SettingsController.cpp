@@ -1,9 +1,9 @@
 #include "SettingsController.h"
 #include "data/db/Database.h"
 #include "data/repositories/AppConfigDao.h"
-#include "utils/Crypto.h"
-#include "utils/LanIp.h"
-#include "utils/ProvisionQr.h"
+#include "utils/crypto/Crypto.h"
+#include "utils/network/LanIp.h"
+#include "utils/provision/ProvisionQr.h"
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QUuid>

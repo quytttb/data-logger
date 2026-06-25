@@ -1,6 +1,6 @@
 #include "ModbusWorker.h"
-#include "utils/Formula.h"
-#include "utils/ModbusCodec.h"
+#include "utils/modbus/Formula.h"
+#include "utils/modbus/ModbusCodec.h"
 #include <QModbusDataUnit>
 #include <QModbusReply>
 #include <QSerialPort>

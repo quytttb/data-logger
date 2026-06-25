@@ -1,5 +1,5 @@
 #include "RestApiService.h"
-#include "utils/LanIp.h"
+#include "utils/network/LanIp.h"
 #include "data/db/Database.h"
 #include "data/repositories/AppConfigDao.h"
 #include "data/repositories/SensorDao.h"

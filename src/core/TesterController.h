@@ -5,7 +5,7 @@
 #include <QStringList>
 #include <QVariantMap>
 #include <QtQmlIntegration/qqmlintegration.h>
-#include "utils/QmlSingleton.h"
+#include "utils/qml/QmlSingleton.h"
 
 class TesterWorker;
 

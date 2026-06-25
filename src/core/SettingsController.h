@@ -3,7 +3,7 @@
 #include <QString>
 #include <QtQmlIntegration/qqmlintegration.h>
 #include "data/models/AppConfig.h"
-#include "utils/QmlSingleton.h"
+#include "utils/qml/QmlSingleton.h"
 
 // Exposes AppConfig to QML and handles save/load.
 class SettingsController : public QObject {

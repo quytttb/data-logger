@@ -1,5 +1,5 @@
 #include "ProvisionQr.h"
-#include "third_party/qrcodegen.hpp"
+#include "qrcodegen.hpp"
 #include <QBuffer>
 #include <QImage>
 

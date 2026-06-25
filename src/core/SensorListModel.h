@@ -3,7 +3,7 @@
 #include <QList>
 #include <QtQmlIntegration/qqmlintegration.h>
 #include "data/models/Sensor.h"
-#include "utils/QmlSingleton.h"
+#include "utils/qml/QmlSingleton.h"
 
 // Exposes the sensor list (from DB) to QML for the Settings sensor table.
 class SensorListModel : public QAbstractListModel {

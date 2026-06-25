@@ -7,7 +7,7 @@
 #include <QList>
 #include <QVector>
 #include <QtQmlIntegration/qqmlintegration.h>
-#include "utils/QmlSingleton.h"
+#include "utils/qml/QmlSingleton.h"
 
 // Manages a QModbusTcpServer exposing sensor readings to SCADA / Central App.
 class ModbusTcpServerService : public QObject {

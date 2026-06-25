@@ -1,4 +1,5 @@
 #include "AppConfigDao.h"
+#include "utils/system/DeviceId.h"
 #include <QSqlQuery>
 #include <QSqlRecord>
 #include <QSqlError>
@@ -65,11 +66,22 @@ AppConfig AppConfigDao::rowToConfig(const QSqlRecord &r) {
 AppConfig AppConfigDao::load() {
     QSqlQuery q(m_db);
     q.exec("SELECT * FROM app_config LIMIT 1");
-    if (q.next())
-        return rowToConfig(q.record());
+    if (q.next()) {
+        AppConfig cfg = rowToConfig(q.record());
+        // One-time migration: existing installs whose DB row was created with the
+        // legacy DEFAULT '' schema get a device-derived station code auto-assigned
+        // and persisted so Central Logger always receives a non-empty identifier.
+        if (cfg.stationCode.trimmed().isEmpty()) {
+            cfg.stationCode = DeviceId::stationCode();
+            save(cfg);
+            qInfo() << "AppConfigDao: station_code was empty, assigned" << cfg.stationCode;
+        }
+        return cfg;
+    }
 
-    // No row yet — insert defaults and return
+    // No row yet — insert defaults using the device-derived station code.
     AppConfig def;
+    def.stationCode = DeviceId::stationCode();
     save(def);
     q.exec("SELECT * FROM app_config LIMIT 1");
     if (q.next())
