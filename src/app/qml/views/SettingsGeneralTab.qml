@@ -37,6 +37,15 @@ Item {
                     Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.borderDefault }
 
                     Text { text: "Device ID:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
+                    Label {
+                        Layout.fillWidth: true
+                        text: SettingsController ? SettingsController.deviceId : ""
+                        color: Theme.textSecondary
+                        font.pixelSize: Theme.fontLabelSize
+                        elide: Text.ElideRight
+                    }
+
+                    Text { text: "Station code:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
                     TextField {
                         Layout.fillWidth: true
                         EnterKeyAction.actionId: EnterKeyAction.None; EnterKeyAction.label: qsTr("OK")

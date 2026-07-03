@@ -4,6 +4,8 @@ qt_add_library(utils STATIC
     system/AppPaths.h
     system/DeviceId.cpp
     system/DeviceId.h
+    system/DeviceLock.cpp
+    system/DeviceLock.h
     system/LogSetup.cpp
     system/LogSetup.h
 
@@ -25,6 +27,11 @@ qt_add_library(utils STATIC
     provision/ProvisionQr.cpp
     provision/ProvisionQr.h
     provision/third_party/qrcodegen.cpp
+
+    # TT10 compliance helpers
+    tt10/ReportNaming.cpp
+    tt10/ReportNaming.h
+    tt10/SensorSymbolCatalog.h
 )
 
 target_include_directories(utils PUBLIC ${CMAKE_SOURCE_DIR}/src)
@@ -32,6 +39,6 @@ target_include_directories(utils PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/provision/third_party
 )
 
-target_link_libraries(utils PUBLIC Qt6::Core Qt6::Network Qt6::Gui Qt6::SerialBus)
+target_link_libraries(utils PUBLIC Qt6::Core Qt6::Network Qt6::Gui Qt6::SerialBus Qt6::Sql)
 
 add_library(datalogger::utils ALIAS utils)

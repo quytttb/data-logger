@@ -3,10 +3,13 @@
 #include "network/workers/FtpWorker.h"
 #include "utils/system/AppPaths.h"
 #include "utils/crypto/Crypto.h"
+#include "utils/tt10/ReportNaming.h"
+#include "tt10/Tt10ReportWriter.h"
 #include "data/db/Database.h"
 #include "data/repositories/SensorDao.h"
 #include "data/repositories/SensorDataDao.h"
 #include "data/repositories/ReportLogDao.h"
+#include "data/repositories/AppConfigDao.h"
 #include <QFile>
 #include <QTextStream>
 #include <QDir>
@@ -183,9 +186,22 @@ void ReportController::onScheduleTick()
 }
 
 void ReportController::generateReport(const QDateTime &from, const QDateTime &to) {
-    const QString fname = from.toString("yyyyMMdd_HHmmss") + ".txt";
+    AppConfig cfg;
+    {
+        ScopedDbConnection db;
+        cfg = AppConfigDao(db).load();
+    }
+
+    if (cfg.filePrefix.trimmed().isEmpty()) {
+        emit messageSent(QStringLiteral("Error"),
+                         QStringLiteral("File prefix is not configured (TT10)."));
+        return;
+    }
+
+    const QString fname = ReportNaming::buildFileName(cfg, to);
     QDir().mkpath(AppPaths::dataDir());
-    const QString path = AppPaths::dataDir() + "/" + fname;
+    const QString path = AppPaths::dataDir() + QLatin1Char('/') + fname;
+    const QString remoteDir = ReportNaming::buildRemoteDir(cfg, to);
 
     {
         ScopedDbConnection db;
@@ -198,47 +214,19 @@ void ReportController::generateReport(const QDateTime &from, const QDateTime &to
         std::sort(sensors.begin(), sensors.end(),
                   [](const Sensor &a, const Sensor &b){ return a.reportIndex < b.reportIndex; });
 
-        QFile file(path);
-        if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-            emit messageSent("Error", "Cannot write report file: " + path);
+        if (!Tt10ReportWriter::write(path, sensors, sdDao, from, to)) {
+            emit messageSent(QStringLiteral("Error"),
+                             QStringLiteral("Cannot write report file: ") + path);
             return;
         }
 
-        QTextStream out(&file);
-        out.setEncoding(QStringConverter::Utf8);
-
-        out << "Thoi gian: " << from.toString("dd/MM/yyyy HH:mm:ss")
-            << " - " << to.toString("dd/MM/yyyy HH:mm:ss") << "\n";
-        out << "STT";
-        for (const auto &s : sensors)
-            out << "\t" << s.name + " (" + s.unit + ")";
-        out << "\n";
-
-        QDateTime cursor = from;
-        int row = 1;
-        while (cursor <= to) {
-            QDateTime next = cursor.addSecs(60);
-            out << row++;
-            for (const auto &s : sensors) {
-                auto data = sdDao.query(s.id, cursor, next, 60);
-                if (data.isEmpty()) { out << "\t---"; continue; }
-                double sum = 0; int cnt = 0;
-                for (const auto &d : data)
-                    if (d.value.has_value()) { sum += *d.value; ++cnt; }
-                if (cnt > 0) out << "\t" << QString::number(sum/cnt, 'f', s.decimals);
-                else          out << "\t---";
-            }
-            out << "\n";
-            cursor = next;
-        }
-        file.close();
-
         ReportLog log;
         log.filePath = path;
+        log.remotePath = remoteDir;
         logDao.insert(log);
     }
 
     refreshStatus();
     emit reportGenerated(path);
-    emit messageSent("Success", "Report saved: " + fname);
+    emit messageSent(QStringLiteral("Success"), QStringLiteral("Report saved: ") + fname);
 }

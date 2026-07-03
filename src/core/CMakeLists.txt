@@ -21,6 +21,10 @@ qt_add_qml_module(datalogger_core
         MonitorModel.h
         SensorListModel.cpp
         SensorListModel.h
+        tt10/SensorSymbols.cpp
+        tt10/SensorSymbols.h
+        tt10/Tt10ReportWriter.cpp
+        tt10/Tt10ReportWriter.h
 )
 
 target_include_directories(datalogger_core
@@ -28,6 +32,7 @@ target_include_directories(datalogger_core
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/history
+        ${CMAKE_CURRENT_SOURCE_DIR}/tt10
 )
 
 target_link_libraries(datalogger_core PUBLIC

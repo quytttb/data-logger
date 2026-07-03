@@ -85,7 +85,7 @@ bool Database::createTables(QSqlDatabase &db) {
             ftp_username TEXT NOT NULL DEFAULT '',
             ftp_password TEXT NOT NULL DEFAULT '',
             ftp_remote_path TEXT NOT NULL DEFAULT '/',
-            ftp_prefix TEXT NOT NULL DEFAULT '',
+            file_prefix TEXT NOT NULL DEFAULT '',
             poll_interval INTEGER NOT NULL DEFAULT 3,
             serial_port TEXT NOT NULL DEFAULT '/dev/ttyUSB0',
             serial_baudrate INTEGER NOT NULL DEFAULT 9600,
@@ -99,7 +99,7 @@ bool Database::createTables(QSqlDatabase &db) {
             server_start_time TEXT NOT NULL DEFAULT '00:00',
             server_base_folder TEXT NOT NULL DEFAULT '',
             server_time_folder TEXT NOT NULL DEFAULT 'yyyy/MM/dd',
-            server_file_suffix TEXT NOT NULL DEFAULT 'yyyyMMddHHmmss',
+            file_suffix TEXT NOT NULL DEFAULT 'yyyyMMddHHmmss',
             modbus_tcp_enabled INTEGER NOT NULL DEFAULT 0,
             modbus_tcp_port INTEGER NOT NULL DEFAULT 5020,
             modbus_tcp_bind TEXT NOT NULL DEFAULT '0.0.0.0',
@@ -110,7 +110,8 @@ bool Database::createTables(QSqlDatabase &db) {
             rest_api_token TEXT NOT NULL DEFAULT '',
             config_revision INTEGER NOT NULL DEFAULT 1,
             ui_locale TEXT NOT NULL DEFAULT 'vi',
-            theme TEXT NOT NULL DEFAULT 'dark'
+            theme TEXT NOT NULL DEFAULT 'dark',
+            auto_add_transmit INTEGER NOT NULL DEFAULT 1
         ))",
 
         R"(CREATE TABLE IF NOT EXISTS sensor (
@@ -129,6 +130,8 @@ bool Database::createTables(QSqlDatabase &db) {
             poll_interval INTEGER NOT NULL DEFAULT 3,
             report_index INTEGER NOT NULL DEFAULT 0,
             decimals INTEGER NOT NULL DEFAULT 4,
+            sensor_symbol TEXT NOT NULL DEFAULT '',
+            transmit_enabled INTEGER NOT NULL DEFAULT 0,
             di_type TEXT DEFAULT NULL,
             active INTEGER NOT NULL DEFAULT 1,
             created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -167,6 +170,12 @@ bool Database::createTables(QSqlDatabase &db) {
             updated_at TEXT NOT NULL DEFAULT (datetime('now'))
         ))",
 
+        R"(CREATE TABLE IF NOT EXISTS device_license (
+            id INTEGER PRIMARY KEY,
+            fingerprint TEXT NOT NULL,
+            bound_at TEXT NOT NULL DEFAULT (datetime('now'))
+        ))",
+
         // Indices for frequent queries
         "CREATE INDEX IF NOT EXISTS idx_sensor_data_sensor_id ON sensor_data(sensor_id)",
         "CREATE INDEX IF NOT EXISTS idx_sensor_data_recorded_at ON sensor_data(recorded_at)",
@@ -188,7 +197,6 @@ bool Database::migrate(QSqlDatabase &db) {
         {"sensor",      "decimals",      "INTEGER NOT NULL DEFAULT 4"},
         {"sensor_data", "status",        "TEXT DEFAULT NULL"},
         {"app_config",  "ui_locale",     "TEXT NOT NULL DEFAULT 'vi'"},
-        {"app_config",  "ftp_prefix",    "TEXT NOT NULL DEFAULT ''"},
         {"app_config",  "ftp_protocol",  "TEXT NOT NULL DEFAULT 'sftp'"},
         {"app_config",  "modbus_tcp_enabled",  "INTEGER NOT NULL DEFAULT 0"},
         {"app_config",  "modbus_tcp_port",     "INTEGER NOT NULL DEFAULT 5020"},
@@ -200,12 +208,78 @@ bool Database::migrate(QSqlDatabase &db) {
         {"app_config",  "rest_api_token",      "TEXT NOT NULL DEFAULT ''"},
         {"app_config",  "config_revision",     "INTEGER NOT NULL DEFAULT 1"},
         {"app_config",  "theme",               "TEXT NOT NULL DEFAULT 'dark'"},
+        {"sensor",      "parameter_code", "TEXT NOT NULL DEFAULT ''"},
+        {"sensor",      "transmit_enabled", "INTEGER NOT NULL DEFAULT 0"},
+        {"app_config",  "auto_add_transmit", "INTEGER NOT NULL DEFAULT 1"},
+        {"report_log",  "remote_path",    "TEXT NOT NULL DEFAULT ''"},
     };
 
     for (const auto &a : additions) {
         if (!addColumnIfMissing(db, a.table, a.col, a.def))
             return false;
     }
+
+    // Rename legacy app_config columns to filePrefix / fileSuffix names.
+    auto renameColumn = [&](const char *oldName, const char *newName) -> bool {
+        QSqlQuery q(db);
+        q.exec(QStringLiteral("PRAGMA table_info(app_config)"));
+        bool hasOld = false;
+        bool hasNew = false;
+        while (q.next()) {
+            const QString col = q.value("name").toString();
+            if (col == QLatin1String(oldName)) hasOld = true;
+            if (col == QLatin1String(newName)) hasNew = true;
+        }
+        if (!hasOld || hasNew)
+            return true;
+        QSqlQuery ren(db);
+        const QString stmt = QStringLiteral("ALTER TABLE app_config RENAME COLUMN %1 TO %2")
+                                 .arg(QString::fromLatin1(oldName), QString::fromLatin1(newName));
+        if (ren.exec(stmt))
+            return true;
+        // Fallback: add → copy → drop (SQLite without RENAME support).
+        if (!addColumnIfMissing(db, "app_config", newName,
+                                QString::fromLatin1(oldName) == QLatin1String("ftp_prefix")
+                                    ? QStringLiteral("TEXT NOT NULL DEFAULT ''")
+                                    : QStringLiteral("TEXT NOT NULL DEFAULT 'yyyyMMddHHmmss'")))
+            return false;
+        QSqlQuery copy(db);
+        copy.exec(QStringLiteral("UPDATE app_config SET %1 = %2").arg(
+            QString::fromLatin1(newName), QString::fromLatin1(oldName)));
+        return dropColumnIfExists(db, "app_config", oldName);
+    };
+    if (!renameColumn("ftp_prefix", "file_prefix"))
+        return false;
+    if (!renameColumn("server_file_suffix", "file_suffix"))
+        return false;
+
+    // Rename parameter_code → sensor_symbol on sensor table.
+    auto renameSensorColumn = [&](const char *oldName, const char *newName) -> bool {
+        QSqlQuery q(db);
+        q.exec(QStringLiteral("PRAGMA table_info(sensor)"));
+        bool hasOld = false;
+        bool hasNew = false;
+        while (q.next()) {
+            const QString col = q.value("name").toString();
+            if (col == QLatin1String(oldName)) hasOld = true;
+            if (col == QLatin1String(newName)) hasNew = true;
+        }
+        if (!hasOld || hasNew)
+            return true;
+        QSqlQuery ren(db);
+        const QString stmt = QStringLiteral("ALTER TABLE sensor RENAME COLUMN %1 TO %2")
+                                 .arg(QString::fromLatin1(oldName), QString::fromLatin1(newName));
+        if (ren.exec(stmt))
+            return true;
+        if (!addColumnIfMissing(db, "sensor", newName, QStringLiteral("TEXT NOT NULL DEFAULT ''")))
+            return false;
+        QSqlQuery copy(db);
+        copy.exec(QStringLiteral("UPDATE sensor SET %1 = %2").arg(
+            QString::fromLatin1(newName), QString::fromLatin1(oldName)));
+        return dropColumnIfExists(db, "sensor", oldName);
+    };
+    if (!renameSensorColumn("parameter_code", "sensor_symbol"))
+        return false;
 
     // Legacy: empty thresholds were saved as 0.0 instead of NULL.
     QSqlQuery fix(db);

@@ -18,6 +18,10 @@ public:
     bool removeLink(int id);
     QList<AnalogDigitalLink> linksForAnalog(int analogSensorId);
 
+    bool updateTransmission(int id, const QString &sensorSymbol, bool transmitEnabled);
+    bool setAllTransmitEnabled(bool enabled);
+    bool clearTransmission(const QList<int> &ids);
+
 private:
     QSqlDatabase m_db;
     Sensor rowToSensor(const class QSqlRecord &r);

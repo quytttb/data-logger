@@ -4,6 +4,7 @@ import QtQuick.Layouts
 import QtQuick.VirtualKeyboard
 import DataLogger.Theme
 import DataLogger.Core
+import DataLogger.Components
 
 Item {
     id: root
@@ -15,6 +16,29 @@ Item {
         function onConfigLoaded() { root._pathVersion++ }
         function onConfigSaved() { root._pathVersion++ }
     }
+
+    ColumnLayout {
+        anchors.fill: parent
+        spacing: 0
+
+        TabBar {
+            id: serverTabBar
+            Layout.alignment: Qt.AlignLeft
+            Layout.bottomMargin: Theme.spacingS
+            background: Rectangle { color: "transparent" }
+
+            ThemedTabButton { text: "Cài đặt chung"; width: implicitWidth + 30 }
+            ThemedTabButton { text: "Thông số truyền"; width: implicitWidth + 30 }
+        }
+
+        StackLayout {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            currentIndex: serverTabBar.currentIndex
+
+            Item {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
 
     Flickable {
         id: flick
@@ -67,8 +91,9 @@ Item {
                             if (!SettingsController) return ""
                             var base = SettingsController.serverBaseFolder || ""
                             var tFolder = SettingsController.serverTimeFolder || ""
-                            var prefix = SettingsController.ftpPrefix || ""
-                            var suffix = SettingsController.serverFileSuffix || ""
+                            var prefix = SettingsController.filePrefix || ""
+                            var suffixPat = SettingsController.fileSuffix || "yyyyMMddHHmmss"
+                            var suffix = Qt.formatDateTime(new Date(), suffixPat)
 
                             var dir = ""
                             if (base) {
@@ -76,7 +101,7 @@ Item {
                             }
                             if (tFolder) {
                                 if (dir && !dir.endsWith("/")) dir += "/"
-                                dir += tFolder
+                                dir += Qt.formatDateTime(new Date(), tFolder)
                             }
                             if (dir && !dir.endsWith("/")) dir += "/"
 
@@ -220,7 +245,7 @@ Item {
                     Text { text: "File & Folder Naming"; color: Theme.accentText; font.bold: true; font.pixelSize: AppTypography.titleSmall.pixelSize }
                     Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.borderDefault }
 
-                    Text { text: "Base folder:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
+                    Text { text: "Station folder:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
                     TextField {
                         Layout.fillWidth: true
                         EnterKeyAction.actionId: EnterKeyAction.None; EnterKeyAction.label: qsTr("OK")
@@ -228,7 +253,7 @@ Item {
                         onTextEdited: { SettingsController.serverBaseFolder = text; root.configChanged = true; root._pathVersion++ }
                     }
 
-                    Text { text: "Time folder:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
+                    Text { text: "Date subfolder:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
                     ComboBox {
                         Layout.fillWidth: true
                         model: ["yyyy/MM/dd", "yyyy-MM-dd", "yyyy/MM", "yyyyMMdd"]
@@ -243,8 +268,8 @@ Item {
                     TextField {
                         Layout.fillWidth: true
                         EnterKeyAction.actionId: EnterKeyAction.None; EnterKeyAction.label: qsTr("OK")
-                        text: SettingsController ? SettingsController.ftpPrefix : ""
-                        onTextEdited: { SettingsController.ftpPrefix = text; root.configChanged = true; root._pathVersion++ }
+                        text: SettingsController ? SettingsController.filePrefix : ""
+                        onTextEdited: { SettingsController.filePrefix = text; root.configChanged = true; root._pathVersion++ }
                     }
 
                     Text { text: "File suffix:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
@@ -252,11 +277,24 @@ Item {
                         Layout.fillWidth: true
                         model: ["yyyyMMddHHmmss", "yyyyMMddHHmm", "yyyyMMdd_HHmmss", "HHmmss"]
                         currentIndex: {
-                            var v = SettingsController ? SettingsController.serverFileSuffix : "yyyyMMddHHmmss"
+                            var v = SettingsController ? SettingsController.fileSuffix : "yyyyMMddHHmmss"
                             return Math.max(0, model.indexOf(v))
                         }
-                        onActivated: { SettingsController.serverFileSuffix = currentText; root.configChanged = true; root._pathVersion++ }
+                        onActivated: { SettingsController.fileSuffix = currentText; root.configChanged = true; root._pathVersion++ }
                     }
+                }
+            }
+        }
+    }
+            }
+
+            SettingsTransmissionTab {
+                id: transmissionTab
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                onConfigChangedChanged: {
+                    if (configChanged)
+                        root.configChanged = true
                 }
             }
         }

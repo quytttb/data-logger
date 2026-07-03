@@ -76,11 +76,11 @@ void FtpWorker::tick() {
 
     for (auto &log : pending) {
         if (!m_running) break;
-        if (uploadFile(log.filePath, m_remotePath)) {
+        if (uploadFile(log.filePath, log.remotePath.isEmpty() ? m_remotePath : log.remotePath)) {
             ScopedDbConnection db2;
             ReportLogDao dao2(db2);
             dao2.updateStatus(log.id, "success");
-            emit uploadSuccess(log.filePath, m_remotePath);
+            emit uploadSuccess(log.filePath, log.remotePath.isEmpty() ? m_remotePath : log.remotePath);
         } else {
             ScopedDbConnection db2;
             ReportLogDao dao2(db2);

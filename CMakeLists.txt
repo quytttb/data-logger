@@ -38,5 +38,11 @@ add_subdirectory(src/theme)
 add_subdirectory(src/components)
 add_subdirectory(src/app)
 
+option(BUILD_TESTS "Build unit tests" ON)
+if(BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+endif()
+
 include(${CMAKE_SOURCE_DIR}/cmake/CPackOptions.cmake)
 

@@ -3,10 +3,11 @@
 #include "data/repositories/SensorDao.h"
 #include "data/repositories/AppConfigDao.h"
 #include "data/models/AnalogDigitalLink.h"
+#include "tt10/SensorSymbols.h"
+#include <QSet>
 #include <QVariant>
 #include <QQmlEngine>
 #include <QJSEngine>
-#include <QSet>
 
 namespace {
 
@@ -49,6 +50,9 @@ QHash<int, QByteArray> SensorListModel::roleNames() const {
         {SensorTypeRole,       "sensorType"},
         {ActiveRole,           "active"},
         {DiTypeRole,           "diType"},
+        {SensorSymbolRole,     "sensorSymbol"},
+        {DisplayNameRole,      "displayName"},
+        {TransmitEnabledRole,  "transmitEnabled"},
     };
 }
 
@@ -73,6 +77,9 @@ QVariant SensorListModel::data(const QModelIndex &index, int role) const {
     case SensorTypeRole:      return sensorTypeToString(s.sensorType);
     case ActiveRole:          return s.active;
     case DiTypeRole:          return s.diType;
+    case SensorSymbolRole:    return s.sensorSymbol;
+    case DisplayNameRole:     return SensorSymbols::displayLabel(s.sensorSymbol, s.name);
+    case TransmitEnabledRole: return s.transmitEnabled;
     default:                  return {};
     }
 }
@@ -81,6 +88,8 @@ QVariantMap SensorListModel::sensorToVariant(const Sensor &s) const {
     QVariantMap m;
     m["sensorId"]        = s.id;
     m["name"]            = s.name;
+    m["sensorSymbol"]    = s.sensorSymbol;
+    m["displayName"]     = SensorSymbols::displayLabel(s.sensorSymbol, s.name);
     m["unit"]            = s.unit;
     m["slaveId"]         = s.slaveId;
     m["registerAddress"] = s.registerAddress;
@@ -96,6 +105,7 @@ QVariantMap SensorListModel::sensorToVariant(const Sensor &s) const {
     m["sensorType"]      = sensorTypeToString(s.sensorType);
     m["active"]          = s.active;
     m["diType"]          = s.diType;
+    m["transmitEnabled"] = s.transmitEnabled;
     return m;
 }
 
@@ -115,6 +125,8 @@ QList<QVariantMap> SensorListModel::activeMonitorMaps() const {
         maps.append({
             {"id",          s.id},
             {"name",        s.name},
+            {"sensor_symbol", s.sensorSymbol},
+            {"display_name", SensorSymbols::displayLabel(s.sensorSymbol, s.name)},
             {"unit",        s.unit},
             {"decimals",    s.decimals},
             {"sensor_type", sensorTypeToString(s.sensorType)},
@@ -138,6 +150,7 @@ Sensor SensorListModel::variantToSensor(const QVariantMap &p, int existingId) co
     Sensor s;
     s.id             = existingId;
     s.name           = p.value("name").toString();
+    s.sensorSymbol   = p.value("sensorSymbol").toString();
     s.unit           = p.value("unit").toString();
     s.slaveId        = p.value("slaveId", 1).toInt();
     s.registerAddress= p.value("registerAddress", 0).toInt();
@@ -155,6 +168,8 @@ Sensor SensorListModel::variantToSensor(const QVariantMap &p, int existingId) co
     s.sensorType     = sensorTypeFromString(p.value("sensorType", "ANALOG").toString());
     s.active         = p.value("active", true).toBool();
     s.diType         = p.value("diType").toString();
+    if (p.contains(QStringLiteral("transmitEnabled")))
+        s.transmitEnabled = p.value("transmitEnabled").toBool();
     return s;
 }
 
@@ -163,9 +178,14 @@ bool SensorListModel::addSensor(const QVariantMap &props) {
     bool ok;
     {
         ScopedDbConnection db;
+        AppConfigDao cfgDao(db);
+        const AppConfig cfg = cfgDao.load();
+        if (s.sensorType == SensorType::Analog && cfg.autoAddTransmit)
+            s.transmitEnabled = true;
+
         SensorDao dao(db);
         ok = dao.save(s);
-        if (ok) AppConfigDao(db).bumpRevision();
+        if (ok) cfgDao.bumpRevision();
     }
     if (ok) {
         loadFromDb();
@@ -182,6 +202,9 @@ bool SensorListModel::updateSensor(int id, const QVariantMap &props) {
     {
         ScopedDbConnection db;
         SensorDao dao(db);
+        const Sensor existing = dao.loadById(id);
+        if (existing.id != 0 && !props.contains(QStringLiteral("transmitEnabled")))
+            s.transmitEnabled = existing.transmitEnabled;
         ok = dao.save(s);
         if (ok) AppConfigDao(db).bumpRevision();
     }
@@ -228,6 +251,91 @@ static QVariantMap sensorBrief(const Sensor &s)
         {QStringLiteral("slaveId"),  s.slaveId},
         {QStringLiteral("address"),  s.registerAddress},
     };
+}
+
+QVariantList SensorListModel::transmissionRows() const
+{
+    QVariantList out;
+    int idx = 1;
+    for (const auto &s : m_sensors) {
+        if (!s.active || s.sensorType != SensorType::Analog)
+            continue;
+        out.append(QVariantMap{
+            {QStringLiteral("index"), idx++},
+            {QStringLiteral("sensorId"), s.id},
+            {QStringLiteral("name"), s.name},
+            {QStringLiteral("sensorSymbol"), s.sensorSymbol},
+            {QStringLiteral("transmitEnabled"), s.transmitEnabled},
+        });
+    }
+    return out;
+}
+
+bool SensorListModel::saveTransmission(const QVariantList &rows)
+{
+    bool ok = true;
+    {
+        ScopedDbConnection db;
+        SensorDao dao(db);
+        for (const auto &item : rows) {
+            const QVariantMap row = item.toMap();
+            const int id = row.value(QStringLiteral("sensorId")).toInt();
+            if (id <= 0)
+                continue;
+            if (!dao.updateTransmission(id,
+                                        row.value(QStringLiteral("sensorSymbol")).toString(),
+                                        row.value(QStringLiteral("transmitEnabled")).toBool())) {
+                ok = false;
+                break;
+            }
+        }
+        if (ok)
+            AppConfigDao(db).bumpRevision();
+    }
+    if (ok) {
+        loadFromDb();
+        emit messageSent(QStringLiteral("Success"), QStringLiteral("Transmission settings saved."));
+    } else {
+        emit messageSent(QStringLiteral("Error"), QStringLiteral("Failed to save transmission settings."));
+    }
+    return ok;
+}
+
+bool SensorListModel::setAllTransmitEnabled(bool enabled)
+{
+    bool ok;
+    {
+        ScopedDbConnection db;
+        SensorDao dao(db);
+        ok = dao.setAllTransmitEnabled(enabled);
+        if (ok) AppConfigDao(db).bumpRevision();
+    }
+    if (ok)
+        loadFromDb();
+    return ok;
+}
+
+bool SensorListModel::removeFromTransmission(const QVariantList &sensorIds)
+{
+    QList<int> ids;
+    ids.reserve(sensorIds.size());
+    for (const auto &item : sensorIds)
+        ids.append(item.toInt());
+
+    bool ok;
+    {
+        ScopedDbConnection db;
+        SensorDao dao(db);
+        ok = dao.clearTransmission(ids);
+        if (ok) AppConfigDao(db).bumpRevision();
+    }
+    if (ok) {
+        loadFromDb();
+        emit messageSent(QStringLiteral("Success"), QStringLiteral("Removed from transmission list."));
+    } else {
+        emit messageSent(QStringLiteral("Error"), QStringLiteral("Failed to remove from transmission."));
+    }
+    return ok;
 }
 
 QVariantList SensorListModel::get_analog_links(int analogSensorId) const

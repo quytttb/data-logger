@@ -75,7 +75,7 @@ Rectangle {
             delegate: Rectangle {
                 id: sensorRow
                 required property int index
-                required property string name
+                required property string displayName
                 required property string unit
                 required property int slaveId
                 required property int registerAddress
@@ -127,7 +127,7 @@ Rectangle {
                     anchors.leftMargin: root.colMarginH
                     anchors.rightMargin: root.colMarginH
                     spacing: root.colSpacing
-                    Text { text: sensorRow.name; color: AppColors.primaryText; font.pixelSize: AppTypography.bodyMedium.pixelSize; font.weight: Font.DemiBold; Layout.preferredWidth: 120; elide: Text.ElideRight }
+                    Text { text: sensorRow.displayName; color: AppColors.primaryText; font.pixelSize: AppTypography.bodyMedium.pixelSize; font.weight: Font.DemiBold; Layout.preferredWidth: 120; elide: Text.ElideRight }
                     Text { text: sensorRow.unit; color: AppColors.tableCellMuted; font: AppTypography.bodyMedium; Layout.preferredWidth: 50; elide: Text.ElideRight }
                     Text { text: sensorRow.slaveId; color: AppColors.tableCellMuted; font.pixelSize: AppTypography.bodyMedium.pixelSize; font.family: AppTypography.monoFamily; Layout.preferredWidth: 45; horizontalAlignment: Text.AlignHCenter }
                     Text { text: sensorRow.registerAddress; color: AppColors.tableCellMuted; font.pixelSize: AppTypography.bodyMedium.pixelSize; font.family: AppTypography.monoFamily; Layout.preferredWidth: 45; horizontalAlignment: Text.AlignHCenter }

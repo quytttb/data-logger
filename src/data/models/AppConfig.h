@@ -5,7 +5,8 @@ struct AppConfig {
     int id = 0;
 
     // Station info — stationCode is left empty here so AppConfigDao::load()
-    // assigns a device-derived ID (DeviceId::stationCode()) on first use.
+    // assigns a default (DeviceId::stationCode()) on first use when empty.
+    // Device ID (hardware) is always derived at runtime via DeviceId::stationCode().
     QString stationCode;
     QString stationName = QStringLiteral("Data Logger");
 
@@ -21,7 +22,7 @@ struct AppConfig {
     QString ftpUsername;
     QString ftpPassword;   // stored encrypted
     QString ftpRemotePath = "/";
-    QString ftpPrefix;
+    QString filePrefix;
     QString ftpProtocol = QStringLiteral("sftp");  // "ftp" | "sftp"
 
     // Server / Transmission
@@ -29,10 +30,11 @@ struct AppConfig {
     QString serverDeviceType   = "Standard";
     QString serverName;
     int serverSendInterval     = 5;
+    bool autoAddTransmit       = true;
     QString serverStartTime    = "00:00";
     QString serverBaseFolder;
     QString serverTimeFolder   = "yyyy/MM/dd";
-    QString serverFileSuffix   = "yyyyMMddHHmmss";
+    QString fileSuffix         = "yyyyMMddHHmmss";
 
     // Polling
     int pollInterval = 3;

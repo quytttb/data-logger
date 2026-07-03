@@ -4,6 +4,13 @@ set -e
 
 case "$1" in
     configure)
+        # Hardware license backup directory (writable by kiosk user pi).
+        if [ ! -d /var/lib/datalogger ]; then
+            mkdir -p /var/lib/datalogger
+        fi
+        chown pi:pi /var/lib/datalogger 2>/dev/null || true
+        chmod 755 /var/lib/datalogger 2>/dev/null || true
+
         if [ -d /run/systemd/system ]; then
             systemctl daemon-reload >/dev/null 2>&1 || true
             systemctl enable datalogger.service >/dev/null 2>&1 || true

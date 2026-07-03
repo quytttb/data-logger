@@ -1,5 +1,6 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
+#include <QQmlContext>
 #include <QIcon>
 #include <QFontDatabase>
 #include <QTimer>
@@ -7,6 +8,8 @@
 
 #include "utils/system/AppPaths.h"
 #include "utils/system/LogSetup.h"
+#include "utils/system/DeviceId.h"
+#include "utils/system/DeviceLock.h"
 #include "data/db/Database.h"
 #include "network/modbus/ModbusTcpServerService.h"
 #include "network/rest/RestApiService.h"
@@ -18,6 +21,7 @@
 #include "core/history/HistoryViewModel.h"
 #include "core/TesterController.h"
 #include "core/ReportController.h"
+#include "core/tt10/SensorSymbols.h"
 
 namespace {
 constexpr int kThreadJoinMs = 5000;  // graceful FTP thread join on quit
@@ -62,6 +66,28 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    DeviceLock::State lockState = DeviceLock::check();
+    if (lockState == DeviceLock::State::Unbound) {
+        if (!DeviceLock::bind()) {
+            qCritical() << "Failed to bind device to hardware";
+            return 1;
+        }
+    } else if (lockState == DeviceLock::State::Unauthorized) {
+        QQmlApplicationEngine lockEngine;
+        lockEngine.rootContext()->setContextProperty(
+            QStringLiteral("deviceStationCode"), DeviceId::stationCode());
+        QObject::connect(
+            &lockEngine,
+            &QQmlApplicationEngine::objectCreationFailed,
+            &app,
+            []() { QCoreApplication::exit(-1); },
+            Qt::QueuedConnection);
+        lockEngine.loadFromModule("DataLogger.App", "LockScreen");
+        if (lockEngine.rootObjects().isEmpty())
+            return -1;
+        return app.exec();
+    }
+
     QString iconPath = AppPaths::appIconPath();
     if (!iconPath.isEmpty())
         app.setWindowIcon(QIcon(iconPath));
@@ -77,6 +103,7 @@ int main(int argc, char *argv[]) {
     auto *historyVm      = new HistoryViewModel(&app);
     auto *testerCtrl    = new TesterController(&app);
     auto *reportCtrl    = new ReportController(&app);
+    auto *sensorSymbols = new SensorSymbols(&app);
 
     auto *ftpWorker  = new FtpWorker();          // no parent — owned by ftpThread
     auto *ftpThread  = new QThread(&app);
@@ -93,6 +120,7 @@ int main(int argc, char *argv[]) {
     HistoryViewModel::setInstance(historyVm);
     TesterController::setInstance(testerCtrl);
     ReportController::setInstance(reportCtrl);
+    SensorSymbols::setInstance(sensorSymbols);
 
     reportCtrl->setFtpWorker(ftpWorker);
     reportCtrl->setSettingsController(settingsCtrl);

@@ -19,6 +19,8 @@ public:
         NameRole, UnitRole, ValueRole, RawValueRole,
         StatusRole, LastUpdateRole, IsAlarmRole, AlarmTypeRole,
         DiStatesRole, SensorTypeRole,
+        ParameterCodeRole, DisplayNameRole,
+        SensorSymbolRole = ParameterCodeRole,
     };
 
     explicit MonitorModel(QObject *parent);
@@ -45,6 +47,7 @@ private:
         int     sensorId = 0;
         int     decimals = 4;
         QString name, unit, sensorType;
+        QString sensorSymbol;
         QString value = "---", rawValue = "---";
         QString status = "WAIT", lastUpdate;
         bool    isAlarm = false;

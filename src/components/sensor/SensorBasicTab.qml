@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.VirtualKeyboard
 import DataLogger.Theme
+import DataLogger.Core
 
 Rectangle {
     id: root
@@ -25,6 +26,7 @@ Rectangle {
 
     property alias dActive: dActive
     property alias dName: dName
+    property alias dSensorSymbol: dSensorSymbol
     property alias dUnit: dUnit
     property alias dPollInterval: dPollInterval
     property alias dReportIdx: dReportIdx
@@ -47,6 +49,15 @@ Rectangle {
                 Layout.fillWidth: true
                 Text { text: "Active:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; Layout.fillWidth: true }
                 Switch { id: dActive; checked: true }
+            }
+
+            Text { text: "Ký hiệu cảm biến:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; visible: root.isAnalog }
+            ComboBox {
+                id: dSensorSymbol
+                Layout.fillWidth: true
+                visible: root.isAnalog
+                editable: true
+                model: SensorSymbols.symbols
             }
 
             Text { text: "Name:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }

@@ -31,6 +31,9 @@ public:
         SensorTypeRole,
         ActiveRole,
         DiTypeRole,
+        SensorSymbolRole,
+        DisplayNameRole,
+        TransmitEnabledRole,
     };
 
     explicit SensorListModel(QObject *parent);
@@ -59,6 +62,11 @@ public:
     Q_INVOKABLE bool detach_link(int linkId);
     Q_INVOKABLE bool update_link_di_type(int linkId, const QString &diType);
     Q_INVOKABLE bool update_link_do_triggers(int linkId, bool trigMax, bool trigMin);
+
+    Q_INVOKABLE QVariantList transmissionRows() const;
+    Q_INVOKABLE bool saveTransmission(const QVariantList &rows);
+    Q_INVOKABLE bool setAllTransmitEnabled(bool enabled);
+    Q_INVOKABLE bool removeFromTransmission(const QVariantList &sensorIds);
 
 signals:
     void countChanged();

@@ -99,7 +99,7 @@ Rectangle {
                             }
 
                             Text {
-                                text: card.name
+                                text: card.displayName
                                 color: Theme.accentText
                                 font.pixelSize: AppTypography.bodySmall.pixelSize; font.bold: true
                                 elide: Text.ElideRight

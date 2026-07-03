@@ -9,6 +9,7 @@ ReportLog ReportLogDao::rowToLog(const QSqlRecord &r) {
     ReportLog l;
     l.id         = r.value("id").toInt();
     l.filePath   = r.value("file_path").toString();
+    l.remotePath = r.value("remote_path").toString();
     l.status     = r.value("status").toString();
     l.retryCount = r.value("retry_count").toInt();
     l.createdAt  = QDateTime::fromString(r.value("created_at").toString(), Qt::ISODate);
@@ -18,8 +19,9 @@ ReportLog ReportLogDao::rowToLog(const QSqlRecord &r) {
 
 bool ReportLogDao::insert(ReportLog &log) {
     QSqlQuery q(m_db);
-    q.prepare("INSERT INTO report_log (file_path, status) VALUES (:fp, :st)");
+    q.prepare("INSERT INTO report_log (file_path, remote_path, status) VALUES (:fp, :rp, :st)");
     q.bindValue(":fp", log.filePath);
+    q.bindValue(":rp", log.remotePath);
     q.bindValue(":st", log.status);
     if (!q.exec()) return false;
     log.id = q.lastInsertId().toInt();

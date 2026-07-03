@@ -236,6 +236,8 @@ QStringList SettingsController::validate() const {
     if (m_cfg.restApiEnabled && m_cfg.modbusTcpEnabled
         && m_cfg.restApiPort == m_cfg.modbusTcpPort)
         errors << "REST API port must differ from Modbus TCP port.";
+    if (m_cfg.serverActive && m_cfg.filePrefix.trimmed().isEmpty())
+        errors << "File prefix is required when server transmission is active.";
     return errors;
 }
 

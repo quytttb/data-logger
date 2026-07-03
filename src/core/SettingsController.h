@@ -4,6 +4,7 @@
 #include <QtQmlIntegration/qqmlintegration.h>
 #include "data/models/AppConfig.h"
 #include "utils/qml/QmlSingleton.h"
+#include "utils/system/DeviceId.h"
 
 // Exposes AppConfig to QML and handles save/load.
 class SettingsController : public QObject {
@@ -12,6 +13,7 @@ class SettingsController : public QObject {
     QML_SINGLETON
 
     // Station
+    Q_PROPERTY(QString deviceId      READ deviceId      CONSTANT)
     Q_PROPERTY(QString stationCode   READ stationCode   WRITE setStationCode   NOTIFY configLoaded)
     Q_PROPERTY(QString stationName   READ stationName   WRITE setStationName   NOTIFY configLoaded)
 
@@ -27,7 +29,7 @@ class SettingsController : public QObject {
     Q_PROPERTY(QString ftpUsername   READ ftpUsername   WRITE setFtpUsername   NOTIFY configLoaded)
     Q_PROPERTY(QString ftpPassword   READ ftpPassword   WRITE setFtpPassword   NOTIFY configLoaded)
     Q_PROPERTY(QString ftpRemotePath READ ftpRemotePath WRITE setFtpRemotePath NOTIFY configLoaded)
-    Q_PROPERTY(QString ftpPrefix     READ ftpPrefix     WRITE setFtpPrefix     NOTIFY configLoaded)
+    Q_PROPERTY(QString filePrefix    READ filePrefix    WRITE setFilePrefix    NOTIFY configLoaded)
 
     // Polling
     Q_PROPERTY(int    pollInterval   READ pollInterval  WRITE setPollInterval  NOTIFY configLoaded)
@@ -47,7 +49,8 @@ class SettingsController : public QObject {
     Q_PROPERTY(QString serverStartTime  READ serverStartTime  WRITE setServerStartTime  NOTIFY configLoaded)
     Q_PROPERTY(QString serverBaseFolder READ serverBaseFolder WRITE setServerBaseFolder NOTIFY configLoaded)
     Q_PROPERTY(QString serverTimeFolder READ serverTimeFolder WRITE setServerTimeFolder NOTIFY configLoaded)
-    Q_PROPERTY(QString serverFileSuffix READ serverFileSuffix WRITE setServerFileSuffix NOTIFY configLoaded)
+    Q_PROPERTY(QString fileSuffix       READ fileSuffix       WRITE setFileSuffix       NOTIFY configLoaded)
+    Q_PROPERTY(bool   autoAddTransmit    READ autoAddTransmit  WRITE setAutoAddTransmit  NOTIFY configLoaded)
 
     // Modbus TCP
     Q_PROPERTY(bool   modbusTcpEnabled READ modbusTcpEnabled WRITE setModbusTcpEnabled NOTIFY configLoaded)
@@ -71,6 +74,7 @@ public:
     DECLARE_QML_SINGLETON(SettingsController)
 
     // Property getters
+    QString deviceId()      const { return DeviceId::stationCode(); }
     QString stationCode()   const { return m_cfg.stationCode; }
     QString stationName()   const { return m_cfg.stationName; }
     QString timeFormat()    const { return m_cfg.timeFormat; }
@@ -82,7 +86,7 @@ public:
     QString ftpUsername()   const { return m_cfg.ftpUsername; }
     QString ftpPassword()   const;  // decrypts on read
     QString ftpRemotePath() const { return m_cfg.ftpRemotePath; }
-    QString ftpPrefix()     const { return m_cfg.ftpPrefix; }
+    QString filePrefix()    const { return m_cfg.filePrefix; }
     int    pollInterval()   const { return m_cfg.pollInterval; }
     QString serialPort()    const { return m_cfg.serialPort; }
     int    serialBaudrate() const { return m_cfg.serialBaudrate; }
@@ -96,7 +100,8 @@ public:
     QString serverStartTime()   const { return m_cfg.serverStartTime; }
     QString serverBaseFolder()  const { return m_cfg.serverBaseFolder; }
     QString serverTimeFolder()  const { return m_cfg.serverTimeFolder; }
-    QString serverFileSuffix()  const { return m_cfg.serverFileSuffix; }
+    QString fileSuffix()        const { return m_cfg.fileSuffix; }
+    bool   autoAddTransmit()    const { return m_cfg.autoAddTransmit; }
     bool   modbusTcpEnabled()   const { return m_cfg.modbusTcpEnabled; }
     int    modbusTcpPort()      const { return m_cfg.modbusTcpPort; }
     QString modbusTcpBind()     const { return m_cfg.modbusTcpBind; }
@@ -122,7 +127,7 @@ public:
     void setFtpUsername(const QString &v)   { m_cfg.ftpUsername = v; }
     void setFtpPassword(const QString &v);  // encrypts before storing
     void setFtpRemotePath(const QString &v) { m_cfg.ftpRemotePath = v; }
-    void setFtpPrefix(const QString &v)     { m_cfg.ftpPrefix = v; }
+    void setFilePrefix(const QString &v)    { m_cfg.filePrefix = v; }
     void setPollInterval(int v)             { m_cfg.pollInterval = v; }
     void setSerialPort(const QString &v)    { m_cfg.serialPort = v; }
     void setSerialBaudrate(int v)           { m_cfg.serialBaudrate = v; }
@@ -136,7 +141,8 @@ public:
     void setServerStartTime(const QString &v)  { m_cfg.serverStartTime = v; }
     void setServerBaseFolder(const QString &v) { m_cfg.serverBaseFolder = v; }
     void setServerTimeFolder(const QString &v) { m_cfg.serverTimeFolder = v; }
-    void setServerFileSuffix(const QString &v) { m_cfg.serverFileSuffix = v; }
+    void setFileSuffix(const QString &v)       { m_cfg.fileSuffix = v; }
+    void setAutoAddTransmit(bool v)            { m_cfg.autoAddTransmit = v; }
     void setModbusTcpEnabled(bool v)        { m_cfg.modbusTcpEnabled = v; }
     void setModbusTcpPort(int v)            { m_cfg.modbusTcpPort = v; }
     void setModbusTcpBind(const QString &v) { m_cfg.modbusTcpBind = v; }

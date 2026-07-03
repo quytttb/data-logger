@@ -1,7 +1,7 @@
 #include "MonitorModel.h"
 #include <QDateTime>
 #include <QQmlEngine>
-#include <QJSEngine>
+#include "tt10/SensorSymbols.h"
 
 IMPLEMENT_QML_SINGLETON(MonitorModel)
 
@@ -22,6 +22,8 @@ QHash<int, QByteArray> MonitorModel::roleNames() const {
         {AlarmTypeRole, "alarmType"},
         {DiStatesRole,  "diStates"},
         {SensorTypeRole,"sensorType"},
+        {SensorSymbolRole, "sensorSymbol"},
+        {DisplayNameRole,   "displayName"},
     };
 }
 
@@ -40,6 +42,8 @@ QVariant MonitorModel::data(const QModelIndex &index, int role) const {
     case AlarmTypeRole:  return it.alarmType;
     case DiStatesRole:   return it.diStates;
     case SensorTypeRole: return it.sensorType;
+    case SensorSymbolRole: return it.sensorSymbol;
+    case DisplayNameRole:   return SensorSymbols::displayLabel(it.sensorSymbol, it.name);
     default:             return {};
     }
 }
@@ -53,6 +57,7 @@ void MonitorModel::loadSensors(const QList<QVariantMap> &sensors) {
         Item it;
         it.sensorId   = s["id"].toInt();
         it.name       = s["name"].toString();
+        it.sensorSymbol = s.value("sensor_symbol").toString();
         it.unit       = s["unit"].toString();
         it.decimals   = s.value("decimals", 4).toInt();
         it.sensorType = s.value("sensor_type", "ANALOG").toString();

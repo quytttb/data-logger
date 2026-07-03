@@ -3,10 +3,15 @@
 
 namespace DeviceId {
 
-// Returns a short station code derived from the hardware machine ID.
-// On Linux/Raspberry Pi this reads /etc/machine-id via QSysInfo.
-// Format: "DL-" + first 8 hex characters (uppercase), e.g. "DL-A1B2C3D4".
-// Falls back to "DL-00000000" on platforms where the machine ID is unavailable.
+// Raw Raspberry Pi CPU serial from /proc/cpuinfo (SoC OTP, not on SD card).
+// Empty on non-Linux or when the serial line is missing.
+QString hardwareSerial();
+
+// Short hardware Device ID for display/support.
+// Format: "DL-" + last 8 hex characters of hardwareSerial() (uppercase).
 QString stationCode();
+
+// SHA-256 hex digest of hardwareSerial() — used for device license binding.
+QString fingerprint();
 
 } // namespace DeviceId

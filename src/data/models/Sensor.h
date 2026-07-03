@@ -23,6 +23,7 @@ struct Sensor {
     int id = 0;
     SensorType sensorType = SensorType::Analog;
     QString name;
+    QString sensorSymbol;
     QString unit;
     int slaveId = 1;
     int registerAddress = 0;
@@ -34,7 +35,8 @@ struct Sensor {
     std::optional<double> maxThreshold;
     int pollInterval = 3;              // seconds
     int reportIndex = 0;
-    int decimals = 4;                  // decimal places for displayed/reported value
+    int decimals = 4;
+    bool transmitEnabled = false;
     QString diType;
     bool active = true;
     QDateTime createdAt;

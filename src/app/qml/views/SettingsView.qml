@@ -28,6 +28,8 @@ Rectangle {
         if (generalTab) generalTab.configChanged = false
         if (connectionTab) connectionTab.configChanged = false
         if (serverTab) serverTab.configChanged = false
+        if (serverTab && serverTab.transmissionTab)
+            serverTab.transmissionTab.configChanged = false
     }
 
     function cancelConfig() {
@@ -36,6 +38,8 @@ Rectangle {
         if (generalTab) generalTab.configChanged = false
         if (connectionTab) connectionTab.configChanged = false
         if (serverTab) serverTab.configChanged = false
+        if (serverTab && serverTab.transmissionTab)
+            serverTab.transmissionTab.configChanged = false
     }
 
     function openAddSensor() {
@@ -125,7 +129,8 @@ Rectangle {
             "coefficient": coeff, "pollInterval": d.pollInterval,
             "reportIndex": d.reportIndex, "active": d.active,
             "minThreshold": d.minThreshold, "maxThreshold": d.maxThreshold,
-            "decimals": d.decimals, "sensorType": d.sensorType
+            "decimals": d.decimals, "sensorType": d.sensorType,
+            "sensorSymbol": d.sensorSymbol
         }
         if (isAddMode) {
             SensorListModel.addSensor(props)
