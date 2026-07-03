@@ -52,7 +52,7 @@ int main(int argc, char *argv[]) {
             qDebug() << "[main] Icon font loaded:" << families.constFirst();
         }
     }
-    app.setApplicationVersion("2.0.0");
+    app.setApplicationVersion("2.1.0");
     app.setOrganizationName("DATALOGGER");
     app.setOrganizationDomain("datalogger.local");
     app.setDesktopFileName("data-logger");
