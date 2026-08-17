@@ -57,3 +57,23 @@ bool ReportLogDao::resetFailedRetries() {
     q.exec("UPDATE report_log SET retry_count=0 WHERE status='failed'");
     return !q.lastError().isValid();
 }
+
+QList<ReportLog> ReportLogDao::loadOlderThan(const QDateTime &cutoff, int limit) {
+    QSqlQuery q(m_db);
+    q.prepare("SELECT * FROM report_log WHERE status='success' AND created_at < :cutoff "
+              "ORDER BY created_at LIMIT :lim");
+    q.bindValue(":cutoff", cutoff.toString(Qt::ISODate));
+    q.bindValue(":lim", limit);
+    q.exec();
+    QList<ReportLog> result;
+    while (q.next())
+        result.append(rowToLog(q.record()));
+    return result;
+}
+
+bool ReportLogDao::remove(int id) {
+    QSqlQuery q(m_db);
+    q.prepare("DELETE FROM report_log WHERE id=:id");
+    q.bindValue(":id", id);
+    return q.exec();
+}

@@ -5,6 +5,8 @@ qt_add_library(network STATIC
     workers/DatabaseWorker.h
     workers/FtpWorker.cpp
     workers/FtpWorker.h
+    workers/RetentionWorker.cpp
+    workers/RetentionWorker.h
     workers/TesterWorker.cpp
     workers/TesterWorker.h
 )

@@ -81,3 +81,22 @@ int SensorDataDao::deleteOlderThan(const QDateTime &cutoff) {
     q.exec();
     return q.numRowsAffected();
 }
+
+int SensorDataDao::deleteOlderThanChunked(const QDateTime &cutoff, int chunkSize) {
+    if (chunkSize <= 0) chunkSize = 50000;
+    const QString cutoffIso = cutoff.toString(Qt::ISODate);
+    int total = 0;
+    while (true) {
+        QSqlQuery q(m_db);
+        q.prepare("DELETE FROM sensor_data WHERE id IN "
+                  "(SELECT id FROM sensor_data WHERE recorded_at < :cutoff LIMIT :lim)");
+        q.bindValue(":cutoff", cutoffIso);
+        q.bindValue(":lim", chunkSize);
+        if (!q.exec())
+            break;
+        const int n = q.numRowsAffected();
+        total += n;
+        if (n < chunkSize) break;
+    }
+    return total;
+}

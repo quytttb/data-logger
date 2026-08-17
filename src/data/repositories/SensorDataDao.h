@@ -19,6 +19,11 @@ public:
     // Cleanup old records (keep last N days)
     int deleteOlderThan(const QDateTime &cutoff);
 
+    // Chunked variant (RetentionWorker) — deletes at most @p chunkSize rows per
+    // transaction so a bulk purge never holds a write-lock on the WAL long
+    // enough to stall the live writer. Returns total rows deleted.
+    int deleteOlderThanChunked(const QDateTime &cutoff, int chunkSize);
+
 private:
     QSqlDatabase m_db;
     SensorData rowToData(const class QSqlRecord &r);
