@@ -8,12 +8,36 @@
 #include <QJsonArray>
 #include <QHostAddress>
 #include <QMutexLocker>
+#include <QRegularExpression>
+#include <QSet>
 #include <QDebug>
 #include <QQmlEngine>
 #include <QJSEngine>
 #include <QTcpServer>
 
+#include <cstring>
+
 IMPLEMENT_QML_SINGLETON(RestApiService)
+
+namespace {
+
+// Constant-time comparison to avoid leaking the token prefix via timing.
+bool timingSafeEquals(const QByteArray &a, const QByteArray &b) {
+    if (a.size() != b.size()) return false;
+    unsigned char diff = 0;
+    for (int i = 0; i < a.size(); ++i)
+        diff |= static_cast<unsigned char>(a.at(i) ^ b.at(i));
+    return diff == 0;
+}
+
+bool isValidSerialPort(const QString &port) {
+    // Whitelist: only /dev/tty* device paths (USB/AMA/ttyS0). An empty value
+    // keeps the current config untouched (field is optional on POST).
+    static const QRegularExpression re(QStringLiteral("^/dev/tty[A-Za-z0-9_.-]{1,64}$"));
+    return re.match(port).hasMatch();
+}
+
+} // namespace
 
 RestApiService::RestApiService(QObject *parent) : QObject(parent) {}
 
@@ -70,9 +94,12 @@ QString RestApiService::primaryIp() const {
 
 bool RestApiService::checkAuth(const QHttpServerRequest &req) const {
     QMutexLocker lock(&m_mutex);
-    if (m_token.isEmpty()) return true;
-    auto authHeader = req.value("Authorization");
-    return authHeader == QStringLiteral("Bearer %1").arg(m_token).toLatin1();
+    // SECURITY: with no token configured the endpoint must be closed, not open —
+    // otherwise anyone on the LAN can read/modify the device config.
+    if (m_token.isEmpty()) return false;
+    const QByteArray provided = req.value("Authorization");
+    const QByteArray expected = QStringLiteral("Bearer %1").arg(m_token).toLatin1();
+    return timingSafeEquals(provided, expected);
 }
 
 void RestApiService::setupRoutes() {
@@ -161,11 +188,35 @@ void RestApiService::setupRoutes() {
             auto cfg = dao.load();
             QJsonObject body = doc.object();
 
-            // Apply writable fields
-            if (body.contains("station_name"))   cfg.stationName    = body["station_name"].toString();
-            if (body.contains("poll_interval"))  cfg.pollInterval   = body["poll_interval"].toInt();
-            if (body.contains("serial_port"))    cfg.serialPort     = body["serial_port"].toString();
-            if (body.contains("serial_baudrate"))cfg.serialBaudrate = body["serial_baudrate"].toInt();
+            // Validate writable fields before applying — a malformed value must
+            // never brick the device (poll_interval=0 ⇒ busy-loop, arbitrary
+            // serial_port path ⇒ injection of unknown devices).
+            if (body.contains("poll_interval")) {
+                const int pi = body["poll_interval"].toInt(-1);
+                if (pi < 1 || pi > 3600)
+                    return QHttpServerResponse(R"({"error":"poll_interval must be 1..3600 seconds"})",
+                                               QHttpServerResponse::StatusCode::BadRequest);
+                cfg.pollInterval = pi;
+            }
+            if (body.contains("serial_baudrate")) {
+                static const QSet<int> kBaudrates = {
+                    1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200};
+                const int br = body["serial_baudrate"].toInt(-1);
+                if (!kBaudrates.contains(br))
+                    return QHttpServerResponse(R"({"error":"serial_baudrate is not supported"})",
+                                               QHttpServerResponse::StatusCode::BadRequest);
+                cfg.serialBaudrate = br;
+            }
+
+            // Apply remaining writable fields
+            if (body.contains("station_name")) cfg.stationName = body["station_name"].toString();
+            if (body.contains("serial_port")) {
+                const QString sp = body["serial_port"].toString().trimmed();
+                if (!isValidSerialPort(sp))
+                    return QHttpServerResponse(R"({"error":"serial_port must be a /dev/tty* device path"})",
+                                               QHttpServerResponse::StatusCode::BadRequest);
+                cfg.serialPort = sp;
+            }
 
             // station_code is a required identifier — reject the request if the caller
             // attempts to set it to an empty string.
