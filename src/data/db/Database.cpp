@@ -61,6 +61,7 @@ void Database::closeConnection(QSqlDatabase &db) {
 void Database::applyPragmas(QSqlDatabase &db) {
     QSqlQuery q(db);
     q.exec("PRAGMA journal_mode = WAL;");
+    q.exec("PRAGMA busy_timeout = 5000;");
     q.exec("PRAGMA synchronous = NORMAL;");
     q.exec("PRAGMA journal_size_limit = 1000000;");
     q.exec("PRAGMA mmap_size = 30000000;");
