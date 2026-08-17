@@ -3,6 +3,7 @@
 #include <QQmlContext>
 #include <QIcon>
 #include <QFontDatabase>
+#include <QSemaphore>
 #include <QTimer>
 #include <QtDebug>
 
@@ -14,6 +15,7 @@
 #include "network/modbus/ModbusTcpServerService.h"
 #include "network/rest/RestApiService.h"
 #include "network/workers/FtpWorker.h"
+#include "network/workers/RetentionWorker.h"
 #include "core/MonitorModel.h"
 #include "core/SensorListModel.h"
 #include "core/SettingsController.h"
@@ -25,6 +27,19 @@
 
 namespace {
 constexpr int kThreadJoinMs = 5000;  // graceful FTP thread join on quit
+
+// H-1: mọi chờ I/O phải bounded — dừng worker kiểu queued + semaphore timeout
+// thay vì BlockingQueuedConnection (treo quit nếu worker thread kẹt).
+void stopWorkerOnQuit(QObject *worker, QThread *thread) {
+    QSemaphore sem;
+    QMetaObject::invokeMethod(worker, "stop", Qt::QueuedConnection);
+    QMetaObject::invokeMethod(worker, [&sem]() { sem.release(); }, Qt::QueuedConnection);
+    if (!sem.tryAcquire(1, kThreadJoinMs))
+        qWarning() << "Worker slot 'stop' did not complete during shutdown";
+    thread->quit();
+    if (!thread->wait(kThreadJoinMs)) // thread object lives until application teardown
+        qWarning() << "Worker thread did not finish during shutdown (leaked until process exit)";
+}
 }
 
 int main(int argc, char *argv[]) {
@@ -111,6 +126,15 @@ int main(int argc, char *argv[]) {
     QObject::connect(ftpThread, &QThread::finished, ftpWorker, &QObject::deleteLater);
     ftpThread->start();
 
+    // Retention: purge old sensor_data / reports / logs on its own thread so
+    // the 24/7 device never fills its SD card (audit C4/H7).
+    auto *retentionWorker = new RetentionWorker(); // no parent — owned by retentionThread
+    auto *retentionThread = new QThread(&app);
+    retentionWorker->moveToThread(retentionThread);
+    QObject::connect(retentionThread, &QThread::finished, retentionWorker, &QObject::deleteLater);
+    QObject::connect(retentionThread, &QThread::started, retentionWorker, &RetentionWorker::start);
+    retentionThread->start();
+
     ModbusTcpServerService::setInstance(modbusTcp);
     RestApiService::setInstance(restApi);
     MonitorModel::setInstance(monitorModel);
@@ -186,10 +210,9 @@ int main(int argc, char *argv[]) {
     });
 
     QObject::connect(&app, &QGuiApplication::aboutToQuit, [&]() {
+        stopWorkerOnQuit(retentionWorker, retentionThread);
         monitorCtrl->stopPollingSync();
-        QMetaObject::invokeMethod(ftpWorker, "stop", Qt::BlockingQueuedConnection);
-        ftpThread->quit();
-        ftpThread->wait(kThreadJoinMs);
+        stopWorkerOnQuit(ftpWorker, ftpThread);
         modbusTcp->stop();
         restApi->stop();
     });
