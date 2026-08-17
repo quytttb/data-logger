@@ -19,12 +19,28 @@ public:
                    const QString &parity, int stopbits, int timeout,
                    int defaultPollInterval);
 
+    // Audit M5: alarm hysteresis (absolute; 0 = off) to stop relay chatter
+    // around thresholds, and the DO fail-safe policy on (re)connect.
+    void setAlarmBehavior(double hysteresis, bool doFailSafeOnReconnect);
+
     // Called before start(); list of sensor dicts with all required keys.
     void setSensors(const QList<QVariantMap> &sensors);
     void setDigitalIos(const QHash<int, QList<QVariantMap>> &ioMap);
 
     // Manual DO write (called from main thread, executes on worker thread).
     Q_INVOKABLE void writeSingleCoil(int sensorId, bool value);
+
+    // Audit M5: hàm thuần xác định trạng thái alarm theo ngưỡng min/max, có
+    // hysteresis khi THOÁT alarm (khi đã trong alarm thì phải vượt ngưỡng về
+    // phía an toàn thêm một đoạn hysteresis mới được giải phóng). Public +
+    // static để unit test trực tiếp không cần phần cứng Modbus.
+    static bool evaluateAlarmWithHysteresis(double value,
+                                            bool wasAlarm,
+                                            const QString &prevAlarmType,
+                                            bool hasMin, double minTh,
+                                            bool hasMax, double maxTh,
+                                            double hysteresis,
+                                            QString &alarmTypeOut);
 
 public slots:
     void start();
@@ -88,6 +104,10 @@ private:
     bool     m_running = false;
     bool     m_connected = false;
     int      m_backoffMs = kInitialBackoffMs;
+
+    // Audit M5
+    double   m_alarmHysteresis = 0.0;
+    bool     m_doFailSafeOnReconnect = true;
 
     QList<QVariantMap>           m_sensors;
     QHash<int, QList<QVariantMap>> m_digitalIos;

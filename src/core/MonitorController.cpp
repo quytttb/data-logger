@@ -7,6 +7,7 @@
 #include "data/repositories/AppConfigDao.h"
 #include "network/modbus/ModbusWorker.h"
 #include "network/workers/DatabaseWorker.h"
+#include "utils/system/AppPaths.h"
 #include <QElapsedTimer>
 #include <QMutexLocker>
 #include <QSemaphore>
@@ -229,6 +230,9 @@ void MonitorController::startWorkerThreads(const AppConfig &cfg,
                                            const QHash<int, QList<QVariantMap>> &digitalIoMap) {
     // Start DatabaseWorker
     auto *dbWorker = new DatabaseWorker();
+    // Audit M4: persist unflushed queue across shutdown so a crash / SIGTERM
+    // can't silently drop buffered readings. Spill file lives in dataDir.
+    dbWorker->setSpillPath(AppPaths::dataDir() + QStringLiteral("/db_worker_spill.json"));
     m_dbThread = new QThread(this);
     dbWorker->moveToThread(m_dbThread);
     connect(m_dbThread, &QThread::started,            dbWorker, &DatabaseWorker::start);
@@ -243,6 +247,8 @@ void MonitorController::startWorkerThreads(const AppConfig &cfg,
     auto *mbWorker = new ModbusWorker();
     mbWorker->configure(cfg.serialPort, cfg.serialBaudrate, cfg.serialBytesize,
                         cfg.serialParity, cfg.serialStopbits, kModbusTimeoutSec, cfg.pollInterval);
+    // Audit M5: cấu hình hysteresis alarm + fail-safe policy cho DO (từ app_config).
+    mbWorker->setAlarmBehavior(cfg.alarmHysteresis, cfg.doFailSafeOnReconnect);
     mbWorker->setSensors(pollSensors);
     mbWorker->setDigitalIos(digitalIoMap);
 

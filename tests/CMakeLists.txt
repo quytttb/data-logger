@@ -33,3 +33,15 @@ target_link_libraries(crypto_test PRIVATE
     utils
 )
 add_test(NAME crypto_test COMMAND crypto_test)
+
+# QTest: alarm hysteresis band logic (audit M5 / P2-14)
+add_executable(alarm_hysteresis_test alarm_hysteresis_test.cpp)
+target_include_directories(alarm_hysteresis_test PRIVATE ${CMAKE_SOURCE_DIR}/src)
+target_link_libraries(alarm_hysteresis_test PRIVATE
+    Qt6::Core
+    Qt6::Test
+    network
+    data
+    utils
+)
+add_test(NAME alarm_hysteresis_test COMMAND alarm_hysteresis_test)

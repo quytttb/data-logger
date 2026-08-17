@@ -113,7 +113,11 @@ bool Database::createTables(QSqlDatabase &db) {
             config_revision INTEGER NOT NULL DEFAULT 1,
             ui_locale TEXT NOT NULL DEFAULT 'vi',
             theme TEXT NOT NULL DEFAULT 'dark',
-            auto_add_transmit INTEGER NOT NULL DEFAULT 1
+            auto_add_transmit INTEGER NOT NULL DEFAULT 1,
+            -- Audit M5: alarm hysteresis (absolute, 0 = off) and configurable
+            -- DO fail-safe policy on (re)connect.
+            alarm_hysteresis REAL NOT NULL DEFAULT 0,
+            do_failsafe_on_reconnect INTEGER NOT NULL DEFAULT 1
         ))",
 
         R"(CREATE TABLE IF NOT EXISTS sensor (
@@ -217,6 +221,9 @@ bool Database::migrate(QSqlDatabase &db) {
         {"sensor",      "transmit_enabled", "INTEGER NOT NULL DEFAULT 0"},
         {"app_config",  "auto_add_transmit", "INTEGER NOT NULL DEFAULT 1"},
         {"report_log",  "remote_path",    "TEXT NOT NULL DEFAULT ''"},
+        // Audit M5: alarm hysteresis + configurable DO fail-safe policy.
+        {"app_config",  "alarm_hysteresis",        "REAL NOT NULL DEFAULT 0"},
+        {"app_config",  "do_failsafe_on_reconnect", "INTEGER NOT NULL DEFAULT 1"},
     };
 
     for (const auto &a : additions) {

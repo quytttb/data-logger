@@ -27,6 +27,37 @@ ModbusWorker::~ModbusWorker() {
     // stop() has already run and disconnected/deleted the client.
 }
 
+void ModbusWorker::setAlarmBehavior(double hysteresis, bool doFailSafeOnReconnect) {
+    m_alarmHysteresis = (hysteresis >= 0.0) ? hysteresis : 0.0;
+    m_doFailSafeOnReconnect = doFailSafeOnReconnect;
+}
+
+bool ModbusWorker::evaluateAlarmWithHysteresis(double value,
+                                               bool wasAlarm,
+                                               const QString &prevAlarmType,
+                                               bool hasMin, double minTh,
+                                               bool hasMax, double maxTh,
+                                               double hysteresis,
+                                               QString &alarmTypeOut) {
+    alarmTypeOut.clear();
+    const double hyst = (hysteresis >= 0.0) ? hysteresis : 0.0;
+    const bool prevHadMin = wasAlarm && prevAlarmType.contains("min");
+    const bool prevHadMax = wasAlarm && prevAlarmType.contains("max");
+
+    // Audit M5: when already in alarm for a given threshold, require the value
+    // to move back PAST the safe side of the band (hysteresis) before
+    // releasing, so relays don't chatter around the threshold.
+    bool minActive = hasMin && (prevHadMin ? value <= minTh + hyst
+                                           : value <= minTh);
+    bool maxActive = hasMax && (prevHadMax ? value >= maxTh - hyst
+                                           : value >= maxTh);
+
+    if (minActive) alarmTypeOut = "min";
+    if (maxActive) alarmTypeOut = alarmTypeOut.isEmpty() ? "max" : "min+max";
+
+    return minActive || maxActive;
+}
+
 void ModbusWorker::configure(const QString &port, int baudrate, int bytesize,
                               const QString &parity, int stopbits, int timeout,
                               int defaultPollInterval) {
@@ -100,7 +131,20 @@ bool ModbusWorker::connectToPort() {
         m_backoffMs = 1000;
         emit connectionChanged(true);
         qInfo() << "ModbusWorker: connected to" << m_port;
-        resetDoCoils();  // start from a known-OFF coil state on every (re)connect
+        // Audit M5: fail-safe policy is configurable. Default (true) forces a
+        // known-OFF coil state on (re)connect so a stale latched relay can
+        // never disagree with the app's reported state. When an operator sets
+        // the policy to false the physical coils are left untouched and the
+        // next poll converges them from recomputed alarm states.
+        if (m_doFailSafeOnReconnect) {
+            resetDoCoils();
+        } else {
+            // Forget cached alarm/coil state so the next poll re-establishes
+            // the desired coil values, but do NOT write the coils now.
+            m_alarmStates.clear();
+            m_alarmTypes.clear();
+            m_doStates.clear(); // unknown physical state → updateDoCoils rewrites
+        }
         return true;
     }
 
@@ -237,19 +281,22 @@ void ModbusWorker::pollAnalog(const QVariantMap &cfg) {
 
     double value = Formula::applyFormula(rawValue, coeff);
 
-    bool isAlarm = false;
-    QString alarmType;
     auto minTh = cfg.value("min_threshold");
     auto maxTh = cfg.value("max_threshold");
     const bool hasMin = !minTh.isNull();
     const bool hasMax = !maxTh.isNull();
-    if (hasMin && value <= minTh.toDouble()) { isAlarm = true; alarmType = "min"; }
-    if (hasMax && value >= maxTh.toDouble()) {
-        isAlarm = true;
-        alarmType = alarmType.isEmpty() ? "max" : "min+max";
-    }
+    QString alarmType;
+    // Audit M5: hysteresis prevents relay chatter when the value hovers
+    // around min_threshold / max_threshold. Uses the PREVIOUS alarm state so
+    // the release band differs from the trigger band.
+    const bool prevAlarm  = m_alarmStates.value(sensorId, false);
+    const QString prevTyp = m_alarmTypes.value(sensorId);
+    const bool isAlarm = evaluateAlarmWithHysteresis(
+        value, prevAlarm, prevTyp,
+        hasMin, minTh.isValid() ? minTh.toDouble() : 0.0,
+        hasMax, maxTh.isValid() ? maxTh.toDouble() : 0.0,
+        m_alarmHysteresis, alarmType);
 
-    bool prevAlarm = m_alarmStates.value(sensorId, false);
     m_alarmStates[sensorId] = isAlarm;
     m_alarmTypes[sensorId]  = alarmType;
     if (isAlarm != prevAlarm)

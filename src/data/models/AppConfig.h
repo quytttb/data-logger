@@ -39,6 +39,17 @@ struct AppConfig {
     // Polling
     int pollInterval = 3;
 
+    // Alarm behaviour (audit M5)
+    // Absolute hysteresis applied when RELEASING a min/max alarm so relays do
+    // not chatter around a threshold. 0 = legacy behaviour (no hysteresis).
+    double alarmHysteresis = 0.0;
+
+    // DO fail-safe policy (audit M5). true = force every DO coil OFF on
+    // (re)connect so a stale latched relay can never disagree with the app;
+    // false = leave the physical coil state as-is and let the next poll
+    // converge it from the recomputed alarm states.
+    bool doFailSafeOnReconnect = true;
+
     // Serial (RS-485)
     QString serialPort       = "/dev/ttyUSB0";
     int serialBaudrate       = 9600;
