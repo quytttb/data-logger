@@ -1,15 +1,17 @@
 #include "TesterWorker.h"
 #include "utils/modbus/ModbusCodec.h"
+#include "utils/modbus/ModbusWait.h"
 #include <QModbusDataUnit>
 #include <QModbusReply>
 #include <QSerialPort>
-#include <QEventLoop>
 #include <QDebug>
 #include <cmath>
 #include <cstring>
 
 namespace {
 constexpr int kClientTimeoutMs = 1000;  // Modbus client response timeout
+// Chờ reply luôn có timeout (AGENTS rule): 2× client timeout + margin.
+constexpr int kReplyWaitMs = kClientTimeoutMs * 2 + 500;
 }
 
 TesterWorker::TesterWorker(QObject *parent) : QObject(parent) {}
@@ -86,9 +88,13 @@ void TesterWorker::doReadRegister(int slaveId, int address,
         return;
     }
 
-    QEventLoop loop;
-    connect(reply, &QModbusReply::finished, &loop, &QEventLoop::quit);
-    loop.exec();
+    if (!ModbusWait::waitForReply(reply, kReplyWaitMs)) {
+        // Timeout: trả lỗi, chỉ hủy reply khi nó thực sự kết thúc.
+        connect(reply, &QModbusReply::finished, reply, &QObject::deleteLater);
+        emit readCompleted({{QStringLiteral("ok"), false},
+                            {QStringLiteral("error"), QStringLiteral("Response timeout")}});
+        return;
+    }
 
     if (reply->error() != QModbusDevice::NoError) {
         emit readCompleted({{QStringLiteral("ok"), false},
@@ -150,13 +156,19 @@ void TesterWorker::doWriteRegister(int slaveId, int address,
         emit messageSent(QStringLiteral("Error"), QStringLiteral("No reply object."));
         return;
     }
-    QEventLoop loop;
-    connect(reply, &QModbusReply::finished, &loop, &QEventLoop::quit);
-    loop.exec();
-    const bool ok = (reply->error() == QModbusDevice::NoError);
+    bool ok;
+    QString errorText;
+    if (!ModbusWait::waitForReply(reply, kReplyWaitMs)) {
+        connect(reply, &QModbusReply::finished, reply, &QObject::deleteLater);
+        ok = false;
+        errorText = QStringLiteral("Response timeout");
+    } else {
+        ok = (reply->error() == QModbusDevice::NoError);
+        errorText = reply->errorString();
+        reply->deleteLater();
+    }
     emit writeCompleted({{QStringLiteral("ok"), ok},
-                         {QStringLiteral("error"), reply->errorString()}});
-    reply->deleteLater();
+                         {QStringLiteral("error"), errorText}});
 }
 
 void TesterWorker::doWriteSingle(const QString &registerType, int address,
@@ -193,9 +205,12 @@ void TesterWorker::writeCoilInternal(int slaveId, int address, bool value) {
     unit.setValue(0, value ? 1 : 0);
     auto *reply = m_client->sendWriteRequest(unit, slaveId);
     if (!reply) return;
-    QEventLoop loop;
-    connect(reply, &QModbusReply::finished, &loop, &QEventLoop::quit);
-    loop.exec();
+    if (!ModbusWait::waitForReply(reply, kReplyWaitMs)) {
+        connect(reply, &QModbusReply::finished, reply, &QObject::deleteLater);
+        emit writeCompleted({{QStringLiteral("ok"), false},
+                             {QStringLiteral("error"), QStringLiteral("Response timeout")}});
+        return;
+    }
     emit writeCompleted({{QStringLiteral("ok"), reply->error() == QModbusDevice::NoError}});
     reply->deleteLater();
 }
@@ -214,9 +229,11 @@ void TesterWorker::doScanSlavesById(int startId, int endId) {
         QModbusDataUnit unit(QModbusDataUnit::HoldingRegisters, 0, 1);
         auto *reply = m_client->sendReadRequest(unit, id);
         if (!reply) continue;
-        QEventLoop loop;
-        connect(reply, &QModbusReply::finished, &loop, &QEventLoop::quit);
-        loop.exec();
+        if (!ModbusWait::waitForReply(reply, kReplyWaitMs)) {
+            // Không có slave tại id này (hoặc bus treo) — bỏ qua và dọn reply an toàn.
+            connect(reply, &QModbusReply::finished, reply, &QObject::deleteLater);
+            continue;
+        }
         if (reply->error() == QModbusDevice::NoError)
             emit scanResultEmitted({{QStringLiteral("slave_id"), id},
                                     {QStringLiteral("found"), true}});
@@ -259,9 +276,10 @@ void TesterWorker::doScanSlavesByAddr(int startAddr, int endAddr, int registersP
         auto *reply = m_client->sendReadRequest(request, slaveId);
         if (!reply) continue;
 
-        QEventLoop loop;
-        connect(reply, &QModbusReply::finished, &loop, &QEventLoop::quit);
-        loop.exec();
+        if (!ModbusWait::waitForReply(reply, kReplyWaitMs)) {
+            connect(reply, &QModbusReply::finished, reply, &QObject::deleteLater);
+            continue;
+        }
 
         if (reply->error() == QModbusDevice::NoError) {
             QModbusDataUnit unit = reply->result();

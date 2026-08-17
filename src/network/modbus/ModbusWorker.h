@@ -45,6 +45,10 @@ private slots:
 
 private:
     bool connectToPort();
+    // Chờ reply với timeout; khi timeout báo lỗi, lên lịch hủy reply an toàn
+    // (chỉ delete khi finished thực sự fire) và reset cổng serial bị kẹt.
+    bool waitReply(QModbusReply *reply, const QString &timeoutMsg);
+    void resetConnectionAfterHang();
     void pollSingle(const QVariantMap &sensorCfg);
     void pollAnalog(const QVariantMap &cfg);
     void pollStandaloneDi(const QVariantMap &cfg);
@@ -77,6 +81,9 @@ private:
     int      m_stopbits = kDefaultStopbits;
     int      m_timeout  = kDefaultTimeoutMs;            // ms
     int      m_defaultPollInterval = kDefaultPollIntervalMs; // ms
+
+    // H-4 fix: mọi chờ reply Modbus phải có timeout (cáp có thể rút giữa request).
+    int replyWaitMs() const { return m_timeout * 2 + 500; }
 
     bool     m_running = false;
     bool     m_connected = false;
