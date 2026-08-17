@@ -62,6 +62,7 @@ void Database::applyPragmas(QSqlDatabase &db) {
     QSqlQuery q(db);
     q.exec("PRAGMA journal_mode = WAL;");
     q.exec("PRAGMA busy_timeout = 5000;");
+    q.exec("PRAGMA foreign_keys = ON;");
     q.exec("PRAGMA synchronous = NORMAL;");
     q.exec("PRAGMA journal_size_limit = 1000000;");
     q.exec("PRAGMA mmap_size = 30000000;");
@@ -180,6 +181,9 @@ bool Database::createTables(QSqlDatabase &db) {
         // Indices for frequent queries
         "CREATE INDEX IF NOT EXISTS idx_sensor_data_sensor_id ON sensor_data(sensor_id)",
         "CREATE INDEX IF NOT EXISTS idx_sensor_data_recorded_at ON sensor_data(recorded_at)",
+        // M-3: composite index for the hot range query
+        // "WHERE sensor_id=? AND recorded_at BETWEEN ? AND ?".
+        "CREATE INDEX IF NOT EXISTS idx_sensor_data_sensor_recorded ON sensor_data(sensor_id, recorded_at)",
     };
 
     for (const QString &stmt : stmts) {
