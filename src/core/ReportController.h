@@ -58,4 +58,7 @@ private:
     QString             m_lastStatus = QStringLiteral("Idle");
     int                 m_pendingCount = 0;
     std::atomic<bool>   m_generating {false};
+    // H-6: thời điểm sinh báo cáo gần nhất (in-memory; mốc khởi động lại được
+    // khôi phục từ report_log qua ReportLogDao::lastGeneratedAt()).
+    QDateTime           m_lastGenerated;
 };

@@ -3,6 +3,7 @@
 #include <QSqlDatabase>
 #include <QList>
 #include <QDateTime>
+#include <optional>
 
 class SensorDataDao {
 public:
@@ -15,6 +16,17 @@ public:
     QList<SensorData> query(int sensorId,
                             const QDateTime &from, const QDateTime &to,
                             int limit = 2000);
+
+    // Aggregate một cửa sổ thời gian hoàn toàn trong SQL (SUM/COUNT) —
+    // đúng kết quả với mọi số mẫu, không bị cap như tải N dòng về RAM.
+    // Dùng cho báo cáo TT10 (audit H-6).
+    struct WindowAggregate {
+        int count = 0;                     // số mẫu có giá trị
+        std::optional<double> average;     // AVG(value)
+        QStringList distinctStatuses;      // các status xuất hiện trong cửa sổ
+    };
+    WindowAggregate aggregateWindow(int sensorId,
+                                    const QDateTime &from, const QDateTime &to);
 
     // Cleanup old records (keep last N days)
     int deleteOlderThan(const QDateTime &cutoff);

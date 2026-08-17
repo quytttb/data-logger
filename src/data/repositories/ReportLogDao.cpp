@@ -77,3 +77,15 @@ bool ReportLogDao::remove(int id) {
     q.bindValue(":id", id);
     return q.exec();
 }
+
+QDateTime ReportLogDao::lastGeneratedAt() {
+    // H-6 fix: thời điểm sinh báo cáo gần nhất được persist trong report_log
+    // (created_at) thay vì biến static — sống sót qua restart nên cửa sổ báo
+    // cáo kế tiếp không bị overlap / mất dữ liệu sau khi khởi động lại.
+    QSqlQuery q(m_db);
+    if (!q.exec("SELECT MAX(created_at) FROM report_log"))
+        return {};
+    if (!q.next())
+        return {};
+    return QDateTime::fromString(q.value(0).toString(), Qt::ISODate);
+}

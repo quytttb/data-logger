@@ -28,6 +28,7 @@ bool SensorDataDao::insertBatch(const QList<SensorData> &records) {
         (sensor_id, raw_value, value, status, is_alarm, alarm_type, recorded_at)
         VALUES (:sid, :rv, :v, :st, :ia, :at, :ra))");
 
+    int failures = 0;
     for (const SensorData &d : records) {
         q.bindValue(":sid", d.sensorId);
         q.bindValue(":rv",  d.rawValue.has_value() ? QVariant(*d.rawValue) : QVariant());
@@ -38,12 +39,23 @@ bool SensorDataDao::insertBatch(const QList<SensorData> &records) {
         q.bindValue(":at",  d.alarmType.isEmpty() ? QStringLiteral("") : d.alarmType);
         q.bindValue(":ra",  d.recordedAt.toString(Qt::ISODate));
         if (!q.exec()) {
-            qWarning() << "SensorDataDao::insertBatch error:" << q.lastError().text();
-            m_db.rollback();
-            return false;
+            // M-4 fix: skip the bad record instead of rolling back the entire
+            // batch — one corrupt row must not lose all good readings. The
+            // batch still commits; failures are reported via qWarning.
+            ++failures;
+            qWarning() << "SensorDataDao::insertBatch skipping record sensor_id="
+                       << d.sensorId << ":" << q.lastError().text();
         }
     }
-    m_db.commit();
+    if (!m_db.commit()) {
+        // Hard failure (commit error): rollback so DatabaseWorker can requeue.
+        qWarning() << "SensorDataDao::insertBatch commit error:" << m_db.lastError().text();
+        m_db.rollback();
+        return false;
+    }
+    if (failures > 0)
+        qWarning() << "SensorDataDao::insertBatch committed with" << failures
+                   << "corrupt record(s) skipped";
     return true;
 }
 
@@ -72,6 +84,45 @@ QList<SensorData> SensorDataDao::query(int sensorId,
     while (q.next())
         result.append(rowToData(q.record()));
     return result;
+}
+
+SensorDataDao::WindowAggregate SensorDataDao::aggregateWindow(int sensorId,
+                                                              const QDateTime &from,
+                                                              const QDateTime &to) {
+    WindowAggregate agg;
+
+    // AVG + COUNT trong SQL — đúng với mọi số mẫu (audit H-6: bỏ cap 10000
+    // dòng khiến cửa sổ >10000 mẫu bị tính trung bình SAI).
+    {
+        QSqlQuery q(m_db);
+        q.prepare(R"(SELECT COUNT(value), AVG(value) FROM sensor_data
+            WHERE sensor_id=:sid AND recorded_at BETWEEN :f AND :t)");
+        q.bindValue(":sid", sensorId);
+        q.bindValue(":f",   from.toString(Qt::ISODate));
+        q.bindValue(":t",   to.toString(Qt::ISODate));
+        if (q.exec() && q.next()) {
+            agg.count = q.value(0).toInt();
+            if (agg.count > 0 && !q.value(1).isNull())
+                agg.average = q.value(1).toDouble();
+        }
+    }
+
+    // Trạng thái phổ biến: tải danh sách status riêng biệt (≤5 giá trị) rồi ưu
+    // tiên theo mức độ. Chỉ đọc các status khác nhau, không đọc toàn bảng.
+    if (agg.count > 0) {
+        QSqlQuery q(m_db);
+        q.prepare(R"(SELECT DISTINCT status FROM sensor_data
+            WHERE sensor_id=:sid AND recorded_at BETWEEN :f AND :t
+              AND status IS NOT NULL AND status != '')");
+        q.bindValue(":sid", sensorId);
+        q.bindValue(":f",   from.toString(Qt::ISODate));
+        q.bindValue(":t",   to.toString(Qt::ISODate));
+        if (q.exec()) {
+            while (q.next())
+                agg.distinctStatuses.append(q.value(0).toString());
+        }
+    }
+    return agg;
 }
 
 int SensorDataDao::deleteOlderThan(const QDateTime &cutoff) {

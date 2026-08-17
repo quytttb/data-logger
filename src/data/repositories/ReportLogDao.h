@@ -18,6 +18,10 @@ public:
     QList<ReportLog> loadOlderThan(const QDateTime &cutoff, int limit = 200);
     bool remove(int id);
 
+    // Thời điểm sinh báo cáo gần nhất (audit H-6): persist thay vì biến
+    // static mất sau restart — cửa sổ báo cáo kế tiếp bắt đầu từ đây.
+    QDateTime lastGeneratedAt();
+
 private:
     QSqlDatabase m_db;
     ReportLog rowToLog(const class QSqlRecord &r);
