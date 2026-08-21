@@ -12,14 +12,14 @@ ColumnLayout {
     property int scanProgTot: 0
     /// ApplicationWindow — gọi syncModbusTaskBarRef từ Loader taskbar (`var`: Window không phải Item trong QML)
     property var appRoot: null
-    property var tabContent: null
+    property var contentRef: null
 
     property alias modbusTbLoader: modbusTbLoader
     property string appIconUrl: ""
 
     function connectSettings() {
-        if (tabContent)
-            tabContent.connectSettingsTaskBar(settingsTbLoader.item)
+        if (contentRef)
+            contentRef.connectSettingsTaskBar(settingsTbLoader.item)
     }
 
     Layout.fillWidth: true
@@ -55,13 +55,13 @@ ColumnLayout {
                     visible: headerChromeRoot.currentTab === 4
                     source: "ModbusTesterTaskBar.qml"
                     onLoaded: {
-                        if (headerChromeRoot.tabContent)
-                            headerChromeRoot.tabContent.syncModbusTaskBar(modbusTbLoader.item)
+                        if (headerChromeRoot.contentRef)
+                            headerChromeRoot.contentRef.syncModbusTaskBar(modbusTbLoader.item)
                     }
                     onVisibleChanged: {
-                        if (visible && headerChromeRoot.tabContent)
+                        if (visible && headerChromeRoot.contentRef)
                             Qt.callLater(function() {
-                                headerChromeRoot.tabContent.syncModbusTaskBar(modbusTbLoader.item)
+                                headerChromeRoot.contentRef.syncModbusTaskBar(modbusTbLoader.item)
                             })
                     }
                 }

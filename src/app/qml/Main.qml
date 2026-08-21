@@ -77,7 +77,7 @@ ApplicationWindow {
                 scanProgCur: root.scanProgCur
                 scanProgTot: root.scanProgTot
                 appRoot: root
-                tabContent: tabContent
+                contentRef: tabContent
             }
 
             MainTabContent {

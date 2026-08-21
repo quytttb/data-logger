@@ -24,7 +24,7 @@ Rectangle {
             Component.onCompleted: {
                 if (!initialBuffer)
                     return
-                for (var j = 0; j < initialBuffer.length; j++)
+                for (let j = 0; j < initialBuffer.length; j++)
                     append(initialBuffer[j].x, initialBuffer[j].y)
             }
         }
@@ -62,23 +62,23 @@ Rectangle {
                 function rebuildSeries() {
                     clearAllSeries()
 
-                    var sensors = MonitorController.analogSensors
+                    let sensors = MonitorController.analogSensors
                     if (!sensors || sensors.length === 0)
                         return
 
-                    var now = Date.now()
+                    let now = Date.now()
                     chartHolder.xMin = now - trendRoot.windowMs
                     chartHolder.xMax = now
-                    var yLo = Number.MAX_VALUE
-                    var yHi = -Number.MAX_VALUE
+                    let yLo = Number.MAX_VALUE
+                    let yHi = -Number.MAX_VALUE
 
-                    for (var i = 0; i < sensors.length; i++) {
-                        var s = sensors[i]
-                        var label = s.unit && s.unit.length > 0
+                    for (let i = 0; i < sensors.length; i++) {
+                        let s = sensors[i]
+                        let label = s.unit && s.unit.length > 0
                                     ? (s.name + " (" + s.unit + ")")
                                     : s.name
-                        var buf = MonitorController.getTrendBuffer(s.id)
-                        var series = lineSeriesComponent.createObject(graphsView, {
+                        let buf = MonitorController.getTrendBuffer(s.id)
+                        let series = lineSeriesComponent.createObject(graphsView, {
                             seriesName: label,
                             seriesColor: s.color,
                             initialBuffer: buf
@@ -86,7 +86,7 @@ Rectangle {
                         graphsView.addSeries(series)
                         chartHolder.seriesMap[s.id] = series
 
-                        for (var j = 0; j < buf.length; j++) {
+                        for (let j = 0; j < buf.length; j++) {
                             if (buf[j].y < yLo) yLo = buf[j].y
                             if (buf[j].y > yHi) yHi = buf[j].y
                         }
@@ -96,8 +96,8 @@ Rectangle {
                 }
 
                 function applyAxes(yLo, yHi) {
-                    var now = Date.now()
-                    var minX = now - trendRoot.windowMs
+                    let now = Date.now()
+                    let minX = now - trendRoot.windowMs
                     chartHolder.xMin = minX
                     chartHolder.xMax = now
                     xAxis.min = new Date(minX)
@@ -107,7 +107,7 @@ Rectangle {
                         yLo = 0; yHi = 1
                     }
                     if (yHi <= yLo) yHi = yLo + 1
-                    var margin = (yHi - yLo) * 0.1
+                    let margin = (yHi - yLo) * 0.1
                     if (margin === 0) margin = 1
                     chartHolder.yMin = yLo - margin
                     chartHolder.yMax = yHi + margin
@@ -116,14 +116,14 @@ Rectangle {
                 }
 
                 function appendPoint(sid, x, y) {
-                    var series = chartHolder.seriesMap[sid]
+                    let series = chartHolder.seriesMap[sid]
                     if (!series) return
 
                     series.append(x, y)
 
-                    var cutoff = x - trendRoot.windowMs
-                    for (var key in chartHolder.seriesMap) {
-                        var s = chartHolder.seriesMap[key]
+                    let cutoff = x - trendRoot.windowMs
+                    for (let key in chartHolder.seriesMap) {
+                        let s = chartHolder.seriesMap[key]
                         while (s.count > 0 && s.at(0).x < cutoff)
                             s.remove(0)
                     }
@@ -134,11 +134,11 @@ Rectangle {
                     chartHolder.xMax = x
 
                     if (y < chartHolder.yMin || y > chartHolder.yMax) {
-                        var lo = y, hi = y
-                        for (var k in chartHolder.seriesMap) {
-                            var ss = chartHolder.seriesMap[k]
-                            for (var n = 0; n < ss.count; n++) {
-                                var pt = ss.at(n)
+                        let lo = y, hi = y
+                        for (let k in chartHolder.seriesMap) {
+                            let ss = chartHolder.seriesMap[k]
+                            for (let n = 0; n < ss.count; n++) {
+                                let pt = ss.at(n)
                                 if (pt.y < lo) lo = pt.y
                                 if (pt.y > hi) hi = pt.y
                             }
