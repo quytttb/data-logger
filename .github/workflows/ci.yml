@@ -7,7 +7,7 @@ on:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  QT_VERSION: "6.12.0"
+  QT_VERSION: "6.11.1"
   QT_MODULES: qtserialbus qtserialport qtgraphs qttasktree qtquick3d qtshadertools qthttpserver qtwebsockets qtvirtualkeyboard
   AQT_SOURCE: git+https://github.com/miurahr/aqtinstall.git@8c3695d4a4e1ceabf6a74dc6c79681656dc6b74b
 
@@ -45,7 +45,7 @@ jobs:
           install-deps: false
           aqtsource: ${{ env.AQT_SOURCE }}
           cache: true
-          cache-key-prefix: qt612-linux
+          cache-key-prefix: qt611-linux
 
       - name: Configure
         run: |

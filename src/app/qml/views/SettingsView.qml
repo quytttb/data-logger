@@ -60,15 +60,15 @@ Rectangle {
         if (data.slaveId !== undefined) sensorForm.slaveId.value = data.slaveId
         if (data.registerAddress !== undefined) sensorForm.registerAddress.value = data.registerAddress
         if (data.registerType !== undefined) {
-            var rtIdx = sensorForm.registerType.model.indexOf(data.registerType)
+            let rtIdx = sensorForm.registerType.model.indexOf(data.registerType)
             if (rtIdx >= 0) sensorForm.registerType.currentIndex = rtIdx
         }
         if (data.dataType !== undefined) {
-            var dtIdx = sensorForm.dataType.model.indexOf(data.dataType)
+            let dtIdx = sensorForm.dataType.model.indexOf(data.dataType)
             if (dtIdx >= 0) sensorForm.dataType.currentIndex = dtIdx
         }
         if (data.dataFormat !== undefined) {
-            var dfIdx = sensorForm.dataFormat.model.indexOf(data.dataFormat)
+            let dfIdx = sensorForm.dataFormat.model.indexOf(data.dataFormat)
             if (dfIdx >= 0) sensorForm.dataFormat.currentIndex = dfIdx
         }
 
@@ -157,7 +157,7 @@ Rectangle {
 
     function _navigateBack() {
         if (returnMainTab >= 0) {
-            var tab = returnMainTab
+            let tab = returnMainTab
             returnMainTab = -1
             settingsTabIndex = 3
             requestMainTabChange(tab)

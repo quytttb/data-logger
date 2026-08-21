@@ -261,7 +261,7 @@ QVariantList SensorListModel::transmissionRows() const
         if (!s.active || s.sensorType != SensorType::Analog)
             continue;
         out.append(QVariantMap{
-            {QStringLiteral("index"), idx++},
+            {QStringLiteral("stt"), idx++},
             {QStringLiteral("sensorId"), s.id},
             {QStringLiteral("name"), s.name},
             {QStringLiteral("sensorSymbol"), s.sensorSymbol},

@@ -7,17 +7,17 @@ BUILD_TYPE="${1:-Release}"
 BUILD_DIR="build-${BUILD_TYPE,,}"
 
 # Qt from Qt Online Installer (override with QT_DIR if installed elsewhere)
-QT_DIR="${QT_DIR:-$HOME/Qt/6.12.0/gcc_64}"
+QT_DIR="${QT_DIR:-$HOME/Qt/6.11.1/gcc_64}"
 
 if [[ ! -f "$QT_DIR/lib/cmake/Qt6/Qt6Config.cmake" ]]; then
     echo "Error: Qt not found at $QT_DIR" >&2
-    echo "Set QT_DIR to your Qt kit, e.g. export QT_DIR=\$HOME/Qt/6.12.0/gcc_64" >&2
+    echo "Set QT_DIR to your Qt kit, e.g. export QT_DIR=\$HOME/Qt/6.11.1/gcc_64" >&2
     exit 1
 fi
 
 if [[ ! -f "$QT_DIR/lib/cmake/Qt6HttpServer/Qt6HttpServerConfig.cmake" ]]; then
     echo "Error: Qt6 HttpServer module not installed in $QT_DIR" >&2
-    echo "Open Qt Maintenance Tool → Add or remove components → Qt 6.12.0 → Additional Libraries → Qt HTTP Server" >&2
+    echo "Open Qt Maintenance Tool → Add or remove components → Qt 6.11.1 → Additional Libraries → Qt HTTP Server" >&2
     exit 1
 fi
 

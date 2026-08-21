@@ -11,15 +11,15 @@ Item {
 
     function reloadRows() {
         rowModel.clear()
-        var rows = SensorListModel.transmissionRows()
-        for (var i = 0; i < rows.length; ++i)
+        let rows = SensorListModel.transmissionRows()
+        for (let i = 0; i < rows.length; ++i)
             rowModel.append(rows[i])
     }
 
     function buildSavePayload() {
-        var out = []
-        for (var i = 0; i < rowModel.count; ++i) {
-            var row = rowModel.get(i)
+        let out = []
+        for (let i = 0; i < rowModel.count; ++i) {
+            let row = rowModel.get(i)
             out.push({
                 sensorId: row.sensorId,
                 sensorSymbol: row.sensorSymbol,
@@ -30,9 +30,9 @@ Item {
     }
 
     function selectedSensorIds() {
-        var ids = []
-        for (var i = 0; i < rowModel.count; ++i) {
-            var row = rowModel.get(i)
+        let ids = []
+        for (let i = 0; i < rowModel.count; ++i) {
+            let row = rowModel.get(i)
             if (row.transmitEnabled)
                 ids.push(row.sensorId)
         }
@@ -97,7 +97,7 @@ Item {
                     text: "Chọn tất cả"
                     variant: "tonal"
                     onClicked: {
-                        for (var i = 0; i < rowModel.count; ++i)
+                        for (let i = 0; i < rowModel.count; ++i)
                             rowModel.setProperty(i, "transmitEnabled", true)
                         root.configChanged = true
                     }
@@ -106,7 +106,7 @@ Item {
                     text: "Bỏ chọn tất cả"
                     variant: "tonal"
                     onClicked: {
-                        for (var i = 0; i < rowModel.count; ++i)
+                        for (let i = 0; i < rowModel.count; ++i)
                             rowModel.setProperty(i, "transmitEnabled", false)
                         root.configChanged = true
                     }
@@ -141,6 +141,13 @@ Item {
                 spacing: 6
 
                 delegate: Rectangle {
+                    required property int index
+                    required property int stt
+                    required property int sensorId
+                    required property string name
+                    required property string sensorSymbol
+                    required property bool transmitEnabled
+
                     width: txList.width
                     height: 44
                     color: index % 2 === 0 ? Theme.bgPanel : Theme.bgSeparator
@@ -153,14 +160,14 @@ Item {
                         spacing: Theme.spacingS
 
                         Text {
-                            text: String(model.index)
+                            text: String(stt)
                             color: Theme.textLabel
                             font.pixelSize: Theme.fontLabelSize
                             Layout.preferredWidth: 36
                         }
 
                         Text {
-                            text: model.name
+                            text: name
                             color: Theme.textLabel
                             font.pixelSize: Theme.fontLabelSize
                             Layout.preferredWidth: 160
@@ -172,11 +179,11 @@ Item {
                             editable: true
                             model: SensorSymbols.symbols
                             Component.onCompleted: {
-                                var symIdx = find(model.sensorSymbol || "")
+                                let symIdx = find(sensorSymbol || "")
                                 if (symIdx >= 0)
                                     currentIndex = symIdx
                                 else
-                                    editText = model.sensorSymbol || ""
+                                    editText = sensorSymbol || ""
                             }
                             onEditTextChanged: {
                                 rowModel.setProperty(index, "sensorSymbol", editText)
@@ -189,7 +196,7 @@ Item {
                         }
 
                         CheckBox {
-                            checked: model.transmitEnabled
+                            checked: transmitEnabled
                             Layout.preferredWidth: 56
                             onToggled: {
                                 rowModel.setProperty(index, "transmitEnabled", checked)

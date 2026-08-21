@@ -10,6 +10,7 @@ Item {
     id: root
     property bool configChanged: false
     property int _pathVersion: 0
+    property alias transmissionTab: transmissionTab
 
     Connections {
         target: SettingsController

@@ -13,7 +13,7 @@ Rectangle {
     property bool isTesterMode: false
 
     readonly property string sensorType: {
-        var r = dRegType.currentText
+        let r = dRegTypeItem.currentText
         if (r === "Discrete Inputs") return "DI"
         if (r === "Coils") return "DO"
         return "ANALOG"
@@ -32,7 +32,7 @@ Rectangle {
     property alias dReportIdx: dReportIdx
     property alias dSlave: dSlave
     property alias dAddr: dAddr
-    property alias dRegType: dRegType
+    property alias dRegType: dRegTypeItem
     property alias dDataType: dDataType
     property alias dDataFmt: dDataFmt
 
@@ -105,7 +105,7 @@ Rectangle {
 
             Text { text: "Register type:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
             ComboBox {
-                id: dRegType; Layout.fillWidth: true
+                id: dRegTypeItem; Layout.fillWidth: true
                 model: ["Invalid", "Discrete Inputs", "Coils", "Input Registers", "Holding Registers"]
             }
 

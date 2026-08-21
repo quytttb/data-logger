@@ -1,4 +1,4 @@
-find_package(Qt6 6.12 REQUIRED COMPONENTS Core Sql SerialBus Test)
+find_package(Qt6 6.11 REQUIRED COMPONENTS Core Sql SerialBus Test)
 
 add_executable(tt10_test tt10_test.cpp)
 target_include_directories(tt10_test PRIVATE

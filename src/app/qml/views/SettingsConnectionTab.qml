@@ -153,7 +153,7 @@ Item {
                                             }
                                             onEditTextChanged: {
                                                 if (ready) {
-                                                    var val = parseInt(editText, 10)
+                                                    let val = parseInt(editText, 10)
                                                     if (!isNaN(val) && val > 0) { SettingsController.serialBaudrate = val; root.configChanged = true }
                                                 }
                                             }

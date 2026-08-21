@@ -8,7 +8,7 @@ Item {
     implicitWidth: 320
     implicitHeight: col.implicitHeight
 
-    property alias regTypeCombo: regTypeCombo
+    property alias regTypeCombo: regTypeComboItem
     property alias dataTypeCombo: dataTypeCombo
     property alias dataFormatCombo: dataFormatCombo
     property alias scanStartSpin: scanStartSpin
@@ -19,8 +19,8 @@ Item {
     property alias writeValSpin: writeValSpin
     property bool isReadMode: true
 
-    readonly property bool isBooleanType: regTypeCombo.currentText === "Coils"
-                                       || regTypeCombo.currentText === "Discrete Inputs"
+    readonly property bool isBooleanType: regTypeComboItem.currentText === "Coils"
+                                       || regTypeComboItem.currentText === "Discrete Inputs"
 
     ColumnLayout {
         id: col
@@ -50,7 +50,7 @@ Item {
                 Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
             }
             ComboBox {
-                id: regTypeCombo
+                id: regTypeComboItem
                 Layout.fillWidth: true
                 model: root.isReadMode ? ["Holding Registers", "Input Registers", "Coils", "Discrete Inputs"]
                                   : ["Holding Registers", "Coils"]

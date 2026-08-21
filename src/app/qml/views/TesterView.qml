@@ -114,11 +114,11 @@ Item {
         }
         function onWriteResult(result) {
             if (result.ok) {
-                var addr = testerRoot._pendingWriteAddr
-                var valStr = testerRoot._pendingWriteVal
+                let addr = testerRoot._pendingWriteAddr
+                let valStr = testerRoot._pendingWriteVal
                 testerRoot.showToast("Write OK", "Wrote " + valStr + " to address " + addr)
-                var found = false
-                for (var i = 0; i < scanModel.count; i++) {
+                let found = false
+                for (let i = 0; i < scanModel.count; i++) {
                     if (scanModel.get(i).address === addr) {
                         scanModel.setProperty(i, "value", valStr)
                         found = true
@@ -138,8 +138,8 @@ Item {
 
     function _rebuildFiltered() {
         filteredModel.clear()
-        for (var i = 0; i < scanModel.count; i++) {
-            var item = scanModel.get(i)
+        for (let i = 0; i < scanModel.count; i++) {
+            let item = scanModel.get(i)
             if (testerRoot.hideZeros && testerRoot._isZeroValue(item.value))
                 continue
             filteredModel.append({ "address": item.address, "value": item.value })
@@ -147,12 +147,12 @@ Item {
     }
 
     function _isZeroValue(val) {
-        var s = String(val).trim()
+        let s = String(val).trim()
         if (s === "0" || s === "0.0" || s === "0.00" || s === "0.000" || s === "0.0000") return true
-        var m = s.match(/^\[([\d,\s]*)\]$/)
+        let m = s.match(/^\[([\d,\s]*)\]$/)
         if (m) {
-            var nums = m[1].split(",")
-            for (var i = 0; i < nums.length; i++) {
+            let nums = m[1].split(",")
+            for (let i = 0; i < nums.length; i++) {
                 if (parseInt(nums[i].trim()) !== 0) return false
             }
             return true

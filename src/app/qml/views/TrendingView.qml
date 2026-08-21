@@ -53,8 +53,8 @@ Rectangle {
                 property real yMax: 1
 
                 function clearAllSeries() {
-                    var list = graphsView.seriesList
-                    for (var i = list.length - 1; i >= 0; --i)
+                    let list = graphsView.seriesList
+                    for (let i = list.length - 1; i >= 0; --i)
                         graphsView.removeSeries(list[i])
                     chartHolder.seriesMap = ({})
                 }

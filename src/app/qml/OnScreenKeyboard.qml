@@ -21,8 +21,7 @@ InputPanel {
         name: "visible"
         when: inputPanel.active
         PropertyChanges {
-            target: inputPanel
-            y: (inputPanel.window ? inputPanel.window.height : 0) - inputPanel.height
+            inputPanel.y: (inputPanel.window ? inputPanel.window.height : 0) - inputPanel.height
         }
     }
     transitions: Transition {

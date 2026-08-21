@@ -73,8 +73,8 @@ Rectangle {
     function syncEditPanelFromSelection() {
         if (!selectedLink) return
         if (selectedLink.ioType === "DI") {
-            var codes = ["00", "01", "02", "03"]
-            var idx = codes.indexOf(selectedLink.diType || "00")
+            let codes = ["00", "01", "02", "03"]
+            let idx = codes.indexOf(selectedLink.diType || "00")
             editDiTypeCombo.currentIndex = idx >= 0 ? idx : 0
         } else if (selectedLink.ioType === "DO") {
             editDoTrigMax.checked = selectedLink.triggerOnMax

@@ -2,7 +2,7 @@
 
 Ứng dụng giám sát cảm biến công nghiệp chạy trên **Raspberry Pi** (GUI cảm ứng, Modbus RTU, SQLite).
 
-Đọc dữ liệu qua **Modbus RTU (RS-485)**, lưu trữ liên tục với **SQLite (WAL)**, hiển thị biểu đồ realtime qua **Qt 6.13 / QML**, và tự động kết xuất báo cáo **TXT** hoặc đồng bộ lên máy chủ bằng **FTP**.
+Đọc dữ liệu qua **Modbus RTU (RS-485)**, lưu trữ liên tục với **SQLite (WAL)**, hiển thị biểu đồ realtime qua **Qt 6.11 / QML**, và tự động kết xuất báo cáo **TXT** hoặc đồng bộ lên máy chủ bằng **FTP**.
 
 ---
 
@@ -11,7 +11,7 @@
 | Thành phần | Công nghệ |
 |---|---|
 | **Backend** | C++20 |
-| **Giao diện (UI)** | Qt 6.13 + QML (Qt Quick Controls 2 Material) |
+| **Giao diện (UI)** | Qt 6.11 + QML (Qt Quick Controls 2 Material) |
 | **Cơ sở dữ liệu** | SQLite 3 (WAL) — `QSqlDatabase` |
 | **Giao thức công nghiệp** | Modbus RTU — `QModbusRtuSerialClient`; Modbus TCP Server — `QModbusTcpServer` |
 | **REST API** | `QHttpServer` (Qt HTTP Server) |
@@ -40,7 +40,7 @@ Build layers (CMake): `utils → data → network → core → theme → compone
 
 - **Phần cứng**: Raspberry Pi (ARM64), màn hình cảm ứng 7", USB-RS485 Dongle.
 - **OS**: Raspberry Pi OS 64-bit (Bookworm trở lên)
-- **Qt**: 6.13+ từ [Qt Online Installer](https://www.qt.io/download), hoặc Qt 6.10+ từ apt (Ubuntu 25.04+)
+- **Qt**: 6.11+ từ [Qt Online Installer](https://www.qt.io/download), hoặc Qt 6.10+ từ apt (Ubuntu 25.04+)
 - **Compiler**: GCC 15+ (`g++-15`)
 
 ---
@@ -58,11 +58,11 @@ sudo apt-get install -y \
   qt6-graphs-dev qt6-quick3d-dev
 ```
 
-### Sử dụng Qt Online Installer (khuyến nghị — Qt 6.13)
+### Sử dụng Qt Online Installer (khuyến nghị — Qt 6.11)
 
 ```bash
 # Đặt đường dẫn Qt kit
-export QT_DIR=$HOME/Qt/6.12.0/gcc_64
+export QT_DIR=$HOME/Qt/6.11.1/gcc_64
 
 ./build.sh Release
 ```
@@ -74,7 +74,7 @@ cmake -B build-release \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_C_COMPILER=gcc-15 \
   -DCMAKE_CXX_COMPILER=g++-15 \
-  -DCMAKE_PREFIX_PATH=$HOME/Qt/6.12.0/gcc_64   # bỏ nếu dùng apt
+  -DCMAKE_PREFIX_PATH=$HOME/Qt/6.11.1/gcc_64   # bỏ nếu dùng apt
 
 cmake --build build-release --parallel $(nproc)
 ```
@@ -87,7 +87,7 @@ Binary đầu ra: `build-release/bin/DataLogger`
 
 ```bash
 # Qt từ Online Installer cần chỉ thư viện runtime
-export LD_LIBRARY_PATH=$HOME/Qt/6.12.0/gcc_64/lib:$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=$HOME/Qt/6.11.1/gcc_64/lib:$LD_LIBRARY_PATH
 
 ./build-release/bin/DataLogger
 ```
