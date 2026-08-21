@@ -63,6 +63,12 @@ AppConfig AppConfigDao::rowToConfig(const QSqlRecord &r) {
     c.autoAddTransmit   = r.contains(QStringLiteral("auto_add_transmit"))
         ? r.value("auto_add_transmit").toBool()
         : true;
+    // Audit M5: hysteresis + fail-safe policy (optional columns on legacy DBs).
+    if (r.contains(QStringLiteral("alarm_hysteresis")))
+        c.alarmHysteresis = r.value("alarm_hysteresis").toDouble();
+    c.doFailSafeOnReconnect = r.contains(QStringLiteral("do_failsafe_on_reconnect"))
+        ? r.value("do_failsafe_on_reconnect").toBool()
+        : true;
     return c;
 }
 
@@ -104,7 +110,8 @@ bool AppConfigDao::save(const AppConfig &c) {
             server_start_time, server_base_folder, server_time_folder, file_suffix,
             modbus_tcp_enabled, modbus_tcp_port, modbus_tcp_bind, modbus_tcp_unit_id,
             rest_api_enabled, rest_api_port, rest_api_bind, rest_api_token,
-            config_revision, ui_locale, theme, auto_add_transmit
+            config_revision, ui_locale, theme, auto_add_transmit,
+            alarm_hysteresis, do_failsafe_on_reconnect
         ) VALUES (
             :sc, :sn, :tf, :df, :tz,
             :be, :fa, :fp, :fu,
@@ -114,7 +121,8 @@ bool AppConfigDao::save(const AppConfig &c) {
             :sst, :sbf, :stf, :ssf,
             :mte, :mtp, :mtb, :mtui,
             :rae, :rap, :rab, :rat,
-            :cr, :ul, :th, :aat
+            :cr, :ul, :th, :aat,
+            :ah, :dfr
         ))");
     } else {
         q.prepare(R"(UPDATE app_config SET
@@ -129,7 +137,8 @@ bool AppConfigDao::save(const AppConfig &c) {
             modbus_tcp_enabled=:mte, modbus_tcp_port=:mtp, modbus_tcp_bind=:mtb,
             modbus_tcp_unit_id=:mtui, rest_api_enabled=:rae, rest_api_port=:rap,
             rest_api_bind=:rab, rest_api_token=:rat, config_revision=:cr, ui_locale=:ul,
-            theme=:th, auto_add_transmit=:aat
+            theme=:th, auto_add_transmit=:aat,
+            alarm_hysteresis=:ah, do_failsafe_on_reconnect=:dfr
             WHERE id=:id)");
         q.bindValue(":id", c.id);
     }
@@ -173,6 +182,8 @@ bool AppConfigDao::save(const AppConfig &c) {
     q.bindValue(":ul",   nnText(c.uiLocale));
     q.bindValue(":th",   nnText(c.theme));
     q.bindValue(":aat",  c.autoAddTransmit ? 1 : 0);
+    q.bindValue(":ah",   c.alarmHysteresis);
+    q.bindValue(":dfr",  c.doFailSafeOnReconnect ? 1 : 0);
 
     if (!q.exec()) {
         qWarning() << "AppConfigDao::save error:" << q.lastError().text();

@@ -158,10 +158,9 @@ void ReportController::onScheduleTick()
     if (!cfg.serverActive || cfg.serverSendInterval <= 0)
         return;
 
-    static QDateTime s_lastGenerated;
     const QDateTime now = QDateTime::currentDateTime();
-    if (s_lastGenerated.isValid()
-        && s_lastGenerated.secsTo(now) < cfg.serverSendInterval * 60)
+    if (m_lastGenerated.isValid()
+        && m_lastGenerated.secsTo(now) < cfg.serverSendInterval * 60)
         return;
 
     const QTime start = QTime::fromString(cfg.serverStartTime, QStringLiteral("HH:mm"));
@@ -171,9 +170,19 @@ void ReportController::onScheduleTick()
             return;
     }
 
-    const QDateTime to   = now;
-    const QDateTime from = to.addSecs(-cfg.serverSendInterval * 60);
-    s_lastGenerated = now;
+    // H-6 fix: mốc "sinh gần nhất" được persist trong report_log — khởi động
+    // lại không làm mất/overlap cửa sổ báo cáo (trước đây dùng biến static).
+    QDateTime from = now.addSecs(-cfg.serverSendInterval * 60);
+    if (!m_lastGenerated.isValid()) {
+        const QDateTime persisted = [this]() {
+            ScopedDbConnection db;
+            return ReportLogDao(db).lastGeneratedAt();
+        }();
+        if (persisted.isValid() && persisted > from && persisted < now)
+            from = persisted;
+    }
+    const QDateTime to = now;
+    m_lastGenerated = now;
 
     if (m_generating.load(std::memory_order_relaxed))
         return; // previous report still in progress

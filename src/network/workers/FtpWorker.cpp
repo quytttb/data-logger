@@ -6,12 +6,15 @@
 #include <QNetworkRequest>
 #include <QNetworkReply>
 #include <QEventLoop>
+#include <QTimer>
 #include <QUrl>
 #include <QDebug>
 
 namespace {
 constexpr int kTickIntervalMs      = 60 * 1000;  // scan pending reports each minute
 constexpr int kHeartbeatIntervalMs = 30 * 1000;  // liveness ping to MonitorController
+constexpr int kUploadTimeoutMs     = 2 * 60 * 1000; // H-2: không treo worker vô hạn khi FTP server im lặng
+constexpr int kRequestTimeoutMs    = 120 * 1000;
 }
 
 FtpWorker::FtpWorker(QObject *parent) : QObject(parent) {}
@@ -98,23 +101,39 @@ bool FtpWorker::uploadFile(const QString &localPath, const QString &remoteDir) {
     }
 
     QFileInfo fi(localPath);
+    // H-2 fix: ghép path an toàn — remoteDir có thể kết thúc bằng '/' khiến
+    // path ra "dir//file" (một số FTP server từ chối).
+    QString dir = remoteDir;
+    while (dir.endsWith(QLatin1Char('/')) && dir.size() > 1)
+        dir.chop(1);
+    const QString remotePath = dir + QLatin1Char('/') + fi.fileName();
+
     QUrl url;
     url.setScheme(QStringLiteral("ftp"));
     url.setHost(m_address);
     url.setPort(m_port);
     url.setUserName(m_username);
     url.setPassword(m_password);
-    url.setPath(remoteDir + "/" + fi.fileName());
+    url.setPath(remotePath);
 
     QNetworkRequest req(url);
+    req.setTransferTimeout(kRequestTimeoutMs); // H-2: không chờ vô hạn khi server im lặng
     QNetworkReply *reply = m_nam->put(req, &file);
 
     QEventLoop loop;
     connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+    QTimer::singleShot(kUploadTimeoutMs, &loop, &QEventLoop::quit); // fallback cứng
     loop.exec();
 
-    bool ok = (reply->error() == QNetworkReply::NoError);
-    if (!ok) qWarning() << "FtpWorker upload error:" << reply->errorString();
+    bool ok = reply->isFinished() && reply->error() == QNetworkReply::NoError;
+    if (!ok) {
+        if (!reply->isFinished()) {
+            qWarning() << "FtpWorker: upload timed out for" << remotePath;
+            reply->abort();
+        } else {
+            qWarning() << "FtpWorker upload error:" << reply->errorString();
+        }
+    }
     reply->deleteLater();
     file.close();
     return ok;

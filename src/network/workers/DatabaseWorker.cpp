@@ -2,6 +2,10 @@
 #include "data/db/Database.h"
 #include "data/repositories/SensorDataDao.h"
 #include <QDateTime>
+#include <QFile>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QMutexLocker>
 #include <QDebug>
 #include <utility>
@@ -11,6 +15,10 @@ constexpr int kHeartbeatIntervalMs = 5000;  // liveness ping to MonitorControlle
 }
 
 DatabaseWorker::DatabaseWorker(QObject *parent) : QObject(parent) {}
+
+void DatabaseWorker::setSpillPath(const QString &path) {
+    m_spillPath = path;
+}
 
 void DatabaseWorker::enqueue(const QVariantMap &payload) {
     QMutexLocker lock(&m_mutex);
@@ -24,6 +32,11 @@ void DatabaseWorker::enqueue(const QVariantMap &payload) {
 
 void DatabaseWorker::start() {
     m_running = true;
+
+    // Audit M4: pick up records that were spilled to disk by a previous
+    // shutdown before any new payload lands. They go to the FRONT of the
+    // queue to preserve chronological order.
+    loadSpilledQueue();
 
     m_flushTimer = new QTimer(this);
     m_flushTimer->setInterval(kFlushIntervalMs);
@@ -41,7 +54,67 @@ void DatabaseWorker::stop() {
     if (m_flushTimer) m_flushTimer->stop();
     if (m_heartbeatTimer) m_heartbeatTimer->stop();
     flush(); // drain remaining records
+    // Audit M4: if the final flush could not write everything (DB error or
+    // new arrivals during stop), spill the leftover queue to disk instead of
+    // dropping it — the next start() re-injects these records.
+    {
+        QMutexLocker lock(&m_mutex);
+        if (!m_queue.isEmpty()) {
+            lock.unlock();
+            saveSpilledQueue();
+        }
+    }
     emit workerStopped();
+}
+
+void DatabaseWorker::loadSpilledQueue() {
+    if (m_spillPath.isEmpty()) return;
+    QFile f(m_spillPath);
+    if (!f.exists() || !f.open(QIODevice::ReadOnly)) return;
+    const QByteArray raw = f.readAll();
+    f.close();
+    QFile::remove(m_spillPath); // consume once — avoid double-insert races
+    QJsonParseError err;
+    const QJsonDocument doc = QJsonDocument::fromJson(raw, &err);
+    if (err.error != QJsonParseError::NoError || !doc.isArray()) {
+        qWarning() << "DatabaseWorker: spill file corrupt, ignored:" << err.errorString();
+        return;
+    }
+    int restored = 0;
+    for (const auto &v : doc.array()) {
+        if (!v.isObject()) continue;
+        m_queue.prepend(v.toObject().toVariantMap()); // preserve original order
+        ++restored;
+    }
+    if (restored > 0)
+        qInfo() << "DatabaseWorker: restored" << restored << "spilled records from disk";
+}
+
+void DatabaseWorker::saveSpilledQueue() {
+    if (m_spillPath.isEmpty()) return;
+    // Merge with existing spill file so a repeated stop never loses either set.
+    QJsonArray array;
+    {
+        QFile existing(m_spillPath);
+        if (existing.exists() && existing.open(QIODevice::ReadOnly)) {
+            const QJsonDocument doc = QJsonDocument::fromJson(existing.readAll());
+            existing.close();
+            if (doc.isArray()) array = doc.array();
+            QFile::remove(m_spillPath);
+        }
+    }
+    {
+        QMutexLocker lock(&m_mutex);
+        while (!m_queue.isEmpty())
+            array.append(QJsonObject::fromVariantMap(m_queue.dequeue()));
+    }
+    QFile f(m_spillPath);
+    if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        qWarning() << "DatabaseWorker: cannot write spill file" << m_spillPath;
+        return;
+    }
+    f.write(QJsonDocument(array).toJson(QJsonDocument::Compact));
+    qInfo() << "DatabaseWorker: spilled" << array.size() << "unwritten records to" << m_spillPath;
 }
 
 void DatabaseWorker::onHeartbeatTimer() {

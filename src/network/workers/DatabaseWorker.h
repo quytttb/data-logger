@@ -15,6 +15,12 @@ public:
     // Thread-safe: called from main thread to enqueue a data payload.
     void enqueue(const QVariantMap &payload);
 
+    // Audit M4: persist/reload any unread queue to disk so that records still
+    // in the in-memory queue are NOT lost when the app shuts down (crash,
+    // SIGTERM, or a failed final flush). Call setSpillPath() before start();
+    // the path is a JSON file under AppPaths::dataDir().
+    void setSpillPath(const QString &path);
+
 public slots:
     void start();
     void stop();
@@ -30,11 +36,15 @@ private slots:
     void onHeartbeatTimer();
 
 private:
+    void loadSpilledQueue();
+    void saveSpilledQueue();
+
     QTimer  *m_flushTimer = nullptr;
     QTimer  *m_heartbeatTimer = nullptr;
     QQueue<QVariantMap> m_queue;
     QMutex   m_mutex;
     bool     m_running = false;
+    QString  m_spillPath;
 
     static constexpr int kFlushIntervalMs = 1000;
     static constexpr int kMaxQueueSize    = 10000;

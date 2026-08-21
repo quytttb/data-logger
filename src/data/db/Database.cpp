@@ -61,6 +61,8 @@ void Database::closeConnection(QSqlDatabase &db) {
 void Database::applyPragmas(QSqlDatabase &db) {
     QSqlQuery q(db);
     q.exec("PRAGMA journal_mode = WAL;");
+    q.exec("PRAGMA busy_timeout = 5000;");
+    q.exec("PRAGMA foreign_keys = ON;");
     q.exec("PRAGMA synchronous = NORMAL;");
     q.exec("PRAGMA journal_size_limit = 1000000;");
     q.exec("PRAGMA mmap_size = 30000000;");
@@ -111,7 +113,11 @@ bool Database::createTables(QSqlDatabase &db) {
             config_revision INTEGER NOT NULL DEFAULT 1,
             ui_locale TEXT NOT NULL DEFAULT 'vi',
             theme TEXT NOT NULL DEFAULT 'dark',
-            auto_add_transmit INTEGER NOT NULL DEFAULT 1
+            auto_add_transmit INTEGER NOT NULL DEFAULT 1,
+            -- Audit M5: alarm hysteresis (absolute, 0 = off) and configurable
+            -- DO fail-safe policy on (re)connect.
+            alarm_hysteresis REAL NOT NULL DEFAULT 0,
+            do_failsafe_on_reconnect INTEGER NOT NULL DEFAULT 1
         ))",
 
         R"(CREATE TABLE IF NOT EXISTS sensor (
@@ -179,6 +185,9 @@ bool Database::createTables(QSqlDatabase &db) {
         // Indices for frequent queries
         "CREATE INDEX IF NOT EXISTS idx_sensor_data_sensor_id ON sensor_data(sensor_id)",
         "CREATE INDEX IF NOT EXISTS idx_sensor_data_recorded_at ON sensor_data(recorded_at)",
+        // M-3: composite index for the hot range query
+        // "WHERE sensor_id=? AND recorded_at BETWEEN ? AND ?".
+        "CREATE INDEX IF NOT EXISTS idx_sensor_data_sensor_recorded ON sensor_data(sensor_id, recorded_at)",
     };
 
     for (const QString &stmt : stmts) {
@@ -212,6 +221,9 @@ bool Database::migrate(QSqlDatabase &db) {
         {"sensor",      "transmit_enabled", "INTEGER NOT NULL DEFAULT 0"},
         {"app_config",  "auto_add_transmit", "INTEGER NOT NULL DEFAULT 1"},
         {"report_log",  "remote_path",    "TEXT NOT NULL DEFAULT ''"},
+        // Audit M5: alarm hysteresis + configurable DO fail-safe policy.
+        {"app_config",  "alarm_hysteresis",        "REAL NOT NULL DEFAULT 0"},
+        {"app_config",  "do_failsafe_on_reconnect", "INTEGER NOT NULL DEFAULT 1"},
     };
 
     for (const auto &a : additions) {

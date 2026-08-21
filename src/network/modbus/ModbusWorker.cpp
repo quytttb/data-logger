@@ -1,6 +1,7 @@
 #include "ModbusWorker.h"
 #include "utils/modbus/Formula.h"
 #include "utils/modbus/ModbusCodec.h"
+#include "utils/modbus/ModbusWait.h"
 #include <QModbusDataUnit>
 #include <QModbusReply>
 #include <QSerialPort>
@@ -24,6 +25,37 @@ ModbusWorker::~ModbusWorker() {
     // m_client cleanup is handled by stop() which runs on the correct thread.
     // By the time the destructor is called (via deleteLater after thread finished),
     // stop() has already run and disconnected/deleted the client.
+}
+
+void ModbusWorker::setAlarmBehavior(double hysteresis, bool doFailSafeOnReconnect) {
+    m_alarmHysteresis = (hysteresis >= 0.0) ? hysteresis : 0.0;
+    m_doFailSafeOnReconnect = doFailSafeOnReconnect;
+}
+
+bool ModbusWorker::evaluateAlarmWithHysteresis(double value,
+                                               bool wasAlarm,
+                                               const QString &prevAlarmType,
+                                               bool hasMin, double minTh,
+                                               bool hasMax, double maxTh,
+                                               double hysteresis,
+                                               QString &alarmTypeOut) {
+    alarmTypeOut.clear();
+    const double hyst = (hysteresis >= 0.0) ? hysteresis : 0.0;
+    const bool prevHadMin = wasAlarm && prevAlarmType.contains("min");
+    const bool prevHadMax = wasAlarm && prevAlarmType.contains("max");
+
+    // Audit M5: when already in alarm for a given threshold, require the value
+    // to move back PAST the safe side of the band (hysteresis) before
+    // releasing, so relays don't chatter around the threshold.
+    bool minActive = hasMin && (prevHadMin ? value <= minTh + hyst
+                                           : value <= minTh);
+    bool maxActive = hasMax && (prevHadMax ? value >= maxTh - hyst
+                                           : value >= maxTh);
+
+    if (minActive) alarmTypeOut = "min";
+    if (maxActive) alarmTypeOut = alarmTypeOut.isEmpty() ? "max" : "min+max";
+
+    return minActive || maxActive;
 }
 
 void ModbusWorker::configure(const QString &port, int baudrate, int bytesize,
@@ -81,7 +113,8 @@ void ModbusWorker::stop() {
 }
 
 bool ModbusWorker::connectToPort() {
-    if (!m_client) return false;
+    if (!m_client)
+        m_client = new QModbusRtuSerialClient(this); // recreate after timeout reset
 
     m_client->setConnectionParameter(QModbusDevice::SerialPortNameParameter, m_port);
     m_client->setConnectionParameter(QModbusDevice::SerialBaudRateParameter, m_baudrate);
@@ -98,7 +131,20 @@ bool ModbusWorker::connectToPort() {
         m_backoffMs = 1000;
         emit connectionChanged(true);
         qInfo() << "ModbusWorker: connected to" << m_port;
-        resetDoCoils();  // start from a known-OFF coil state on every (re)connect
+        // Audit M5: fail-safe policy is configurable. Default (true) forces a
+        // known-OFF coil state on (re)connect so a stale latched relay can
+        // never disagree with the app's reported state. When an operator sets
+        // the policy to false the physical coils are left untouched and the
+        // next poll converges them from recomputed alarm states.
+        if (m_doFailSafeOnReconnect) {
+            resetDoCoils();
+        } else {
+            // Forget cached alarm/coil state so the next poll re-establishes
+            // the desired coil values, but do NOT write the coils now.
+            m_alarmStates.clear();
+            m_alarmTypes.clear();
+            m_doStates.clear(); // unknown physical state → updateDoCoils rewrites
+        }
         return true;
     }
 
@@ -139,6 +185,7 @@ void ModbusWorker::onPollTimer() {
     qint64 now = QDateTime::currentMSecsSinceEpoch();
     for (const auto &cfg : std::as_const(m_sensors)) {
         if (!m_running) break;
+        if (!m_connected || !m_client) break; // connection reset mid-poll (reply timeout)
         int sid = cfg["id"].toInt();
         if (now >= m_nextPollMs.value(sid, 0)) {
             pollSingle(cfg);
@@ -151,6 +198,32 @@ void ModbusWorker::onPollTimer() {
 void ModbusWorker::onHeartbeatTimer() {
     if (m_running)
         emit heartbeat("ModbusWorker");
+}
+
+bool ModbusWorker::waitReply(QModbusReply *reply, const QString &timeoutMsg) {
+    if (ModbusWait::waitForReply(reply, replyWaitMs()))
+        return true;
+    // Timeout: never touch the reply again; free it whenever it finally
+    // finishes, and reset the possibly-hung serial connection (auto-reconnect).
+    connect(reply, &QModbusReply::finished, reply, &QObject::deleteLater);
+    emit modbusError(timeoutMsg);
+    resetConnectionAfterHang();
+    return false;
+}
+
+void ModbusWorker::resetConnectionAfterHang() {
+    if (m_pollTimer)      m_pollTimer->stop();
+    if (m_heartbeatTimer) m_heartbeatTimer->stop();
+    m_connected = false;
+    if (m_client) {
+        m_client->disconnectDevice();
+        m_client->deleteLater();
+        m_client = nullptr; // connectToPort() recreates it via backoff
+    }
+    emit connectionChanged(false);
+    m_backoffMs = 1000;
+    if (m_running)
+        QTimer::singleShot(m_backoffMs, this, &ModbusWorker::tryReconnect);
 }
 
 void ModbusWorker::pollSingle(const QVariantMap &cfg) {
@@ -182,9 +255,8 @@ void ModbusWorker::pollAnalog(const QVariantMap &cfg) {
     }
 
     // Block until finished (we're on a worker thread, not the main thread)
-    QEventLoop loop;
-    connect(reply, &QModbusReply::finished, &loop, &QEventLoop::quit);
-    loop.exec();
+    if (!waitReply(reply, QStringLiteral("sensor %1: reply timeout").arg(sensorId)))
+        return;
 
     if (reply->error() != QModbusDevice::NoError) {
         emit modbusError(QStringLiteral("sensor %1: %2")
@@ -209,19 +281,22 @@ void ModbusWorker::pollAnalog(const QVariantMap &cfg) {
 
     double value = Formula::applyFormula(rawValue, coeff);
 
-    bool isAlarm = false;
-    QString alarmType;
     auto minTh = cfg.value("min_threshold");
     auto maxTh = cfg.value("max_threshold");
     const bool hasMin = !minTh.isNull();
     const bool hasMax = !maxTh.isNull();
-    if (hasMin && value <= minTh.toDouble()) { isAlarm = true; alarmType = "min"; }
-    if (hasMax && value >= maxTh.toDouble()) {
-        isAlarm = true;
-        alarmType = alarmType.isEmpty() ? "max" : "min+max";
-    }
+    QString alarmType;
+    // Audit M5: hysteresis prevents relay chatter when the value hovers
+    // around min_threshold / max_threshold. Uses the PREVIOUS alarm state so
+    // the release band differs from the trigger band.
+    const bool prevAlarm  = m_alarmStates.value(sensorId, false);
+    const QString prevTyp = m_alarmTypes.value(sensorId);
+    const bool isAlarm = evaluateAlarmWithHysteresis(
+        value, prevAlarm, prevTyp,
+        hasMin, minTh.isValid() ? minTh.toDouble() : 0.0,
+        hasMax, maxTh.isValid() ? maxTh.toDouble() : 0.0,
+        m_alarmHysteresis, alarmType);
 
-    bool prevAlarm = m_alarmStates.value(sensorId, false);
     m_alarmStates[sensorId] = isAlarm;
     m_alarmTypes[sensorId]  = alarmType;
     if (isAlarm != prevAlarm)
@@ -275,9 +350,8 @@ void ModbusWorker::pollStandaloneDi(const QVariantMap &cfg) {
     auto *reply = m_client->sendReadRequest(request, slaveId);
     if (!reply) { emit modbusError(QStringLiteral("DI no reply sensor %1").arg(sensorId)); return; }
 
-    QEventLoop loop;
-    connect(reply, &QModbusReply::finished, &loop, &QEventLoop::quit);
-    loop.exec();
+    if (!waitReply(reply, QStringLiteral("DI reply timeout sensor %1").arg(sensorId)))
+        return;
 
     bool state = false;
     if (reply->error() == QModbusDevice::NoError)
@@ -340,11 +414,11 @@ void ModbusWorker::writeSingleCoil(int sensorId, bool value) {
             unit.setValue(0, value ? 1 : 0);
             auto *reply = m_client->sendWriteRequest(unit, slaveId);
             if (reply) {
-                QEventLoop loop;
-                connect(reply, &QModbusReply::finished, &loop, &QEventLoop::quit);
-                loop.exec();
-                m_doStates[sensorId] = value;
-                reply->deleteLater();
+                if (waitReply(reply, QStringLiteral("write coil %1 timeout").arg(sensorId))) {
+                    if (reply->error() == QModbusDevice::NoError)
+                        m_doStates[sensorId] = value;
+                    reply->deleteLater();
+                }
             }
             return;
         }
@@ -366,9 +440,8 @@ QList<QVariantMap> ModbusWorker::readDiStates(int sensorId) {
         auto *reply = m_client->sendReadRequest(req, slaveId);
         if (!reply) { results.append({{"id", ch["id"]}, {"label", ch["label"]}, {"di_type", ch["di_type"]}, {"state", QVariant()}}); continue; }
 
-        QEventLoop loop;
-        connect(reply, &QModbusReply::finished, &loop, &QEventLoop::quit);
-        loop.exec();
+        if (!waitReply(reply, QStringLiteral("DI channel %1 timeout").arg(ch["id"].toInt())))
+            break; // connection was reset — abort remaining DI reads
 
         bool state = false;
         if (reply->error() == QModbusDevice::NoError) state = reply->result().value(0);
@@ -406,6 +479,7 @@ void ModbusWorker::updateDoCoils() {
     }
 
     for (auto it = desired.constBegin(); it != desired.constEnd(); ++it) {
+        if (!m_client) break; // connection reset mid-write (reply timeout)
         const int doId  = it.key();
         const bool want = it.value();
         // Skip only when we are certain the coil already holds the desired value.
@@ -416,9 +490,8 @@ void ModbusWorker::updateDoCoils() {
         unit.setValue(0, want ? 1 : 0);
         auto *reply = m_client->sendWriteRequest(unit, sa.first);
         if (!reply) continue;
-        QEventLoop loop;
-        connect(reply, &QModbusReply::finished, &loop, &QEventLoop::quit);
-        loop.exec();
+        if (!waitReply(reply, QStringLiteral("DO coil %1 write timeout").arg(doId)))
+            break; // connection was reset — abort remaining writes
         if (reply->error() == QModbusDevice::NoError)
             m_doStates[doId] = want;  // only trust state on a confirmed write
         reply->deleteLater();
@@ -437,6 +510,7 @@ void ModbusWorker::resetDoCoils() {
     QSet<int> done;
     for (auto it = m_digitalIos.constBegin(); it != m_digitalIos.constEnd(); ++it) {
         for (const auto &ch : it.value()) {
+            if (!m_client) return; // connection reset mid-reset (reply timeout)
             if (ch.value("io_type") != "DO") continue;
             const int doId = ch.value("id").toInt();
             if (done.contains(doId)) continue;
@@ -447,9 +521,8 @@ void ModbusWorker::resetDoCoils() {
             unit.setValue(0, 0);
             auto *reply = m_client->sendWriteRequest(unit, slaveId);
             if (!reply) { m_doStates.remove(doId); continue; }
-            QEventLoop loop;
-            connect(reply, &QModbusReply::finished, &loop, &QEventLoop::quit);
-            loop.exec();
+            if (!waitReply(reply, QStringLiteral("DO coil %1 reset timeout").arg(doId)))
+                return; // connection was reset — abort remaining resets
             if (reply->error() == QModbusDevice::NoError)
                 m_doStates[doId] = false;
             else

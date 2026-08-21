@@ -123,10 +123,25 @@ bool SensorDao::save(Sensor &s) {
 }
 
 bool SensorDao::remove(int id) {
+    // H-3/M-3 fix (foreign_keys=ON): delete dependent rows first so removing a
+    // sensor never trips an FK constraint. Wraps the cascade in a transaction
+    // so a mid-way failure rolls back instead of orphaning rows.
+    m_db.transaction();
+    QSqlQuery dep(m_db);
+    dep.prepare("DELETE FROM sensor_data WHERE sensor_id=:id");
+    dep.bindValue(":id", id);
+    if (!dep.exec()) { m_db.rollback(); return false; }
+
+    dep.prepare("DELETE FROM analog_digital_link WHERE analog_sensor_id=:id OR digital_sensor_id=:id");
+    dep.bindValue(":id", id);
+    if (!dep.exec()) { m_db.rollback(); return false; }
+
     QSqlQuery q(m_db);
     q.prepare("DELETE FROM sensor WHERE id=:id");
     q.bindValue(":id", id);
-    return q.exec();
+    if (!q.exec()) { m_db.rollback(); return false; }
+
+    return m_db.commit();
 }
 
 QList<AnalogDigitalLink> SensorDao::loadAllLinks() {

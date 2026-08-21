@@ -39,6 +39,8 @@ target_include_directories(utils PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/provision/third_party
 )
 
-target_link_libraries(utils PUBLIC Qt6::Core Qt6::Network Qt6::Gui Qt6::SerialBus Qt6::Sql)
+find_package(OpenSSL REQUIRED)  # audit C1: AES-256-GCM cho credential FTP
+
+target_link_libraries(utils PUBLIC Qt6::Core Qt6::Network Qt6::Gui Qt6::SerialBus Qt6::Sql OpenSSL::Crypto)
 
 add_library(datalogger::utils ALIAS utils)

@@ -61,6 +61,12 @@ jobs:
       - name: Build
         run: cmake --build build-ci --parallel $(nproc)
 
+      - name: Test
+        env:
+          QT_QPA_PLATFORM: offscreen
+        working-directory: build-ci
+        run: ctest --output-on-failure
+
       - name: QML lint
         run: |
           PRE="${QT_ROOT_DIR}"
