@@ -19,7 +19,6 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  QT_VERSION: "6.11.1"
   QT_INSTALL_DIR: /opt/qt6
 
 permissions:
@@ -33,6 +32,14 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # Phiên bản Qt khai báo tại packaging/qt_version.txt.
+      - name: Read Qt version
+        id: qt
+        run: |
+          v="$(tr -d '[:space:]' < packaging/qt_version.txt)"
+          echo "version=${v}" >> "$GITHUB_OUTPUT"
+          echo "series=${v%.*}" >> "$GITHUB_OUTPUT"
+
       - name: Read version
         id: meta
         run: |
@@ -40,12 +47,12 @@ jobs:
             | sed -E 's/.*VERSION ([0-9.]+).*/\1/')
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
 
-      - name: Restore Qt ${{ env.QT_VERSION }} cache
+      - name: Restore Qt cache
         id: cache-qt
         uses: actions/cache@v5
         with:
           path: ${{ env.QT_INSTALL_DIR }}
-          key: qt-${{ env.QT_VERSION }}-arm64-ubuntu2404-v3-virtualkeyboard
+          key: qt-${{ steps.qt.outputs.version }}-arm64-ubuntu2404-v3-virtualkeyboard
 
       - name: Install system dependencies
         run: |
@@ -65,7 +72,7 @@ jobs:
             libssl-dev zlib1g-dev libsqlite3-dev libicu-dev \
             libpcre2-dev libdouble-conversion-dev libglib2.0-dev dpkg-dev
 
-      - name: Build Qt ${{ env.QT_VERSION }} from source
+      - name: Build Qt from source
         if: steps.cache-qt.outputs.cache-hit != 'true'
         run: |
           set -euo pipefail
@@ -73,9 +80,9 @@ jobs:
           BUILD_DIR="${RUNNER_TEMP}/qt-build"
           mkdir -p "${SRC_DIR}" "${BUILD_DIR}"
 
-          echo ">>> Downloading Qt ${{ env.QT_VERSION }} source..."
+          echo ">>> Downloading Qt ${QT_VERSION} source..."
           wget -q --show-progress \
-            "https://download.qt.io/official_releases/qt/6.11/${{ env.QT_VERSION }}/single/qt-everywhere-src-${{ env.QT_VERSION }}.tar.xz" \
+            "https://download.qt.io/official_releases/qt/${QT_SERIES}/${QT_VERSION}/single/qt-everywhere-src-${QT_VERSION}.tar.xz" \
             -O "${RUNNER_TEMP}/qt-src.tar.xz"
 
           echo ">>> Extracting..."

@@ -3,13 +3,13 @@
 #include "data/db/Database.h"
 #include "data/repositories/AppConfigDao.h"
 #include "data/repositories/SensorDao.h"
+#include "utils/modbus/ModbusCodec.h"
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QHostAddress>
 #include <QMutexLocker>
 #include <QRegularExpression>
-#include <QSet>
 #include <QDateTime>
 #include <QDebug>
 #include <QQmlEngine>
@@ -251,10 +251,8 @@ void RestApiService::setupRoutes() {
                 cfg.pollInterval = pi;
             }
             if (body.contains("serial_baudrate")) {
-                static const QSet<int> kBaudrates = {
-                    1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200};
                 const int br = body["serial_baudrate"].toInt(-1);
-                if (!kBaudrates.contains(br))
+                if (!ModbusCodec::isSupportedBaudrate(br))
                     return QHttpServerResponse(R"({"error":"serial_baudrate is not supported"})",
                                                QHttpServerResponse::StatusCode::BadRequest);
                 cfg.serialBaudrate = br;

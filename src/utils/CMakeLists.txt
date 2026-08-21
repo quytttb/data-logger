@@ -8,6 +8,7 @@ qt_add_library(utils STATIC
     system/DeviceLock.h
     system/LogSetup.cpp
     system/LogSetup.h
+    system/AppDefaults.h
 
     # network
     network/LanIp.cpp

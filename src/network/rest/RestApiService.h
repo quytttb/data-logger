@@ -9,6 +9,7 @@
 #include <functional>
 #include <QtQmlIntegration/qqmlintegration.h>
 #include "utils/qml/QmlSingleton.h"
+#include "utils/system/AppDefaults.h"
 
 // Embeds a QHttpServer to serve the REST API on the LAN.
 class RestApiService : public QObject {
@@ -60,8 +61,8 @@ private:
     QHttpServer  *m_server    = nullptr;
     QTcpServer   *m_tcpServer = nullptr;
 
-    static inline const QString kDefaultBind = QStringLiteral("0.0.0.0");
-    static constexpr int        kDefaultPort = 8080;
+    static inline const QString kDefaultBind = AppDefaults::bindAnyIPv4;
+    static constexpr int        kDefaultPort = AppDefaults::restApiPort;
 
     QString m_bind  = kDefaultBind;
     int     m_port  = kDefaultPort;

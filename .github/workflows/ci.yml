@@ -7,7 +7,6 @@ on:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  QT_VERSION: "6.11.1"
   QT_MODULES: qtserialbus qtserialport qtgraphs qttasktree qtquick3d qtshadertools qthttpserver qtwebsockets qtvirtualkeyboard
   AQT_SOURCE: git+https://github.com/miurahr/aqtinstall.git@8c3695d4a4e1ceabf6a74dc6c79681656dc6b74b
 
@@ -20,6 +19,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+
+      # Phiên bản Qt khai báo tại packaging/qt_version.txt — nguồn duy nhất cho
+      # CI + scripts + build.sh; override qua QT_VERSION env nếu cần.
+      - name: Read Qt version
+        id: qt
+        run: echo "version=$(tr -d '[:space:]' < packaging/qt_version.txt)" >> "$GITHUB_OUTPUT"
 
       - name: Install Qt / OpenGL system libs
         run: |
@@ -36,7 +41,7 @@ jobs:
       - name: Install Qt
         uses: jurplel/install-qt-action@v4.3.1
         with:
-          version: ${{ env.QT_VERSION }}
+          version: ${{ steps.qt.outputs.version }}
           host: linux
           target: desktop
           arch: linux_gcc_64
@@ -45,7 +50,7 @@ jobs:
           install-deps: false
           aqtsource: ${{ env.AQT_SOURCE }}
           cache: true
-          cache-key-prefix: qt611-linux
+          cache-key-prefix: qt${{ steps.qt.outputs.version }}-linux
 
       - name: Configure
         run: |

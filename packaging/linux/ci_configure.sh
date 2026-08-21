@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
-# Configure DataLogger for CI — must use aqt Qt 6.11, not runner Qt 6.10.
+# Configure DataLogger for CI — pin Qt version từ packaging/qt_version.txt
+# (override qua QT_VERSION env).
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")/../.." && pwd)"
 build_dir="${1:-${root}/build}"
+qt_version="${QT_VERSION:-$(tr -d '[:space:]' < "${root}/packaging/qt_version.txt" 2>/dev/null || echo 6.11.1)}"
 
 discover_qt_prefix() {
   local candidates=()
@@ -17,7 +19,7 @@ discover_qt_prefix() {
   fi
   if [[ -n "${GITHUB_WORKSPACE:-}" ]]; then
     local qt_base
-    qt_base="$(cd "${GITHUB_WORKSPACE}/.." && pwd)/Qt/6.11.1"
+    qt_base="$(cd "${GITHUB_WORKSPACE}/.." && pwd)/Qt/${qt_version}"
     candidates+=("${qt_base}/gcc_64" "${qt_base}/linux_gcc_64")
   fi
   local c seen=""
@@ -34,8 +36,8 @@ discover_qt_prefix() {
 }
 
 if ! qt_prefix="$(discover_qt_prefix)"; then
-  echo "::error::Qt 6.11 prefix not found (QT_ROOT_DIR=${QT_ROOT_DIR:-unset})" >&2
-  ls -la "${GITHUB_WORKSPACE:-.}/../Qt/6.11.1" 2>/dev/null >&2 || true
+  echo "::error::Qt ${qt_version} prefix not found (QT_ROOT_DIR=${QT_ROOT_DIR:-unset})" >&2
+  ls -la "${GITHUB_WORKSPACE:-.}/../Qt/${qt_version}" 2>/dev/null >&2 || true
   exit 1
 fi
 

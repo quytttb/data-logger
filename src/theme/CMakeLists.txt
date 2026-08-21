@@ -5,7 +5,7 @@ set_source_files_properties(AppTypography.qml PROPERTIES QT_QML_SINGLETON_TYPE T
 
 qt_add_qml_module(datalogger_theme
     URI DataLogger.Theme
-    VERSION 1.0
+    VERSION ${DATALOGGER_QML_MODULE_VERSION}
     STATIC
     QML_FILES
         AppColors.qml

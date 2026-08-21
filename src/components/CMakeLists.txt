@@ -3,7 +3,7 @@ set_source_files_properties(shell/MaterialIcons.qml PROPERTIES QT_QML_SINGLETON_
 
 qt_add_qml_module(datalogger_components
     URI DataLogger.Components
-    VERSION 1.0
+    VERSION ${DATALOGGER_QML_MODULE_VERSION}
     STATIC
     QML_FILES
         shell/MaterialIcons.qml

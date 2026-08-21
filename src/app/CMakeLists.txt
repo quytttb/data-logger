@@ -9,13 +9,15 @@ set_target_properties(app PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
 )
 
+target_compile_definitions(app PRIVATE APP_VERSION="${APP_VERSION}")
+
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
     target_link_options(app PRIVATE -s)
 endif()
 
 qt_add_qml_module(app
     URI DataLogger.App
-    VERSION 1.0
+    VERSION ${DATALOGGER_QML_MODULE_VERSION}
     QML_FILES
         qml/Main.qml
         qml/OnScreenKeyboard.qml

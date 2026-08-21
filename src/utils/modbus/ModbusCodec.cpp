@@ -3,6 +3,29 @@
 
 namespace ModbusCodec {
 
+QList<int> supportedBaudrates()
+{
+    return {1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200};
+}
+
+QStringList supportedDataTypes()
+{
+    return {QStringLiteral("int16"), QStringLiteral("uint16"),
+            QStringLiteral("int32"), QStringLiteral("uint32"),
+            QStringLiteral("float32")};
+}
+
+QStringList supportedDataFormats()
+{
+    return {QStringLiteral("AB"), QStringLiteral("BA"), QStringLiteral("ABCD"),
+            QStringLiteral("CDAB"), QStringLiteral("BADC"), QStringLiteral("DCBA")};
+}
+
+bool isSupportedBaudrate(int baudrate)
+{
+    return supportedBaudrates().contains(baudrate);
+}
+
 QString normalizeRegisterType(const QString &uiLabel) {
     const QString s = uiLabel.trimmed().toLower();
     if (s.contains(QLatin1String("input register"))) return QStringLiteral("input");

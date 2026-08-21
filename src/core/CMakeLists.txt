@@ -2,9 +2,11 @@
 
 qt_add_qml_module(datalogger_core
     URI DataLogger.Core
-    VERSION 1.0
+    VERSION ${DATALOGGER_QML_MODULE_VERSION}
     STATIC
     SOURCES
+        AppDefaults.cpp
+        AppDefaults.h
         SettingsController.cpp
         SettingsController.h
         MonitorController.cpp

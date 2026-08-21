@@ -6,6 +6,7 @@
 #include <QList>
 #include <QHash>
 #include <QModbusRtuSerialClient>
+#include "utils/system/AppDefaults.h"
 
 // Wraps a QModbusRtuSerialClient and polls configured sensors on a worker thread.
 class ModbusWorker : public QObject {
@@ -82,9 +83,9 @@ private:
     QTimer                  *m_pollTimer = nullptr;
     QTimer                  *m_heartbeatTimer = nullptr;
 
-    static constexpr int kDefaultBaudrate       = 9600;
-    static constexpr int kDefaultBytesize       = 8;
-    static constexpr int kDefaultStopbits       = 1;
+    static constexpr int kDefaultBaudrate       = AppDefaults::serialBaudrate;
+    static constexpr int kDefaultBytesize       = AppDefaults::serialBytesize;
+    static constexpr int kDefaultStopbits       = AppDefaults::serialStopbits;
     static constexpr int kDefaultTimeoutMs      = 1000;
     static constexpr int kDefaultPollIntervalMs = 3000;
     static constexpr int kInitialBackoffMs      = 1000;
@@ -93,7 +94,7 @@ private:
     QString  m_port;
     int      m_baudrate = kDefaultBaudrate;
     int      m_bytesize = kDefaultBytesize;
-    QString  m_parity   = "N";
+    QString  m_parity   = AppDefaults::serialParity;
     int      m_stopbits = kDefaultStopbits;
     int      m_timeout  = kDefaultTimeoutMs;            // ms
     int      m_defaultPollInterval = kDefaultPollIntervalMs; // ms

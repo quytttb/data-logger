@@ -1,5 +1,6 @@
 #pragma once
 #include <QString>
+#include "utils/system/AppDefaults.h"
 
 struct AppConfig {
     int id = 0;
@@ -8,36 +9,36 @@ struct AppConfig {
     // assigns a default (DeviceId::stationCode()) on first use when empty.
     // Device ID (hardware) is always derived at runtime via DeviceId::stationCode().
     QString stationCode;
-    QString stationName = QStringLiteral("Data Logger");
+    QString stationName = AppDefaults::stationName;
 
     // General
-    QString timeFormat  = "HH:mm:ss";
-    QString dateFormat  = "dd/MM/yyyy";
-    QString timezone    = "Etc/GMT-7";  // IANA id for UTC+7 (POSIX sign inverted)
+    QString timeFormat  = AppDefaults::timeFormat;
+    QString dateFormat  = AppDefaults::dateFormat;
+    QString timezone    = AppDefaults::timezone;
     bool buzzerEnable   = false;
 
     // FTP
     QString ftpAddress;
-    int ftpPort         = 21;
+    int ftpPort         = AppDefaults::ftpPort;
     QString ftpUsername;
     QString ftpPassword;   // stored encrypted
-    QString ftpRemotePath = "/";
+    QString ftpRemotePath = AppDefaults::ftpRemotePath;
     QString filePrefix;
-    QString ftpProtocol = QStringLiteral("sftp");  // "ftp" | "sftp"
+    QString ftpProtocol = AppDefaults::ftpProtocol;  // "ftp" | "sftp"
 
     // Server / Transmission
     bool serverActive          = false;
-    QString serverDeviceType   = "Standard";
+    QString serverDeviceType   = AppDefaults::serverDeviceType;
     QString serverName;
-    int serverSendInterval     = 5;
+    int serverSendInterval     = AppDefaults::serverSendInterval;
     bool autoAddTransmit       = true;
-    QString serverStartTime    = "00:00";
+    QString serverStartTime    = AppDefaults::serverStartTime;
     QString serverBaseFolder;
-    QString serverTimeFolder   = "yyyy/MM/dd";
-    QString fileSuffix         = "yyyyMMddHHmmss";
+    QString serverTimeFolder   = AppDefaults::serverTimeFolder;
+    QString fileSuffix         = AppDefaults::fileSuffix;
 
     // Polling
-    int pollInterval = 3;
+    int pollInterval = AppDefaults::pollInterval;
 
     // Alarm behaviour (audit M5)
     // Absolute hysteresis applied when RELEASING a min/max alarm so relays do
@@ -51,25 +52,25 @@ struct AppConfig {
     bool doFailSafeOnReconnect = true;
 
     // Serial (RS-485)
-    QString serialPort       = "/dev/ttyUSB0";
-    int serialBaudrate       = 9600;
-    int serialBytesize       = 8;
-    QString serialParity     = "N";
-    int serialStopbits       = 1;
+    QString serialPort       = AppDefaults::serialPort;
+    int serialBaudrate       = AppDefaults::serialBaudrate;
+    int serialBytesize       = AppDefaults::serialBytesize;
+    QString serialParity     = AppDefaults::serialParity;
+    int serialStopbits       = AppDefaults::serialStopbits;
 
     // Modbus TCP Server
     bool modbusTcpEnabled    = false;
-    int modbusTcpPort        = 5020;
-    QString modbusTcpBind    = "0.0.0.0";
-    int modbusTcpUnitId      = 1;
+    int modbusTcpPort        = AppDefaults::modbusTcpPort;
+    QString modbusTcpBind    = AppDefaults::bindAnyIPv4;
+    int modbusTcpUnitId      = AppDefaults::modbusTcpUnitId;
 
     // REST API
     bool restApiEnabled      = false;
-    int restApiPort          = 8080;
-    QString restApiBind      = "0.0.0.0";
+    int restApiPort          = AppDefaults::restApiPort;
+    QString restApiBind      = AppDefaults::bindAnyIPv4;
     QString restApiToken;
-    int configRevision       = 1;
+    int configRevision       = AppDefaults::configRevision;
 
-    QString uiLocale = "vi";
-    QString theme = "dark";
+    QString uiLocale = AppDefaults::uiLocale;
+    QString theme = AppDefaults::theme;
 };

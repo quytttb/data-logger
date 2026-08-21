@@ -8,6 +8,7 @@
 #include <QVector>
 #include <QtQmlIntegration/qqmlintegration.h>
 #include "utils/qml/QmlSingleton.h"
+#include "utils/system/AppDefaults.h"
 
 // Manages a QModbusTcpServer exposing sensor readings to SCADA / Central App.
 class ModbusTcpServerService : public QObject {
@@ -63,9 +64,9 @@ private:
     // (data map is owned by m_server)
     QMutex             m_mutex;
 
-    static inline const QString kDefaultBind    = QStringLiteral("0.0.0.0");
-    static constexpr int        kDefaultPort    = 5020;
-    static constexpr int        kDefaultUnitId  = 1;
+    static inline const QString kDefaultBind    = AppDefaults::bindAnyIPv4;
+    static constexpr int        kDefaultPort    = AppDefaults::modbusTcpPort;
+    static constexpr int        kDefaultUnitId  = AppDefaults::modbusTcpUnitId;
 
     QString m_bind = kDefaultBind;
     int     m_port = kDefaultPort;

@@ -139,7 +139,7 @@ Item {
                                         ComboBox {
                                             id: masterBaudCombo
                                             Layout.fillWidth: true
-                                            model: ["1200", "2400", "4800", "9600", "19200", "38400", "57600", "115200"]
+                                            model: AppDefaults.baudrates
                                             editable: true
                                             property bool ready: false
                                             Component.onCompleted: { editText = String(SettingsController.serialBaudrate); ready = true }
@@ -273,7 +273,7 @@ Item {
                                     Layout.fillWidth: true
                                     EnterKeyAction.actionId: EnterKeyAction.None; EnterKeyAction.label: qsTr("OK")
                                     text: SettingsController.modbusTcpBind
-                                    placeholderText: "0.0.0.0"
+                                    placeholderText: AppDefaults.bindAny
                                     selectByMouse: true
                                     Connections {
                                         target: SettingsController
@@ -288,7 +288,7 @@ Item {
                                 TextField {
                                     id: tcpPortField
                                     Layout.fillWidth: true
-                                    text: SettingsController ? String(SettingsController.modbusTcpPort) : "5020"
+                                    text: SettingsController ? String(SettingsController.modbusTcpPort) : String(AppDefaults.modbusTcpPort)
                                     inputMethodHints: Qt.ImhDigitsOnly
                                     EnterKeyAction.actionId: EnterKeyAction.None; EnterKeyAction.label: qsTr("OK")
                                     selectByMouse: true
@@ -397,7 +397,7 @@ Item {
                                     Layout.fillWidth: true
                                     EnterKeyAction.actionId: EnterKeyAction.None; EnterKeyAction.label: qsTr("OK")
                                     text: SettingsController.restApiBind
-                                    placeholderText: "0.0.0.0"
+                                    placeholderText: AppDefaults.bindAny
                                     selectByMouse: true
                                     Connections {
                                         target: SettingsController
@@ -412,7 +412,7 @@ Item {
                                 TextField {
                                     id: restPortField
                                     Layout.fillWidth: true
-                                    text: SettingsController ? String(SettingsController.restApiPort) : "8080"
+                                    text: SettingsController ? String(SettingsController.restApiPort) : String(AppDefaults.restApiPort)
                                     inputMethodHints: Qt.ImhDigitsOnly
                                     EnterKeyAction.actionId: EnterKeyAction.None; EnterKeyAction.label: qsTr("OK")
                                     selectByMouse: true

@@ -4,6 +4,7 @@
 #include "utils/crypto/Crypto.h"
 #include "utils/network/LanIp.h"
 #include "utils/provision/ProvisionQr.h"
+#include "utils/system/AppDefaults.h"
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QUuid>
@@ -16,8 +17,8 @@
 IMPLEMENT_QML_SINGLETON(SettingsController)
 
 namespace {
-const QString kDefaultTheme    = QStringLiteral("dark");
-const QString kBindAnyIPv4     = QStringLiteral("0.0.0.0");
+const QString kDefaultTheme    = AppDefaults::theme;
+const QString kBindAnyIPv4     = AppDefaults::bindAnyIPv4;
 const QString kBindAnyIPv6     = QStringLiteral("::");
 const QString kProvisionSchema = QStringLiteral("central-logger-provision/v1");
 }

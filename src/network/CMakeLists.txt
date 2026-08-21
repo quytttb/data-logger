@@ -35,7 +35,7 @@ add_library(datalogger::network ALIAS network)
 # LAN-facing services exposed to QML as DataLogger.Network
 qt_add_qml_module(datalogger_network
     URI DataLogger.Network
-    VERSION 1.0
+    VERSION ${DATALOGGER_QML_MODULE_VERSION}
     STATIC
     SOURCES
         modbus/ModbusTcpServerService.cpp

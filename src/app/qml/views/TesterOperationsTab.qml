@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import DataLogger.Theme
+import DataLogger.Core
 
 Item {
     id: root
@@ -66,7 +67,7 @@ Item {
             ComboBox {
                 id: dataTypeCombo
                 Layout.fillWidth: true
-                model: ["int16", "uint16", "int32", "uint32", "float32"]
+                model: AppDefaults.dataTypes
                 currentIndex: 1
                 visible: !root.isBooleanType
             }
@@ -80,7 +81,7 @@ Item {
             ComboBox {
                 id: dataFormatCombo
                 Layout.fillWidth: true
-                model: ["AB", "BA", "ABCD", "CDAB", "BADC", "DCBA"]
+                model: AppDefaults.byteOrders
                 currentIndex: 0
                 visible: !root.isBooleanType
             }

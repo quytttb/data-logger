@@ -6,8 +6,11 @@ set -euo pipefail
 BUILD_TYPE="${1:-Release}"
 BUILD_DIR="build-${BUILD_TYPE,,}"
 
-# Qt from Qt Online Installer (override with QT_DIR if installed elsewhere)
-QT_DIR="${QT_DIR:-$HOME/Qt/6.11.1/gcc_64}"
+# Phiên bản Qt dùng chung cho CI + scripts: packaging/qt_version.txt
+# (override qua QT_VERSION / QT_DIR env nếu cài Qt nơi khác).
+ROOT="$(cd "$(dirname "$0")" && pwd)"
+QT_VERSION="${QT_VERSION:-$(tr -d '[:space:]' < "${ROOT}/packaging/qt_version.txt" 2>/dev/null || echo 6.11.1)}"
+QT_DIR="${QT_DIR:-$HOME/Qt/${QT_VERSION}/gcc_64}"
 
 if [[ ! -f "$QT_DIR/lib/cmake/Qt6/Qt6Config.cmake" ]]; then
     echo "Error: Qt not found at $QT_DIR" >&2

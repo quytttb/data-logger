@@ -1,4 +1,4 @@
-find_package(Qt6 6.11 REQUIRED COMPONENTS Core Sql SerialBus Test)
+find_package(Qt6 ${QT_MIN_VERSION} REQUIRED COMPONENTS Core Sql SerialBus Test)
 
 add_executable(tt10_test tt10_test.cpp)
 target_include_directories(tt10_test PRIVATE
@@ -45,6 +45,17 @@ target_link_libraries(alarm_hysteresis_test PRIVATE
     utils
 )
 add_test(NAME alarm_hysteresis_test COMMAND alarm_hysteresis_test)
+
+# QTest: AppDefaults ↔ AppConfig ↔ ModbusCodec nhất quán (audit P2-14).
+add_executable(app_defaults_test app_defaults_test.cpp)
+target_include_directories(app_defaults_test PRIVATE ${CMAKE_SOURCE_DIR}/src)
+target_link_libraries(app_defaults_test PRIVATE
+    Qt6::Core
+    Qt6::Test
+    data
+    utils
+)
+add_test(NAME app_defaults_test COMMAND app_defaults_test)
 
 # Integration: Modbus RTU master ↔ pymodbus slave trên cặp serial ảo (socat).
 # Tự QSKIP nếu thiếu socat/python3/pymodbus — không bắt buộc trên mọi máy dev.

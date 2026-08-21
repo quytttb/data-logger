@@ -26,6 +26,7 @@
 #include "core/TesterController.h"
 #include "core/ReportController.h"
 #include "core/tt10/SensorSymbols.h"
+#include "core/AppDefaults.h"
 
 namespace {
 constexpr int kThreadJoinMs = 5000;  // graceful FTP thread join on quit
@@ -69,7 +70,7 @@ int main(int argc, char *argv[]) {
             qDebug() << "[main] Icon font loaded:" << families.constFirst();
         }
     }
-    app.setApplicationVersion("2.1.0");
+    app.setApplicationVersion(QStringLiteral(APP_VERSION));
     app.setOrganizationName("DATALOGGER");
     app.setOrganizationDomain("datalogger.local");
     app.setDesktopFileName("data-logger");
@@ -121,6 +122,7 @@ int main(int argc, char *argv[]) {
     auto *testerCtrl    = new TesterController(&app);
     auto *reportCtrl    = new ReportController(&app);
     auto *sensorSymbols = new SensorSymbols(&app);
+    auto *appDefaultsQml = new AppDefaultsQml(&app);
 
     auto *ftpWorker  = new FtpWorker();          // no parent — owned by ftpThread
     auto *ftpThread  = new QThread(&app);
@@ -147,6 +149,7 @@ int main(int argc, char *argv[]) {
     TesterController::setInstance(testerCtrl);
     ReportController::setInstance(reportCtrl);
     SensorSymbols::setInstance(sensorSymbols);
+    AppDefaultsQml::setInstance(appDefaultsQml);
 
     reportCtrl->setFtpWorker(ftpWorker);
     reportCtrl->setSettingsController(settingsCtrl);

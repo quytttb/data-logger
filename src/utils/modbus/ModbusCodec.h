@@ -1,5 +1,7 @@
 #pragma once
 #include <QString>
+#include <QStringList>
+#include <QList>
 #include <QVector>
 #include <QModbusDataUnit>
 
@@ -8,6 +10,11 @@
 // these helpers in one place avoids the register parsing/decoding logic from
 // drifting between the two call sites.
 namespace ModbusCodec {
+
+QList<int> supportedBaudrates();
+QStringList supportedDataTypes();
+QStringList supportedDataFormats();
+bool isSupportedBaudrate(int baudrate);
 
 // Normalise a UI register-type label (e.g. "Input Register (3x)") into one of
 // the canonical tokens: "input", "holding", "coil", "discrete_input".

@@ -24,7 +24,7 @@ void ModbusTcpServerService::start(const QString &bind, int port, int unitId) {
         stop();
     }
 
-    m_bind   = bind.isEmpty() ? "0.0.0.0" : bind;
+    m_bind   = bind.isEmpty() ? kDefaultBind : bind;
     m_port   = port;
     m_unitId = unitId;
     setState(STATE_STARTING);

@@ -110,10 +110,10 @@ Rectangle {
             }
 
             Text { text: "Data type:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; visible: root.isAnalog }
-            ComboBox { id: dDataType; model: ["int16", "uint16", "int32", "uint32", "float32"]; Layout.fillWidth: true; visible: root.isAnalog }
+            ComboBox { id: dDataType; model: AppDefaults.dataTypes; Layout.fillWidth: true; visible: root.isAnalog }
 
             Text { text: "Endian format:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; visible: root.isAnalog }
-            ComboBox { id: dDataFmt; model: ["AB", "BA", "ABCD", "CDAB", "BADC", "DCBA"]; Layout.fillWidth: true; visible: root.isAnalog }
+            ComboBox { id: dDataFmt; model: AppDefaults.byteOrders; Layout.fillWidth: true; visible: root.isAnalog }
         }
     }
 }

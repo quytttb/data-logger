@@ -100,7 +100,7 @@ Item {
                         Layout.fillWidth: true
                         model: ["HH:mm:ss", "hh:mm:ss AP"]
                         currentIndex: {
-                            var fmt = SettingsController ? SettingsController.timeFormat : "HH:mm:ss"
+                            var fmt = SettingsController ? SettingsController.timeFormat : AppDefaults.timeFormat
                             return Math.max(0, model.indexOf(fmt))
                         }
                         onActivated: { SettingsController.timeFormat = currentText; root.configChanged = true }
@@ -111,7 +111,7 @@ Item {
                         Layout.fillWidth: true
                         model: ["dd/MM/yyyy", "yyyy-MM-dd", "MM/dd/yyyy"]
                         currentIndex: {
-                            var fmt = SettingsController ? SettingsController.dateFormat : "dd/MM/yyyy"
+                            var fmt = SettingsController ? SettingsController.dateFormat : AppDefaults.dateFormat
                             return Math.max(0, model.indexOf(fmt))
                         }
                         onActivated: { SettingsController.dateFormat = currentText; root.configChanged = true }
@@ -154,7 +154,7 @@ Item {
                             { label: "UTC+12", value: "Etc/GMT-12" }
                         ]
                         currentIndex: {
-                            var tz = SettingsController ? SettingsController.timezone : "Etc/GMT-7"
+                            var tz = SettingsController ? SettingsController.timezone : AppDefaults.timezone
                             return Math.max(0, indexOfValue(tz))
                         }
                         onActivated: { SettingsController.timezone = currentValue; root.configChanged = true }

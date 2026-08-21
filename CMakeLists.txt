@@ -1,7 +1,23 @@
 cmake_minimum_required(VERSION 3.16)
 project(DataLogger VERSION 2.2.0 LANGUAGES CXX)
 
-find_package(Qt6 6.11 REQUIRED COMPONENTS
+# Phiên bản Qt chính xác dùng cho CI + packaging scripts + build.sh:
+# packaging/qt_version.txt (CI + scripts đọc file này). CMake tự derive min-version.
+file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/packaging/qt_version.txt" QT_KIT_VERSION LIMIT_COUNT 1)
+string(REGEX MATCH "^[0-9]+\\.[0-9]+" QT_MIN_VERSION "${QT_KIT_VERSION}")
+if(NOT QT_MIN_VERSION)
+    message(WARNING "packaging/qt_version.txt missing/invalid — fallback QT_MIN_VERSION=6.11")
+    set(QT_MIN_VERSION 6.11)
+endif()
+
+# Phiên bản QML module — biến chung, trán cần lặp VERSION 1.0 ở 5 CMakeLists.txt.
+set(DATALOGGER_QML_MODULE_VERSION 1.0)
+
+# Phiên bản app binary — pass cho main.cpp qua compile definition để runtime
+# đọc đúng (REST `/api/v1/health` dùng QCoreApplication::applicationVersion).
+set(APP_VERSION "${PROJECT_VERSION}")
+
+find_package(Qt6 ${QT_MIN_VERSION} REQUIRED COMPONENTS
     Core
     Gui
     Qml
@@ -14,7 +30,7 @@ find_package(Qt6 6.11 REQUIRED COMPONENTS
     Network
 )
 
-qt_standard_project_setup(REQUIRES 6.11)
+qt_standard_project_setup(REQUIRES ${QT_MIN_VERSION})
 
 # QML sources live in subdirectories (qml/views, shell, layout, chart, ...).
 # Opt into the Qt 6.8+ behaviour that generates a qmldir per subdirectory so

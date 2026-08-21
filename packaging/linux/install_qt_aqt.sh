@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Install Qt 6.11.1 + addons via aqtinstall (same modules as CI workflows).
+# Install Qt (kit version từ packaging/qt_version.txt) + addons via aqtinstall.
 set -euo pipefail
 
-version="${QT_VERSION:-6.11.1}"
+repo_root="$(cd "$(dirname "$0")/../.." && pwd)"
+version="${QT_VERSION:-$(tr -d '[:space:]' < "${repo_root}/packaging/qt_version.txt" 2>/dev/null || echo 6.11.1)}"
 modules="${QT_AQT_MODULES:-qtserialbus qtserialport qtgraphs qttasktree qtquick3d qtshadertools qthttpserver}"
 
 # Match install-qt-action layout: $RUNNER_WORKSPACE/Qt (parent of checkout).
