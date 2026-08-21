@@ -27,6 +27,7 @@ class TestIntegrationModbus : public QObject
     QProcess *m_sim   = nullptr;
     QString m_masterPort;
     QString m_slavePort;
+    QString m_python3; // python3 có pymodbus (ưu tiên /usr/bin/python3)
 
 private slots:
     void initTestCase()
@@ -39,16 +40,24 @@ private slots:
 
         if (QStandardPaths::findExecutable(QStringLiteral("socat")).isEmpty())
             QSKIP("socat not installed");
-        if (QStandardPaths::findExecutable(QStringLiteral("python3")).isEmpty())
-            QSKIP("python3 not installed");
-        {
+
+        // GitHub Actions prepend toolcache Python vào PATH (không có pymodbus).
+        // Ưu tiên /usr/bin/python3 (system python — apt cài pymodbus vào đây).
+        const QStringList candidates = {
+            QStringLiteral("/usr/bin/python3"),
+            QStandardPaths::findExecutable(QStringLiteral("python3")),
+        };
+        for (const QString &py : candidates) {
+            if (py.isEmpty() || !QFile::exists(py)) continue;
             QProcess probe;
-            probe.start(QStringLiteral("python3"), {QStringLiteral("-c"),
-                                                    QStringLiteral("import pymodbus")});
-            QVERIFY(probe.waitForFinished(10000));
-            if (probe.exitCode() != 0)
-                QSKIP("pymodbus not installed");
+            probe.start(py, {QStringLiteral("-c"), QStringLiteral("import pymodbus")});
+            if (probe.waitForFinished(10000) && probe.exitCode() == 0) {
+                m_python3 = py;
+                break;
+            }
         }
+        if (m_python3.isEmpty())
+            QSKIP("python3 with pymodbus not found");
 
         m_masterPort = m_tmpDir.path() + QStringLiteral("/ttyV0");
         m_slavePort  = m_tmpDir.path() + QStringLiteral("/ttyV1");
@@ -63,7 +72,7 @@ private slots:
         QVERIFY(waitForFile(m_slavePort, 5000));
 
         m_sim = new QProcess(this);
-        m_sim->start(QStringLiteral("python3"),
+        m_sim->start(m_python3,
                      {simScript,
                       QStringLiteral("--port"), m_slavePort,
                       QStringLiteral("--slave-id"), QStringLiteral("1"),
