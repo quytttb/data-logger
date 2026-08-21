@@ -72,6 +72,7 @@ private slots:
         QVERIFY(waitForFile(m_slavePort, 5000));
 
         m_sim = new QProcess(this);
+        m_sim->setProcessChannelMode(QProcess::ForwardedErrorChannel);
         m_sim->start(m_python3,
                      {simScript,
                       QStringLiteral("--port"), m_slavePort,
@@ -81,7 +82,10 @@ private slots:
                       QStringLiteral("--amplitude"), QStringLiteral("2.0")});
         QVERIFY(m_sim->waitForStarted(5000));
 
-        QTest::qWait(1500); // slave cần thời gian mở port
+        QTest::qWait(3000); // slave cần thời gian mở port (CI chậm hơn local)
+        QVERIFY2(m_sim->state() == QProcess::Running,
+                 qPrintable(QStringLiteral("simulator exited early: %1")
+                                .arg(QString::fromUtf8(m_sim->readAllStandardError()))));
     }
 
     void readHoldingRegister()
@@ -94,28 +98,46 @@ private slots:
                                       QSerialPort::NoParity);
         client.setConnectionParameter(QModbusDevice::SerialStopBitsParameter, 1);
         client.setTimeout(2000);
+        client.setNumberOfRetries(2);
         QVERIFY(client.connectDevice());
 
-        QModbusDataUnit request(QModbusDataUnit::HoldingRegisters, 0, 1);
-        QModbusReply *reply = client.sendReadRequest(request, 1);
-        QVERIFY(reply != nullptr);
+        // Retry tối đa 3 lần — CI container đôi khi cần thêm thời gian ổn định PTY.
+        double value = -1;
+        QString lastError;
+        for (int attempt = 0; attempt < 3 && value < 0; ++attempt) {
+            if (attempt > 0) QTest::qWait(1000);
 
-        QEventLoop loop;
-        connect(reply, &QModbusReply::finished, &loop, &QEventLoop::quit);
-        QTimer::singleShot(5000, &loop, &QEventLoop::quit);
-        loop.exec();
+            QModbusDataUnit request(QModbusDataUnit::HoldingRegisters, 0, 1);
+            QModbusReply *reply = client.sendReadRequest(request, 1);
+            if (!reply) { lastError = QStringLiteral("no reply"); continue; }
 
-        QVERIFY(reply->isFinished());
-        QCOMPARE(reply->error(), QModbusDevice::NoError);
+            QEventLoop loop;
+            connect(reply, &QModbusReply::finished, &loop, &QEventLoop::quit);
+            QTimer::singleShot(5000, &loop, &QEventLoop::quit);
+            loop.exec();
 
-        const QModbusDataUnit unit = reply->result();
-        QCOMPARE(unit.valueCount(), 1);
-        const double value = unit.value(0) / 10.0; // int16, đơn vị 0.1 °C
+            if (!reply->isFinished()) {
+                lastError = QStringLiteral("timeout (not finished)");
+                reply->deleteLater();
+                continue;
+            }
+            if (reply->error() != QModbusDevice::NoError) {
+                lastError = reply->errorString();
+                reply->deleteLater();
+                continue;
+            }
+
+            const QModbusDataUnit unit = reply->result();
+            QCOMPARE(unit.valueCount(), 1);
+            value = unit.value(0) / 10.0; // int16, đơn vị 0.1 °C
+            reply->deleteLater();
+        }
+
+        client.disconnectDevice();
+        QVERIFY2(value >= 0, qPrintable(QStringLiteral("all retries failed: %1").arg(lastError)));
         QVERIFY2(value >= 23.0 && value <= 27.0,
                  qPrintable(QStringLiteral("value %1 out of expected range [23,27]")
                                 .arg(value)));
-        reply->deleteLater();
-        client.disconnectDevice();
     }
 
     void cleanupTestCase()

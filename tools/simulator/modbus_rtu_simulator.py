@@ -25,8 +25,12 @@ def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     # Holding registers: address 0 is an int16 temperature in 0.1 C units.
     block = ModbusSequentialDataBlock(0, [0] * 128)
-    context = ModbusSlaveContext(hr=block)
-    context.zero_mode = True
+    # pymodbus 3.6.x accepts zero_mode in constructor; 3.8.x removed it.
+    try:
+        context = ModbusSlaveContext(hr=block, zero_mode=True)
+    except TypeError:
+        context = ModbusSlaveContext(hr=block)
+        context.zero_mode = True
     server_context = ModbusServerContext(slaves={args.slave_id: context}, single=False)
 
     def update_value() -> None:
