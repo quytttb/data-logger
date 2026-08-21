@@ -1,6 +1,6 @@
 # Data Logger
 
-Ứng dụng giám sát cảm biến công nghiệp chạy trên **Raspberry Pi 4** (GUI cảm ứng, Modbus RTU, SQLite).
+Ứng dụng giám sát cảm biến công nghiệp chạy trên **Raspberry Pi** (GUI cảm ứng, Modbus RTU, SQLite).
 
 Đọc dữ liệu qua **Modbus RTU (RS-485)**, lưu trữ liên tục với **SQLite (WAL)**, hiển thị biểu đồ realtime qua **Qt 6.11 / QML**, và tự động kết xuất báo cáo **TXT** hoặc đồng bộ lên máy chủ bằng **FTP**.
 
@@ -38,7 +38,7 @@ Build layers (CMake): `utils → data → network → core → theme → compone
 
 ---
 
-- **Phần cứng**: Raspberry Pi 4/5 (ARM64), màn hình cảm ứng 7", USB-RS485 Dongle.
+- **Phần cứng**: Raspberry Pi (ARM64), màn hình cảm ứng 7", USB-RS485 Dongle.
 - **OS**: Raspberry Pi OS 64-bit (Bookworm trở lên)
 - **Qt**: 6.11+ từ [Qt Online Installer](https://www.qt.io/download), hoặc Qt 6.10+ từ apt (Ubuntu 25.04+)
 - **Compiler**: GCC 15+ (`g++-15`)
