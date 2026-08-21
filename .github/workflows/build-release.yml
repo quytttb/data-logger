@@ -185,7 +185,7 @@ jobs:
         run: find release-assets -type f -ls
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v4
         with:
           tag_name: ${{ needs.prepare.outputs.tag }}
           name: Data Logger ${{ needs.prepare.outputs.version }}
