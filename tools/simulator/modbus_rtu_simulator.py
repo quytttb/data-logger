@@ -56,7 +56,7 @@ def main() -> None:
     logging.info("Gia lap slave=%d port=%s baudrate=%d holding[0]=%.1f +/- %.1f", args.slave_id, args.port, args.baudrate, args.value, args.amplitude)
     StartSerialServer(
         context=server_context,
-        framer=FramerType.RTU,
+        framer=RTU_FRAMER,
         port=args.port,
         baudrate=args.baudrate,
         bytesize=8,
