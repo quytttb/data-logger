@@ -178,7 +178,7 @@ Item {
                                 else
                                     editText = model.sensorSymbol || ""
                             }
-                            onEditTextModified: {
+                            onEditTextChanged: {
                                 rowModel.setProperty(index, "sensorSymbol", editText)
                                 root.configChanged = true
                             }

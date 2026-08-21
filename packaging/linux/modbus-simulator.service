@@ -1,0 +1,14 @@
+[Unit]
+Description=Data Logger Modbus RTU sensor simulator
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+RuntimeDirectory=data-logger
+ExecStart=/bin/sh -c '/usr/bin/socat pty,link=/run/data-logger/ttyVIRT0,raw,echo=0,mode=0660 pty,link=/run/data-logger/ttyVIRT1,raw,echo=0,mode=0660 & socat_pid=$!; trap "kill $socat_pid 2>/dev/null || true" EXIT; while [ ! -e /run/data-logger/ttyVIRT1 ]; do sleep 0.1; done; exec /usr/bin/python3 /usr/local/lib/data-logger/modbus_rtu_simulator.py --port /run/data-logger/ttyVIRT1 --slave-id 1 --baudrate 9600'
+Restart=always
+RestartSec=1
+
+[Install]
+WantedBy=multi-user.target
