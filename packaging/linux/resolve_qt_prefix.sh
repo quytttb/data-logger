@@ -21,15 +21,15 @@ fi
 if [[ -n "${GITHUB_WORKSPACE:-}" ]]; then
   ws_parent="$(cd "${GITHUB_WORKSPACE}/.." && pwd)"
   candidates+=(
-    "${ws_parent}/Qt/6.13.1/gcc_64"
-    "${ws_parent}/Qt/6.13.1/linux_gcc_64"
+    "${ws_parent}/Qt/6.13.0/gcc_64"
+    "${ws_parent}/Qt/6.13.0/linux_gcc_64"
   )
 fi
 
 if [[ -n "${RUNNER_WORKSPACE:-}" ]]; then
   candidates+=(
-    "${RUNNER_WORKSPACE}/Qt/6.13.1/gcc_64"
-    "${RUNNER_WORKSPACE}/Qt/6.13.1/linux_gcc_64"
+    "${RUNNER_WORKSPACE}/Qt/6.13.0/gcc_64"
+    "${RUNNER_WORKSPACE}/Qt/6.13.0/linux_gcc_64"
   )
 fi
 
@@ -39,8 +39,8 @@ fi
 
 if [[ -n "${HOME:-}" ]]; then
   candidates+=(
-    "${HOME}/Qt/6.13.1/gcc_64"
-    "${HOME}/Qt/6.13.1/linux_gcc_64"
+    "${HOME}/Qt/6.13.0/gcc_64"
+    "${HOME}/Qt/6.13.0/linux_gcc_64"
   )
 fi
 

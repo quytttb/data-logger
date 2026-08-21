@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Install Qt 6.13.1 + addons via aqtinstall (same modules as CI workflows).
+# Install Qt 6.13.0 + addons via aqtinstall (same modules as CI workflows).
 set -euo pipefail
 
-version="${QT_VERSION:-6.13.1}"
+version="${QT_VERSION:-6.13.0}"
 modules="${QT_AQT_MODULES:-qtserialbus qtserialport qtgraphs qttasktree qtquick3d qtshadertools qthttpserver}"
 
 # Match install-qt-action layout: $RUNNER_WORKSPACE/Qt (parent of checkout).
