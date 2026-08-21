@@ -9,7 +9,14 @@ import time
 
 from pymodbus.datastore import ModbusSequentialDataBlock, ModbusSlaveContext, ModbusServerContext
 from pymodbus.server import StartSerialServer
-from pymodbus.framer import FramerType
+
+# pymodbus 3.8.x dùng FramerType enum; 3.6.x dùng class ModbusRtuFramer.
+try:
+    from pymodbus.framer import FramerType
+    RTU_FRAMER = FramerType.RTU
+except ImportError:
+    from pymodbus.framer import ModbusRtuFramer
+    RTU_FRAMER = ModbusRtuFramer
 
 
 def main() -> None:
