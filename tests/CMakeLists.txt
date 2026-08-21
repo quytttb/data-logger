@@ -45,3 +45,16 @@ target_link_libraries(alarm_hysteresis_test PRIVATE
     utils
 )
 add_test(NAME alarm_hysteresis_test COMMAND alarm_hysteresis_test)
+
+# Integration: Modbus RTU master ↔ pymodbus slave trên cặp serial ảo (socat).
+# Tự QSKIP nếu thiếu socat/python3/pymodbus — không bắt buộc trên mọi máy dev.
+add_executable(integration_modbus_test integration_modbus_test.cpp)
+target_compile_definitions(integration_modbus_test PRIVATE
+    SIMULATOR_SCRIPT_PATH="${CMAKE_SOURCE_DIR}/tools/simulator/modbus_rtu_simulator.py")
+target_link_libraries(integration_modbus_test PRIVATE
+    Qt6::Core
+    Qt6::SerialBus
+    Qt6::SerialPort
+    Qt6::Test
+)
+add_test(NAME integration_modbus_test COMMAND integration_modbus_test)

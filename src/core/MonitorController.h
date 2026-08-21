@@ -48,6 +48,7 @@ public:
 
     bool   isPolling()        const { return m_isPolling; }
     bool   isStopping()       const { return m_isStopping; }
+    bool   rtuConnected()     const { return m_rtuConnected.load(); }
     QString statusText()      const;
     int    statusMode()       const { return m_statusMode; }
     int    errorCount()       const { return m_errorCount; }

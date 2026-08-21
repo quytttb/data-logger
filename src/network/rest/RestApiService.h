@@ -38,6 +38,8 @@ public:
 
     void setToken(const QString &token);
     void setReadingsProvider(std::function<QVariantMap()> provider);
+    // Health snapshot (uptime, modbus_connected, ...) — gọi từ main.cpp.
+    void setHealthProvider(std::function<QVariantMap()> provider);
 
 public slots:
     void start(const QString &bind, int port, const QString &token);
@@ -50,6 +52,8 @@ signals:
 
 private:
     bool checkAuth(const QHttpServerRequest &req) const;
+    // Token-bucket đơn giản per IP: quá kRateLimitPerSec req/s → 429.
+    bool checkRateLimit(const QString &ip);
     void setupRoutes();
     void setState(const QString &s, const QString &err = {});
 
@@ -67,4 +71,9 @@ private:
     mutable QMutex m_mutex;
 
     std::function<QVariantMap()> m_readingsProvider;
+    std::function<QVariantMap()> m_healthProvider;
+
+    // Rate-limit state: ip → (windowStartMs, count). Guarded by m_mutex.
+    QHash<QString, QPair<qint64, int>> m_rateBuckets;
+    static constexpr int kRateLimitPerSec = 10;
 };

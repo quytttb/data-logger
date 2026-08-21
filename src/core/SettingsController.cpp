@@ -89,6 +89,11 @@ void SettingsController::saveConfig() {
         emit configSaved();
         emit provisionQrChanged();
         emit messageSent("Success", "Configuration saved.");
+        if (Crypto::isDegraded())
+            emit messageSent(QStringLiteral("Warning"),
+                             QStringLiteral("Mã hóa không khả dụng — mật khẩu/token đang "
+                                            "lưu ở dạng yếu. Kiểm tra quyền thư mục config "
+                                            "và log để biết chi tiết."));
         if (!applyTimeSettings())
             emit messageSent(QStringLiteral("Warning"),
                              QStringLiteral("Configuration saved, but the system timezone "

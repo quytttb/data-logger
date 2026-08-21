@@ -63,6 +63,13 @@ private slots:
         QCOMPARE(Crypto::encrypt(QString()), QString());
         QCOMPARE(Crypto::decrypt(QString()), QString());
     }
+
+    void notDegradedWhenKeyWorks()
+    {
+        // Key file hợp lệ trong tmp dir → AES-GCM hoạt động, không degraded.
+        Crypto::encrypt(QStringLiteral("probe"));
+        QVERIFY(!Crypto::isDegraded());
+    }
 };
 
 QTEST_MAIN(TestCrypto)

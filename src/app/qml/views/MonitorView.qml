@@ -53,6 +53,7 @@ Rectangle {
                 required property bool   isAlarm
                 required property string alarmType
                 required property string sensorType
+                required property string displayName
 
                 readonly property bool isAnalog: card.sensorType === "ANALOG"
                 readonly property bool isDI: card.sensorType === "DI"

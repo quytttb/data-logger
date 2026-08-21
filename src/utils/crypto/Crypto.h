@@ -13,4 +13,8 @@ QString decrypt(const QString &cipher);
 
 /// True nếu @p cipher đã là mật bản AES-GCM (tiền tố "enc1:").
 bool isEncrypted(const QString &cipher);
+
+/// True nếu AES-GCM không khả dụng (key lỗi / OpenSSL fail) và secret đang
+/// được lưu ở dạng Base64 obfuscation yếu. Dùng cho health endpoint + UI cảnh báo.
+bool isDegraded();
 }
