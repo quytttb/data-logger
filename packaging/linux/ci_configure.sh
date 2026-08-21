@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Configure DataLogger for CI — must use aqt Qt 6.11, not runner Qt 6.10.
+# Configure DataLogger for CI — must use aqt Qt 6.13, not runner Qt 6.10.
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -17,7 +17,7 @@ discover_qt_prefix() {
   fi
   if [[ -n "${GITHUB_WORKSPACE:-}" ]]; then
     local qt_base
-    qt_base="$(cd "${GITHUB_WORKSPACE}/.." && pwd)/Qt/6.11.1"
+    qt_base="$(cd "${GITHUB_WORKSPACE}/.." && pwd)/Qt/6.13.2"
     candidates+=("${qt_base}/gcc_64" "${qt_base}/linux_gcc_64")
   fi
   local c seen=""
@@ -34,8 +34,8 @@ discover_qt_prefix() {
 }
 
 if ! qt_prefix="$(discover_qt_prefix)"; then
-  echo "::error::Qt 6.11 prefix not found (QT_ROOT_DIR=${QT_ROOT_DIR:-unset})" >&2
-  ls -la "${GITHUB_WORKSPACE:-.}/../Qt/6.11.1" 2>/dev/null >&2 || true
+  echo "::error::Qt 6.13 prefix not found (QT_ROOT_DIR=${QT_ROOT_DIR:-unset})" >&2
+  ls -la "${GITHUB_WORKSPACE:-.}/../Qt/6.13.2" 2>/dev/null >&2 || true
   exit 1
 fi
 

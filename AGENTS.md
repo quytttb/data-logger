@@ -2,7 +2,7 @@
 
 ## Context
 
-Ứng dụng giám sát cảm biến công nghiệp chạy trên **Raspberry Pi 4/5 (ARM64, kiosk)**: đọc cảm biến qua **Modbus RTU (RS-485)**, lưu **SQLite (WAL)**, GUI cảm ứng **Qt 6.11 + QML**, xuất báo cáo **TXT** theo **Thông tư 10/2021 — Phụ lục 15 (TT10)** và đồng bộ **FTP**. Edge cũng là **Modbus TCP Server** + **REST API** để Central Logger kết nối.
+Ứng dụng giám sát cảm biến công nghiệp chạy trên **Raspberry Pi (ARM64, kiosk)**: đọc cảm biến qua **Modbus RTU (RS-485)**, lưu **SQLite (WAL)**, GUI cảm ứng **Qt 6.13 + QML**, xuất báo cáo **TXT** theo **Thông tư 10/2021 — Phụ lục 15 (TT10)** và đồng bộ **FTP**. Edge cũng là **Modbus TCP Server** + **REST API** để Central Logger kết nối.
 
 - Ngôn ngữ tài liệu/comment: **tiếng Việt** (giữ nhất quán với README/CHANGELOG hiện có).
 - Thiết bị chạy 24/7, phần cứng bị cắt điện đột ngột ⇒ luôn ưu tiên độ tin cậy.
@@ -25,13 +25,13 @@ Thay đổi bất kỳ contract nào cần **sự đồng ý rõ ràng của use
 ## Build
 
 ```bash
-# Qt 6.11 (Online Installer), gcc-15; override QT_DIR nếu cần
+# Qt 6.13 (Online Installer), gcc-15; override QT_DIR nếu cần
 ./build.sh Release          # hoặc ./build.sh Debug
 ./build-release/bin/DataLogger
 ```
 
 CI/`cmake` thủ công: `cmake -B build -DCMAKE_BUILD_TYPE=Debug && cmake --build build`.
-Target Qt: Core, Gui, Qml, Quick, QuickControls2, Sql, SerialBus, **HttpServer**, Graphs, Network (`find_package(Qt6 6.11 REQUIRED COMPONENTS ...)`).
+Target Qt: Core, Gui, Qml, Quick, QuickControls2, Sql, SerialBus, **HttpServer**, Graphs, Network (`find_package(Qt6 6.13 REQUIRED COMPONENTS ...)`).
 
 ## Test
 
@@ -74,6 +74,6 @@ utils → data → network → core → theme → components → app
 
 ## CMake
 
-- `cmake_minimum_required(3.16)`, `qt_standard_project_setup(REQUIRES 6.11)`, `QTP0004 NEW`, C++20, `CMAKE_AUTOMOC`/`CMAKE_AUTORCC` ON.
+- `cmake_minimum_required(3.16)`, `qt_standard_project_setup(REQUIRES 6.13)`, `QTP0004 NEW`, C++20, `CMAKE_AUTOMOC`/`CMAKE_AUTORCC` ON.
 - Thêm lớp C++ mới ⇒ thêm file vào `CMakeLists.txt` của layer tương ứng; thêm thư viện mới phải respect thứ tự layers.
 - Version: sửa `project(... VERSION)` trong `CMakeLists.txt` gốc (release sync bởi `sync_cmake_version.py`).

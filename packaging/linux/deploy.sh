@@ -340,7 +340,7 @@ _show_help() {
 ── Build gói cài đặt trên máy (không qua git tag) ─────────────
 
   ./packaging/linux/cpack_deb.sh
-      Tạo .deb local trong dist/ (cần Qt 6.11, CMAKE_PREFIX_PATH).
+      Tạo .deb local trong dist/ (cần Qt 6.13, CMAKE_PREFIX_PATH).
 
   Chi tiết: packaging/README.md
 

@@ -19,7 +19,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  QT_VERSION: "6.11.1"
+  QT_VERSION: "6.13.2"
   QT_INSTALL_DIR: /opt/qt6
 
 permissions:
@@ -75,7 +75,7 @@ jobs:
 
           echo ">>> Downloading Qt ${{ env.QT_VERSION }} source..."
           wget -q --show-progress \
-            "https://download.qt.io/official_releases/qt/6.11/${{ env.QT_VERSION }}/single/qt-everywhere-src-${{ env.QT_VERSION }}.tar.xz" \
+            "https://download.qt.io/official_releases/qt/6.13/${{ env.QT_VERSION }}/single/qt-everywhere-src-${{ env.QT_VERSION }}.tar.xz" \
             -O "${RUNNER_TEMP}/qt-src.tar.xz"
 
           echo ">>> Extracting..."
