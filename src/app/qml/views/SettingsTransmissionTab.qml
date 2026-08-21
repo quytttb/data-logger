@@ -141,6 +141,7 @@ Item {
                 spacing: 6
 
                 delegate: Rectangle {
+                    id: delegateRoot
                     required property int index
                     required property int stt
                     required property int sensorId
@@ -150,7 +151,7 @@ Item {
 
                     width: txList.width
                     height: 44
-                    color: index % 2 === 0 ? Theme.bgPanel : Theme.bgSeparator
+                    color: delegateRoot.index % 2 === 0 ? Theme.bgPanel : Theme.bgSeparator
                     radius: Theme.radiusTiny
 
                     RowLayout {
@@ -160,14 +161,14 @@ Item {
                         spacing: Theme.spacingS
 
                         Text {
-                            text: String(stt)
+                            text: String(delegateRoot.stt)
                             color: Theme.textLabel
                             font.pixelSize: Theme.fontLabelSize
                             Layout.preferredWidth: 36
                         }
 
                         Text {
-                            text: name
+                            text: delegateRoot.name
                             color: Theme.textLabel
                             font.pixelSize: Theme.fontLabelSize
                             Layout.preferredWidth: 160
@@ -179,27 +180,27 @@ Item {
                             editable: true
                             model: SensorSymbols.symbols
                             Component.onCompleted: {
-                                let symIdx = find(sensorSymbol || "")
+                                let symIdx = find(delegateRoot.sensorSymbol || "")
                                 if (symIdx >= 0)
                                     currentIndex = symIdx
                                 else
-                                    editText = sensorSymbol || ""
+                                    editText = delegateRoot.sensorSymbol || ""
                             }
                             onEditTextChanged: {
-                                rowModel.setProperty(index, "sensorSymbol", editText)
+                                rowModel.setProperty(delegateRoot.index, "sensorSymbol", editText)
                                 root.configChanged = true
                             }
                             onActivated: {
-                                rowModel.setProperty(index, "sensorSymbol", currentText)
+                                rowModel.setProperty(delegateRoot.index, "sensorSymbol", currentText)
                                 root.configChanged = true
                             }
                         }
 
                         CheckBox {
-                            checked: transmitEnabled
+                            checked: delegateRoot.transmitEnabled
                             Layout.preferredWidth: 56
                             onToggled: {
-                                rowModel.setProperty(index, "transmitEnabled", checked)
+                                rowModel.setProperty(delegateRoot.index, "transmitEnabled", checked)
                                 root.configChanged = true
                             }
                         }

@@ -29,7 +29,9 @@ ApplicationWindow {
 
         Label {
             Layout.alignment: Qt.AlignHCenter
+            // qmllint disable unqualified
             text: "Device ID: " + deviceStationCode
+            // qmllint enable unqualified
             font: AppTypography.labelSmall
             color: AppColors.textSoft
         }
