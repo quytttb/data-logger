@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 project(DataLogger VERSION 2.2.0 LANGUAGES CXX)
 
-find_package(Qt6 6.13 REQUIRED COMPONENTS
+find_package(Qt6 6.12 REQUIRED COMPONENTS
     Core
     Gui
     Qml
@@ -14,7 +14,7 @@ find_package(Qt6 6.13 REQUIRED COMPONENTS
     Network
 )
 
-qt_standard_project_setup(REQUIRES 6.13)
+qt_standard_project_setup(REQUIRES 6.12)
 
 # QML sources live in subdirectories (qml/views, shell, layout, chart, ...).
 # Opt into the Qt 6.8+ behaviour that generates a qmldir per subdirectory so
