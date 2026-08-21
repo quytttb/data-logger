@@ -62,7 +62,7 @@ sudo apt-get install -y \
 
 ```bash
 # Đặt đường dẫn Qt kit
-export QT_DIR=$HOME/Qt/6.13.2/gcc_64
+export QT_DIR=$HOME/Qt/6.13.1/gcc_64
 
 ./build.sh Release
 ```
@@ -74,7 +74,7 @@ cmake -B build-release \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_C_COMPILER=gcc-15 \
   -DCMAKE_CXX_COMPILER=g++-15 \
-  -DCMAKE_PREFIX_PATH=$HOME/Qt/6.13.2/gcc_64   # bỏ nếu dùng apt
+  -DCMAKE_PREFIX_PATH=$HOME/Qt/6.13.1/gcc_64   # bỏ nếu dùng apt
 
 cmake --build build-release --parallel $(nproc)
 ```
@@ -87,7 +87,7 @@ Binary đầu ra: `build-release/bin/DataLogger`
 
 ```bash
 # Qt từ Online Installer cần chỉ thư viện runtime
-export LD_LIBRARY_PATH=$HOME/Qt/6.13.2/gcc_64/lib:$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=$HOME/Qt/6.13.1/gcc_64/lib:$LD_LIBRARY_PATH
 
 ./build-release/bin/DataLogger
 ```
