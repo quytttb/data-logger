@@ -5,12 +5,14 @@
 #include <QFontDatabase>
 #include <QSemaphore>
 #include <QTimer>
+#include <QElapsedTimer>
 #include <QtDebug>
 
 #include "utils/system/AppPaths.h"
 #include "utils/system/LogSetup.h"
 #include "utils/system/DeviceId.h"
 #include "utils/system/DeviceLock.h"
+#include "utils/crypto/Crypto.h"
 #include "data/db/Database.h"
 #include "network/modbus/ModbusTcpServerService.h"
 #include "network/rest/RestApiService.h"
@@ -177,6 +179,18 @@ int main(int argc, char *argv[]) {
 
     restApi->setReadingsProvider([monitorCtrl]() -> QVariantMap {
         return monitorCtrl->readingsSnapshot();
+    });
+
+    // Health endpoint (no auth): thông tin tối thiểu cho Central Logger + agent debug.
+    static QElapsedTimer uptimeTimer;
+    uptimeTimer.start();
+    restApi->setHealthProvider([monitorCtrl]() -> QVariantMap {
+        return {
+            {QStringLiteral("version"),          QCoreApplication::applicationVersion()},
+            {QStringLiteral("uptime_s"),         uptimeTimer.elapsed() / 1000},
+            {QStringLiteral("modbus_connected"), monitorCtrl->rtuConnected()},
+            {QStringLiteral("crypto_degraded"),  Crypto::isDegraded()},
+        };
     });
 
     if (cfg.modbusTcpEnabled)

@@ -10,6 +10,8 @@
 #include <openssl/evp.h>
 #include <openssl/rand.h>
 
+#include <atomic>
+
 namespace Crypto {
 
 namespace {
@@ -22,6 +24,19 @@ constexpr int kTagBytes  = 16;  // GCM authentication tag
 // Khóa 256-bit lưu RIÊNG ngoài DB trong file 0600 — audit C1 yêu cầu key
 // không nằm trong cùng file với dữ liệu cần bảo vệ.
 QByteArray g_key;
+
+// Availability-first: khi AES-GCM không khả dụng, secret fallback về Base64
+// obfuscation để app KHÔNG chết (thiết bị 24/7, xin giấy phép sửa rất lâu).
+// Nhưng KHÔNG được im lặng — cờ degraded + qCritical để health endpoint và
+// log phơi bày tình trạng yếu cho người vận hành.
+std::atomic<bool> g_degraded{false};
+
+void markDegraded(const char *reason)
+{
+    if (!g_degraded.exchange(true))
+        qCritical() << "Crypto: DEGRADED —" << reason
+                    << "— secrets are stored as weak Base64 obfuscation!";
+}
 
 QString keyFilePath()
 {
@@ -36,8 +51,7 @@ QByteArray loadOrGenerateKey()
     QFile file(keyFilePath());
     if (file.exists()) {
         if (!file.open(QIODevice::ReadOnly)) {
-            qWarning() << "Crypto: cannot open key file" << file.fileName()
-                       << "— secrets will not decrypt";
+            markDegraded("cannot open key file — secrets will not decrypt");
             return {};
         }
         const QByteArray raw = QByteArray::fromHex(file.readAll().trimmed());
@@ -52,7 +66,7 @@ QByteArray loadOrGenerateKey()
     // First run (or corrupt key): generate a fresh random key.
     QByteArray key(kKeyBytes, Qt::Uninitialized);
     if (RAND_bytes(reinterpret_cast<unsigned char *>(key.data()), kKeyBytes) != 1) {
-        qCritical() << "Crypto: RAND_bytes failed — cannot generate key";
+        markDegraded("RAND_bytes failed — cannot generate key");
         return {};
     }
     g_key = key;
@@ -60,13 +74,17 @@ QByteArray loadOrGenerateKey()
     QDir().mkpath(AppPaths::configDir());
     QSaveFile saveFile(keyFilePath());
     if (!saveFile.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-        qWarning() << "Crypto: cannot write key file" << saveFile.fileName();
+        markDegraded("cannot write key file");
         return g_key;
     }
     saveFile.write(g_key.toHex());
     saveFile.setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner);
-    if (!saveFile.commit())
-        qWarning() << "Crypto: failed to commit key file" << keyFilePath();
+    if (!saveFile.commit()) {
+        markDegraded("failed to commit key file");
+        return g_key;
+    }
+    // umask có thể đã nới permission khi QSaveFile rename — siết lại 0600 explicit.
+    QFile::setPermissions(keyFilePath(), QFileDevice::ReadOwner | QFileDevice::WriteOwner);
     return g_key;
 }
 
@@ -83,18 +101,24 @@ QString legacyEncrypt(const QString &plain)
 QString aesEncrypt(const QString &plain)
 {
     const QByteArray key = loadOrGenerateKey();
-    if (key.size() != kKeyBytes)
-        return legacyEncrypt(plain); // no key available — fall back (logged above)
+    if (key.size() != kKeyBytes) {
+        markDegraded("no key available at encrypt time");
+        return legacyEncrypt(plain);
+    }
 
     const QByteArray pt = plain.toUtf8();
 
     QVector<unsigned char> iv(kIvBytes);
-    if (RAND_bytes(iv.data(), kIvBytes) != 1)
+    if (RAND_bytes(iv.data(), kIvBytes) != 1) {
+        markDegraded("RAND_bytes failed for IV");
         return legacyEncrypt(plain);
+    }
 
     EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
-    if (!ctx)
+    if (!ctx) {
+        markDegraded("EVP_CIPHER_CTX_new failed");
         return legacyEncrypt(plain);
+    }
 
     QByteArray result;
     const QString fallback = legacyEncrypt(plain);
@@ -136,8 +160,10 @@ QString aesEncrypt(const QString &plain)
 
     EVP_CIPHER_CTX_free(ctx);
 
-    if (!ok)
+    if (!ok) {
+        markDegraded("AES-GCM encrypt failed");
         return fallback;
+    }
     return QString::fromLatin1(kEncPrefix) + QString::fromLatin1(result.toBase64());
 }
 
@@ -223,6 +249,11 @@ QString decrypt(const QString &cipher)
 bool isEncrypted(const QString &cipher)
 {
     return cipher.startsWith(QLatin1String(kEncPrefix));
+}
+
+bool isDegraded()
+{
+    return g_degraded.load();
 }
 
 } // namespace Crypto

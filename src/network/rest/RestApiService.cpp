@@ -10,6 +10,7 @@
 #include <QMutexLocker>
 #include <QRegularExpression>
 #include <QSet>
+#include <QDateTime>
 #include <QDebug>
 #include <QQmlEngine>
 #include <QJSEngine>
@@ -49,6 +50,11 @@ void RestApiService::setToken(const QString &token) {
 void RestApiService::setReadingsProvider(std::function<QVariantMap()> provider) {
     QMutexLocker lock(&m_mutex);
     m_readingsProvider = std::move(provider);
+}
+
+void RestApiService::setHealthProvider(std::function<QVariantMap()> provider) {
+    QMutexLocker lock(&m_mutex);
+    m_healthProvider = std::move(provider);
 }
 
 void RestApiService::start(const QString &bind, int port, const QString &token) {
@@ -102,10 +108,50 @@ bool RestApiService::checkAuth(const QHttpServerRequest &req) const {
     return timingSafeEquals(provided, expected);
 }
 
+bool RestApiService::checkRateLimit(const QString &ip) {
+    // Fixed-window 1 giây: đơn giản, đủ cho LAN nội bộ (Central Logger poll
+    // ~0.3 req/s; headroom 10 req/s). Vượt ngưỡng → 429, KHÔNG khóa IP để
+    // không tự lock-out khi debug.
+    const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
+    QMutexLocker lock(&m_mutex);
+    if (m_rateBuckets.size() > 256)
+        m_rateBuckets.clear(); // chống phình bảng khi nhiều IP lạ quét
+    auto &bucket = m_rateBuckets[ip];
+    if (nowMs - bucket.first >= 1000) {
+        bucket.first  = nowMs;
+        bucket.second = 0;
+    }
+    return ++bucket.second <= kRateLimitPerSec;
+}
+
 void RestApiService::setupRoutes() {
+    // GET /api/v1/health — KHÔNG cần auth (Central Logger + agent debug gọi
+    // nhanh không cần token). Chỉ trả thông tin tối thiểu, không lộ secret.
+    m_server->route("/api/v1/health", QHttpServerRequest::Method::Get,
+        [this](const QHttpServerRequest &req) -> QHttpServerResponse {
+            if (!checkRateLimit(req.remoteAddress().toString()))
+                return QHttpServerResponse(R"({"error":"Too Many Requests"})",
+                                           QHttpServerResponse::StatusCode::TooManyRequests);
+            QVariantMap snapshot;
+            {
+                QMutexLocker lock(&m_mutex);
+                if (m_healthProvider) snapshot = m_healthProvider();
+            }
+            QJsonObject obj = QJsonObject::fromVariantMap(snapshot);
+            obj["status"] = obj.value("crypto_degraded").toBool()
+                                ? QStringLiteral("degraded")
+                                : QStringLiteral("ok");
+            QHttpServerResponse resp("application/json",
+                                     QJsonDocument(obj).toJson(QJsonDocument::Compact));
+            return resp;
+        });
+
     // GET /api/v1/readings
     m_server->route("/api/v1/readings", QHttpServerRequest::Method::Get,
         [this](const QHttpServerRequest &req) -> QHttpServerResponse {
+            if (!checkRateLimit(req.remoteAddress().toString()))
+                return QHttpServerResponse(R"({"error":"Too Many Requests"})",
+                                           QHttpServerResponse::StatusCode::TooManyRequests);
             if (!checkAuth(req))
                 return QHttpServerResponse(R"({"error":"Unauthorized"})",
                                            QHttpServerResponse::StatusCode::Unauthorized);
@@ -122,6 +168,9 @@ void RestApiService::setupRoutes() {
     // GET /api/v1/config
     m_server->route("/api/v1/config", QHttpServerRequest::Method::Get,
         [this](const QHttpServerRequest &req) -> QHttpServerResponse {
+            if (!checkRateLimit(req.remoteAddress().toString()))
+                return QHttpServerResponse(R"({"error":"Too Many Requests"})",
+                                           QHttpServerResponse::StatusCode::TooManyRequests);
             if (!checkAuth(req))
                 return QHttpServerResponse(R"({"error":"Unauthorized"})",
                                            QHttpServerResponse::StatusCode::Unauthorized);
@@ -173,6 +222,9 @@ void RestApiService::setupRoutes() {
     // POST /api/v1/config
     m_server->route("/api/v1/config", QHttpServerRequest::Method::Post,
         [this](const QHttpServerRequest &req) -> QHttpServerResponse {
+            if (!checkRateLimit(req.remoteAddress().toString()))
+                return QHttpServerResponse(R"({"error":"Too Many Requests"})",
+                                           QHttpServerResponse::StatusCode::TooManyRequests);
             if (!checkAuth(req))
                 return QHttpServerResponse(R"({"error":"Unauthorized"})",
                                            QHttpServerResponse::StatusCode::Unauthorized);

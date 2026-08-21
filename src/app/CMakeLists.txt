@@ -42,7 +42,7 @@ qt_add_qml_module(app
         datalogger_components
 )
 
-set_target_properties(app PROPERTIES QT_QMLLINT_MAX_WARNINGS 500)
+set_target_properties(app PROPERTIES QT_QMLLINT_MAX_WARNINGS 200)
 
 target_link_libraries(app PRIVATE
     Qt6::Quick
