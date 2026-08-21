@@ -96,7 +96,7 @@ jobs:
 
           echo ">>> Downloading Qt ${{ env.QT_VERSION }} source..."
           wget -q --show-progress \
-            "https://download.qt.io/official_releases/qt/6.13/${{ env.QT_VERSION }}/single/qt-everywhere-src-${{ env.QT_VERSION }}.tar.xz" \
+            "https://download.qt.io/official_releases/qt/6.12/${{ env.QT_VERSION }}/single/qt-everywhere-src-${{ env.QT_VERSION }}.tar.xz" \
             -O "${RUNNER_TEMP}/qt-src.tar.xz"
 
           echo ">>> Extracting..."

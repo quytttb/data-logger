@@ -45,7 +45,7 @@ jobs:
           install-deps: false
           aqtsource: ${{ env.AQT_SOURCE }}
           cache: true
-          cache-key-prefix: qt611-linux
+          cache-key-prefix: qt612-linux
 
       - name: Configure
         run: |
