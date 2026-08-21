@@ -141,6 +141,9 @@ Bật trong **Settings → Connection → HTTP REST Server**.
 | GET | `/api/v1/readings` | Bearer | Snapshot giá trị cảm biến hiện tại |
 | GET | `/api/v1/config` | Bearer | Đọc cấu hình (gồm cả cấu hình từng cảm biến) |
 | POST | `/api/v1/config` | Bearer | Cập nhật cấu hình từ xa (chỉ các trường app-config) |
+| GET | `/api/v1/health` | **None** | Kiểm tra sức khỏe hệ thống (version, uptime, modbus, crypto) |
+
+**Rate limit**: 10 yêu cầu/giây per IP → `429 Too Many Requests` (không khóa IP).
 
 Test nhanh:
 
@@ -200,7 +203,8 @@ Khóa join với dữ liệu Modbus của edge:
 | **Lịch sử** | Tra cứu dữ liệu quá khứ theo dải thời gian |
 | **Báo cáo** | Sinh file báo cáo TXT và gửi định kỳ qua FTP |
 | **Settings** | Cấu hình trạm, Modbus, cảm biến, FTP, REST API |
-| **Bảo mật** | Mật khẩu mã hóa AES lưu trong SQLite |
+| **Bảo mật** | Mật khẩu mã hóa AES lưu trong SQLite; **crypto degraded flag** cảnh báo khi fallback |
+| **Health & Rate-limit** | `GET /api/v1/health` (no auth), **rate-limit 10 req/s per IP** |
 
 ---
 
