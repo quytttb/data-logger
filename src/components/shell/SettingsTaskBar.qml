@@ -1,7 +1,8 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import DataLogger.Theme
+import LoggerKit.Theme
+import LoggerKit.Components
 
 Item {
     id: root
@@ -41,15 +42,15 @@ Item {
                     root.tabSelected(currentIndex)
             }
             background: Rectangle { color: "transparent" }
-            ThemedTabButton { text: "General";    iconName: "cog";    width: implicitWidth + 40 }
-            ThemedTabButton { text: "Connection"; iconName: "link";   width: implicitWidth + 40 }
-            ThemedTabButton { text: "Server";     iconName: "download"; width: implicitWidth + 40 }
-            ThemedTabButton { text: "Sensors";    iconName: "chip";     width: implicitWidth + 40 }
+            ThemedTabButton { text: qsTr("General");    iconName: "cog";    width: implicitWidth + 40 }
+            ThemedTabButton { text: qsTr("Connection"); iconName: "link";   width: implicitWidth + 40 }
+            ThemedTabButton { text: qsTr("Server");     iconName: "download"; width: implicitWidth + 40 }
+            ThemedTabButton { text: qsTr("Sensors");    iconName: "chip";     width: implicitWidth + 40 }
         }
 
         RowLayout {
             visible: root.settingsTabIndex === 4
-            spacing: Theme.spacingS
+            spacing: AppTheme.spacingS
 
             TabBar {
                 id: sensorSubTabBar
@@ -60,9 +61,9 @@ Item {
                         root.sensorSubTabSelected(currentIndex)
                 }
                 background: Rectangle { color: "transparent" }
-                ThemedTabButton { text: "Basic && Modbus";   width: implicitWidth + 30 }
-                ThemedTabButton { text: "Scaling && Alarms"; width: implicitWidth + 30; visible: root.sensorType === "ANALOG" }
-                ThemedTabButton { text: "Digital I/O";       width: implicitWidth + 30; visible: !root.isAddMode && root.sensorType === "ANALOG" }
+                ThemedTabButton { text: qsTr("Basic && Modbus");   width: implicitWidth + 30 }
+                ThemedTabButton { text: qsTr("Scaling && Alarms"); width: implicitWidth + 30; visible: root.sensorType === "ANALOG" }
+                ThemedTabButton { text: qsTr("Digital I/O");       width: implicitWidth + 30; visible: !root.isAddMode && root.sensorType === "ANALOG" }
             }
         }
 
@@ -74,18 +75,18 @@ Item {
             spacing: 8
 
             AppButton {
-                text: "Cancel"
-                variant: "tonal"
+                text: qsTr("Cancel")
+                kind: AppButton.Neutral
                 font.bold: true
                 Layout.preferredHeight: 44
                 onClicked: root.cancelConfig()
             }
 
             AppButton {
-                text: "Save"
+                text: qsTr("Save")
                 font.pixelSize: AppTypography.labelMedium.pixelSize; font.bold: true
                 Layout.preferredHeight: 44
-                accent: Theme.btnStart
+                fillColor: AppColors.success
                 onClicked: root.saveConfig()
             }
         }
@@ -98,22 +99,21 @@ Item {
             AppButton {
                 visible: root.hasSelectedSensor
                 iconName: "trashCan"
-                accent: Theme.btnStop
+                fillColor: AppColors.error
                 onClicked: root.deleteSelectedSensor()
             }
 
             AppButton {
                 visible: root.hasSelectedSensor
                 iconName: "pencil"
-                accent: Theme.accent
                 onClicked: root.editSelectedSensor()
             }
 
             AppButton {
-                text: "+ Add"
+                text: qsTr("+ Add")
                 font.pixelSize: AppTypography.labelMedium.pixelSize; font.bold: true
                 Layout.preferredHeight: 44
-                accent: Theme.btnStart
+                fillColor: AppColors.success
                 onClicked: root.addSensor()
             }
         }
@@ -126,30 +126,30 @@ Item {
             AppButton {
                 visible: root.sensorSubTabIndex === 2 && root.hasSelectedDio
                 iconName: "trashCan"
-                accent: Theme.btnStop
+                fillColor: AppColors.error
                 onClicked: root.deleteSelectedDio()
             }
 
             Rectangle {
                 implicitWidth: 1; implicitHeight: 28
-                color: Theme.borderDefault
+                color: AppColors.outlineVariant
                 Layout.alignment: Qt.AlignVCenter
                 visible: root.sensorSubTabIndex === 2 && root.hasSelectedDio
             }
 
             AppButton {
-                text: "Cancel"
-                variant: "tonal"
+                text: qsTr("Cancel")
+                kind: AppButton.Neutral
                 font.bold: true
                 Layout.preferredHeight: 44
                 onClicked: root.cancelSensorForm()
             }
 
             AppButton {
-                text: "Save"
+                text: qsTr("Save")
                 font.pixelSize: AppTypography.labelMedium.pixelSize; font.bold: true
                 Layout.preferredHeight: 44
-                accent: Theme.btnStart
+                fillColor: AppColors.success
                 onClicked: root.saveSensorForm()
             }
         }

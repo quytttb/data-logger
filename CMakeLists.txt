@@ -45,6 +45,19 @@ set(CMAKE_AUTORCC ON)
 set(QT_QML_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}" CACHE PATH
     "QML build-tree root; qt_add_qml_module appends URI path segments")
 
+# Aggregate qmllint target across every QML module (CI: cmake --build <dir> --target qmllint).
+add_custom_target(qmllint)
+foreach(_module IN ITEMS datalogger_theme datalogger_components app)
+    if(TARGET "${_module}_qmllint")
+        add_dependencies(qmllint "${_module}_qmllint")
+    endif()
+endforeach()
+
+# Shared UI kit (git submodule) — provides LoggerKit.Theme + LoggerKit.Components.
+# Built as STATIC QML modules; version tracks this app's QML module version.
+set(LOGGERKIT_QML_MODULE_VERSION ${DATALOGGER_QML_MODULE_VERSION})
+add_subdirectory(shared/logger-ui-kit)
+
 # Layers: utils → data → network → core → theme → components → app
 add_subdirectory(src/utils)
 add_subdirectory(src/data)

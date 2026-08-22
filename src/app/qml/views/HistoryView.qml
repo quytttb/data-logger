@@ -5,9 +5,10 @@ import QtQuick.Controls
 import QtQuick.Controls.Material
 import QtQuick.Layouts
 
-import DataLogger.Theme
 import DataLogger.Core
 import DataLogger.Components
+import LoggerKit.Theme
+import LoggerKit.Components
 
 Rectangle {
     id: histRoot

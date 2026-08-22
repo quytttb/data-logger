@@ -1,7 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import DataLogger.Theme
 import DataLogger.Core
+import LoggerKit.Theme
 
 Item {
     id: root
@@ -50,7 +50,7 @@ Item {
                         text: chip.modelData.unit && chip.modelData.unit.length > 0
                               ? (chip.modelData.name + " (" + chip.modelData.unit + ")")
                               : chip.modelData.name
-                        color: Theme.textPrimary
+                        color: AppColors.primaryText
                         font.pixelSize: AppTypography.bodySmall.pixelSize
                         font.bold: true
                     }
@@ -64,8 +64,8 @@ Item {
         visible: !root.hasSensors
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
-        text: "No active sensors"
-        color: Theme.textSecondary
+        text: qsTr("No active sensors")
+        color: AppColors.onSurfaceVariant
         font.pixelSize: AppTypography.bodySmall.pixelSize
         font.italic: true
     }

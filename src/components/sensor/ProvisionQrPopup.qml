@@ -1,9 +1,10 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import DataLogger.Theme
 import DataLogger.Core
 import DataLogger.Network
+import LoggerKit.Theme
+import LoggerKit.Components
 
 /**
  * Modal dialog showing provisioning QR for Central App (contains API token — LAN only).
@@ -16,7 +17,7 @@ Popup {
     parent: Overlay.overlay
     anchors.centerIn: parent
     width: Math.min(400, parent ? parent.width - 32 : 400)
-    padding: Theme.spacingM
+    padding: AppTheme.spacingM
     modal: true
     focus: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
@@ -33,13 +34,13 @@ Popup {
     }
 
     contentItem: ColumnLayout {
-        spacing: Theme.spacingS
+        spacing: AppTheme.spacingS
 
         Text {
-            text: "Provisioning QR"
+            text: qsTr("Provisioning QR")
             font.bold: true
             font.pixelSize: AppTypography.titleLarge.pixelSize
-            color: Theme.textPrimary
+            color: AppColors.primaryText
             Layout.fillWidth: true
             horizontalAlignment: Text.AlignHCenter
         }
@@ -64,9 +65,9 @@ Popup {
 
         Text {
             visible: SettingsController.provisionQrStale
-            text: "Token changed — scan QR again in Central App"
+            text: qsTr("Token changed — scan QR again in Central App")
             color: AppColors.warning
-            font.pixelSize: Theme.fontLabelSize
+            font.pixelSize: AppTypography.bodyMedium.pixelSize
             font.bold: true
             Layout.fillWidth: true
             wrapMode: Text.Wrap
@@ -74,26 +75,26 @@ Popup {
         }
 
         Text {
-            text: "Scan in Central App → Add Logger → Scan QR"
-            color: Theme.accentText
-            font.pixelSize: Theme.fontLabelSize
+            text: qsTr("Scan in Central App → Add Logger → Scan QR")
+            color: AppColors.accentColor
+            font.pixelSize: AppTypography.bodyMedium.pixelSize
             Layout.fillWidth: true
             wrapMode: Text.Wrap
             horizontalAlignment: Text.AlignHCenter
         }
 
         Text {
-            text: "Factory LAN only"
-            color: Theme.textLabel
-            font.pixelSize: Theme.fontLabelSize - 1
+            text: qsTr("Factory LAN only")
+            color: AppColors.onSurfaceVariant
+            font.pixelSize: AppTypography.bodyMedium.pixelSize - 1
             Layout.fillWidth: true
             horizontalAlignment: Text.AlignHCenter
         }
 
         Text {
-            text: "QR contains the API secret — do not share outside LAN"
+            text: qsTr("QR contains the API secret — do not share outside LAN")
             color: AppColors.error
-            font.pixelSize: Theme.fontLabelSize - 1
+            font.pixelSize: AppTypography.bodyMedium.pixelSize - 1
             Layout.fillWidth: true
             wrapMode: Text.Wrap
             horizontalAlignment: Text.AlignHCenter
@@ -101,17 +102,17 @@ Popup {
 
         Text {
             visible: RestApiService.state !== "listening"
-            text: "REST server not listening yet — enable Active and Save first"
-            color: Theme.textLabel
-            font.pixelSize: Theme.fontLabelSize - 2
+            text: qsTr("REST server not listening yet — enable Active and Save first")
+            color: AppColors.onSurfaceVariant
+            font.pixelSize: AppTypography.bodyMedium.pixelSize - 2
             Layout.fillWidth: true
             wrapMode: Text.Wrap
             horizontalAlignment: Text.AlignHCenter
         }
 
         AppButton {
-            text: "Close"
-            variant: "tonal"
+            text: qsTr("Close")
+            kind: AppButton.Neutral
             Layout.alignment: Qt.AlignHCenter
             onClicked: root.close()
         }

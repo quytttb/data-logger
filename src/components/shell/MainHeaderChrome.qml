@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import DataLogger.Theme
 import DataLogger.Core
+import LoggerKit.Theme
 
 ColumnLayout {
     id: headerChromeRoot

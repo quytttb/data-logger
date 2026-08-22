@@ -2,9 +2,10 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import DataLogger.Theme
 import DataLogger.Core
 import DataLogger.Components
+import LoggerKit.Theme
+import LoggerKit.Components
 
 Item {
     id: testerRoot
@@ -183,19 +184,19 @@ Item {
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: infoBanner.implicitHeight + 16
-                    color: Theme.bgSeparator; radius: Theme.radiusTiny
-                    border.color: Theme.borderDefault; border.width: 1
+                    color: AppColors.surfaceContainerHigh; radius: AppTheme.radiusTiny
+                    border.color: AppColors.outlineVariant; border.width: 1
 
                     ColumnLayout {
                         id: infoBanner
                         anchors.fill: parent; anchors.margins: 8; spacing: 4
                         Text {
-                            text: "Serial: " + SettingsController.serialPort + " @ " + SettingsController.serialBaudrate + " baud"
-                            color: Theme.textPrimary; font.pixelSize: AppTypography.bodySmall.pixelSize; font.bold: true
+                            text: qsTr("Serial: ") + SettingsController.serialPort + " @ " + SettingsController.serialBaudrate + " baud"
+                            color: AppColors.primaryText; font.pixelSize: AppTypography.bodySmall.pixelSize; font.bold: true
                         }
                         Text {
                             text: SettingsController.serialBytesize + "bit, Parity:" + SettingsController.serialParity + ", Stop:" + SettingsController.serialStopbits
-                            color: Theme.textSecondary; font.pixelSize: AppTypography.labelMedium.pixelSize
+                            color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.labelMedium.pixelSize
                         }
                     }
                 }
@@ -217,13 +218,13 @@ Item {
         }
 
         Pane {
-            Layout.fillWidth: true; Layout.fillHeight: true; padding: Theme.spacingS
+            Layout.fillWidth: true; Layout.fillHeight: true; padding: AppTheme.spacingS
             background: null
 
             ColumnLayout {
                 anchors.fill: parent; spacing: 8
 
-                Label { text: "Scan results"; font.pixelSize: AppTypography.bodyMedium.pixelSize; font.bold: true; color: Theme.accentText; Layout.fillWidth: true }
+                Label { text: qsTr("Scan results"); font.pixelSize: AppTypography.bodyMedium.pixelSize; font.bold: true; color: AppColors.accentColor; Layout.fillWidth: true }
 
                 Rectangle {
                     Layout.fillWidth: true; Layout.fillHeight: true
@@ -247,8 +248,8 @@ Item {
                                 anchors.fill: parent
                                 anchors.leftMargin: 16; anchors.rightMargin: 16
                                 spacing: 8
-                                Label { text: "Address"; color: AppColors.tableHeaderText; font: AppTypography.labelLarge; Layout.preferredWidth: 100 }
-                                Label { text: "Value"; color: AppColors.tableHeaderText; font: AppTypography.labelLarge; Layout.fillWidth: true }
+                                Label { text: qsTr("Address"); color: AppColors.tableHeaderText; font: AppTypography.labelLarge; Layout.preferredWidth: 100 }
+                                Label { text: qsTr("Value"); color: AppColors.tableHeaderText; font: AppTypography.labelLarge; Layout.fillWidth: true }
                             }
 
                             Rectangle {

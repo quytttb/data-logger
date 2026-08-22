@@ -54,6 +54,8 @@ jobs:
     timeout-minutes: 240
     steps:
       - uses: actions/checkout@v7
+        with:
+          submodules: recursive
 
       # Phiên bản Qt khai báo tại packaging/qt_version.txt.
       - name: Read Qt version
@@ -192,7 +194,7 @@ jobs:
         run: find release-assets -type f -ls
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v4
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.prepare.outputs.tag }}
           name: Data Logger ${{ needs.prepare.outputs.version }}

@@ -3,11 +3,13 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import DataLogger.Theme
+import LoggerKit.Theme
+import LoggerKit.Components
 
 Rectangle {
     id: root
-    color: Theme.bgPanel; radius: Theme.radiusCard
-    border.color: Theme.borderDefault; border.width: 1
+    color: AppColors.surfaceContainerLow; radius: AppTheme.cardRadius
+    border.color: AppColors.outlineVariant; border.width: 1
 
     signal attachDiRequested(int diSensorId, string diType)
     signal attachDoRequested(int doSensorId, bool trigMax, bool trigMin)
@@ -61,7 +63,7 @@ Rectangle {
                 dioListView.currentIndex = -1
             },
             "Detach",
-            Theme.btnStop
+            AppColors.error
         )
     }
 
@@ -91,28 +93,28 @@ Rectangle {
 
     RowLayout {
         anchors.fill: parent; anchors.margins: 20
-        spacing: Theme.spacingL
+        spacing: AppTheme.spacingL
 
         ColumnLayout {
             Layout.fillHeight: true
             Layout.fillWidth: true
             Layout.preferredWidth: 1
-            spacing: Theme.spacingSM
+            spacing: AppTheme.spacingSM
 
             ColumnLayout {
                 visible: root.selectedLink !== null
                 Layout.fillWidth: true
-                spacing: Theme.spacingS
+                spacing: AppTheme.spacingS
 
                 Text {
-                    text: "Edit attachment"
-                    color: Theme.accentText; font.bold: true; font.pixelSize: AppTypography.bodyMedium.pixelSize
+                    text: qsTr("Edit attachment")
+                    color: AppColors.accentColor; font.bold: true; font.pixelSize: AppTypography.bodyMedium.pixelSize
                 }
-                Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.borderDefault }
+                Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: AppColors.outlineVariant }
 
                 Text {
                     text: root.selectedLink ? root.selectedLink.label : ""
-                    color: Theme.textPrimary; font.pixelSize: AppTypography.bodyMedium.pixelSize; font.bold: true
+                    color: AppColors.primaryText; font.pixelSize: AppTypography.bodyMedium.pixelSize; font.bold: true
                     Layout.fillWidth: true; elide: Text.ElideRight
                 }
                 Text {
@@ -120,13 +122,13 @@ Rectangle {
                     text: root.selectedLink
                         ? "Slave " + root.selectedLink.slaveId + " · Addr " + root.selectedLink.address
                         : ""
-                    color: Theme.textSecondary; font.pixelSize: AppTypography.labelMedium.pixelSize
+                    color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.labelMedium.pixelSize
                 }
 
                 ColumnLayout {
                     visible: root.selectedLink && root.selectedLink.ioType === "DI"
                     Layout.fillWidth: true; spacing: 8
-                    Text { text: "Status code:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
+                    Text { text: qsTr("Status code:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize }
                     ComboBox {
                         id: editDiTypeCombo
                         Layout.fillWidth: true
@@ -143,12 +145,12 @@ Rectangle {
                 ColumnLayout {
                     visible: root.selectedLink && root.selectedLink.ioType === "DO"
                     Layout.fillWidth: true; spacing: 8
-                    Text { text: "Alarm triggers:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
+                    Text { text: qsTr("Alarm triggers:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize }
                     RowLayout {
                         Layout.fillWidth: true
                         CheckBox {
                             id: editDoTrigMax
-                            text: "Trigger on Max"
+                            text: qsTr("Trigger on Max")
                             onToggled: {
                                 if (!root.selectedLink || root.selectedLink.ioType !== "DO") return
                                 root.updateLinkDoTriggersRequested(
@@ -157,7 +159,7 @@ Rectangle {
                         }
                         CheckBox {
                             id: editDoTrigMin
-                            text: "Trigger on Min"
+                            text: qsTr("Trigger on Min")
                             onToggled: {
                                 if (!root.selectedLink || root.selectedLink.ioType !== "DO") return
                                 root.updateLinkDoTriggersRequested(
@@ -168,8 +170,8 @@ Rectangle {
                 }
 
                 AppButton {
-                    text: "Back to attach"
-                    variant: "tonal"
+                    text: qsTr("Back to attach")
+                    kind: AppButton.Neutral
                     Layout.fillWidth: true
                     onClicked: dioListView.currentIndex = -1
                 }
@@ -178,31 +180,31 @@ Rectangle {
             ColumnLayout {
                 visible: root.selectedLink === null
                 Layout.fillWidth: true
-                spacing: Theme.spacingSM
+                spacing: AppTheme.spacingSM
 
                 TabBar {
                     id: attachTypeBar
                     Layout.fillWidth: true
                     background: Rectangle { color: "transparent" }
-                    ThemedTabButton { text: "DI"; width: implicitWidth + 30 }
-                    ThemedTabButton { text: "DO"; width: implicitWidth + 30 }
+                    ThemedTabButton { text: qsTr("DI"); width: implicitWidth + 30 }
+                    ThemedTabButton { text: qsTr("DO"); width: implicitWidth + 30 }
                 }
 
                 ColumnLayout {
                     visible: attachTypeBar.currentIndex === 0
-                    Layout.fillWidth: true; spacing: Theme.spacingS
+                    Layout.fillWidth: true; spacing: AppTheme.spacingS
 
                     ColumnLayout {
                         visible: root.diSensors.length === 0
                         Layout.fillWidth: true; spacing: 8
                         Text {
-                            text: "No Digital Input sensors configured."
-                            color: Theme.textFaint; font.pixelSize: AppTypography.bodySmall.pixelSize
+                            text: qsTr("No Digital Input sensors configured.")
+                            color: AppColors.textFaint; font.pixelSize: AppTypography.bodySmall.pixelSize
                             wrapMode: Text.WordWrap; Layout.fillWidth: true
                         }
                         Text {
-                            text: "Go to the Sensors tab and add a sensor with register type Discrete Inputs."
-                            color: Theme.textFaint; font.pixelSize: AppTypography.labelMedium.pixelSize
+                            text: qsTr("Go to the Sensors tab and add a sensor with register type Discrete Inputs.")
+                            color: AppColors.textFaint; font.pixelSize: AppTypography.labelMedium.pixelSize
                             wrapMode: Text.WordWrap; Layout.fillWidth: true
                         }
                     }
@@ -211,14 +213,14 @@ Rectangle {
                         visible: root.diSensors.length > 0
                         Layout.fillWidth: true; spacing: 8
 
-                        Text { text: "DI sensor:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
+                        Text { text: qsTr("DI sensor:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize }
                         ComboBox {
                             id: diSensorCombo
                             Layout.fillWidth: true
                             model: root.diSensors.map(function(s) { return root.sensorOptionLabel(s) })
                         }
 
-                        Text { text: "Status code:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
+                        Text { text: qsTr("Status code:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize }
                         ComboBox {
                             id: diTypeCombo
                             Layout.fillWidth: true
@@ -226,7 +228,7 @@ Rectangle {
                         }
 
                         AppButton {
-                            text: "Attach DI"
+                            text: qsTr("Attach DI")
                             Layout.fillWidth: true
                             enabled: diSensorCombo.currentIndex >= 0
                             onClicked: {
@@ -242,19 +244,19 @@ Rectangle {
 
                 ColumnLayout {
                     visible: attachTypeBar.currentIndex === 1
-                    Layout.fillWidth: true; spacing: Theme.spacingS
+                    Layout.fillWidth: true; spacing: AppTheme.spacingS
 
                     ColumnLayout {
                         visible: root.doSensors.length === 0
                         Layout.fillWidth: true; spacing: 8
                         Text {
-                            text: "No Digital Output sensors available."
-                            color: Theme.textFaint; font.pixelSize: AppTypography.bodySmall.pixelSize
+                            text: qsTr("No Digital Output sensors available.")
+                            color: AppColors.textFaint; font.pixelSize: AppTypography.bodySmall.pixelSize
                             wrapMode: Text.WordWrap; Layout.fillWidth: true
                         }
                         Text {
-                            text: "Add a Coils sensor in the Sensors tab, or all DOs are linked to other analogs."
-                            color: Theme.textFaint; font.pixelSize: AppTypography.labelMedium.pixelSize
+                            text: qsTr("Add a Coils sensor in the Sensors tab, or all DOs are linked to other analogs.")
+                            color: AppColors.textFaint; font.pixelSize: AppTypography.labelMedium.pixelSize
                             wrapMode: Text.WordWrap; Layout.fillWidth: true
                         }
                     }
@@ -263,7 +265,7 @@ Rectangle {
                         visible: root.doSensors.length > 0
                         Layout.fillWidth: true; spacing: 8
 
-                        Text { text: "DO sensor:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
+                        Text { text: qsTr("DO sensor:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize }
                         ComboBox {
                             id: doSensorCombo
                             Layout.fillWidth: true
@@ -272,12 +274,12 @@ Rectangle {
 
                         RowLayout {
                             Layout.fillWidth: true
-                            CheckBox { id: doTrigMax; text: "Trigger on Max"; checked: true }
-                            CheckBox { id: doTrigMin; text: "Trigger on Min"; checked: true }
+                            CheckBox { id: doTrigMax; text: qsTr("Trigger on Max"); checked: true }
+                            CheckBox { id: doTrigMin; text: qsTr("Trigger on Min"); checked: true }
                         }
 
                         AppButton {
-                            text: "Attach DO"
+                            text: qsTr("Attach DO")
                             Layout.fillWidth: true
                             enabled: doSensorCombo.currentIndex >= 0
                             onClicked: {
@@ -303,16 +305,16 @@ Rectangle {
             RowLayout {
                 Layout.fillWidth: true
                 Text {
-                    text: "Attached sensors"
-                    color: Theme.accentText; font.bold: true; font.pixelSize: AppTypography.bodyMedium.pixelSize
+                    text: qsTr("Attached sensors")
+                    color: AppColors.accentColor; font.bold: true; font.pixelSize: AppTypography.bodyMedium.pixelSize
                 }
                 Item { Layout.fillWidth: true }
                 Text {
                     text: dioRepeater.count > 0 ? dioRepeater.count + "" : ""
-                    color: Theme.textSecondary; font.pixelSize: AppTypography.bodySmall.pixelSize
+                    color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodySmall.pixelSize
                 }
             }
-            Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.borderDefault }
+            Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: AppColors.outlineVariant }
 
             ListView {
                 id: dioListView
@@ -329,9 +331,9 @@ Rectangle {
 
                     width: ListView.view.width
                     height: 48
-                    radius: Theme.radiusTiny
-                    color: linkRow.modelData.ioType === "DO" ? AppColors.doTint : AppColors.diTint
-                    border.color: ListView.view.currentIndex === linkRow.index ? Theme.accent : "transparent"
+                    radius: AppTheme.radiusTiny
+                    color: linkRow.modelData.ioType === "DO" ? IoColors.doTint : IoColors.diTint
+                    border.color: ListView.view.currentIndex === linkRow.index ? AppColors.primaryColor : "transparent"
                     border.width: ListView.view.currentIndex === linkRow.index ? 2 : 0
 
                     MouseArea {
@@ -343,14 +345,14 @@ Rectangle {
                         anchors.fill: parent
                         anchors.leftMargin: 10
                         anchors.rightMargin: 10
-                        spacing: Theme.spacingSM
+                        spacing: AppTheme.spacingSM
 
                         Rectangle {
                             Layout.preferredWidth: 38
                             Layout.preferredHeight: 26
                             Layout.alignment: Qt.AlignVCenter
-                            radius: Theme.radiusTiny
-                            color: linkRow.modelData.ioType === "DO" ? Theme.btnStop : Theme.btnStart
+                            radius: AppTheme.radiusTiny
+                            color: linkRow.modelData.ioType === "DO" ? AppColors.error : AppColors.success
                             Text {
                                 anchors.centerIn: parent
                                 text: linkRow.modelData.ioType
@@ -362,7 +364,7 @@ Rectangle {
 
                         Text {
                             text: linkRow.modelData.label
-                            color: Theme.textPrimary
+                            color: AppColors.primaryText
                             font.pixelSize: AppTypography.titleSmall.pixelSize
                             Layout.fillWidth: true
                             Layout.minimumWidth: 60
@@ -373,8 +375,8 @@ Rectangle {
                         Text {
                             visible: linkRow.modelData.ioType === "DI"
                             text: root.diTypeName(linkRow.modelData.diType)
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontLabelSize
+                            color: AppColors.onSurfaceVariant
+                            font.pixelSize: AppTypography.bodyMedium.pixelSize
                             Layout.preferredWidth: implicitWidth
                             Layout.alignment: Qt.AlignVCenter
                         }
@@ -387,16 +389,16 @@ Rectangle {
                                 if (linkRow.modelData.triggerOnMin) parts.push("Min")
                                 return parts.length ? parts.join(", ") : "—"
                             }
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontLabelSize
+                            color: AppColors.onSurfaceVariant
+                            font.pixelSize: AppTypography.bodyMedium.pixelSize
                             Layout.preferredWidth: implicitWidth
                             Layout.alignment: Qt.AlignVCenter
                         }
 
                         Text {
-                            text: "Slave " + linkRow.modelData.slaveId + " · Addr " + linkRow.modelData.address
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontLabelSize
+                            text: qsTr("Slave ") + linkRow.modelData.slaveId + " · Addr " + linkRow.modelData.address
+                            color: AppColors.onSurfaceVariant
+                            font.pixelSize: AppTypography.bodyMedium.pixelSize
                             Layout.preferredWidth: implicitWidth
                             Layout.alignment: Qt.AlignVCenter
                         }
@@ -407,8 +409,8 @@ Rectangle {
                     visible: dioListView.count === 0
                     anchors.centerIn: parent
                     width: parent.width - 20
-                    text: "No digital sensors attached.\nSelect DI or DO on the left to attach."
-                    color: Theme.textFaint; font.pixelSize: AppTypography.bodyMedium.pixelSize
+                    text: qsTr("No digital sensors attached.\nSelect DI or DO on the left to attach.")
+                    color: AppColors.textFaint; font.pixelSize: AppTypography.bodyMedium.pixelSize
                     horizontalAlignment: Text.AlignHCenter
                     wrapMode: Text.WordWrap
                 }

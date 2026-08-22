@@ -1,9 +1,11 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import DataLogger.Theme
 import DataLogger.Core
 import DataLogger.Components
+import LoggerKit.Theme
+import LoggerKit.Components
 
 Item {
     id: root
@@ -57,31 +59,31 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        color: Theme.bgPanel
-        radius: Theme.radiusCard
-        border.color: Theme.borderDefault
+        color: AppColors.surfaceContainerLow
+        radius: AppTheme.cardRadius
+        border.color: AppColors.outlineVariant
         border.width: 1
 
         ColumnLayout {
             anchors.fill: parent
             anchors.margins: 20
-            spacing: Theme.spacingM
+            spacing: AppTheme.spacingM
 
             Text {
-                text: "Thông số truyền"
-                color: Theme.accentText
+                text: qsTr("Thông số truyền")
+                color: AppColors.accentColor
                 font.bold: true
                 font.pixelSize: AppTypography.titleSmall.pixelSize
             }
 
             RowLayout {
                 Layout.fillWidth: true
-                spacing: Theme.spacingM
+                spacing: AppTheme.spacingM
 
                 Text {
-                    text: "Tự động thêm cảm biến mới"
-                    color: Theme.textLabel
-                    font.pixelSize: Theme.fontLabelSize
+                    text: qsTr("Tự động thêm cảm biến mới")
+                    color: AppColors.onSurfaceVariant
+                    font.pixelSize: AppTypography.bodyMedium.pixelSize
                 }
                 Switch {
                     id: autoAddSwitch
@@ -94,8 +96,8 @@ Item {
                 Item { Layout.fillWidth: true }
 
                 AppButton {
-                    text: "Chọn tất cả"
-                    variant: "tonal"
+                    text: qsTr("Chọn tất cả")
+                    kind: AppButton.Neutral
                     onClicked: {
                         for (let i = 0; i < rowModel.count; ++i)
                             rowModel.setProperty(i, "transmitEnabled", true)
@@ -103,8 +105,8 @@ Item {
                     }
                 }
                 AppButton {
-                    text: "Bỏ chọn tất cả"
-                    variant: "tonal"
+                    text: qsTr("Bỏ chọn tất cả")
+                    kind: AppButton.Neutral
                     onClicked: {
                         for (let i = 0; i < rowModel.count; ++i)
                             rowModel.setProperty(i, "transmitEnabled", false)
@@ -116,19 +118,19 @@ Item {
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 36
-                color: Theme.bgSeparator
-                radius: Theme.radiusTiny
+                color: AppColors.surfaceContainerHigh
+                radius: AppTheme.radiusTiny
 
                 RowLayout {
                     anchors.fill: parent
                     anchors.leftMargin: 12
                     anchors.rightMargin: 12
-                    spacing: Theme.spacingS
+                    spacing: AppTheme.spacingS
 
-                    Text { text: "STT"; color: Theme.accentText; font.bold: true; font.pixelSize: Theme.fontLabelSize; Layout.preferredWidth: 36 }
-                    Text { text: "Tên cảm biến"; color: Theme.accentText; font.bold: true; font.pixelSize: Theme.fontLabelSize; Layout.preferredWidth: 160 }
-                    Text { text: "Ký hiệu cảm biến"; color: Theme.accentText; font.bold: true; font.pixelSize: Theme.fontLabelSize; Layout.fillWidth: true }
-                    Text { text: "Truyền"; color: Theme.accentText; font.bold: true; font.pixelSize: Theme.fontLabelSize; Layout.preferredWidth: 56; horizontalAlignment: Text.AlignHCenter }
+                    Text { text: qsTr("STT"); color: AppColors.accentColor; font.bold: true; font.pixelSize: AppTypography.bodyMedium.pixelSize; Layout.preferredWidth: 36 }
+                    Text { text: qsTr("Tên cảm biến"); color: AppColors.accentColor; font.bold: true; font.pixelSize: AppTypography.bodyMedium.pixelSize; Layout.preferredWidth: 160 }
+                    Text { text: qsTr("Ký hiệu cảm biến"); color: AppColors.accentColor; font.bold: true; font.pixelSize: AppTypography.bodyMedium.pixelSize; Layout.fillWidth: true }
+                    Text { text: qsTr("Truyền"); color: AppColors.accentColor; font.bold: true; font.pixelSize: AppTypography.bodyMedium.pixelSize; Layout.preferredWidth: 56; horizontalAlignment: Text.AlignHCenter }
                 }
             }
 
@@ -152,26 +154,26 @@ Item {
                     // qmllint disable unqualified
                     width: txList.width
                     height: 44
-                    color: delegateRoot.index % 2 === 0 ? Theme.bgPanel : Theme.bgSeparator
-                    radius: Theme.radiusTiny
+                    color: delegateRoot.index % 2 === 0 ? AppColors.surfaceContainerLow : AppColors.surfaceContainerHigh
+                    radius: AppTheme.radiusTiny
 
                     RowLayout {
                         anchors.fill: parent
                         anchors.leftMargin: 12
                         anchors.rightMargin: 12
-                        spacing: Theme.spacingS
+                        spacing: AppTheme.spacingS
 
                         Text {
                             text: String(delegateRoot.stt)
-                            color: Theme.textLabel
-                            font.pixelSize: Theme.fontLabelSize
+                            color: AppColors.onSurfaceVariant
+                            font.pixelSize: AppTypography.bodyMedium.pixelSize
                             Layout.preferredWidth: 36
                         }
 
                         Text {
                             text: delegateRoot.name
-                            color: Theme.textLabel
-                            font.pixelSize: Theme.fontLabelSize
+                            color: AppColors.onSurfaceVariant
+                            font.pixelSize: AppTypography.bodyMedium.pixelSize
                             Layout.preferredWidth: 160
                             elide: Text.ElideRight
                         }
@@ -212,12 +214,12 @@ Item {
 
             RowLayout {
                 Layout.fillWidth: true
-                spacing: Theme.spacingM
+                spacing: AppTheme.spacingM
                 Item { Layout.fillWidth: true }
 
                 AppButton {
-                    text: "LƯU"
-                    accent: Theme.btnStart
+                    text: qsTr("LƯU")
+                    fillColor: AppColors.success
                     onClicked: {
                         SensorListModel.saveTransmission(root.buildSavePayload())
                         if (root.configChanged)
@@ -227,8 +229,8 @@ Item {
                 }
 
                 AppButton {
-                    text: "XÓA"
-                    accent: Theme.btnStop
+                    text: qsTr("XÓA")
+                    fillColor: AppColors.error
                     onClicked: {
                         var ids = root.selectedSensorIds()
                         if (ids.length === 0)

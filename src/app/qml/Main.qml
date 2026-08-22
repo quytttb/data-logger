@@ -3,10 +3,10 @@ import QtQuick.Controls
 import QtQuick.Controls.Material
 import QtQuick.Layouts
 import QtQuick.Window
-import DataLogger.Theme
 import DataLogger.Core
 import DataLogger.Components
-import "."
+import LoggerKit.Theme
+import LoggerKit.Components
 
 ApplicationWindow {
     id: root
@@ -15,7 +15,7 @@ ApplicationWindow {
     Material.theme: AppTheme.materialTheme
     Material.primary: AppTheme.primary
     Material.accent: AppTheme.accent
-    palette.buttonText: AppColors.buttonText
+    palette.buttonText: AppColors.onPrimary
 
     function syncModbusTaskBarRef() {
         tabContent.syncModbusTaskBar(headerChrome.modbusTbLoader.item)
@@ -31,7 +31,7 @@ ApplicationWindow {
     // Kích thước fallback cho màn hình 7" (1024x600) khi không chạy fullscreen
     width: 1024
     height: 600
-    title: "Data Logger"
+    title: qsTr("Data Logger")
     color: AppColors.surface
     // Kiosk mode: luôn toàn màn hình trên EGLFS, không thanh tiêu đề / không thoát
     visibility: Window.FullScreen
@@ -99,7 +99,12 @@ ApplicationWindow {
         }
     }
 
-    Component.onCompleted: root.syncModbusTaskBarRef()
+    Component.onCompleted: {
+        // Kiosk: dark theme + touch-sized controls (≥48dp) via the shared kit.
+        ThemeMode.mode = "dark"
+        ThemeMode.touch = true
+        root.syncModbusTaskBarRef()
+    }
 
     Connections {
         target: TesterController
@@ -129,7 +134,19 @@ ApplicationWindow {
     }
 
     AppToastHost { id: appToastHost }
-    MessageDetailDialog { id: messageDetailDialog }
+
+    MessageDetailDialog {
+        id: messageDetailDialog
+        parent: Overlay.overlay
+        anchors.centerIn: parent
+    }
+
+    Connections {
+        target: AppNotifier
+        function onDetailRequested(title, body, contextId) {
+            messageDetailDialog.showMessage(title, body)
+        }
+    }
 
     Connections {
         target: MonitorController

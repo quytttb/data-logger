@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 
@@ -134,8 +135,8 @@ Item {
             pollInterval: basicTab.dPollInterval.value,
             reportIndex: isAnalog ? basicTab.dReportIdx.value : 0,
             active: basicTab.dActive.checked,
-            minThreshold: isAnalog ? scalingTab.dMinThreshold.text : "",
-            maxThreshold: isAnalog ? scalingTab.dMaxThreshold.text : "",
+            minThreshold: isAnalog ? scalingTab.dMinThreshold.text : qsTr(""),
+            maxThreshold: isAnalog ? scalingTab.dMaxThreshold.text : qsTr(""),
             decimals: scalingTab.dDecimals.value,
             sensorType: root.sensorType
         }

@@ -11,6 +11,11 @@ set_target_properties(app PROPERTIES
 
 target_compile_definitions(app PRIVATE APP_VERSION="${APP_VERSION}")
 
+# ThemeSetup.h ships with the shared kit (LoggerKit.Theme).
+target_include_directories(app PRIVATE
+    ${CMAKE_SOURCE_DIR}/shared/logger-ui-kit/src/theme
+)
+
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
     target_link_options(app PRIVATE -s)
 endif()
@@ -38,6 +43,8 @@ qt_add_qml_module(app
         ../../resources/app-icon.svg
         ../../resources/app-icon.png
     DEPENDENCIES
+        LoggerKit.Theme
+        LoggerKit.Components
         datalogger_core
         datalogger_network
         datalogger_theme
@@ -50,6 +57,9 @@ target_link_libraries(app PRIVATE
     Qt6::Quick
     Qt6::QuickControls2
     Qt6::Graphs
+    logger_ui_kit_themeplugin
+    logger_ui_kit_componentsplugin
+    LoggerKit::theme_setup
     datalogger_coreplugin
     datalogger_networkplugin
     datalogger_themeplugin
