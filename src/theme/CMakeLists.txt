@@ -15,7 +15,7 @@ qt_add_qml_module(datalogger_theme
         LoggerKit.Theme
 )
 
-set_target_properties(datalogger_theme PROPERTIES QT_QMLLINT_MAX_WARNINGS 500)
-set_target_properties(datalogger_core PROPERTIES QT_QMLLINT_MAX_WARNINGS 500)
+set_target_properties(datalogger_theme PROPERTIES QT_QMLLINT_MAX_WARNINGS 0)
+set_target_properties(datalogger_core PROPERTIES QT_QMLLINT_MAX_WARNINGS 0)
 
 add_library(datalogger::theme ALIAS datalogger_theme)

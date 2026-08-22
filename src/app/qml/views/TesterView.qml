@@ -195,7 +195,7 @@ Item {
                             color: AppColors.primaryText; font.pixelSize: AppTypography.bodySmall.pixelSize; font.bold: true
                         }
                         Text {
-                            text: SettingsController.serialBytesize + "bit, Parity:" + SettingsController.serialParity + ", Stop:" + SettingsController.serialStopbits
+                            text: SettingsController.serialBytesize + qsTr("bit, Parity:") + SettingsController.serialParity + qsTr(", Stop:") + SettingsController.serialStopbits
                             color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.labelMedium.pixelSize
                         }
                     }

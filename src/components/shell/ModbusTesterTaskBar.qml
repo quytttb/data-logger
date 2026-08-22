@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -43,9 +45,9 @@ Item {
                     Layout.preferredHeight: 44
                     enabled: root.testerView !== null && !TesterController.isConnecting
                              && !MonitorController.isPolling
-                    text: TesterController.isConnecting ? "Connecting…"
-                        : MonitorController.isPolling ? "Monitor is running"
-                        : TesterController.isConnected ? "Disconnect" : "Connect"
+                    text: TesterController.isConnecting ? qsTr("Connecting…")
+                        : MonitorController.isPolling ? qsTr("Monitor is running")
+                        : TesterController.isConnected ? qsTr("Disconnect") : qsTr("Connect")
                     font.pixelSize: AppTypography.labelMedium.pixelSize
                     font.bold: true
                     fillColor: TesterController.isConnected ? AppColors.error : AppColors.primaryColor

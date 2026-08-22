@@ -42,6 +42,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 
+# Required: source tree (src/...) deviates from URI layout (DataLogger/...),
+# so point the build-tree QML root explicitly; without it qmllint/qmlcachegen
+# cannot resolve cross-module imports in this layout.
 set(QT_QML_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}" CACHE PATH
     "QML build-tree root; qt_add_qml_module appends URI path segments")
 

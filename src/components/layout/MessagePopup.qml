@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -11,8 +13,8 @@ Popup {
     property string popupMessage: ""
 
     property bool isConfirmMode: false
-    property string confirmButtonText: "Confirm"
-    property string cancelButtonText: "Cancel"
+    property string confirmButtonText: qsTr("Confirm")
+    property string cancelButtonText: qsTr("Cancel")
     property var confirmCallback: null
     property color confirmButtonColor: AppColors.success
 
@@ -36,7 +38,7 @@ Popup {
         popupTitle = t
         popupMessage = m
         confirmCallback = onConfirm
-        confirmButtonText = okText || "Confirm"
+        confirmButtonText = okText || qsTr("Confirm")
         confirmButtonColor = okColor || AppColors.success
         open()
     }
