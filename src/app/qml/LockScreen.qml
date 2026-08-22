@@ -3,14 +3,15 @@ import QtQuick.Controls
 import QtQuick.Controls.Material
 import QtQuick.Layouts
 import QtQuick.Window
-import DataLogger.Theme
 import DataLogger.Components
+import LoggerKit.Theme
+import LoggerKit.Components
 
 ApplicationWindow {
     visible: true
     visibility: Window.FullScreen
     color: AppColors.surface
-    title: "Data Logger"
+    title: qsTr("Data Logger")
 
     Material.theme: AppTheme.materialTheme
     Material.primary: AppTheme.primary
@@ -18,7 +19,7 @@ ApplicationWindow {
 
     ColumnLayout {
         anchors.centerIn: parent
-        spacing: Theme.spacingSM
+        spacing: AppTheme.spacingSM
 
         EmptyStatePlaceholder {
             Layout.preferredWidth: Math.min(parent.width * 0.85, 400)
@@ -30,7 +31,7 @@ ApplicationWindow {
         Label {
             Layout.alignment: Qt.AlignHCenter
             // qmllint disable unqualified
-            text: "Device ID: " + deviceStationCode
+            text: qsTr("Device ID: ") + deviceStationCode
             // qmllint enable unqualified
             font: AppTypography.labelSmall
             color: AppColors.textSoft

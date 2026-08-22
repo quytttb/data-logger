@@ -1,11 +1,13 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.VirtualKeyboard
-import DataLogger.Theme
 import DataLogger.Core
 import DataLogger.Network
 import DataLogger.Components
+import LoggerKit.Theme
+import LoggerKit.Components
 
 Item {
     id: root
@@ -28,18 +30,18 @@ Item {
         TabBar {
             id: connectionTabBar
             Layout.alignment: Qt.AlignLeft
-            Layout.bottomMargin: Theme.spacingS
+            Layout.bottomMargin: AppTheme.spacingS
             
             background: Rectangle { 
                 color: "transparent"
             }
 
             ThemedTabButton {
-                text: "Local Sensors"
+                text: qsTr("Local Sensors")
                 width: implicitWidth + 30
             }
             ThemedTabButton {
-                text: "Network Services"
+                text: qsTr("Network Services")
                 width: implicitWidth + 30
             }
         }
@@ -58,37 +60,37 @@ Item {
                 ColumnLayout {
                     id: lsFormContent
                     width: parent.width
-                    spacing: Theme.spacingM
+                    spacing: AppTheme.spacingM
 
                     Rectangle {
                         Layout.fillWidth: true
                         implicitHeight: lsRow.implicitHeight + 40
-                        color: Theme.bgPanel; radius: Theme.radiusCard
-                        border.color: Theme.borderDefault; border.width: 1
+                        color: AppColors.surfaceContainerLow; radius: AppTheme.cardRadius
+                        border.color: AppColors.outlineVariant; border.width: 1
 
                         RowLayout {
                             id: lsRow
                             anchors.fill: parent; anchors.margins: 20
-                            spacing: Theme.spacingL
+                            spacing: AppTheme.spacingL
 
                             // ── Modbus RTU (Serial + Framing) ─────────────────────
                             ColumnLayout {
                                 Layout.fillWidth: true; Layout.alignment: Qt.AlignTop; spacing: 8
 
                                 Text {
-                                    text: "Modbus RTU"
-                                    color: Theme.accentText; font.bold: true; font.pixelSize: AppTypography.titleSmall.pixelSize
+                                    text: qsTr("Modbus RTU")
+                                    color: AppColors.accentColor; font.bold: true; font.pixelSize: AppTypography.titleSmall.pixelSize
                                 }
-                                Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.borderDefault }
+                                Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: AppColors.outlineVariant }
 
                                 RowLayout {
-                                    Layout.fillWidth: true; spacing: Theme.spacingL
+                                    Layout.fillWidth: true; spacing: AppTheme.spacingL
 
                                     ColumnLayout {
                                         Layout.fillWidth: true; Layout.alignment: Qt.AlignTop; spacing: 8
-                                        Text { text: "Serial"; color: Theme.accentText; font.bold: true; font.pixelSize: AppTypography.bodySmall.pixelSize }
+                                        Text { text: qsTr("Serial"); color: AppColors.accentColor; font.bold: true; font.pixelSize: AppTypography.bodySmall.pixelSize }
 
-                                        Text { text: "Port:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
+                                        Text { text: qsTr("Port:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize }
                                         RowLayout {
                                             Layout.fillWidth: true; spacing: 4
                                             ComboBox {
@@ -123,19 +125,19 @@ Item {
                                                         anchors.centerIn: parent
                                                         name: "refresh"
                                                         size: AppTheme.iconSizeSm
-                                                        iconColor: AppColors.buttonIconOnFilled
+                                                        iconColor: AppColors.onPrimary
                                                     }
                                                 }
                                                 background: Rectangle {
                                                     anchors.fill: parent
-                                                    color: !refreshPortsBtn.enabled ? Theme.btnBgDisabled : Theme.accent
-                                                    radius: Theme.radiusMedium
+                                                    color: !refreshPortsBtn.enabled ? AppColors.disabledContent : AppColors.primaryColor
+                                                    radius: AppTheme.listItemRadius
                                                     opacity: refreshPortsBtn.pressed ? 0.75 : 1.0
                                                 }
                                             }
                                         }
 
-                                        Text { text: "Baudrate:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
+                                        Text { text: qsTr("Baudrate:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize }
                                         ComboBox {
                                             id: masterBaudCombo
                                             Layout.fillWidth: true
@@ -166,23 +168,23 @@ Item {
 
                                     ColumnLayout {
                                         Layout.fillWidth: true; Layout.alignment: Qt.AlignTop; spacing: 8
-                                        Text { text: "Data framing"; color: Theme.accentText; font.bold: true; font.pixelSize: AppTypography.bodySmall.pixelSize }
+                                        Text { text: qsTr("Data framing"); color: AppColors.accentColor; font.bold: true; font.pixelSize: AppTypography.bodySmall.pixelSize }
 
-                                        Text { text: "Data bits:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
+                                        Text { text: qsTr("Data bits:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize }
                                         ComboBox {
                                             Layout.fillWidth: true; model: ["5", "6", "7", "8"]
                                             Component.onCompleted: { currentIndex = model.indexOf(String(SettingsController.serialBytesize)) }
                                             onActivated: { SettingsController.serialBytesize = parseInt(currentText, 10); root.configChanged = true }
                                         }
 
-                                        Text { text: "Parity:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
+                                        Text { text: qsTr("Parity:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize }
                                         ComboBox {
                                             Layout.fillWidth: true; model: ["N", "E", "O"]
                                             Component.onCompleted: { currentIndex = model.indexOf(SettingsController.serialParity) }
                                             onActivated: { SettingsController.serialParity = currentText; root.configChanged = true }
                                         }
 
-                                        Text { text: "Stop bits:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
+                                        Text { text: qsTr("Stop bits:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize }
                                         ComboBox {
                                             Layout.fillWidth: true; model: ["1", "2"]
                                             Component.onCompleted: { currentIndex = model.indexOf(String(SettingsController.serialStopbits)) }
@@ -205,18 +207,18 @@ Item {
                 ColumnLayout {
                     id: nsFormContent
                     width: parent.width
-                    spacing: Theme.spacingM
+                    spacing: AppTheme.spacingM
 
                     Rectangle {
                         Layout.fillWidth: true
                         implicitHeight: nsRow.implicitHeight + 40
-                        color: Theme.bgPanel; radius: Theme.radiusCard
-                        border.color: Theme.borderDefault; border.width: 1
+                        color: AppColors.surfaceContainerLow; radius: AppTheme.cardRadius
+                        border.color: AppColors.outlineVariant; border.width: 1
 
                         RowLayout {
                             id: nsRow
                             anchors.fill: parent; anchors.margins: 20
-                            spacing: Theme.spacingL
+                            spacing: AppTheme.spacingL
 
                             // ── Modbus TCP Server ──────────────────────────────────
                             ColumnLayout {
@@ -225,8 +227,8 @@ Item {
                                 RowLayout {
                                     Layout.fillWidth: true; spacing: 8
                                     Text {
-                                        text: "Modbus TCP Server"
-                                        color: Theme.accentText; font.bold: true; font.pixelSize: AppTypography.titleSmall.pixelSize
+                                        text: qsTr("Modbus TCP Server")
+                                        color: AppColors.accentColor; font.bold: true; font.pixelSize: AppTypography.titleSmall.pixelSize
                                         Layout.fillWidth: true
                                     }
                                     Rectangle {
@@ -241,16 +243,16 @@ Item {
                                             : ModbusTcpServerService.state === "error" ? "Error"
                                             : ModbusTcpServerService.state === "starting" ? "Starting…"
                                             : "Stopped"
-                                        color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize
+                                        color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize
                                     }
                                 }
-                                Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.borderDefault }
+                                Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: AppColors.outlineVariant }
 
                                 RowLayout {
-                                    Layout.fillWidth: true; spacing: Theme.spacingS
+                                    Layout.fillWidth: true; spacing: AppTheme.spacingS
                                     Text {
-                                        text: "Active"
-                                        color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize
+                                        text: qsTr("Active")
+                                        color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize
                                         Layout.alignment: Qt.AlignVCenter
                                     }
                                     Switch {
@@ -267,7 +269,7 @@ Item {
                                     Item { Layout.fillWidth: true }
                                 }
 
-                                Text { text: "Bind address:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
+                                Text { text: qsTr("Bind address:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize }
                                 TextField {
                                     id: tcpBindField
                                     Layout.fillWidth: true
@@ -284,7 +286,7 @@ Item {
                                     onTextEdited: { SettingsController.modbusTcpBind = text; root.configChanged = true }
                                 }
 
-                                Text { text: "Port:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
+                                Text { text: qsTr("Port:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize }
                                 TextField {
                                     id: tcpPortField
                                     Layout.fillWidth: true
@@ -307,7 +309,7 @@ Item {
                                     }
                                 }
 
-                                Text { text: "Unit ID:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
+                                Text { text: qsTr("Unit ID:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize }
                                 SpinBox {
                                     id: tcpUnitSpin
                                     Layout.fillWidth: true
@@ -337,7 +339,7 @@ Item {
                                           ? ("⚠ " + ModbusTcpServerService.lastError)
                                           : ""
                                     visible: ModbusTcpServerService.lastError.length > 0
-                                    color: AppColors.error; font.pixelSize: Theme.fontLabelSize - 1
+                                    color: AppColors.error; font.pixelSize: AppTypography.bodyMedium.pixelSize - 1
                                     Layout.fillWidth: true; wrapMode: Text.Wrap
                                 }
                             }
@@ -349,8 +351,8 @@ Item {
                                 RowLayout {
                                     Layout.fillWidth: true; spacing: 8
                                     Text {
-                                        text: "HTTP REST Server"
-                                        color: Theme.accentText; font.bold: true; font.pixelSize: AppTypography.titleSmall.pixelSize
+                                        text: qsTr("HTTP REST Server")
+                                        color: AppColors.accentColor; font.bold: true; font.pixelSize: AppTypography.titleSmall.pixelSize
                                         Layout.fillWidth: true
                                     }
                                     Rectangle {
@@ -365,16 +367,16 @@ Item {
                                             : RestApiService.state === "error" ? "Error"
                                             : RestApiService.state === "starting" ? "Starting…"
                                             : "Stopped"
-                                        color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize
+                                        color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize
                                     }
                                 }
-                                Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.borderDefault }
+                                Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: AppColors.outlineVariant }
 
                                 RowLayout {
-                                    Layout.fillWidth: true; spacing: Theme.spacingS
+                                    Layout.fillWidth: true; spacing: AppTheme.spacingS
                                     Text {
-                                        text: "Active"
-                                        color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize
+                                        text: qsTr("Active")
+                                        color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize
                                         Layout.alignment: Qt.AlignVCenter
                                     }
                                     Switch {
@@ -391,7 +393,7 @@ Item {
                                     Item { Layout.fillWidth: true }
                                 }
 
-                                Text { text: "Bind address:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
+                                Text { text: qsTr("Bind address:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize }
                                 TextField {
                                     id: restBindField
                                     Layout.fillWidth: true
@@ -408,7 +410,7 @@ Item {
                                     onTextEdited: { SettingsController.restApiBind = text; root.configChanged = true }
                                 }
 
-                                Text { text: "Port:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
+                                Text { text: qsTr("Port:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize }
                                 TextField {
                                     id: restPortField
                                     Layout.fillWidth: true
@@ -431,9 +433,9 @@ Item {
                                     }
                                 }
 
-                                Text { text: "API token:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
+                                Text { text: qsTr("API token:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize }
                                 RowLayout {
-                                    Layout.fillWidth: true; spacing: Theme.spacingS
+                                    Layout.fillWidth: true; spacing: AppTheme.spacingS
                                     TextField {
                                         id: restTokenField
                                         Layout.fillWidth: true
@@ -452,19 +454,19 @@ Item {
                                         id: tokenShow
                                         checkable: true
                                         text: checked ? "Hide" : "Show"
-                                        variant: "outlined"
-                                        font.pixelSize: Theme.fontLabelSize - 1
+                                        kind: AppButton.Secondary
+                                        font.pixelSize: AppTypography.bodyMedium.pixelSize - 1
                                     }
                                     AppButton {
-                                        text: "Regenerate"
-                                        variant: "outlined"
-                                        font.pixelSize: Theme.fontLabelSize - 1
+                                        text: qsTr("Regenerate")
+                                        kind: AppButton.Secondary
+                                        font.pixelSize: AppTypography.bodyMedium.pixelSize - 1
                                         onClicked: SettingsController.regenerateRestToken()
                                     }
                                     AppButton {
                                         enabled: SettingsController.provisionQrAvailable
                                         iconName: "qrCode"
-                                        variant: "outlined"
+                                        kind: AppButton.Secondary
                                         onClicked: {
                                             provisionQrPopup.refresh()
                                             provisionQrPopup.open()
@@ -477,7 +479,7 @@ Item {
                                           ? ("⚠ " + RestApiService.lastError)
                                           : ""
                                     visible: RestApiService.lastError.length > 0
-                                    color: AppColors.error; font.pixelSize: Theme.fontLabelSize - 1
+                                    color: AppColors.error; font.pixelSize: AppTypography.bodyMedium.pixelSize - 1
                                     Layout.fillWidth: true; wrapMode: Text.Wrap
                                 }
                             }

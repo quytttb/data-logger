@@ -1,8 +1,9 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import DataLogger.Theme
 import DataLogger.Core
+import LoggerKit.Theme
 
 Item {
     id: root
@@ -26,7 +27,7 @@ Item {
     ColumnLayout {
         id: col
         width: root.width
-        spacing: Theme.spacingS
+        spacing: AppTheme.spacingS
 
         GridLayout {
             Layout.fillWidth: true
@@ -35,8 +36,8 @@ Item {
             rowSpacing: 10
 
             Label {
-                text: "Slave ID:"
-                color: Theme.textSecondary
+                text: qsTr("Slave ID:")
+                color: AppColors.onSurfaceVariant
                 Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
             }
             SpinBox {
@@ -46,8 +47,8 @@ Item {
             }
 
             Label {
-                text: "Register type:"
-                color: Theme.textSecondary
+                text: qsTr("Register type:")
+                color: AppColors.onSurfaceVariant
                 Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
             }
             ComboBox {
@@ -59,8 +60,8 @@ Item {
             }
 
             Label {
-                text: "Data type:"
-                color: Theme.textSecondary
+                text: qsTr("Data type:")
+                color: AppColors.onSurfaceVariant
                 Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
                 visible: !root.isBooleanType
             }
@@ -73,8 +74,8 @@ Item {
             }
 
             Label {
-                text: "Endian format:"
-                color: Theme.textSecondary
+                text: qsTr("Endian format:")
+                color: AppColors.onSurfaceVariant
                 Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
                 visible: !root.isBooleanType
             }
@@ -87,8 +88,8 @@ Item {
             }
 
             Label {
-                text: "Start address:"
-                color: Theme.textSecondary
+                text: qsTr("Start address:")
+                color: AppColors.onSurfaceVariant
                 Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
                 visible: root.isReadMode
             }
@@ -101,8 +102,8 @@ Item {
             }
 
             Label {
-                text: "End address:"
-                color: Theme.textSecondary
+                text: qsTr("End address:")
+                color: AppColors.onSurfaceVariant
                 Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
                 visible: root.isReadMode
             }
@@ -115,8 +116,8 @@ Item {
             }
 
             Label {
-                text: "Registers per read:"
-                color: Theme.textSecondary
+                text: qsTr("Registers per read:")
+                color: AppColors.onSurfaceVariant
                 Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
                 visible: root.isReadMode
             }
@@ -126,12 +127,12 @@ Item {
                 Layout.fillWidth: true
                 visible: root.isReadMode
                 ToolTip.visible: hovered
-                ToolTip.text: "Number of consecutive registers read at each address (1–125)."
+                ToolTip.text: qsTr("Number of consecutive registers read at each address (1–125).")
             }
 
             Label {
-                text: "Write address:"
-                color: Theme.textSecondary
+                text: qsTr("Write address:")
+                color: AppColors.onSurfaceVariant
                 Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
                 visible: !root.isReadMode
             }
@@ -144,8 +145,8 @@ Item {
             }
 
             Label {
-                text: "Write value:"
-                color: Theme.textSecondary
+                text: qsTr("Write value:")
+                color: AppColors.onSurfaceVariant
                 Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
                 visible: !root.isReadMode
             }

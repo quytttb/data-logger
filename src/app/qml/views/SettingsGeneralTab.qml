@@ -1,10 +1,12 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.VirtualKeyboard
-import DataLogger.Theme
 import DataLogger.Core
 import DataLogger.Components
+import LoggerKit.Theme
+import LoggerKit.Components
 
 Item {
     id: root
@@ -21,31 +23,31 @@ Item {
 
         Rectangle {
             width: flick.width; height: flick.contentHeight
-            color: Theme.bgPanel; radius: Theme.radiusCard
-            border.color: Theme.borderDefault; border.width: 1
+            color: AppColors.surfaceContainerLow; radius: AppTheme.cardRadius
+            border.color: AppColors.outlineVariant; border.width: 1
 
             RowLayout {
                 id: formContent
                 anchors.fill: parent; anchors.margins: 20
-                spacing: Theme.spacingL
+                spacing: AppTheme.spacingL
 
                 // ── COLUMN 1: Device ──
                 ColumnLayout {
                     Layout.fillWidth: true; Layout.alignment: Qt.AlignTop; spacing: 8
 
-                    Text { text: "Device Information"; color: Theme.accentText; font.bold: true; font.pixelSize: AppTypography.titleSmall.pixelSize }
-                    Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.borderDefault }
+                    Text { text: qsTr("Device Information"); color: AppColors.accentColor; font.bold: true; font.pixelSize: AppTypography.titleSmall.pixelSize }
+                    Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: AppColors.outlineVariant }
 
-                    Text { text: "Device ID:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
+                    Text { text: qsTr("Device ID:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize }
                     Label {
                         Layout.fillWidth: true
                         text: SettingsController ? SettingsController.deviceId : ""
-                        color: Theme.textSecondary
-                        font.pixelSize: Theme.fontLabelSize
+                        color: AppColors.onSurfaceVariant
+                        font.pixelSize: AppTypography.bodyMedium.pixelSize
                         elide: Text.ElideRight
                     }
 
-                    Text { text: "Station code:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
+                    Text { text: qsTr("Station code:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize }
                     TextField {
                         Layout.fillWidth: true
                         EnterKeyAction.actionId: EnterKeyAction.None; EnterKeyAction.label: qsTr("OK")
@@ -53,7 +55,7 @@ Item {
                         onTextEdited: { SettingsController.stationCode = text; root.configChanged = true }
                     }
 
-                    Text { text: "Name Device:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
+                    Text { text: qsTr("Name Device:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize }
                     TextField {
                         Layout.fillWidth: true
                         EnterKeyAction.actionId: EnterKeyAction.None; EnterKeyAction.label: qsTr("OK")
@@ -61,7 +63,7 @@ Item {
                         onTextEdited: { SettingsController.stationName = text; root.configChanged = true }
                     }
 
-                    Text { text: "Poll interval (s):"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
+                    Text { text: qsTr("Poll interval (s):"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize }
                     SpinBox {
                         id: pollSpin
                         from: 1; to: 3600; stepSize: 1; Layout.fillWidth: true
@@ -92,10 +94,10 @@ Item {
                 ColumnLayout {
                     Layout.fillWidth: true; Layout.alignment: Qt.AlignTop; spacing: 8
 
-                    Text { text: "Date & Time"; color: Theme.accentText; font.bold: true; font.pixelSize: AppTypography.titleSmall.pixelSize }
-                    Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.borderDefault }
+                    Text { text: qsTr("Date & Time"); color: AppColors.accentColor; font.bold: true; font.pixelSize: AppTypography.titleSmall.pixelSize }
+                    Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: AppColors.outlineVariant }
 
-                    Text { text: "Time format:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
+                    Text { text: qsTr("Time format:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize }
                     ComboBox {
                         Layout.fillWidth: true
                         model: ["HH:mm:ss", "hh:mm:ss AP"]
@@ -106,7 +108,7 @@ Item {
                         onActivated: { SettingsController.timeFormat = currentText; root.configChanged = true }
                     }
 
-                    Text { text: "Date format:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
+                    Text { text: qsTr("Date format:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize }
                     ComboBox {
                         Layout.fillWidth: true
                         model: ["dd/MM/yyyy", "yyyy-MM-dd", "MM/dd/yyyy"]
@@ -117,7 +119,7 @@ Item {
                         onActivated: { SettingsController.dateFormat = currentText; root.configChanged = true }
                     }
 
-                    Text { text: "Timezone:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
+                    Text { text: qsTr("Timezone:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize }
                     ComboBox {
                         Layout.fillWidth: true
                         textRole: "label"
@@ -165,22 +167,22 @@ Item {
                 ColumnLayout {
                     Layout.fillWidth: true; Layout.alignment: Qt.AlignTop; spacing: 8
 
-                    Text { text: "System"; color: Theme.accentText; font.bold: true; font.pixelSize: AppTypography.titleSmall.pixelSize }
-                    Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.borderDefault }
+                    Text { text: qsTr("System"); color: AppColors.accentColor; font.bold: true; font.pixelSize: AppTypography.titleSmall.pixelSize }
+                    Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: AppColors.outlineVariant }
 
-                    Text { text: "Restart this device:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
+                    Text { text: qsTr("Restart this device:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize }
                     AppButton {
                         Layout.fillWidth: true
-                        text: "System Reboot"
+                        text: qsTr("System Reboot")
                         iconName: "restart_alt"
-                        variant: "filled"
-                        accent: Theme.btnStop
+                        kind: AppButton.Primary
+                        fillColor: AppColors.error
                         onClicked: rebootConfirm.showConfirm(
                             "Confirm reboot",
                             "Reboot this device now? The application will start again automatically after boot.",
                             function() { if (SettingsController) SettingsController.rebootSystem() },
                             "Reboot",
-                            Theme.btnStop)
+                            AppColors.error)
                     }
                 }
             }

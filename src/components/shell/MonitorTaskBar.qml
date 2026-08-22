@@ -2,8 +2,9 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import DataLogger.Theme
 import DataLogger.Core
+import LoggerKit.Theme
+import LoggerKit.Components
 
 Item {
     id: root
@@ -13,19 +14,19 @@ Item {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
-        spacing: Theme.spacingS
+        spacing: AppTheme.spacingS
 
         // Status pill: live monitoring state (read-only indicator, not a control)
         Rectangle {
             id: statusPill
             readonly property color stateColor: !MonitorController.isPolling
-                ? Theme.textSecondary
-                : MonitorController.statusMode === 2 ? Theme.statusErrBright : Theme.statusOk
+                ? AppColors.onSurfaceVariant
+                : MonitorController.statusMode === 2 ? AppColors.error : AppColors.success
 
             Layout.preferredHeight: 44
             Layout.preferredWidth: statusRow.implicitWidth + 36
-            radius: Theme.radiusMedium
-            color: Theme.bgSeparator
+            radius: AppTheme.listItemRadius
+            color: AppColors.surfaceContainerHigh
             border.width: 1
             border.color: Qt.rgba(statusPill.stateColor.r, statusPill.stateColor.g, statusPill.stateColor.b, 0.5)
             Layout.alignment: Qt.AlignVCenter
@@ -33,7 +34,7 @@ Item {
             RowLayout {
                 id: statusRow
                 anchors.centerIn: parent
-                spacing: Theme.spacingS
+                spacing: AppTheme.spacingS
 
                 Rectangle {
                     Layout.preferredWidth: 14
@@ -60,8 +61,8 @@ Item {
         Rectangle {
             Layout.preferredWidth: errLabel.implicitWidth + 24
             Layout.preferredHeight: 32
-            radius: Theme.radiusSmall
-            color: (MonitorController.watchdogStatus !== "OK" && MonitorController.watchdogStatus !== "N/A") || MonitorController.errorCount > 0 ? Theme.bgErrorTint : Theme.bgSeparator
+            radius: AppTheme.listItemRadius
+            color: (MonitorController.watchdogStatus !== "OK" && MonitorController.watchdogStatus !== "N/A") || MonitorController.errorCount > 0 ? AppColors.errorContainer : AppColors.surfaceContainerHigh
             visible: MonitorController.isPolling
             Layout.alignment: Qt.AlignVCenter
 
@@ -75,7 +76,7 @@ Item {
                         return "Modbus read errors: " + MonitorController.errorCount;
                     return "No read errors";
                 }
-                color: (MonitorController.watchdogStatus !== "OK" && MonitorController.watchdogStatus !== "N/A") || MonitorController.errorCount > 0 ? Theme.statusErr : Theme.textSecondary
+                color: (MonitorController.watchdogStatus !== "OK" && MonitorController.watchdogStatus !== "N/A") || MonitorController.errorCount > 0 ? AppColors.error : AppColors.onSurfaceVariant
                 font.pixelSize: AppTypography.labelMedium.pixelSize
                 font.bold: true
             }
@@ -90,7 +91,7 @@ Item {
             text: MonitorController.isStopping ? "Stopping…"
                 : MonitorController.isPolling ? "Stop" : "Start"
             font.bold: true
-            accent: MonitorController.isPolling ? Theme.btnStop : Theme.btnStart
+            fillColor: MonitorController.isPolling ? AppColors.error : AppColors.success
             onClicked: {
                 if (MonitorController.isPolling)
                     MonitorController.stopPolling()

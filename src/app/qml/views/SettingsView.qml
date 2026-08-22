@@ -1,8 +1,9 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
-import DataLogger.Theme
 import DataLogger.Core
 import DataLogger.Components
+import LoggerKit.Theme
 
 Rectangle {
     id: settingsRoot
@@ -108,7 +109,7 @@ Rectangle {
             msg,
             function() { SensorListModel.removeSensor(s.sensorId) },
             "Delete",
-            Theme.btnStop
+            AppColors.error
         )
     }
 

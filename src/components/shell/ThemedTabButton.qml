@@ -3,8 +3,9 @@ import QtQuick.Controls
 import QtQuick.Controls.Material
 import QtQuick.Layouts
 
-import DataLogger.Theme
 import DataLogger.Components
+import LoggerKit.Theme
+import LoggerKit.Components
 
 // Tab bar button — label and icon use primary text to adhere to Material 3 guidelines
 TabButton {
@@ -24,7 +25,7 @@ TabButton {
         color: root.checked ? AppColors.accentContainer
              : root.hovered ? AppColors.hoverFill
              : "transparent"
-        radius: Theme.radiusMedium
+        radius: AppTheme.listItemRadius
         
         Behavior on color {
             ColorAnimation { duration: AppTheme.motionStandard }

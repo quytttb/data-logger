@@ -1,7 +1,8 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import DataLogger.Theme
+import LoggerKit.Theme
+import LoggerKit.Components
 
 Popup {
     id: root
@@ -13,12 +14,12 @@ Popup {
     property string confirmButtonText: "Confirm"
     property string cancelButtonText: "Cancel"
     property var confirmCallback: null
-    property color confirmButtonColor: Theme.btnStart
+    property color confirmButtonColor: AppColors.success
 
     parent: Overlay.overlay
     anchors.centerIn: parent
     width: Math.min(440, parent.width - 32)
-    padding: Theme.spacingM
+    padding: AppTheme.spacingM
     modal: true
     focus: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
@@ -36,25 +37,25 @@ Popup {
         popupMessage = m
         confirmCallback = onConfirm
         confirmButtonText = okText || "Confirm"
-        confirmButtonColor = okColor || Theme.btnStart
+        confirmButtonColor = okColor || AppColors.success
         open()
     }
 
     background: Rectangle {
-        color: Theme.bgPanel
-        radius: Theme.radiusCard
-        border.color: root.isConfirmMode && root.confirmButtonColor === Theme.btnStop ? Theme.borderErr : Theme.accent
+        color: AppColors.surfaceContainerLow
+        radius: AppTheme.cardRadius
+        border.color: root.isConfirmMode && root.confirmButtonColor === AppColors.error ? AppColors.error : AppColors.primaryColor
         border.width: 1
     }
 
     contentItem: ColumnLayout {
-        spacing: Theme.spacingSM
+        spacing: AppTheme.spacingSM
 
         Text {
             text: root.popupTitle
             font.bold: true
             font.pixelSize: AppTypography.titleLarge.pixelSize
-            color: root.isConfirmMode && root.confirmButtonColor === Theme.btnStop ? Theme.statusErr : Theme.textPrimary
+            color: root.isConfirmMode && root.confirmButtonColor === AppColors.error ? AppColors.error : AppColors.primaryText
             Layout.fillWidth: true
             wrapMode: Text.WordWrap
             horizontalAlignment: Text.AlignHCenter
@@ -64,7 +65,7 @@ Popup {
         Text {
             text: root.popupMessage
             wrapMode: Text.WordWrap
-            color: Theme.accentText
+            color: AppColors.accentColor
             font.pixelSize: AppTypography.bodyMedium.pixelSize
             Layout.fillWidth: true
             horizontalAlignment: Text.AlignHCenter
@@ -72,8 +73,8 @@ Popup {
 
         AppButton {
             visible: !root.isConfirmMode
-            text: "Close"
-            variant: "tonal"
+            text: qsTr("Close")
+            kind: AppButton.Neutral
             Layout.alignment: Qt.AlignHCenter
             onClicked: root.close()
         }
@@ -81,11 +82,11 @@ Popup {
         RowLayout {
             visible: root.isConfirmMode
             Layout.fillWidth: true
-            spacing: Theme.spacingS
+            spacing: AppTheme.spacingS
 
             AppButton {
                 text: root.cancelButtonText
-                variant: "tonal"
+                kind: AppButton.Neutral
                 Layout.fillWidth: true
                 onClicked: root.close()
             }
@@ -94,7 +95,7 @@ Popup {
                 text: root.confirmButtonText
                 font.bold: true
                 Layout.fillWidth: true
-                accent: root.confirmButtonColor
+                fillColor: root.confirmButtonColor
                 onClicked: {
                     if (root.confirmCallback) root.confirmCallback()
                     root.close()

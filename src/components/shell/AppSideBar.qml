@@ -2,9 +2,10 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import DataLogger.Theme
 import DataLogger.Core
 import DataLogger.Components
+import LoggerKit.Theme
+import LoggerKit.Components
 
 Rectangle {
     id: sideBarRoot
@@ -34,7 +35,7 @@ Rectangle {
 
             Image {
                 anchors.centerIn: parent
-                source: "qrc:/qt/qml/DataLogger/Components/resources/icons/brand_4m_technologies_blue.svg"
+                source: "qrc:/qt/qml/LoggerKit/Components/resources/icons/brand_4m_technologies_blue.svg"
                 sourceSize: Qt.size(60, 60)
                 fillMode: Image.PreserveAspectFit
             }
@@ -129,17 +130,17 @@ Rectangle {
         Column {
             Layout.fillWidth: true
             spacing: 16
-            Layout.bottomMargin: Theme.spacingSM
+            Layout.bottomMargin: AppTheme.spacingSM
 
             // Status Column (Line by Line)
             Column {
                 width: parent.width
-                spacing: Theme.spacingS
+                spacing: AppTheme.spacingS
 
                 // Modbus
                 RowLayout {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    spacing: Theme.spacingS
+                    spacing: AppTheme.spacingS
                     Rectangle {
                         implicitWidth: 8; implicitHeight: 8; radius: implicitWidth / 2
                         color: MonitorController.statusMode === 1 ? AppColors.success
@@ -147,7 +148,7 @@ Rectangle {
                              : AppColors.onSurfaceVariant
                     }
                     Text {
-                        text: "Modbus"
+                        text: qsTr("Modbus")
                         font.pixelSize: AppTypography.labelTiny.pixelSize
                         color: AppColors.onSurfaceVariant
                         font.bold: true
@@ -157,7 +158,7 @@ Rectangle {
                 // FTP
                 RowLayout {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    spacing: Theme.spacingS
+                    spacing: AppTheme.spacingS
                     Rectangle {
                         implicitWidth: 8; implicitHeight: 8; radius: implicitWidth / 2
                         color: {
@@ -169,7 +170,7 @@ Rectangle {
                         }
                     }
                     Text {
-                        text: "FTP"
+                        text: qsTr("FTP")
                         font.pixelSize: AppTypography.labelTiny.pixelSize
                         color: AppColors.onSurfaceVariant
                         font.bold: true

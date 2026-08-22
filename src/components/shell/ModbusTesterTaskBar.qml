@@ -1,8 +1,9 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import DataLogger.Theme
 import DataLogger.Core
+import LoggerKit.Theme
+import LoggerKit.Components
 
 // Thanh header Modbus: gọi API trên TesterView (Main.syncModbusTaskBarRef gán từ MainTabContent.loaderTester).
 Item {
@@ -27,7 +28,7 @@ Item {
             RowLayout {
                 anchors.left: parent.left
                 anchors.verticalCenter: parent.verticalCenter
-                spacing: Theme.spacingS
+                spacing: AppTheme.spacingS
                 width: implicitWidth
 
                 BusyIndicator {
@@ -47,7 +48,7 @@ Item {
                         : TesterController.isConnected ? "Disconnect" : "Connect"
                     font.pixelSize: AppTypography.labelMedium.pixelSize
                     font.bold: true
-                    accent: TesterController.isConnected ? Theme.btnStop : Theme.accent
+                    fillColor: TesterController.isConnected ? AppColors.error : AppColors.primaryColor
                     onClicked: {
                         if (root.testerView)
                             root.testerView.connectOrDisconnect()
@@ -58,10 +59,10 @@ Item {
                 AppButton {
                     Layout.preferredHeight: 44
                     visible: TesterController.isConnected
-                    text: "Save new sensor"
+                    text: qsTr("Save new sensor")
                     font.pixelSize: AppTypography.labelSmall.pixelSize
                     font.bold: true
-                    accent: Theme.btnStart
+                    fillColor: AppColors.success
                     onClicked: {
                         if (root.testerView)
                             root.testerView.openSaveSensorInSettings()
@@ -80,7 +81,7 @@ Item {
             RowLayout {
                 anchors.right: parent.right
                 anchors.verticalCenter: parent.verticalCenter
-                spacing: Theme.spacingS
+                spacing: AppTheme.spacingS
 
                 // ── Mode Toggle (Read / Write) ──
                 RowLayout {
@@ -88,26 +89,25 @@ Item {
                     Layout.alignment: Qt.AlignVCenter
 
                     AppButton {
-                        text: "Read"
+                        text: qsTr("Read")
                         Layout.preferredHeight: 44
                         Layout.preferredWidth: 70
                         font.pixelSize: AppTypography.labelMedium.pixelSize
                         font.bold: true
-                        variant: root.isReadMode ? "filled" : "outlined"
-                        accent: AppColors.primaryColor
+                        kind: root.isReadMode ? AppButton.Primary : AppButton.Secondary
                         onClicked: {
                             if (root.testerView && root.testerView.opsItem)
                                 root.testerView.opsItem.isReadMode = true
                         }
                     }
                     AppButton {
-                        text: "Write"
+                        text: qsTr("Write")
                         Layout.preferredHeight: 44
                         Layout.preferredWidth: 70
                         font.pixelSize: AppTypography.labelMedium.pixelSize
                         font.bold: true
-                        variant: !root.isReadMode ? "filled" : "outlined"
-                        accent: AppColors.warning
+                        kind: !root.isReadMode ? AppButton.Primary : AppButton.Secondary
+                        fillColor: AppColors.warning
                         onClicked: {
                             if (root.testerView && root.testerView.opsItem)
                                 root.testerView.opsItem.isReadMode = false
@@ -118,7 +118,7 @@ Item {
                 Rectangle {
                     Layout.preferredWidth: 1
                     Layout.preferredHeight: 24
-                    color: Theme.borderDefault
+                    color: AppColors.outlineVariant
                     Layout.alignment: Qt.AlignVCenter
                 }
 
@@ -126,8 +126,8 @@ Item {
                     spacing: 4
                     Layout.alignment: Qt.AlignVCenter
                     Label {
-                        text: "Hide 0"
-                        color: Theme.textSecondary
+                        text: qsTr("Hide 0")
+                        color: AppColors.onSurfaceVariant
                         font.pixelSize: AppTypography.labelSmall.pixelSize
                     }
                     Switch {
@@ -141,12 +141,12 @@ Item {
                 }
 
                 AppButton {
-                    text: "Clear table"
+                    text: qsTr("Clear table")
                     Layout.preferredHeight: 44
                     font.pixelSize: AppTypography.labelSmall.pixelSize
                     font.bold: true
                     enabled: root.testerView !== null && !TesterController.isScanning
-                    accent: Theme.btnClear
+                    fillColor: AppColors.warning
                     onClicked: {
                         if (root.testerView)
                             root.testerView.clearResultsTable()
@@ -170,9 +170,9 @@ Item {
                         }
                     }
 
-                    accent: {
+                    fillColor: {
                         if (root.isReadMode)
-                            return TesterController.isScanning ? Theme.btnStop : Theme.accent
+                            return TesterController.isScanning ? AppColors.error : AppColors.primaryColor
                         return AppColors.warning
                     }
                     onClicked: {

@@ -1,9 +1,10 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
-import DataLogger.Theme
 import DataLogger.Core
 import DataLogger.Components
+import LoggerKit.Theme
+import LoggerKit.Components
 
 Rectangle {
     id: root
@@ -43,16 +44,16 @@ Rectangle {
                 anchors.rightMargin: root.colMarginH
                 spacing: root.colSpacing
 
-                Text { text: "Name";       color: AppColors.tableHeaderText; font: AppTypography.labelLarge; Layout.preferredWidth: 120 }
-                Text { text: "Unit";       color: AppColors.tableHeaderText; font: AppTypography.labelLarge; Layout.preferredWidth: 50 }
-                Text { text: "Slave";      color: AppColors.tableHeaderText; font: AppTypography.labelLarge; Layout.preferredWidth: 45; horizontalAlignment: Text.AlignHCenter }
-                Text { text: "Addr";       color: AppColors.tableHeaderText; font: AppTypography.labelLarge; Layout.preferredWidth: 45; horizontalAlignment: Text.AlignHCenter }
-                Text { text: "Reg";        color: AppColors.tableHeaderText; font: AppTypography.labelLarge; Layout.preferredWidth: 50; horizontalAlignment: Text.AlignHCenter }
-                Text { text: "Type";       color: AppColors.tableHeaderText; font: AppTypography.labelLarge; Layout.preferredWidth: 65; horizontalAlignment: Text.AlignHCenter }
-                Text { text: "Format";     color: AppColors.tableHeaderText; font: AppTypography.labelLarge; Layout.preferredWidth: 55; horizontalAlignment: Text.AlignHCenter }
-                Text { text: "Intv";       color: AppColors.tableHeaderText; font: AppTypography.labelLarge; Layout.preferredWidth: 45; horizontalAlignment: Text.AlignHCenter }
-                Text { text: "Thresholds"; color: AppColors.tableHeaderText; font: AppTypography.labelLarge; Layout.fillWidth: true; horizontalAlignment: Text.AlignHCenter }
-                Text { text: "Active";     color: AppColors.tableHeaderText; font: AppTypography.labelLarge; Layout.preferredWidth: 50; horizontalAlignment: Text.AlignHCenter }
+                Text { text: qsTr("Name");       color: AppColors.tableHeaderText; font: AppTypography.labelLarge; Layout.preferredWidth: 120 }
+                Text { text: qsTr("Unit");       color: AppColors.tableHeaderText; font: AppTypography.labelLarge; Layout.preferredWidth: 50 }
+                Text { text: qsTr("Slave");      color: AppColors.tableHeaderText; font: AppTypography.labelLarge; Layout.preferredWidth: 45; horizontalAlignment: Text.AlignHCenter }
+                Text { text: qsTr("Addr");       color: AppColors.tableHeaderText; font: AppTypography.labelLarge; Layout.preferredWidth: 45; horizontalAlignment: Text.AlignHCenter }
+                Text { text: qsTr("Reg");        color: AppColors.tableHeaderText; font: AppTypography.labelLarge; Layout.preferredWidth: 50; horizontalAlignment: Text.AlignHCenter }
+                Text { text: qsTr("Type");       color: AppColors.tableHeaderText; font: AppTypography.labelLarge; Layout.preferredWidth: 65; horizontalAlignment: Text.AlignHCenter }
+                Text { text: qsTr("Format");     color: AppColors.tableHeaderText; font: AppTypography.labelLarge; Layout.preferredWidth: 55; horizontalAlignment: Text.AlignHCenter }
+                Text { text: qsTr("Intv");       color: AppColors.tableHeaderText; font: AppTypography.labelLarge; Layout.preferredWidth: 45; horizontalAlignment: Text.AlignHCenter }
+                Text { text: qsTr("Thresholds"); color: AppColors.tableHeaderText; font: AppTypography.labelLarge; Layout.fillWidth: true; horizontalAlignment: Text.AlignHCenter }
+                Text { text: qsTr("Active");     color: AppColors.tableHeaderText; font: AppTypography.labelLarge; Layout.preferredWidth: 50; horizontalAlignment: Text.AlignHCenter }
             }
 
             Rectangle {

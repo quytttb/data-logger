@@ -1,10 +1,11 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.VirtualKeyboard
-import DataLogger.Theme
 import DataLogger.Core
 import DataLogger.Components
+import LoggerKit.Theme
 
 Item {
     id: root
@@ -25,11 +26,11 @@ Item {
         TabBar {
             id: serverTabBar
             Layout.alignment: Qt.AlignLeft
-            Layout.bottomMargin: Theme.spacingS
+            Layout.bottomMargin: AppTheme.spacingS
             background: Rectangle { color: "transparent" }
 
-            ThemedTabButton { text: "Cài đặt chung"; width: implicitWidth + 30 }
-            ThemedTabButton { text: "Thông số truyền"; width: implicitWidth + 30 }
+            ThemedTabButton { text: qsTr("Cài đặt chung"); width: implicitWidth + 30 }
+            ThemedTabButton { text: qsTr("Thông số truyền"); width: implicitWidth + 30 }
         }
 
         StackLayout {
@@ -50,8 +51,8 @@ Item {
 
         Rectangle {
             width: flick.width; height: flick.contentHeight
-            color: Theme.bgPanel; radius: Theme.radiusCard
-            border.color: Theme.borderDefault; border.width: 1
+            color: AppColors.surfaceContainerLow; radius: AppTheme.cardRadius
+            border.color: AppColors.outlineVariant; border.width: 1
 
             RowLayout {
                 id: remotePath
@@ -60,22 +61,22 @@ Item {
                 anchors.right: parent.right
                 anchors.margins: 20
                 height: 40
-                spacing: Theme.spacingM
+                spacing: AppTheme.spacingM
 
                 Text {
-                    text: "Remote path:"
-                    color: Theme.accentText
+                    text: qsTr("Remote path:")
+                    color: AppColors.accentColor
                     font.bold: true
-                    font.pixelSize: Theme.fontLabelSize
+                    font.pixelSize: AppTypography.bodyMedium.pixelSize
                     Layout.alignment: Qt.AlignVCenter
                 }
 
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 40
-                    color: Theme.bgSeparator
-                    radius: Theme.radiusTiny
-                    border.color: Theme.accent
+                    color: AppColors.surfaceContainerHigh
+                    radius: AppTheme.radiusTiny
+                    border.color: AppColors.primaryColor
                     border.width: 1
 
                     Text {
@@ -83,7 +84,7 @@ Item {
                         anchors.leftMargin: 12
                         anchors.rightMargin: 12
                         verticalAlignment: Text.AlignVCenter
-                        color: Theme.accent
+                        color: AppColors.primaryColor
                         font.pixelSize: AppTypography.bodySmall.pixelSize
                         font.bold: true
                         elide: Text.ElideRight
@@ -121,7 +122,7 @@ Item {
                 anchors.leftMargin: 20
                 anchors.rightMargin: 20
                 height: 1
-                color: Theme.borderDefault
+                color: AppColors.outlineVariant
             }
 
             RowLayout {
@@ -132,20 +133,20 @@ Item {
                 anchors.bottom: parent.bottom
                 anchors.margins: 20
                 anchors.topMargin: 10
-                spacing: Theme.spacingL
+                spacing: AppTheme.spacingL
 
                 // ── COLUMN 1: General ──
                 ColumnLayout {
                     Layout.fillWidth: true; Layout.alignment: Qt.AlignTop; spacing: 8
 
-                    Text { text: "General"; color: Theme.accentText; font.bold: true; font.pixelSize: AppTypography.titleSmall.pixelSize }
-                    Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.borderDefault }
+                    Text { text: qsTr("General"); color: AppColors.accentColor; font.bold: true; font.pixelSize: AppTypography.titleSmall.pixelSize }
+                    Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: AppColors.outlineVariant }
 
                     RowLayout {
-                        Layout.fillWidth: true; spacing: Theme.spacingS
+                        Layout.fillWidth: true; spacing: AppTheme.spacingS
                         Text {
-                            text: "Active"
-                            color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize
+                            text: qsTr("Active")
+                            color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize
                             Layout.alignment: Qt.AlignVCenter
                         }
                         Switch {
@@ -155,7 +156,7 @@ Item {
                         Item { Layout.fillWidth: true }
                     }
 
-                    Text { text: "Device type:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize; visible: false }
+                    Text { text: qsTr("Device type:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize; visible: false }
                     ComboBox {
                         visible: false
                         Layout.fillWidth: true; model: ["Standard"]
@@ -163,7 +164,7 @@ Item {
                         onActivated: { SettingsController.serverDeviceType = currentText; root.configChanged = true }
                     }
 
-                    Text { text: "Server name:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
+                    Text { text: qsTr("Server name:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize }
                     TextField {
                         Layout.fillWidth: true
                         EnterKeyAction.actionId: EnterKeyAction.None; EnterKeyAction.label: qsTr("OK")
@@ -171,7 +172,7 @@ Item {
                         onTextEdited: { SettingsController.serverName = text; root.configChanged = true }
                     }
 
-                    Text { text: "Send interval (min):"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
+                    Text { text: qsTr("Send interval (min):"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize }
                     ComboBox {
                         Layout.fillWidth: true
                         model: ["1", "2", "3", "5", "10", "15", "20", "30", "60"]
@@ -183,11 +184,11 @@ Item {
                         onActivated: { SettingsController.serverSendInterval = parseInt(currentText); root.configChanged = true }
                     }
 
-                    Text { text: "Start time:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
+                    Text { text: qsTr("Start time:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize }
                     TextField {
                         Layout.fillWidth: true
                         EnterKeyAction.actionId: EnterKeyAction.None; EnterKeyAction.label: qsTr("OK")
-                        placeholderText: "00:00"
+                        placeholderText: qsTr("00:00")
                         text: SettingsController ? SettingsController.serverStartTime : "00:00"
                         onTextEdited: { SettingsController.serverStartTime = text; root.configChanged = true }
                     }
@@ -197,10 +198,10 @@ Item {
                 ColumnLayout {
                     Layout.fillWidth: true; Layout.alignment: Qt.AlignTop; spacing: 8
 
-                    Text { text: "FTP Connection"; color: Theme.accentText; font.bold: true; font.pixelSize: AppTypography.titleSmall.pixelSize }
-                    Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.borderDefault }
+                    Text { text: qsTr("FTP Connection"); color: AppColors.accentColor; font.bold: true; font.pixelSize: AppTypography.titleSmall.pixelSize }
+                    Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: AppColors.outlineVariant }
 
-                    Text { text: "Host:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
+                    Text { text: qsTr("Host:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize }
                     TextField {
                         Layout.fillWidth: true
                         EnterKeyAction.actionId: EnterKeyAction.None; EnterKeyAction.label: qsTr("OK")
@@ -208,7 +209,7 @@ Item {
                         onTextEdited: { SettingsController.ftpAddress = text; root.configChanged = true }
                     }
 
-                    Text { text: "Port:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
+                    Text { text: qsTr("Port:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize }
                     TextField {
                         Layout.fillWidth: true
                         text: SettingsController ? String(SettingsController.ftpPort) : "21"
@@ -220,7 +221,7 @@ Item {
                         }
                     }
 
-                    Text { text: "Username:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
+                    Text { text: qsTr("Username:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize }
                     TextField {
                         Layout.fillWidth: true
                         EnterKeyAction.actionId: EnterKeyAction.None; EnterKeyAction.label: qsTr("OK")
@@ -228,7 +229,7 @@ Item {
                         onTextEdited: { SettingsController.ftpUsername = text; root.configChanged = true }
                     }
 
-                    Text { text: "Password:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
+                    Text { text: qsTr("Password:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize }
                     TextField {
                         Layout.fillWidth: true
                         echoMode: TextInput.Password
@@ -243,10 +244,10 @@ Item {
                 ColumnLayout {
                     Layout.fillWidth: true; Layout.alignment: Qt.AlignTop; spacing: 8
 
-                    Text { text: "File & Folder Naming"; color: Theme.accentText; font.bold: true; font.pixelSize: AppTypography.titleSmall.pixelSize }
-                    Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.borderDefault }
+                    Text { text: qsTr("File & Folder Naming"); color: AppColors.accentColor; font.bold: true; font.pixelSize: AppTypography.titleSmall.pixelSize }
+                    Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: AppColors.outlineVariant }
 
-                    Text { text: "Station folder:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
+                    Text { text: qsTr("Station folder:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize }
                     TextField {
                         Layout.fillWidth: true
                         EnterKeyAction.actionId: EnterKeyAction.None; EnterKeyAction.label: qsTr("OK")
@@ -254,7 +255,7 @@ Item {
                         onTextEdited: { SettingsController.serverBaseFolder = text; root.configChanged = true; root._pathVersion++ }
                     }
 
-                    Text { text: "Date subfolder:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
+                    Text { text: qsTr("Date subfolder:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize }
                     ComboBox {
                         Layout.fillWidth: true
                         model: ["yyyy/MM/dd", "yyyy-MM-dd", "yyyy/MM", "yyyyMMdd"]
@@ -265,7 +266,7 @@ Item {
                         onActivated: { SettingsController.serverTimeFolder = currentText; root.configChanged = true; root._pathVersion++ }
                     }
 
-                    Text { text: "File prefix:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
+                    Text { text: qsTr("File prefix:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize }
                     TextField {
                         Layout.fillWidth: true
                         EnterKeyAction.actionId: EnterKeyAction.None; EnterKeyAction.label: qsTr("OK")
@@ -273,7 +274,7 @@ Item {
                         onTextEdited: { SettingsController.filePrefix = text; root.configChanged = true; root._pathVersion++ }
                     }
 
-                    Text { text: "File suffix:"; color: Theme.textLabel; font.pixelSize: Theme.fontLabelSize }
+                    Text { text: qsTr("File suffix:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize }
                     ComboBox {
                         Layout.fillWidth: true
                         model: ["yyyyMMddHHmmss", "yyyyMMddHHmm", "yyyyMMdd_HHmmss", "HHmmss"]

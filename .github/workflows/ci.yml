@@ -19,6 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          submodules: recursive
 
       # Phiên bản Qt khai báo tại packaging/qt_version.txt — nguồn duy nhất cho
       # CI + scripts + build.sh; override qua QT_VERSION env nếu cần.

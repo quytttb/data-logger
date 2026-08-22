@@ -5,6 +5,8 @@ import QtQuick.Layouts
 import DataLogger.Theme
 import DataLogger.Core
 import DataLogger.Components
+import LoggerKit.Theme
+import LoggerKit.Components
 
 Rectangle {
     id: monitorRoot
@@ -12,7 +14,7 @@ Rectangle {
 
     ColumnLayout {
         anchors.fill: parent
-        spacing: Theme.spacingSM
+        spacing: AppTheme.spacingSM
 
         // ── Sensor Cards Grid (centered) ─────────────────────────────
         GridView {
@@ -63,14 +65,14 @@ Rectangle {
                     id: cardBg
                     anchors.fill: parent
                     anchors.margins: 6
-                    radius: Theme.radiusCard
-                    color: Theme.bgPanel
+                    radius: AppTheme.cardRadius
+                    color: AppColors.surfaceContainerLow
                     border.color: {
-                        if (card.isAlarm) return Theme.statusErr;
-                        if (card.status === "OK" || card.status === "ON") return Theme.borderOk;
-                        if (card.status === "ERR") return Theme.borderErr;
-                        if (card.isDI && card.value === "1") return AppColors.diActive;
-                        return Theme.borderDefault;
+                        if (card.isAlarm) return AppColors.error;
+                        if (card.status === "OK" || card.status === "ON") return AppColors.success;
+                        if (card.status === "ERR") return AppColors.error;
+                        if (card.isDI && card.value === "1") return IoColors.diActive;
+                        return AppColors.outlineVariant;
                     }
                     border.width: {
                         if (card.isAlarm) return 3;
@@ -80,7 +82,7 @@ Rectangle {
 
                     ColumnLayout {
                         anchors.fill: parent
-                        anchors.margins: Theme.spacingSM
+                        anchors.margins: AppTheme.spacingSM
                         spacing: 4
 
                         // ── Header Row ──────────────────────────────
@@ -90,8 +92,8 @@ Rectangle {
 
                             Rectangle {
                                 visible: !card.isAnalog
-                                implicitWidth: 36; implicitHeight: 18; radius: Theme.radiusTiny
-                                color: card.isDI ? AppColors.diStrong : AppColors.doStrong
+                                implicitWidth: 36; implicitHeight: 18; radius: AppTheme.radiusTiny
+                                color: card.isDI ? IoColors.diStrong : IoColors.doStrong
                                 Text {
                                     anchors.centerIn: parent
                                     text: card.isDI ? "DI" : "DO"
@@ -101,7 +103,7 @@ Rectangle {
 
                             Text {
                                 text: card.displayName
-                                color: Theme.accentText
+                                color: AppColors.accentColor
                                 font.pixelSize: AppTypography.bodySmall.pixelSize; font.bold: true
                                 elide: Text.ElideRight
                                 Layout.fillWidth: true
@@ -109,8 +111,8 @@ Rectangle {
 
                             Rectangle {
                                 visible: card.isAlarm && card.isAnalog
-                                color: Theme.statusErr
-                                radius: Theme.radiusTiny
+                                color: AppColors.error
+                                radius: AppTheme.radiusTiny
                                 implicitWidth: alarmLabel.implicitWidth + 8
                                 implicitHeight: alarmLabel.implicitHeight + 4
                                 Text {
@@ -126,7 +128,7 @@ Rectangle {
                             Text {
                                 visible: card.isAnalog
                                 text: card.unit
-                                color: Theme.textSecondary
+                                color: AppColors.onSurfaceVariant
                                 font.pixelSize: AppTypography.bodySmall.pixelSize; font.bold: true
                                 horizontalAlignment: Text.AlignRight
                                 wrapMode: Text.NoWrap
@@ -145,8 +147,8 @@ Rectangle {
                                 visible: card.isAnalog
                                 anchors.centerIn: parent
                                 text: card.value
-                                color: card.isAlarm ? Theme.statusErr
-                                     : (card.status === "ERR" ? Theme.statusErr : Theme.textPrimary)
+                                color: card.isAlarm ? AppColors.error
+                                     : (card.status === "ERR" ? AppColors.error : AppColors.primaryText)
                                 font.pixelSize: card.value === "---" ? 28 : 36
                                 font.family: AppTypography.monoFamily
                                 font.bold: true
@@ -159,8 +161,8 @@ Rectangle {
                                 Rectangle {
                                     implicitWidth: 48; implicitHeight: 48; radius: width / 2
                                     anchors.horizontalCenter: parent.horizontalCenter
-                                    color: card.value === "1" ? AppColors.diOnBg : AppColors.ioInactive
-                                    border.color: card.value === "1" ? AppColors.diActive : AppColors.ioInactiveBorder
+                                    color: card.value === "1" ? IoColors.diOnBg : IoColors.ioInactive
+                                    border.color: card.value === "1" ? IoColors.diActive : IoColors.ioInactiveBorder
                                     border.width: 3
                                     Text {
                                         anchors.centerIn: parent
@@ -171,7 +173,7 @@ Rectangle {
                                 Text {
                                     anchors.horizontalCenter: parent.horizontalCenter
                                     text: card.value === "1" ? "INPUT ON" : "INPUT OFF"
-                                    color: card.value === "1" ? AppColors.diActive : Theme.textSecondary
+                                    color: card.value === "1" ? IoColors.diActive : AppColors.onSurfaceVariant
                                     font.pixelSize: AppTypography.labelSmall.pixelSize; font.bold: true
                                 }
                             }
@@ -183,8 +185,8 @@ Rectangle {
                                 Rectangle {
                                     implicitWidth: 48; implicitHeight: 48; radius: width / 2
                                     anchors.horizontalCenter: parent.horizontalCenter
-                                    color: card.value === "1" ? AppColors.doStrong : AppColors.ioInactive
-                                    border.color: card.value === "1" ? AppColors.doActive : AppColors.ioInactiveBorder
+                                    color: card.value === "1" ? IoColors.doStrong : IoColors.ioInactive
+                                    border.color: card.value === "1" ? IoColors.doActive : IoColors.ioInactiveBorder
                                     border.width: 3
                                     Text {
                                         anchors.centerIn: parent
@@ -195,7 +197,7 @@ Rectangle {
                                 Text {
                                     anchors.horizontalCenter: parent.horizontalCenter
                                     text: card.value === "1" ? "RELAY ON" : "RELAY OFF"
-                                    color: card.value === "1" ? AppColors.doActive : Theme.textSecondary
+                                    color: card.value === "1" ? IoColors.doActive : AppColors.onSurfaceVariant
                                     font.pixelSize: AppTypography.labelSmall.pixelSize; font.bold: true
                                 }
                             }
@@ -208,7 +210,7 @@ Rectangle {
                             Text {
                                 visible: card.isAnalog
                                 text: (card.rawValue !== "" && card.rawValue !== "---") ? "RAW " + card.rawValue : ""
-                                color: Theme.textSecondary
+                                color: AppColors.onSurfaceVariant
                                 font.pixelSize: AppTypography.labelTiny.pixelSize; font.family: AppTypography.monoFamily
                             }
 
@@ -216,7 +218,7 @@ Rectangle {
 
                             Text {
                                 text: card.lastUpdate || ""
-                                color: Theme.textSecondary
+                                color: AppColors.onSurfaceVariant
                                 font.pixelSize: AppTypography.labelSmall.pixelSize
                             }
                         }

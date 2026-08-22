@@ -22,6 +22,18 @@
 
 Thay đổi bất kỳ contract nào cần **sự đồng ý rõ ràng của user** và update tài liệu cả 2 repo.
 
+## Shared UI kit (`shared/logger-ui-kit` — submodule)
+
+- Token M3 + component generic nằm trong **`LoggerKit.Theme` / `LoggerKit.Components`**
+  (git submodule, static QML modules). **Cấm** copy/duplicate component về local.
+- App chỉ giữ component đặc thù edge trong `DataLogger.Components` (AppSideBar,
+  MainHeaderChrome, *TaskBar, ThemedTabButton, MessagePopup, sensor/*) + singleton
+  `IoColors` (DI/DO) trong `DataLogger.Theme`.
+- Legacy singleton `Theme.*` đã **xóa** — dùng `AppColors.*` / `AppTheme.*` từ kit.
+- Kiosk: bind 1 lần trong `Main.qml`: `ThemeMode.mode = "dark"`, `ThemeMode.touch = true`.
+- Đổi API của kit ⇒ update cả data-logger và central_logger (commit kit trước, bump submodule pointer sau).
+- UI guideline: [`docs/ui/material3-component-guidelines.md`](docs/ui/material3-component-guidelines.md).
+
 ## Build
 
 ```bash

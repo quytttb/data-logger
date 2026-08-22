@@ -1,11 +1,13 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Dialogs
 
-import DataLogger.Theme
 import DataLogger.Core
 import DataLogger.Components
+import LoggerKit.Theme
+import LoggerKit.Components
 
 Item {
     id: root
@@ -54,7 +56,7 @@ Item {
 
         Label {
             text: qsTr("From:")
-            color: Theme.textSecondary
+            color: AppColors.onSurfaceVariant
             font: AppTypography.bodyMedium
             Layout.alignment: Qt.AlignVCenter
         }
@@ -72,7 +74,7 @@ Item {
 
         Label {
             text: qsTr("To:")
-            color: Theme.textSecondary
+            color: AppColors.onSurfaceVariant
             font: AppTypography.bodyMedium
             Layout.alignment: Qt.AlignVCenter
         }
@@ -119,7 +121,7 @@ Item {
 
         Label {
             text: qsTr("%1 rows").arg(HistoryViewModel.recordCount)
-            color: Theme.textSecondary
+            color: AppColors.onSurfaceVariant
             font: AppTypography.bodyMedium
             Layout.alignment: Qt.AlignVCenter
         }

@@ -27,6 +27,7 @@
 #include "core/ReportController.h"
 #include "core/tt10/SensorSymbols.h"
 #include "core/AppDefaults.h"
+#include "ThemeSetup.h"
 
 namespace {
 constexpr int kThreadJoinMs = 5000;  // graceful FTP thread join on quit
@@ -46,7 +47,7 @@ void stopWorkerOnQuit(QObject *worker, QThread *thread) {
 }
 
 int main(int argc, char *argv[]) {
-    qputenv("QT_QUICK_CONTROLS_STYLE", "Material");
+    LoggerKit::Theme::applyQuickControlsStyle();
     qputenv("QT_QUICK_CONTROLS_MATERIAL_THEME", "Dark");
 
     // Touch kiosk: route text input through the on-screen Qt Virtual Keyboard
@@ -58,7 +59,7 @@ int main(int argc, char *argv[]) {
     app.setApplicationName("DataLogger");
 
     const QString iconFontPath =
-        QStringLiteral(":/qt/qml/DataLogger/Components/resources/fonts/MaterialSymbols/"
+        QStringLiteral(":/qt/qml/LoggerKit/Components/resources/fonts/MaterialSymbols/"
                        "MaterialSymbolsOutlined.ttf");
     const int fontId = QFontDatabase::addApplicationFont(iconFontPath);
     if (fontId < 0) {
