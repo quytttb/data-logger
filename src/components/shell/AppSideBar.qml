@@ -98,7 +98,7 @@ Rectangle {
                         }
 
                         Text {
-                            text: ["Monitor", "History", "Trending", "Settings", "Tester"][navDelegate.index]
+                            text: [qsTr("Monitor"), qsTr("History"), qsTr("Trending"), qsTr("Settings"), qsTr("Tester")][navDelegate.index]
                             font.family: AppTypography.labelMedium.family
                             font.pixelSize: AppTypography.labelMedium.pixelSize
                             font.bold: navDelegate.isActive

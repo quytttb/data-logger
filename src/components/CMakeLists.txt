@@ -27,6 +27,6 @@ qt_add_qml_module(datalogger_components
         datalogger_network
 )
 
-set_target_properties(datalogger_components PROPERTIES QT_QMLLINT_MAX_WARNINGS 500)
+set_target_properties(datalogger_components PROPERTIES QT_QMLLINT_MAX_WARNINGS 0)
 
 add_library(datalogger::components ALIAS datalogger_components)

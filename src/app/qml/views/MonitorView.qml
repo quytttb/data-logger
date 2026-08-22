@@ -96,7 +96,7 @@ Rectangle {
                                 color: card.isDI ? IoColors.diStrong : IoColors.doStrong
                                 Text {
                                     anchors.centerIn: parent
-                                    text: card.isDI ? "DI" : "DO"
+                                    text: card.isDI ? qsTr("DI") : qsTr("DO")
                                     color: AppColors.onPrimary; font.bold: true; font.pixelSize: AppTypography.labelTiny.pixelSize
                                 }
                             }
@@ -118,8 +118,8 @@ Rectangle {
                                 Text {
                                     id: alarmLabel
                                     anchors.centerIn: parent
-                                    text: card.alarmType === "min" ? "▼ MIN"
-                                        : (card.alarmType === "max" ? "▲ MAX" : "ALARM")
+                                    text: card.alarmType === "min" ? qsTr("▼ MIN")
+                                        : (card.alarmType === "max" ? qsTr("▲ MAX") : qsTr("ALARM"))
                                     color: AppColors.onPrimary
                                     font.pixelSize: AppTypography.labelTiny.pixelSize; font.bold: true
                                 }
@@ -166,13 +166,13 @@ Rectangle {
                                     border.width: 3
                                     Text {
                                         anchors.centerIn: parent
-                                        text: card.value === "1" ? "ON" : "OFF"
+                                        text: card.value === "1" ? qsTr("ON") : qsTr("OFF")
                                         color: AppColors.onPrimary; font.pixelSize: AppTypography.bodySmall.pixelSize; font.bold: true
                                     }
                                 }
                                 Text {
                                     anchors.horizontalCenter: parent.horizontalCenter
-                                    text: card.value === "1" ? "INPUT ON" : "INPUT OFF"
+                                    text: card.value === "1" ? qsTr("INPUT ON") : qsTr("INPUT OFF")
                                     color: card.value === "1" ? IoColors.diActive : AppColors.onSurfaceVariant
                                     font.pixelSize: AppTypography.labelSmall.pixelSize; font.bold: true
                                 }
@@ -190,13 +190,13 @@ Rectangle {
                                     border.width: 3
                                     Text {
                                         anchors.centerIn: parent
-                                        text: card.value === "1" ? "ON" : "OFF"
+                                        text: card.value === "1" ? qsTr("ON") : qsTr("OFF")
                                         color: AppColors.onPrimary; font.pixelSize: AppTypography.bodySmall.pixelSize; font.bold: true
                                     }
                                 }
                                 Text {
                                     anchors.horizontalCenter: parent.horizontalCenter
-                                    text: card.value === "1" ? "RELAY ON" : "RELAY OFF"
+                                    text: card.value === "1" ? qsTr("RELAY ON") : qsTr("RELAY OFF")
                                     color: card.value === "1" ? IoColors.doActive : AppColors.onSurfaceVariant
                                     font.pixelSize: AppTypography.labelSmall.pixelSize; font.bold: true
                                 }
@@ -209,7 +209,7 @@ Rectangle {
 
                             Text {
                                 visible: card.isAnalog
-                                text: (card.rawValue !== "" && card.rawValue !== "---") ? "RAW " + card.rawValue : ""
+                                text: (card.rawValue !== "" && card.rawValue !== "---") ? qsTr("RAW ") + card.rawValue : ""
                                 color: AppColors.onSurfaceVariant
                                 font.pixelSize: AppTypography.labelTiny.pixelSize; font.family: AppTypography.monoFamily
                             }

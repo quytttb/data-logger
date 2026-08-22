@@ -88,8 +88,8 @@ Item {
             iconName: MonitorController.isStopping ? "refresh"
                 : MonitorController.isPolling ? "stop" : "playArrow"
             iconSpinning: MonitorController.isStopping
-            text: MonitorController.isStopping ? "Stopping…"
-                : MonitorController.isPolling ? "Stop" : "Start"
+            text: MonitorController.isStopping ? qsTr("Stopping…")
+                : MonitorController.isPolling ? qsTr("Stop") : qsTr("Start")
             font.bold: true
             fillColor: MonitorController.isPolling ? AppColors.error : AppColors.success
             onClicked: {

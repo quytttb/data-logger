@@ -239,9 +239,9 @@ Item {
                                              : AppColors.onSurfaceVariant
                                     }
                                     Text {
-                                        text: ModbusTcpServerService.state === "listening" ? "Listening"
-                                            : ModbusTcpServerService.state === "error" ? "Error"
-                                            : ModbusTcpServerService.state === "starting" ? "Starting…"
+                                        text: ModbusTcpServerService.state === "listening" ? qsTr("Listening")
+                                            : ModbusTcpServerService.state === "error" ? qsTr("Error")
+                                            : ModbusTcpServerService.state === "starting" ? qsTr("Starting…")
                                             : "Stopped"
                                         color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize
                                     }
@@ -363,9 +363,9 @@ Item {
                                              : AppColors.onSurfaceVariant
                                     }
                                     Text {
-                                        text: RestApiService.state === "listening" ? "Listening"
-                                            : RestApiService.state === "error" ? "Error"
-                                            : RestApiService.state === "starting" ? "Starting…"
+                                        text: RestApiService.state === "listening" ? qsTr("Listening")
+                                            : RestApiService.state === "error" ? qsTr("Error")
+                                            : RestApiService.state === "starting" ? qsTr("Starting…")
                                             : "Stopped"
                                         color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize
                                     }
@@ -453,7 +453,7 @@ Item {
                                     AppButton {
                                         id: tokenShow
                                         checkable: true
-                                        text: checked ? "Hide" : "Show"
+                                        text: checked ? qsTr("Hide") : qsTr("Show")
                                         kind: AppButton.Secondary
                                         font.pixelSize: AppTypography.bodyMedium.pixelSize - 1
                                     }
