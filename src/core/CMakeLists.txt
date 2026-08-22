@@ -27,6 +27,10 @@ qt_add_qml_module(datalogger_core
         tt10/SensorSymbols.h
         tt10/Tt10ReportWriter.cpp
         tt10/Tt10ReportWriter.h
+    # QModelIndex/QModelIndexList value types used by QAbstractItemModel-based
+    # models must resolve for qmllint — declare the QtCore QML module dependency.
+    DEPENDENCIES
+        QtCore
 )
 
 target_include_directories(datalogger_core
