@@ -1,5 +1,6 @@
 #include "AppConfigDao.h"
 #include "utils/system/DeviceId.h"
+#include "utils/system/AppDefaults.h"
 #include <QSqlQuery>
 #include <QSqlRecord>
 #include <QSqlError>
@@ -77,6 +78,12 @@ AppConfig AppConfigDao::load() {
     q.exec("SELECT * FROM app_config LIMIT 1");
     if (q.next()) {
         AppConfig cfg = rowToConfig(q.record());
+        // Các DB cũ có thể chứa giá trị rỗng do schema legacy. Khi đó dùng
+        // timezone hiện tại của host thay vì rơi về một offset cố định.
+        if (cfg.timezone.trimmed().isEmpty()) {
+            cfg.timezone = AppDefaults::systemTimezone();
+            save(cfg);
+        }
         // One-time migration: existing installs whose DB row was created with the
         // legacy DEFAULT '' schema get a device-derived station code auto-assigned
         // and persisted so Central Logger always receives a non-empty identifier.
@@ -91,6 +98,7 @@ AppConfig AppConfigDao::load() {
     // No row yet — insert defaults using the device-derived station code.
     AppConfig def;
     def.stationCode = DeviceId::stationCode();
+    def.timezone = AppDefaults::systemTimezone();
     save(def);
     q.exec("SELECT * FROM app_config LIMIT 1");
     if (q.next())

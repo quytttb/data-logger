@@ -20,9 +20,11 @@ Rectangle {
             required property string seriesName
             required property color seriesColor
             required property var initialBuffer
+            required property bool digitalSeries
             name: seriesName
             color: seriesColor
             width: 2
+            lineStyle: digitalSeries ? LineSeries.StepCenter : LineSeries.Straight
 
             Component.onCompleted: {
                 if (!initialBuffer)
@@ -72,8 +74,10 @@ Rectangle {
                     let now = Date.now()
                     chartHolder.xMin = now - trendRoot.windowMs
                     chartHolder.xMax = now
-                    let yLo = Number.MAX_VALUE
-                    let yHi = -Number.MAX_VALUE
+                     let yLo = Number.MAX_VALUE
+                     let yHi = -Number.MAX_VALUE
+                     let hasAnalog = false
+                     let hasDigital = false
 
                     for (let i = 0; i < sensors.length; i++) {
                         let s = sensors[i]
@@ -84,21 +88,26 @@ Rectangle {
                         let series = lineSeriesComponent.createObject(graphsView, {
                             seriesName: label,
                             seriesColor: s.color,
-                            initialBuffer: buf
+                            initialBuffer: buf,
+                            digitalSeries: s.sensorType === "DI" || s.sensorType === "DO"
                         })
                         graphsView.addSeries(series)
                         chartHolder.seriesMap[s.id] = series
 
-                        for (let j = 0; j < buf.length; j++) {
+                         for (let j = 0; j < buf.length; j++) {
                             if (buf[j].y < yLo) yLo = buf[j].y
                             if (buf[j].y > yHi) yHi = buf[j].y
-                        }
-                    }
+                         }
+                         if (s.sensorType === "DI" || s.sensorType === "DO")
+                             hasDigital = true
+                         else
+                             hasAnalog = true
+                     }
 
-                    chartHolder.applyAxes(yLo, yHi)
-                }
+                     chartHolder.applyAxes(yLo, yHi, hasAnalog, hasDigital)
+                 }
 
-                function applyAxes(yLo, yHi) {
+                 function applyAxes(yLo, yHi, hasAnalog, hasDigital) {
                     let now = Date.now()
                     let minX = now - trendRoot.windowMs
                     chartHolder.xMin = minX
@@ -109,7 +118,13 @@ Rectangle {
                     if (yLo === undefined || yLo === Number.MAX_VALUE) {
                         yLo = 0; yHi = 1
                     }
-                    if (yHi <= yLo) yHi = yLo + 1
+                     // A digital-only chart must visibly include both states.
+                     if (hasDigital && !hasAnalog) {
+                         yLo = 0
+                         yHi = 1
+                     } else if (yHi <= yLo) {
+                         yHi = yLo + 1
+                     }
                     let margin = (yHi - yLo) * 0.1
                     if (margin === 0) margin = 1
                     chartHolder.yMin = yLo - margin
@@ -146,7 +161,7 @@ Rectangle {
                                 if (pt.y > hi) hi = pt.y
                             }
                         }
-                        chartHolder.applyAxes(lo, hi)
+                         chartHolder.applyAxes(lo, hi, true, false)
                     }
                 }
 
@@ -162,10 +177,14 @@ Rectangle {
                     id: graphsView
                     anchors.fill: parent
                     visible: MonitorController.analogSensors && MonitorController.analogSensors.length > 0
+                    timezoneId: SettingsController ? SettingsController.timezone : AppDefaults.timezone
 
                     axisX: DateTimeAxis {
                         id: xAxis
                         labelFormat: "HH:mm:ss"
+                        // Five-minute window: one label per minute is readable
+                        // on the 7-inch kiosk display.
+                        tickInterval: 60 * 1000
                     }
 
                     axisY: ValueAxis {

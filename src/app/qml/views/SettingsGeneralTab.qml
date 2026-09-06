@@ -11,6 +11,47 @@ import LoggerKit.Components
 Item {
     id: root
     property bool configChanged: false
+    readonly property var timezoneOptions: {
+        var options = [
+            { label: "UTC-12", value: "Etc/GMT+12" },
+            { label: "UTC-11", value: "Etc/GMT+11" },
+            { label: "UTC-10", value: "Etc/GMT+10" },
+            { label: "UTC-9",  value: "Etc/GMT+9" },
+            { label: "UTC-8",  value: "Etc/GMT+8" },
+            { label: "UTC-7",  value: "Etc/GMT+7" },
+            { label: "UTC-6",  value: "Etc/GMT+6" },
+            { label: "UTC-5",  value: "Etc/GMT+5" },
+            { label: "UTC-4",  value: "Etc/GMT+4" },
+            { label: "UTC-3",  value: "Etc/GMT+3" },
+            { label: "UTC-2",  value: "Etc/GMT+2" },
+            { label: "UTC-1",  value: "Etc/GMT+1" },
+            { label: "UTC+0",  value: "Etc/GMT" },
+            { label: "UTC+1",  value: "Etc/GMT-1" },
+            { label: "UTC+2",  value: "Etc/GMT-2" },
+            { label: "UTC+3",  value: "Etc/GMT-3" },
+            { label: "UTC+4",  value: "Etc/GMT-4" },
+            { label: "UTC+5",  value: "Etc/GMT-5" },
+            { label: "UTC+5:30", value: "Asia/Kolkata" },
+            { label: "UTC+6",  value: "Etc/GMT-6" },
+            { label: "UTC+7",  value: "Etc/GMT-7" },
+            { label: "UTC+8",  value: "Etc/GMT-8" },
+            { label: "UTC+9",  value: "Etc/GMT-9" },
+            { label: "UTC+10", value: "Etc/GMT-10" },
+            { label: "UTC+11", value: "Etc/GMT-11" },
+            { label: "UTC+12", value: "Etc/GMT-12" }
+        ]
+        var systemTz = AppDefaults.timezone
+        var known = false
+        for (var i = 0; i < options.length; ++i) {
+            if (options[i].value === systemTz) {
+                known = true
+                break
+            }
+        }
+        if (!known)
+            options.unshift({ label: qsTr("System (%1)").arg(systemTz), value: systemTz })
+        return options
+    }
 
     MessagePopup { id: rebootConfirm }
 
@@ -127,36 +168,13 @@ Item {
                         // Fixed UTC offsets mapped to IANA zone ids that timedatectl
                         // accepts directly. Etc/GMT signs are inverted (UTC+7 == Etc/GMT-7)
                         // and carry no DST — ideal for stable logger timestamps.
-                        model: [
-                            { label: "UTC-12", value: "Etc/GMT+12" },
-                            { label: "UTC-11", value: "Etc/GMT+11" },
-                            { label: "UTC-10", value: "Etc/GMT+10" },
-                            { label: "UTC-9",  value: "Etc/GMT+9" },
-                            { label: "UTC-8",  value: "Etc/GMT+8" },
-                            { label: "UTC-7",  value: "Etc/GMT+7" },
-                            { label: "UTC-6",  value: "Etc/GMT+6" },
-                            { label: "UTC-5",  value: "Etc/GMT+5" },
-                            { label: "UTC-4",  value: "Etc/GMT+4" },
-                            { label: "UTC-3",  value: "Etc/GMT+3" },
-                            { label: "UTC-2",  value: "Etc/GMT+2" },
-                            { label: "UTC-1",  value: "Etc/GMT+1" },
-                            { label: "UTC+0",  value: "Etc/GMT" },
-                            { label: "UTC+1",  value: "Etc/GMT-1" },
-                            { label: "UTC+2",  value: "Etc/GMT-2" },
-                            { label: "UTC+3",  value: "Etc/GMT-3" },
-                            { label: "UTC+4",  value: "Etc/GMT-4" },
-                            { label: "UTC+5",  value: "Etc/GMT-5" },
-                            { label: "UTC+5:30", value: "Asia/Kolkata" },
-                            { label: "UTC+6",  value: "Etc/GMT-6" },
-                            { label: "UTC+7",  value: "Etc/GMT-7" },
-                            { label: "UTC+8",  value: "Etc/GMT-8" },
-                            { label: "UTC+9",  value: "Etc/GMT-9" },
-                            { label: "UTC+10", value: "Etc/GMT-10" },
-                            { label: "UTC+11", value: "Etc/GMT-11" },
-                            { label: "UTC+12", value: "Etc/GMT-12" }
-                        ]
+                        model: root.timezoneOptions
                         currentIndex: {
                             var tz = SettingsController ? SettingsController.timezone : AppDefaults.timezone
+                            // QTimeZone may report UTC as UTC/Etc/UTC/GMT;
+                            // the fixed-offset list uses Etc/GMT for UTC+0.
+                            if (tz === "UTC" || tz === "Etc/UTC" || tz === "GMT")
+                                tz = "Etc/GMT"
                             return Math.max(0, indexOfValue(tz))
                         }
                         onActivated: { SettingsController.timezone = currentValue; root.configChanged = true }

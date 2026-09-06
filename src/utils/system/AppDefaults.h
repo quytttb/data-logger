@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QString>
+#include <QTimeZone>
 
 // Giá trị mặc định dùng chung giữa model cấu hình, service và QML.
 namespace AppDefaults {
@@ -10,7 +11,9 @@ inline const QString timeFormat = QStringLiteral("HH:mm:ss");
 inline const QString dateFormat = QStringLiteral("dd/MM/yyyy");
 inline const QString uiTimeFormat = QStringLiteral("HH:mm:ss");
 inline const QString uiDateFormat = QStringLiteral("dd/MM/yyyy");
-inline const QString timezone = QStringLiteral("Etc/GMT-7");
+// Không hardcode UTC+7: image Raspberry Pi có thể được cài với timezone khác.
+inline QString systemTimezone() { return QTimeZone::systemTimeZoneId(); }
+inline const QString timezone = systemTimezone();
 
 constexpr int ftpPort = 21;
 inline const QString ftpRemotePath = QStringLiteral("/");

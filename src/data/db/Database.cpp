@@ -80,7 +80,7 @@ bool Database::createTables(QSqlDatabase &db) {
             station_name TEXT NOT NULL DEFAULT '',
             time_format TEXT NOT NULL DEFAULT 'HH:mm:ss',
             date_format TEXT NOT NULL DEFAULT 'dd/MM/yyyy',
-            timezone TEXT NOT NULL DEFAULT 'Etc/GMT-7',
+            timezone TEXT NOT NULL DEFAULT 'UTC',
             buzzer_enable INTEGER NOT NULL DEFAULT 0,
             ftp_address TEXT NOT NULL DEFAULT '',
             ftp_port INTEGER NOT NULL DEFAULT 21,
