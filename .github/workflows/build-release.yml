@@ -99,6 +99,8 @@ jobs:
         if: steps.cache-qt.outputs.cache-hit != 'true'
         run: |
           set -euo pipefail
+          QT_VERSION="${{ steps.qt.outputs.version }}"
+          QT_SERIES="${{ steps.qt.outputs.series }}"
           SRC_DIR="${RUNNER_TEMP}/qt-src"
           BUILD_DIR="${RUNNER_TEMP}/qt-build"
           mkdir -p "${SRC_DIR}" "${BUILD_DIR}"

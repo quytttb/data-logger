@@ -24,7 +24,9 @@ Rectangle {
             name: seriesName
             color: seriesColor
             width: 2
-            lineStyle: digitalSeries ? LineSeries.StepCenter : LineSeries.Straight
+            // QML lint của Qt 6.11.1 chưa expose enum QLineSeries::LineStyle;
+            // giá trị 3 là StepCenter, 0 là Straight.
+            lineStyle: digitalSeries ? 3 : 0
 
             Component.onCompleted: {
                 if (!initialBuffer)
