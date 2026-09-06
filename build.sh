@@ -24,6 +24,26 @@ if [[ ! -f "$QT_DIR/lib/cmake/Qt6HttpServer/Qt6HttpServerConfig.cmake" ]]; then
     exit 1
 fi
 
+# A build directory may have been copied from another checkout path. CMake
+# refuses to reuse such a cache; keep the old artifacts as a backup and start
+# a fresh configure instead of requiring a manual delete.
+if [[ -f "$BUILD_DIR/CMakeCache.txt" ]]; then
+    CACHED_SOURCE=""
+    while IFS='=' read -r key value; do
+        if [[ "$key" == CMAKE_HOME_DIRECTORY:* ]]; then
+            CACHED_SOURCE="$value"
+            break
+        fi
+    done < "$BUILD_DIR/CMakeCache.txt"
+
+    if [[ -n "$CACHED_SOURCE" && "$CACHED_SOURCE" != "$ROOT" ]]; then
+        BACKUP_DIR="${BUILD_DIR}.stale-$(date +%Y%m%d%H%M%S)"
+        echo "Warning: $BUILD_DIR belongs to $CACHED_SOURCE"
+        echo "Moving stale build directory to $BACKUP_DIR"
+        mv "$BUILD_DIR" "$BACKUP_DIR"
+    fi
+fi
+
 cmake -B "$BUILD_DIR" \
       -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
       -DCMAKE_C_COMPILER="${CC:-gcc-15}" \
