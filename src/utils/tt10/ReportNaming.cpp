@@ -36,4 +36,9 @@ QString buildRemoteDir(const AppConfig &cfg, const QDateTime &ts)
     return base;
 }
 
+QString buildPreviewPath(const AppConfig &cfg, const QDateTime &ts)
+{
+    return buildRemoteDir(cfg, ts) + buildFileName(cfg, ts);
+}
+
 } // namespace ReportNaming

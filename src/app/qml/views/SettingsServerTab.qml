@@ -88,26 +88,12 @@ Item {
                         font.pixelSize: AppTypography.bodySmall.pixelSize
                         font.bold: true
                         elide: Text.ElideRight
+                        // Single source of truth lives in C++ (ReportNaming);
+                        // _pathVersion re-triggers on every keystroke/save.
                         text: {
                             void(root._pathVersion)  // trigger re-evaluation
-                            if (!SettingsController) return ""
-                            var base = SettingsController.serverBaseFolder || ""
-                            var tFolder = SettingsController.serverTimeFolder || ""
-                            var prefix = SettingsController.filePrefix || ""
-                            var suffixPat = SettingsController.fileSuffix || "yyyyMMddHHmmss"
-                            var suffix = Qt.formatDateTime(new Date(), suffixPat)
-
-                            var dir = ""
-                            if (base) {
-                                dir = base.startsWith("/") ? base : "/" + base
-                            }
-                            if (tFolder) {
-                                if (dir && !dir.endsWith("/")) dir += "/"
-                                dir += Qt.formatDateTime(new Date(), tFolder)
-                            }
-                            if (dir && !dir.endsWith("/")) dir += "/"
-
-                            return dir + prefix + suffix + ".txt"
+                            if (!ReportController) return ""
+                            return ReportController.previewRemotePath()
                         }
                     }
                 }

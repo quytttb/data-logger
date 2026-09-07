@@ -86,6 +86,14 @@ void ReportController::setLastStatus(const QString &s)
     emit statusChanged();
 }
 
+QString ReportController::previewRemotePath() const
+{
+    if (!m_settings)
+        return {};
+    return ReportNaming::buildPreviewPath(m_settings->config(),
+                                          QDateTime::currentDateTime());
+}
+
 void ReportController::refreshStatus()
 {
     {

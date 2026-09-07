@@ -33,6 +33,9 @@ public:
 
 public slots:
     Q_INVOKABLE void generateReport(const QDateTime &from, const QDateTime &to);
+    // Live "dir + file" preview for Settings (reads the in-memory config so
+    // keystrokes reflect immediately, before Save).
+    Q_INVOKABLE QString previewRemotePath() const;
     void refreshStatus();
     void applyServerConfig();
 

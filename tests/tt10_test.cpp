@@ -21,6 +21,9 @@ static void testReportNaming()
 
     const QString remote = ReportNaming::buildRemoteDir(cfg, ts);
     assert(remote == QStringLiteral("/NUO001/2026/01/01/"));
+
+    const QString preview = ReportNaming::buildPreviewPath(cfg, ts);
+    assert(preview == QStringLiteral("/NUO001/2026/01/01/HN_ABCD_NUO001_20260101120000.txt"));
 }
 
 static void testDominantStatus()
