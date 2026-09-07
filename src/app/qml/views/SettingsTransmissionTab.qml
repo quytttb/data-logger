@@ -31,20 +31,25 @@ Item {
         return out
     }
 
-    function selectedSensorIds() {
-        let ids = []
-        for (let i = 0; i < rowModel.count; ++i) {
-            let row = rowModel.get(i)
-            if (row.transmitEnabled)
-                ids.push(row.sensorId)
-        }
-        return ids
-    }
-
     // Persisted by the shared Save button on the task bar
     // (SettingsView.saveConfig calls this before SettingsController.saveConfig).
     function saveRows() {
-        SensorListModel.saveTransmission(buildSavePayload())
+        SensorListModel.applyTransmission(buildSavePayload())
+    }
+
+    // Rows checked for bulk-disable (Delete button).
+    function buildDisablePayload() {
+        let out = []
+        for (let i = 0; i < rowModel.count; ++i) {
+            let row = rowModel.get(i)
+            if (row.transmitEnabled)
+                out.push({
+                    sensorId: row.sensorId,
+                    sensorSymbol: row.sensorSymbol,
+                    transmitEnabled: false
+                })
+        }
+        return out
     }
 
     Component.onCompleted: reloadRows()
@@ -230,10 +235,10 @@ Item {
                     text: qsTr("Delete")
                     fillColor: AppColors.error
                     onClicked: {
-                        var ids = root.selectedSensorIds()
-                        if (ids.length === 0)
+                        var rows = root.buildDisablePayload()
+                        if (rows.length === 0)
                             return
-                        SensorListModel.removeFromTransmission(ids)
+                        SensorListModel.applyTransmission(rows)
                         root.configChanged = false
                     }
                 }

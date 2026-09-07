@@ -203,26 +203,3 @@ bool SensorDao::updateTransmission(int id, const QString &sensorSymbol, bool tra
     q.bindValue(":id", id);
     return q.exec();
 }
-
-bool SensorDao::setAllTransmitEnabled(bool enabled)
-{
-    QSqlQuery q(m_db);
-    q.prepare("UPDATE sensor SET transmit_enabled=:tx WHERE active=1");
-    q.bindValue(":tx", enabled ? 1 : 0);
-    return q.exec();
-}
-
-bool SensorDao::clearTransmission(const QList<int> &ids)
-{
-    if (ids.isEmpty())
-        return true;
-    QSqlQuery q(m_db);
-    QStringList placeholders;
-    for (int i = 0; i < ids.size(); ++i)
-        placeholders << QStringLiteral(":id%1").arg(i);
-    q.prepare(QStringLiteral("UPDATE sensor SET transmit_enabled=0 WHERE id IN (%1)")
-                  .arg(placeholders.join(QLatin1Char(','))));
-    for (int i = 0; i < ids.size(); ++i)
-        q.bindValue(QStringLiteral(":id%1").arg(i), ids.at(i));
-    return q.exec();
-}

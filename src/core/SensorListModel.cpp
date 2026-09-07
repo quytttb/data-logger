@@ -4,6 +4,9 @@
 #include "data/repositories/AppConfigDao.h"
 #include "data/models/AnalogDigitalLink.h"
 #include "tt10/SensorSymbols.h"
+#include <cmath>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QSet>
 #include <QVariant>
 #include <QQmlEngine>
@@ -173,65 +176,59 @@ Sensor SensorListModel::variantToSensor(const QVariantMap &p, int existingId) co
     return s;
 }
 
-bool SensorListModel::addSensor(const QVariantMap &props) {
-    Sensor s = variantToSensor(props);
+bool SensorListModel::commitSensorWrite(const QString &okMsg, const QString &failMsg,
+                                           const std::function<bool(SensorDao &, AppConfigDao &)> &op)
+{
     bool ok;
     {
         ScopedDbConnection db;
-        AppConfigDao cfgDao(db);
-        const AppConfig cfg = cfgDao.load();
-        if (s.sensorType == SensorType::Analog && cfg.autoAddTransmit)
-            s.transmitEnabled = true;
-
         SensorDao dao(db);
-        ok = dao.save(s);
-        if (ok) cfgDao.bumpRevision();
+        AppConfigDao cfgDao(db);
+        ok = op(dao, cfgDao);
+        if (ok)
+            cfgDao.bumpRevision();
     }
     if (ok) {
         loadFromDb();
-        emit messageSent(QStringLiteral("Success"), QStringLiteral("Sensor added."));
+        emit messageSent(QStringLiteral("Success"), okMsg);
     } else {
-        emit messageSent(QStringLiteral("Error"), QStringLiteral("Failed to add sensor."));
+        emit messageSent(QStringLiteral("Error"), failMsg);
     }
     return ok;
+}
+
+bool SensorListModel::addSensor(const QVariantMap &props) {
+    Sensor s = variantToSensor(props);
+    return commitSensorWrite(QStringLiteral("Sensor added."),
+                             QStringLiteral("Failed to add sensor."),
+                             [&](SensorDao &dao, AppConfigDao &cfgDao) {
+        if (s.sensorType == SensorType::Analog) {
+            const AppConfig cfg = cfgDao.load();
+            if (cfg.autoAddTransmit)
+                s.transmitEnabled = true;
+        }
+        return dao.save(s);
+    });
 }
 
 bool SensorListModel::updateSensor(int id, const QVariantMap &props) {
     Sensor s = variantToSensor(props, id);
-    bool ok;
-    {
-        ScopedDbConnection db;
-        SensorDao dao(db);
+    return commitSensorWrite(QStringLiteral("Sensor updated."),
+                             QStringLiteral("Failed to update sensor."),
+                             [&](SensorDao &dao, AppConfigDao &) {
         const Sensor existing = dao.loadById(id);
         if (existing.id != 0 && !props.contains(QStringLiteral("transmitEnabled")))
             s.transmitEnabled = existing.transmitEnabled;
-        ok = dao.save(s);
-        if (ok) AppConfigDao(db).bumpRevision();
-    }
-    if (ok) {
-        loadFromDb();
-        emit messageSent(QStringLiteral("Success"), QStringLiteral("Sensor updated."));
-    } else {
-        emit messageSent(QStringLiteral("Error"), QStringLiteral("Failed to update sensor."));
-    }
-    return ok;
+        return dao.save(s);
+    });
 }
 
 bool SensorListModel::removeSensor(int id) {
-    bool ok;
-    {
-        ScopedDbConnection db;
-        SensorDao dao(db);
-        ok = dao.remove(id);
-        if (ok) AppConfigDao(db).bumpRevision();
-    }
-    if (ok) {
-        loadFromDb();
-        emit messageSent(QStringLiteral("Success"), QStringLiteral("Sensor deleted."));
-    } else {
-        emit messageSent(QStringLiteral("Error"), QStringLiteral("Failed to delete sensor."));
-    }
-    return ok;
+    return commitSensorWrite(QStringLiteral("Sensor deleted."),
+                             QStringLiteral("Failed to delete sensor."),
+                             [&](SensorDao &dao, AppConfigDao &) {
+        return dao.remove(id);
+    });
 }
 
 const Sensor *SensorListModel::findSensorById(int id) const
@@ -271,12 +268,11 @@ QVariantList SensorListModel::transmissionRows() const
     return out;
 }
 
-bool SensorListModel::saveTransmission(const QVariantList &rows)
+bool SensorListModel::applyTransmission(const QVariantList &rows)
 {
-    bool ok = true;
-    {
-        ScopedDbConnection db;
-        SensorDao dao(db);
+    return commitSensorWrite(QStringLiteral("Transmission settings saved."),
+                             QStringLiteral("Failed to save transmission settings."),
+                             [&](SensorDao &dao, AppConfigDao &) {
         for (const auto &item : rows) {
             const QVariantMap row = item.toMap();
             const int id = row.value(QStringLiteral("sensorId")).toInt();
@@ -284,58 +280,130 @@ bool SensorListModel::saveTransmission(const QVariantList &rows)
                 continue;
             if (!dao.updateTransmission(id,
                                         row.value(QStringLiteral("sensorSymbol")).toString(),
-                                        row.value(QStringLiteral("transmitEnabled")).toBool())) {
-                ok = false;
-                break;
-            }
+                                        row.value(QStringLiteral("transmitEnabled")).toBool()))
+                return false;
         }
-        if (ok)
-            AppConfigDao(db).bumpRevision();
-    }
-    if (ok) {
-        loadFromDb();
-        emit messageSent(QStringLiteral("Success"), QStringLiteral("Transmission settings saved."));
-    } else {
-        emit messageSent(QStringLiteral("Error"), QStringLiteral("Failed to save transmission settings."));
-    }
-    return ok;
+        return true;
+    });
 }
 
-bool SensorListModel::setAllTransmitEnabled(bool enabled)
+QString SensorListModel::validateSensorProps(const QVariantMap &props)
 {
-    bool ok;
-    {
-        ScopedDbConnection db;
-        SensorDao dao(db);
-        ok = dao.setAllTransmitEnabled(enabled);
-        if (ok) AppConfigDao(db).bumpRevision();
-    }
-    if (ok)
-        loadFromDb();
-    return ok;
+    if (props.value(QStringLiteral("name")).toString().trimmed().isEmpty())
+        return QStringLiteral("Sensor name is required.");
+    const int slave = props.value(QStringLiteral("slaveId"), 0).toInt();
+    if (slave < 1 || slave > 247)
+        return QStringLiteral("Slave ID must be between 1 and 247.");
+    const int addr = props.value(QStringLiteral("registerAddress"), -1).toInt();
+    if (addr < 0 || addr > 65535)
+        return QStringLiteral("Register address must be between 0 and 65535.");
+    const int poll = props.value(QStringLiteral("pollInterval"), 0).toInt();
+    if (poll < 1)
+        return QStringLiteral("Poll interval must be at least 1 second.");
+    return {};
 }
 
-bool SensorListModel::removeFromTransmission(const QVariantList &sensorIds)
+bool SensorListModel::saveSensorForm(const QVariantMap &form, bool isAddMode, int editSensorId)
 {
-    QList<int> ids;
-    ids.reserve(sensorIds.size());
-    for (const auto &item : sensorIds)
-        ids.append(item.toInt());
+    const QString fieldError = validateSensorProps(form);
+    if (!fieldError.isEmpty()) {
+        emit messageSent(QStringLiteral("Validation error"), fieldError);
+        return false;
+    }
+    const int mode = form.value(QStringLiteral("scalingModeIndex"), 0).toInt();
+    QString coeffError;
+    const QString coeff = buildCoefficientJson(
+        mode, form.value(QStringLiteral("coeffJson")).toString(),
+        mode == 1 ? form.value(QStringLiteral("linearA")).toString()
+                  : form.value(QStringLiteral("rawMin")).toString(),
+        mode == 1 ? form.value(QStringLiteral("linearB")).toString()
+                  : form.value(QStringLiteral("rawMax")).toString(),
+        form.value(QStringLiteral("scaleMin")).toString(),
+        form.value(QStringLiteral("scaleMax")).toString(),
+        &coeffError);
+    if (coeff.isEmpty()) {
+        emit messageSent(QStringLiteral("Validation error"),
+                         coeffError.isEmpty() ? QStringLiteral("Invalid coefficient.")
+                                              : coeffError);
+        return false;
+    }
+    QVariantMap props = form;
+    props[QStringLiteral("coefficient")] = coeff;
+    if (isAddMode)
+        return addSensor(props);
+    return updateSensor(editSensorId, props);
+}
 
-    bool ok;
-    {
-        ScopedDbConnection db;
-        SensorDao dao(db);
-        ok = dao.clearTransmission(ids);
-        if (ok) AppConfigDao(db).bumpRevision();
+QVariantMap SensorListModel::coefficientUiState(const QString &coeffJson) {
+    QVariantMap blank {
+        {"mode", 0}, {"linearA", "1"}, {"linearB", "0"},
+        {"rawMin", "4000"}, {"rawMax", "20000"},
+        {"scaleMin", "4"}, {"scaleMax", "20"}, {"legacyJson", "{}"}
+    };
+
+    QString raw = coeffJson.trimmed().isEmpty() ? "{}" : coeffJson.trimmed();
+    QJsonParseError err;
+    QJsonDocument doc = QJsonDocument::fromJson(raw.toUtf8(), &err);
+    if (err.error != QJsonParseError::NoError || !doc.isObject()) {
+        blank["mode"] = 3; blank["legacyJson"] = raw; return blank;
     }
-    if (ok) {
-        loadFromDb();
-        emit messageSent(QStringLiteral("Success"), QStringLiteral("Removed from transmission list."));
-    } else {
-        emit messageSent(QStringLiteral("Error"), QStringLiteral("Failed to remove from transmission."));
+    QJsonObject obj = doc.object();
+    if (obj.isEmpty()) return blank;
+    if (obj.contains("coeffs")) { blank["mode"] = 3; blank["legacyJson"] = raw; return blank; }
+    if (obj.contains("a")) {
+        double a = obj["a"].toDouble(1.0), b = obj["b"].toDouble(0.0);
+        if (!std::isfinite(a) || !std::isfinite(b)) { blank["mode"] = 3; blank["legacyJson"] = raw; return blank; }
+        return {{"mode", 1}, {"linearA", QString::number(a)}, {"linearB", QString::number(b)},
+                {"rawMin", "4000"}, {"rawMax", "20000"}, {"scaleMin", "4"}, {"scaleMax", "20"}, {"legacyJson", "{}"}};
     }
-    return ok;
+    blank["mode"] = 3; blank["legacyJson"] = raw; return blank;
+}
+
+QString SensorListModel::buildCoefficientJson(int mode, const QString &legacyJson,
+                                                   const QString &s0, const QString &s1,
+                                                   const QString &s2, const QString &s3,
+                                                   QString *error) {
+    auto fail = [&](const QString &msg) {
+        if (error)
+            *error = msg;
+        return QString();
+    };
+    auto parseDouble = [&](const QString &label, const QString &s) -> std::pair<double, QString> {
+        QString t = s.trimmed().replace(',', '.');
+        if (t.isEmpty()) return {0, label + " is required."};
+        bool ok; double v = t.toDouble(&ok);
+        if (!ok || !std::isfinite(v)) return {0, label + ": invalid number."};
+        return {v, {}};
+    };
+
+    if (mode == 0) return "{}";
+    if (mode == 1) {
+        auto [a, ea] = parseDouble("Gain (a)", s0);
+        auto [b, eb] = parseDouble("Offset (b)", s1);
+        if (!ea.isEmpty()) return fail(ea);
+        if (!eb.isEmpty()) return fail(eb);
+        return QStringLiteral("{\"a\":%1,\"b\":%2}").arg(a).arg(b);
+    }
+    if (mode == 2) {
+        auto [r0, e0] = parseDouble("Raw Min", s0);
+        auto [r1, e1] = parseDouble("Raw Max", s1);
+        auto [y0, e2] = parseDouble("Scale Min", s2);
+        auto [y1, e3] = parseDouble("Scale Max", s3);
+        for (const auto &e : {e0, e1, e2, e3})
+            if (!e.isEmpty()) return fail(e);
+        double denom = r1 - r0;
+        if (denom == 0) return fail("Raw Max must differ from Raw Min.");
+        double a = (y1 - y0) / denom, b = y0 - a * r0;
+        return QStringLiteral("{\"a\":%1,\"b\":%2}").arg(a).arg(b);
+    }
+    if (mode == 3) {
+        QString t = legacyJson.trimmed().isEmpty() ? "{}" : legacyJson.trimmed();
+        QJsonParseError err;
+        QJsonDocument::fromJson(t.toUtf8(), &err);
+        if (err.error != QJsonParseError::NoError) return fail("Invalid JSON: " + err.errorString());
+        return t;
+    }
+    return fail("Unknown scaling mode.");
 }
 
 QVariantList SensorListModel::get_analog_links(int analogSensorId) const

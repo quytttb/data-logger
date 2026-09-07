@@ -1,9 +1,13 @@
 #pragma once
 #include <QAbstractListModel>
 #include <QList>
+#include <functional>
 #include <QtQmlIntegration/qqmlintegration.h>
 #include "data/models/Sensor.h"
 #include "utils/qml/QmlSingleton.h"
+
+class AppConfigDao;
+class SensorDao;
 
 // Exposes the sensor list (from DB) to QML for the Settings sensor table.
 class SensorListModel : public QAbstractListModel {
@@ -64,9 +68,23 @@ public:
     Q_INVOKABLE bool update_link_do_triggers(int linkId, bool trigMax, bool trigMin);
 
     Q_INVOKABLE QVariantList transmissionRows() const;
-    Q_INVOKABLE bool saveTransmission(const QVariantList &rows);
-    Q_INVOKABLE bool setAllTransmitEnabled(bool enabled);
-    Q_INVOKABLE bool removeFromTransmission(const QVariantList &sensorIds);
+    // Single entry point for all transmission-flag writes (bulk save from the
+    // Transfer Parameters tab, including bulk-disable). Each row:
+    // {sensorId, sensorSymbol, transmitEnabled}.
+    Q_INVOKABLE bool applyTransmission(const QVariantList &rows);
+
+    // Sensor add/edit form: validates fields, builds the coefficient JSON and
+    // inserts/updates in one call. Returns false (with a toast) on any error.
+    Q_INVOKABLE bool saveSensorForm(const QVariantMap &form, bool isAddMode, int editSensorId);
+    // Pure helpers (static so unit tests need no DB). Coefficient codec moved
+    // here from SettingsController — it is sensor-domain logic.
+    Q_INVOKABLE static QVariantMap coefficientUiState(const QString &coeffJson);
+    static QString buildCoefficientJson(int mode, const QString &legacyJson,
+                                        const QString &s0, const QString &s1,
+                                        const QString &s2, const QString &s3,
+                                        QString *error);
+    // Field validation ("": ok). Static so unit tests need no DB.
+    static QString validateSensorProps(const QVariantMap &props);
 
 signals:
     void countChanged();
@@ -80,6 +98,10 @@ private:
     Sensor variantToSensor(const QVariantMap &props, int existingId = 0) const;
     QVariantMap sensorToVariant(const Sensor &s) const;
     const Sensor *findSensorById(int id) const;
+    // Runs a sensor-table write + config-revision bump + reload + toast in one
+    // place so no mutating path can forget the revision bump.
+    bool commitSensorWrite(const QString &okMsg, const QString &failMsg,
+                           const std::function<bool(SensorDao &, AppConfigDao &)> &op);
 
     QList<Sensor> m_sensors;
 };

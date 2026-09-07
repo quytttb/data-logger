@@ -93,7 +93,7 @@ Rectangle {
         isAddMode = false
         editSensorId = s.sensorId
         returnMainTab = -1
-        var ui = SettingsController.coefficientUiState(s.coefficient)
+        var ui = SensorListModel.coefficientUiState(s.coefficient)
         sensorForm.loadData(s, ui)
         sensorForm.dioRepeaterRef.model = SensorListModel.get_analog_links(editSensorId)
         // Populate DI/DO dropdowns for attach form (only meaningful for ANALOG sensors)
@@ -122,30 +122,8 @@ Rectangle {
     }
 
     function saveSensorForm() {
-        var d = sensorForm.getFormData()
-        var coeff = SettingsController.buildCoefficientJson(
-            d.scalingModeIndex, d.coeffJson,
-            d.scalingModeIndex === 1 ? d.linearA : d.rawMin,
-            d.scalingModeIndex === 1 ? d.linearB : d.rawMax,
-            d.scaleMin, d.scaleMax
-        )
-        if (coeff.length === 0) return
-
-        var props = {
-            "name": d.name, "unit": d.unit, "slaveId": d.slaveId,
-            "registerAddress": d.registerAddress, "registerType": d.registerType,
-            "dataType": d.dataType, "dataFormat": d.dataFormat,
-            "coefficient": coeff, "pollInterval": d.pollInterval,
-            "reportIndex": d.reportIndex, "active": d.active,
-            "minThreshold": d.minThreshold, "maxThreshold": d.maxThreshold,
-            "decimals": d.decimals, "sensorType": d.sensorType,
-            "sensorSymbol": d.sensorSymbol
-        }
-        if (isAddMode) {
-            SensorListModel.addSensor(props)
-        } else {
-            SensorListModel.updateSensor(editSensorId, props)
-        }
+        if (!SensorListModel.saveSensorForm(sensorForm.getFormData(), isAddMode, editSensorId))
+            return
         _navigateBack()
     }
 

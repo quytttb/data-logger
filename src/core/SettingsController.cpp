@@ -10,9 +10,6 @@
 #include <QUuid>
 #include <QProcess>
 #include <QDebug>
-#include <QQmlEngine>
-#include <QJSEngine>
-#include <cmath>
 
 IMPLEMENT_QML_SINGLETON(SettingsController)
 
@@ -245,71 +242,4 @@ QStringList SettingsController::validate() const {
     if (m_cfg.serverActive && m_cfg.filePrefix.trimmed().isEmpty())
         errors << "File prefix is required when server transmission is active.";
     return errors;
-}
-
-QVariantMap SettingsController::coefficientUiState(const QString &coeffJson) const {
-    QVariantMap blank {
-        {"mode", 0}, {"linearA", "1"}, {"linearB", "0"},
-        {"rawMin", "4000"}, {"rawMax", "20000"},
-        {"scaleMin", "4"}, {"scaleMax", "20"}, {"legacyJson", "{}"}
-    };
-
-    QString raw = coeffJson.trimmed().isEmpty() ? "{}" : coeffJson.trimmed();
-    QJsonParseError err;
-    QJsonDocument doc = QJsonDocument::fromJson(raw.toUtf8(), &err);
-    if (err.error != QJsonParseError::NoError || !doc.isObject()) {
-        blank["mode"] = 3; blank["legacyJson"] = raw; return blank;
-    }
-    QJsonObject obj = doc.object();
-    if (obj.isEmpty()) return blank;
-    if (obj.contains("coeffs")) { blank["mode"] = 3; blank["legacyJson"] = raw; return blank; }
-    if (obj.contains("a")) {
-        double a = obj["a"].toDouble(1.0), b = obj["b"].toDouble(0.0);
-        if (!std::isfinite(a) || !std::isfinite(b)) { blank["mode"] = 3; blank["legacyJson"] = raw; return blank; }
-        return {{"mode", 1}, {"linearA", QString::number(a)}, {"linearB", QString::number(b)},
-                {"rawMin", "4000"}, {"rawMax", "20000"}, {"scaleMin", "4"}, {"scaleMax", "20"}, {"legacyJson", "{}"}};
-    }
-    blank["mode"] = 3; blank["legacyJson"] = raw; return blank;
-}
-
-QString SettingsController::buildCoefficientJson(int mode, const QString &legacyJson,
-                                                   const QString &s0, const QString &s1,
-                                                   const QString &s2, const QString &s3) {
-    auto parseDouble = [&](const QString &label, const QString &s) -> std::pair<double, QString> {
-        QString t = s.trimmed().replace(',', '.');
-        if (t.isEmpty()) return {0, label + " is required."};
-        bool ok; double v = t.toDouble(&ok);
-        if (!ok || !std::isfinite(v)) return {0, label + ": invalid number."};
-        return {v, {}};
-    };
-
-    if (mode == 0) return "{}";
-    if (mode == 1) {
-        auto [a, ea] = parseDouble("Gain (a)", s0);
-        auto [b, eb] = parseDouble("Offset (b)", s1);
-        if (!ea.isEmpty()) { emit messageSent("Validation error", ea); return {}; }
-        if (!eb.isEmpty()) { emit messageSent("Validation error", eb); return {}; }
-        return QStringLiteral("{\"a\":%1,\"b\":%2}").arg(a).arg(b);
-    }
-    if (mode == 2) {
-        auto [r0, e0] = parseDouble("Raw Min", s0);
-        auto [r1, e1] = parseDouble("Raw Max", s1);
-        auto [y0, e2] = parseDouble("Scale Min", s2);
-        auto [y1, e3] = parseDouble("Scale Max", s3);
-        for (const auto &e : {e0, e1, e2, e3})
-            if (!e.isEmpty()) { emit messageSent("Validation error", e); return {}; }
-        double denom = r1 - r0;
-        if (denom == 0) { emit messageSent("Validation error", "Raw Max must differ from Raw Min."); return {}; }
-        double a = (y1 - y0) / denom, b = y0 - a * r0;
-        return QStringLiteral("{\"a\":%1,\"b\":%2}").arg(a).arg(b);
-    }
-    if (mode == 3) {
-        QString t = legacyJson.trimmed().isEmpty() ? "{}" : legacyJson.trimmed();
-        QJsonParseError err;
-        QJsonDocument::fromJson(t.toUtf8(), &err);
-        if (err.error != QJsonParseError::NoError) { emit messageSent("Validation error", "Invalid JSON: " + err.errorString()); return {}; }
-        return t;
-    }
-    emit messageSent("Validation error", "Unknown scaling mode.");
-    return {};
 }

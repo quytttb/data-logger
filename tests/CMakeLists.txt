@@ -78,6 +78,19 @@ target_link_libraries(timezone_options_test PRIVATE
 )
 add_test(NAME timezone_options_test COMMAND timezone_options_test)
 
+# QTest: SensorListModel form logic — validation + coefficient codec (no DB).
+add_executable(sensor_form_test sensor_form_test.cpp)
+target_include_directories(sensor_form_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/src
+    ${CMAKE_SOURCE_DIR}/src/core
+)
+target_link_libraries(sensor_form_test PRIVATE
+    Qt6::Core
+    Qt6::Test
+    datalogger_core
+)
+add_test(NAME sensor_form_test COMMAND sensor_form_test)
+
 # Integration: Modbus RTU master ↔ pymodbus slave trên cặp serial ảo (socat).
 # Tự QSKIP nếu thiếu socat/python3/pymodbus — không bắt buộc trên mọi máy dev.
 add_executable(integration_modbus_test integration_modbus_test.cpp)
