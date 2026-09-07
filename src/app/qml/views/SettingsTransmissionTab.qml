@@ -210,12 +210,17 @@ Item {
                             }
                         }
 
-                        CheckBox {
-                            checked: delegateRoot.transmitEnabled
+                        // Centered in its column to line up with the header.
+                        Item {
                             Layout.preferredWidth: 56
-                            onToggled: {
-                                rowModel.setProperty(delegateRoot.index, "transmitEnabled", checked)
-                                root.configChanged = true
+                            Layout.fillHeight: true
+                            CheckBox {
+                                anchors.centerIn: parent
+                                checked: delegateRoot.transmitEnabled
+                                onToggled: {
+                                    rowModel.setProperty(delegateRoot.index, "transmitEnabled", checked)
+                                    root.configChanged = true
+                                }
                             }
                         }
                     }

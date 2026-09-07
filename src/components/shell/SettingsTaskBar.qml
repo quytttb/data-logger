@@ -101,6 +101,7 @@ Item {
             AppButton {
                 visible: root.hasSelectedSensor
                 iconName: "trashCan"
+                iconOnly: true
                 fillColor: AppColors.error
                 onClicked: root.deleteSelectedSensor()
             }
@@ -108,6 +109,7 @@ Item {
             AppButton {
                 visible: root.hasSelectedSensor
                 iconName: "pencil"
+                iconOnly: true
                 onClicked: root.editSelectedSensor()
             }
 
