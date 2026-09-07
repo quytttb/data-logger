@@ -68,6 +68,16 @@ target_link_libraries(ftp_client_test PRIVATE
 )
 add_test(NAME ftp_client_test COMMAND ftp_client_test)
 
+# QTest: TimezoneOptions — single source of truth cho dropdown/migration/lookup.
+add_executable(timezone_options_test timezone_options_test.cpp)
+target_include_directories(timezone_options_test PRIVATE ${CMAKE_SOURCE_DIR}/src)
+target_link_libraries(timezone_options_test PRIVATE
+    Qt6::Core
+    Qt6::Test
+    utils
+)
+add_test(NAME timezone_options_test COMMAND timezone_options_test)
+
 # Integration: Modbus RTU master ↔ pymodbus slave trên cặp serial ảo (socat).
 # Tự QSKIP nếu thiếu socat/python3/pymodbus — không bắt buộc trên mọi máy dev.
 add_executable(integration_modbus_test integration_modbus_test.cpp)

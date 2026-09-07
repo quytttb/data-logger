@@ -11,69 +11,6 @@ import LoggerKit.Components
 Item {
     id: root
     property bool configChanged: false
-    readonly property var timezoneOptions: {
-        var options = [
-            { label: "UTC-12", value: "Etc/GMT+12" },
-            { label: "UTC-11", value: "Etc/GMT+11" },
-            { label: "UTC-10", value: "Etc/GMT+10" },
-            { label: "UTC-9",  value: "Etc/GMT+9" },
-            { label: "UTC-8",  value: "Etc/GMT+8" },
-            { label: "UTC-7",  value: "Etc/GMT+7" },
-            { label: "UTC-6",  value: "Etc/GMT+6" },
-            { label: "UTC-5",  value: "Etc/GMT+5" },
-            { label: "UTC-4",  value: "Etc/GMT+4" },
-            { label: "UTC-3",  value: "Etc/GMT+3" },
-            { label: "UTC-2",  value: "Etc/GMT+2" },
-            { label: "UTC-1",  value: "Etc/GMT+1" },
-            { label: "UTC+0",  value: "Etc/GMT" },
-            { label: "UTC+1",  value: "Etc/GMT-1" },
-            { label: "UTC+2",  value: "Etc/GMT-2" },
-            { label: "UTC+3",  value: "Etc/GMT-3" },
-            { label: "UTC+4",  value: "Etc/GMT-4" },
-            { label: "UTC+5",  value: "Etc/GMT-5" },
-            { label: "UTC+5:30", value: "Asia/Kolkata" },
-            { label: "UTC+6",  value: "Etc/GMT-6" },
-            { label: "UTC+7",  value: "Etc/GMT-7" },
-            { label: "UTC+8",  value: "Etc/GMT-8" },
-            { label: "UTC+9",  value: "Etc/GMT-9" },
-            { label: "UTC+10", value: "Etc/GMT-10" },
-            { label: "UTC+11", value: "Etc/GMT-11" },
-            { label: "UTC+12", value: "Etc/GMT-12" }
-        ]
-        var systemTz = AppDefaults.timezone
-        var known = false
-        for (var i = 0; i < options.length; ++i) {
-            if (options[i].value === systemTz) {
-                known = true
-                break
-            }
-        }
-        if (!known)
-            options.unshift({ label: qsTr("System (%1)").arg(systemTz), value: systemTz })
-        return options
-    }
-
-    // ComboBox.indexOfValue() does not match valueRole entries of a plain
-    // JS-array model (always returns -1, which used to pin the dropdown to
-    // the first row, UTC-12) — look the value up manually instead.
-    function timezoneIndexFor(tz) {
-        // QTimeZone may report UTC as UTC/Etc/UTC/GMT;
-        // the fixed-offset list uses Etc/GMT for UTC+0.
-        if (tz === "UTC" || tz === "Etc/UTC" || tz === "GMT")
-            tz = "Etc/GMT"
-        var opts = root.timezoneOptions
-        for (var i = 0; i < opts.length; ++i) {
-            if (opts[i].value === tz)
-                return i
-        }
-        // Unknown zone (e.g. a geographic IANA id saved earlier): fall back
-        // to the host system entry instead of the first row (UTC-12).
-        for (var j = 0; j < opts.length; ++j) {
-            if (opts[j].value === AppDefaults.timezone)
-                return j
-        }
-        return 0
-    }
 
     MessagePopup { id: rebootConfirm }
 
@@ -191,14 +128,16 @@ Item {
                         // Fixed UTC offsets mapped to IANA zone ids that timedatectl
                         // accepts directly. Etc/GMT signs are inverted (UTC+7 == Etc/GMT-7)
                         // and carry no DST — ideal for stable logger timestamps.
-                        model: root.timezoneOptions
-                        currentIndex: root.timezoneIndexFor(
+                        // Timezone table lives in C++ (TimezoneOptions, single
+                        // source of truth shared with the DB migration).
+                        model: AppDefaults.timezoneOptions
+                        currentIndex: AppDefaults.timezoneIndex(
                             SettingsController ? SettingsController.timezone : AppDefaults.timezone)
                         Connections {
                             target: SettingsController
                             function onConfigLoaded() {
-                                timezoneCombo.currentIndex =
-                                        root.timezoneIndexFor(SettingsController.timezone)
+                                timezoneCombo.currentIndex = AppDefaults.timezoneIndex(
+                                            SettingsController.timezone)
                             }
                         }
                         onActivated: { SettingsController.timezone = currentValue; root.configChanged = true }

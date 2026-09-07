@@ -1,5 +1,6 @@
 #include "AppDefaults.h"
 #include "utils/system/AppDefaults.h"
+#include "utils/system/TimezoneOptions.h"
 #include "utils/modbus/ModbusCodec.h"
 
 IMPLEMENT_QML_SINGLETON(AppDefaultsQml)
@@ -34,4 +35,26 @@ QStringList AppDefaultsQml::byteOrders() const
 QStringList AppDefaultsQml::parityOptions() const
 {
     return {QStringLiteral("N"), QStringLiteral("E"), QStringLiteral("O")};
+}
+
+QVariantList AppDefaultsQml::timezoneOptions() const
+{
+    return TimezoneOptions::modelWithSystem(AppDefaults::timezone);
+}
+
+int AppDefaultsQml::timezoneIndex(const QString &tz) const
+{
+    const QVariantList model = timezoneOptions();
+    const QString norm = TimezoneOptions::normalizeAlias(tz);
+    for (int i = 0; i < model.size(); ++i) {
+        if (model[i].toMap().value(QStringLiteral("value")).toString() == norm)
+            return i;
+    }
+    // Unknown zone: fall back to the host system entry, never to row 0.
+    const QString systemTz = AppDefaults::timezone;
+    for (int i = 0; i < model.size(); ++i) {
+        if (model[i].toMap().value(QStringLiteral("value")).toString() == systemTz)
+            return i;
+    }
+    return 0;
 }

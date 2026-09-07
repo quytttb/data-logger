@@ -9,6 +9,7 @@ qt_add_library(utils STATIC
     system/LogSetup.cpp
     system/LogSetup.h
     system/AppDefaults.h
+    system/TimezoneOptions.h
 
     # network
     network/LanIp.cpp

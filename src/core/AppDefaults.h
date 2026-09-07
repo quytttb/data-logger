@@ -1,6 +1,7 @@
 #pragma once
 #include <QObject>
 #include <QStringList>
+#include <QVariantList>
 #include <QtQmlIntegration/qqmlintegration.h>
 #include "utils/qml/QmlSingleton.h"
 
@@ -21,6 +22,7 @@ class AppDefaultsQml : public QObject {
     Q_PROPERTY(QStringList dataTypes READ dataTypes CONSTANT)
     Q_PROPERTY(QStringList byteOrders READ byteOrders CONSTANT)
     Q_PROPERTY(QStringList parityOptions READ parityOptions CONSTANT)
+    Q_PROPERTY(QVariantList timezoneOptions READ timezoneOptions CONSTANT)
 
 public:
     explicit AppDefaultsQml(QObject *parent = nullptr);
@@ -37,4 +39,8 @@ public:
     QStringList dataTypes() const;
     QStringList byteOrders() const;
     QStringList parityOptions() const;
+    QVariantList timezoneOptions() const;
+    // Dropdown index for an IANA zone id (falls back to the host system
+    // entry, never to row 0). Replaces manual indexOfValue loops in QML.
+    Q_INVOKABLE int timezoneIndex(const QString &tz) const;
 };
