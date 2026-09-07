@@ -12,8 +12,6 @@ Rectangle {
     id: trendRoot
     color: "transparent"
 
-    readonly property int windowMs: 5 * 60 * 1000
-
     Component {
         id: lineSeriesComponent
         LineSeries {
@@ -54,10 +52,15 @@ Rectangle {
                 Layout.fillHeight: true
 
                 property var seriesMap: ({})
-                property real xMin: 0
-                property real xMax: 0
-                property real yMin: 0
-                property real yMax: 1
+
+                // Axis ranges are computed in C++ (MonitorController trend
+                // properties) — QML only applies them to the axes here.
+                function applyTrendAxes() {
+                    xAxis.min = new Date(MonitorController.trendXMin)
+                    xAxis.max = new Date(MonitorController.trendXMax)
+                    yAxis.min = MonitorController.trendYMin
+                    yAxis.max = MonitorController.trendYMax
+                }
 
                 function clearAllSeries() {
                     let list = graphsView.seriesList
@@ -73,14 +76,6 @@ Rectangle {
                     if (!sensors || sensors.length === 0)
                         return
 
-                    let now = Date.now()
-                    chartHolder.xMin = now - trendRoot.windowMs
-                    chartHolder.xMax = now
-                     let yLo = Number.MAX_VALUE
-                     let yHi = -Number.MAX_VALUE
-                     let hasAnalog = false
-                     let hasDigital = false
-
                     for (let i = 0; i < sensors.length; i++) {
                         let s = sensors[i]
                         let label = s.unit && s.unit.length > 0
@@ -95,44 +90,9 @@ Rectangle {
                         })
                         graphsView.addSeries(series)
                         chartHolder.seriesMap[s.id] = series
-
-                         for (let j = 0; j < buf.length; j++) {
-                            if (buf[j].y < yLo) yLo = buf[j].y
-                            if (buf[j].y > yHi) yHi = buf[j].y
-                         }
-                         if (s.sensorType === "DI" || s.sensorType === "DO")
-                             hasDigital = true
-                         else
-                             hasAnalog = true
-                     }
-
-                     chartHolder.applyAxes(yLo, yHi, hasAnalog, hasDigital)
-                 }
-
-                 function applyAxes(yLo, yHi, hasAnalog, hasDigital) {
-                    let now = Date.now()
-                    let minX = now - trendRoot.windowMs
-                    chartHolder.xMin = minX
-                    chartHolder.xMax = now
-                    xAxis.min = new Date(minX)
-                    xAxis.max = new Date(now)
-
-                    if (yLo === undefined || yLo === Number.MAX_VALUE) {
-                        yLo = 0; yHi = 1
                     }
-                     // A digital-only chart must visibly include both states.
-                     if (hasDigital && !hasAnalog) {
-                         yLo = 0
-                         yHi = 1
-                     } else if (yHi <= yLo) {
-                         yHi = yLo + 1
-                     }
-                    let margin = (yHi - yLo) * 0.1
-                    if (margin === 0) margin = 1
-                    chartHolder.yMin = yLo - margin
-                    chartHolder.yMax = yHi + margin
-                    yAxis.min = chartHolder.yMin
-                    yAxis.max = chartHolder.yMax
+
+                    chartHolder.applyTrendAxes()
                 }
 
                 function appendPoint(sid, x, y) {
@@ -141,29 +101,11 @@ Rectangle {
 
                     series.append(x, y)
 
-                    let cutoff = x - trendRoot.windowMs
+                    let cutoff = x - MonitorController.trendWindowMs
                     for (let key in chartHolder.seriesMap) {
                         let s = chartHolder.seriesMap[key]
                         while (s.count > 0 && s.at(0).x < cutoff)
                             s.remove(0)
-                    }
-
-                    xAxis.min = new Date(cutoff)
-                    xAxis.max = new Date(x)
-                    chartHolder.xMin = cutoff
-                    chartHolder.xMax = x
-
-                    if (y < chartHolder.yMin || y > chartHolder.yMax) {
-                        let lo = y, hi = y
-                        for (let k in chartHolder.seriesMap) {
-                            let ss = chartHolder.seriesMap[k]
-                            for (let n = 0; n < ss.count; n++) {
-                                let pt = ss.at(n)
-                                if (pt.y < lo) lo = pt.y
-                                if (pt.y > hi) hi = pt.y
-                            }
-                        }
-                         chartHolder.applyAxes(lo, hi, true, false)
                     }
                 }
 
@@ -173,6 +115,7 @@ Rectangle {
                     target: MonitorController
                     function onAnalogSensorsListChanged() { chartHolder.rebuildSeries() }
                     function onNewDataPoint(sid, ts, val) { chartHolder.appendPoint(sid, ts, val) }
+                    function onTrendAxesChanged() { chartHolder.applyTrendAxes() }
                 }
 
                 ChartGraphsView {
@@ -184,10 +127,7 @@ Rectangle {
                     axisX: DateTimeAxis {
                         id: xAxis
                         labelFormat: "HH:mm:ss"
-                        // tickInterval is a tick COUNT (not milliseconds):
-                        // 6 labels over the 5-minute window — readable on
-                        // the 7-inch kiosk display.
-                        tickInterval: 6
+                        tickInterval: MonitorController.trendTickCount
                     }
 
                     axisY: ValueAxis {

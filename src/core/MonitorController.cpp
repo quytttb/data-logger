@@ -11,6 +11,7 @@
 #include <QElapsedTimer>
 #include <QMutexLocker>
 #include <QSemaphore>
+#include <limits>
 #include <QFile>
 #include <QSet>
 #include <QDebug>
@@ -548,18 +549,73 @@ void MonitorController::applyStatus(const QString &tag, int mode) {
 
 void MonitorController::resetTrendBuffers(const QList<QVariantMap> &sensors) {
     m_trendBuffers.clear();
+    m_trendIsDigital.clear();
     m_analogSensors.clear();
     for (int i = 0; i < sensors.size(); ++i) {
         const auto &s = sensors[i];
         int id = s["id"].toInt();
         m_trendBuffers[id] = {};
+        const QString type = s.value("sensor_type", "ANALOG").toString();
+        m_trendIsDigital[id] = (type == QStringLiteral("DI") || type == QStringLiteral("DO"));
         m_analogSensors.append(QVariantMap{
             {"id", id}, {"name", s["name"]}, {"unit", s.value("unit","")},
             {"color", kPalette[i % kPalette.size()]},
             {"sensorType", s.value("sensor_type","ANALOG")},
         });
     }
+    updateTrendAxes();
     emit analogSensorsListChanged();
+}
+
+MonitorController::TrendAxes MonitorController::computeTrendAxes(
+        qint64 nowMs,
+        const QHash<int, std::deque<std::pair<double,double>>> &buffers,
+        const QHash<int, bool> &isDigital)
+{
+    TrendAxes axes;
+    axes.xMax = double(nowMs);
+    axes.xMin = double(nowMs - kTrendWindowMs);
+
+    bool hasAnalog = false, hasDigital = false;
+    for (auto it = isDigital.cbegin(); it != isDigital.cend(); ++it) {
+        if (it.value()) hasDigital = true;
+        else            hasAnalog  = true;
+    }
+
+    double yLo = std::numeric_limits<double>::max();
+    double yHi = std::numeric_limits<double>::lowest();
+    for (auto it = buffers.cbegin(); it != buffers.cend(); ++it) {
+        for (const auto &[ts, val] : it.value()) {
+            (void)ts;
+            if (val < yLo) yLo = val;
+            if (val > yHi) yHi = val;
+        }
+    }
+    if (yLo == std::numeric_limits<double>::max()) {
+        yLo = 0; yHi = 1;
+    }
+    // A digital-only chart must visibly include both states.
+    if (hasDigital && !hasAnalog) {
+        yLo = 0; yHi = 1;
+    } else if (yHi <= yLo) {
+        yHi = yLo + 1;
+    }
+    double margin = (yHi - yLo) * 0.1;
+    if (margin == 0) margin = 1;
+    axes.yMin = yLo - margin;
+    axes.yMax = yHi + margin;
+    return axes;
+}
+
+void MonitorController::updateTrendAxes()
+{
+    const TrendAxes axes = computeTrendAxes(QDateTime::currentMSecsSinceEpoch(),
+                                            m_trendBuffers, m_trendIsDigital);
+    m_trendXMin = axes.xMin;
+    m_trendXMax = axes.xMax;
+    m_trendYMin = axes.yMin;
+    m_trendYMax = axes.yMax;
+    emit trendAxesChanged();
 }
 
 void MonitorController::pushTrendPoint(int sensorId, const QString &recAt, double value) {
@@ -570,6 +626,7 @@ void MonitorController::pushTrendPoint(int sensorId, const QString &recAt, doubl
     auto &buf = it.value();
     buf.push_back({tsMs, value});
     if (buf.size() > static_cast<size_t>(kTrendBufferSize)) buf.pop_front();
+    updateTrendAxes();
     emit newDataPoint(sensorId, tsMs, value);
 }
 

@@ -34,6 +34,14 @@ class MonitorController : public QObject {
     Q_PROPERTY(QVariantList analogSensors READ analogSensors NOTIFY analogSensorsListChanged)
     Q_PROPERTY(float  cpuTemp         READ cpuTemp          NOTIFY cpuTempChanged)
     Q_PROPERTY(QString watchdogStatus  READ watchdogStatus   NOTIFY watchdogChanged)
+    // Trending axes — computed in C++ from the trend buffers so QML only
+    // binds visuals (no min/max/margin math in QML).
+    Q_PROPERTY(double trendXMin READ trendXMin NOTIFY trendAxesChanged)
+    Q_PROPERTY(double trendXMax READ trendXMax NOTIFY trendAxesChanged)
+    Q_PROPERTY(double trendYMin READ trendYMin NOTIFY trendAxesChanged)
+    Q_PROPERTY(double trendYMax READ trendYMax NOTIFY trendAxesChanged)
+    Q_PROPERTY(double trendWindowMs READ trendWindowMs CONSTANT)
+    Q_PROPERTY(int trendTickCount READ trendTickCount CONSTANT)
 
 public:
     static constexpr int STATUS_IDLE = 0;
@@ -57,6 +65,24 @@ public:
     QVariantList analogSensors() const { return m_analogSensors; }
     float  cpuTemp()          const { return m_cpuTemp; }
     QString watchdogStatus()  const { return m_watchdogStatus; }
+    double trendXMin() const { return m_trendXMin; }
+    double trendXMax() const { return m_trendXMax; }
+    double trendYMin() const { return m_trendYMin; }
+    double trendYMax() const { return m_trendYMax; }
+    double trendWindowMs() const { return double(kTrendWindowMs); }
+    int trendTickCount() const { return kTrendTickCount; }
+
+    // Axis window for the realtime chart (also the QML trim horizon).
+    static constexpr qint64 kTrendWindowMs = 5 * 60 * 1000;
+    // Major tick COUNT on the time axis (NOT milliseconds).
+    static constexpr int kTrendTickCount = 6;
+
+    // Pure axis math over explicit inputs (static so unit tests need no
+    // controller instance, threads or DB).
+    struct TrendAxes { double xMin = 0; double xMax = 0; double yMin = 0; double yMax = 1; };
+    static TrendAxes computeTrendAxes(qint64 nowMs,
+                                      const QHash<int, std::deque<std::pair<double,double>>> &buffers,
+                                      const QHash<int, bool> &isDigital);
 
     // REST snapshot (called from network thread)
     QVariantMap readingsSnapshot() const;
@@ -89,6 +115,7 @@ signals:
     void recordsCommitted(int count);
     // Realtime trending signals
     void newDataPoint(int sensorId, double timestampMs, double value);
+    void trendAxesChanged();
 
 private slots:
     void onDataReady(QVariantMap payload);
@@ -117,6 +144,7 @@ private:
     void applyStatus(const QString &tag, int mode = -1);
     void resetTrendBuffers(const QList<QVariantMap> &sensors);
     void pushTrendPoint(int sensorId, const QString &recordedAt, double value);
+    void updateTrendAxes();
     void buildDiLegend(const QList<QVariantMap> &diSensors,
                        const QList<QVariantMap> &links);
     void syncLinkedDigitalCards(const QVariantMap &payload);
@@ -150,6 +178,12 @@ private:
     // Trend buffers: sensor_id → circular deque of (timestamp_ms, value)
     static constexpr int kTrendBufferSize = 2000;
     QHash<int, std::deque<std::pair<double,double>>> m_trendBuffers;
+    // sensor_id → true for DI/DO step series (drives the digital-only Y range)
+    QHash<int, bool> m_trendIsDigital;
+    double m_trendXMin = 0;
+    double m_trendXMax = 0;
+    double m_trendYMin = 0;
+    double m_trendYMax = 1;
 
     // REST readings cache
     mutable QMutex           m_readingsMutex;

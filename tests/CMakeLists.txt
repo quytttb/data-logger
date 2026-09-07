@@ -91,6 +91,19 @@ target_link_libraries(sensor_form_test PRIVATE
 )
 add_test(NAME sensor_form_test COMMAND sensor_form_test)
 
+# QTest: trend axis math (window/margin/digital-only range, no instance).
+add_executable(trend_axes_test trend_axes_test.cpp)
+target_include_directories(trend_axes_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/src
+    ${CMAKE_SOURCE_DIR}/src/core
+)
+target_link_libraries(trend_axes_test PRIVATE
+    Qt6::Core
+    Qt6::Test
+    datalogger_core
+)
+add_test(NAME trend_axes_test COMMAND trend_axes_test)
+
 # Integration: Modbus RTU master ↔ pymodbus slave trên cặp serial ảo (socat).
 # Tự QSKIP nếu thiếu socat/python3/pymodbus — không bắt buộc trên mọi máy dev.
 add_executable(integration_modbus_test integration_modbus_test.cpp)
