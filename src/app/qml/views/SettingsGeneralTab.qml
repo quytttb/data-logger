@@ -53,6 +53,28 @@ Item {
         return options
     }
 
+    // ComboBox.indexOfValue() does not match valueRole entries of a plain
+    // JS-array model (always returns -1, which used to pin the dropdown to
+    // the first row, UTC-12) — look the value up manually instead.
+    function timezoneIndexFor(tz) {
+        // QTimeZone may report UTC as UTC/Etc/UTC/GMT;
+        // the fixed-offset list uses Etc/GMT for UTC+0.
+        if (tz === "UTC" || tz === "Etc/UTC" || tz === "GMT")
+            tz = "Etc/GMT"
+        var opts = root.timezoneOptions
+        for (var i = 0; i < opts.length; ++i) {
+            if (opts[i].value === tz)
+                return i
+        }
+        // Unknown zone (e.g. a geographic IANA id saved earlier): fall back
+        // to the host system entry instead of the first row (UTC-12).
+        for (var j = 0; j < opts.length; ++j) {
+            if (opts[j].value === AppDefaults.timezone)
+                return j
+        }
+        return 0
+    }
+
     MessagePopup { id: rebootConfirm }
 
     Flickable {
@@ -162,6 +184,7 @@ Item {
 
                     Text { text: qsTr("Timezone:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize }
                     ComboBox {
+                        id: timezoneCombo
                         Layout.fillWidth: true
                         textRole: "label"
                         valueRole: "value"
@@ -169,13 +192,14 @@ Item {
                         // accepts directly. Etc/GMT signs are inverted (UTC+7 == Etc/GMT-7)
                         // and carry no DST — ideal for stable logger timestamps.
                         model: root.timezoneOptions
-                        currentIndex: {
-                            var tz = SettingsController ? SettingsController.timezone : AppDefaults.timezone
-                            // QTimeZone may report UTC as UTC/Etc/UTC/GMT;
-                            // the fixed-offset list uses Etc/GMT for UTC+0.
-                            if (tz === "UTC" || tz === "Etc/UTC" || tz === "GMT")
-                                tz = "Etc/GMT"
-                            return Math.max(0, indexOfValue(tz))
+                        currentIndex: root.timezoneIndexFor(
+                            SettingsController ? SettingsController.timezone : AppDefaults.timezone)
+                        Connections {
+                            target: SettingsController
+                            function onConfigLoaded() {
+                                timezoneCombo.currentIndex =
+                                        root.timezoneIndexFor(SettingsController.timezone)
+                            }
                         }
                         onActivated: { SettingsController.timezone = currentValue; root.configChanged = true }
                     }
