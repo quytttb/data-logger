@@ -21,7 +21,7 @@ Item {
             id: statusPill
             readonly property color stateColor: !MonitorController.isPolling
                 ? AppColors.onSurfaceVariant
-                : MonitorController.statusMode === 2 ? AppColors.error : AppColors.success
+                : MonitorController.statusMode === MonitorController.StatusError ? AppColors.error : AppColors.success
 
             Layout.preferredHeight: 44
             Layout.preferredWidth: statusRow.implicitWidth + 36

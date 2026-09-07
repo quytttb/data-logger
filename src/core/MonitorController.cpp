@@ -131,7 +131,7 @@ void MonitorController::startPolling() {
     m_isPolling  = true;
     m_errorCount = 0;
     m_consecutiveErrors = 0;
-    applyStatus("monitoring", STATUS_OK);
+    applyStatus("monitoring", StatusOk);
     emit pollingChanged();
     emit errorCountChanged();
     qInfo() << "Polling started:" << allSensors.size() << "sensors";
@@ -273,7 +273,7 @@ void MonitorController::stopPolling() {
     if (!m_isPolling || m_isStopping) return;
     m_watchdogTimer->stop();
     m_isStopping = true;
-    applyStatus("stopping", STATUS_IDLE);
+    applyStatus("stopping", StatusIdle);
     emit stoppingChanged();
 
     if (m_modbusWorker) QMetaObject::invokeMethod(m_modbusWorker, "stop");
@@ -299,7 +299,7 @@ void MonitorController::finalizeStop() {
     m_isPolling  = false;
     m_isStopping = false;
     if (m_mbtcp) m_mbtcp->setLoggerStatus(false, false);
-    applyStatus("stopped", STATUS_IDLE);
+    applyStatus("stopped", StatusIdle);
     emit pollingChanged();
     emit stoppingChanged();
     m_model->setAllStatus("---");
@@ -470,8 +470,8 @@ void MonitorController::onConnectionChanged(bool connected) {
     m_rtuConnected = connected;
     if (m_mbtcp) m_mbtcp->setLoggerStatus(m_isPolling, connected);
     if (m_isStopping) return;
-    if (connected) applyStatus("monitoring", STATUS_OK);
-    else { applyStatus("connection_lost", STATUS_ERR); m_model->setAllStatus("ERR"); markReadingsCacheErr(); }
+    if (connected) applyStatus("monitoring", StatusOk);
+    else { applyStatus("connection_lost", StatusError); m_model->setAllStatus("ERR"); markReadingsCacheErr(); }
 }
 
 void MonitorController::onModbusStopped() {
@@ -479,7 +479,7 @@ void MonitorController::onModbusStopped() {
     if (m_isStopping) return;
     if (m_isPolling) {
         m_isStopping = true;
-        applyStatus("stopped_worker", STATUS_ERR);
+        applyStatus("stopped_worker", StatusError);
         emit stoppingChanged();
         if (m_dbWorker) QMetaObject::invokeMethod(m_dbWorker, "stop");
         if (m_dbThread) m_dbThread->quit();
@@ -541,9 +541,9 @@ void MonitorController::checkWatchdog() {
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-void MonitorController::applyStatus(const QString &tag, int mode) {
+void MonitorController::applyStatus(const QString &tag, Status mode) {
     m_statusTag = tag;
-    if (mode >= 0) m_statusMode = mode;
+    m_statusMode = mode;
     emit statusChanged();
 }
 

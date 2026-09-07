@@ -9,7 +9,6 @@
 #include "data/repositories/SensorDao.h"
 #include "data/repositories/SensorDataDao.h"
 #include "data/repositories/ReportLogDao.h"
-#include "data/repositories/AppConfigDao.h"
 #include <QFile>
 #include <QTextStream>
 #include <QDir>
@@ -86,6 +85,14 @@ void ReportController::setLastStatus(const QString &s)
     emit statusChanged();
 }
 
+void ReportController::setUploadState(UploadState s)
+{
+    if (m_uploadState == s)
+        return;
+    m_uploadState = s;
+    emit statusChanged();
+}
+
 QString ReportController::previewRemotePath() const
 {
     if (!m_settings)
@@ -117,6 +124,7 @@ void ReportController::applyServerConfig()
     if (!cfg.serverActive || cfg.ftpAddress.trimmed().isEmpty()) {
         QMetaObject::invokeMethod(m_ftpWorker, "stop", Qt::BlockingQueuedConnection);
         setRunning(false);
+        setUploadState(UploadStopped);
         setLastStatus(QStringLiteral("Stopped"));
         refreshStatus();
         return;
@@ -132,6 +140,7 @@ void ReportController::applyServerConfig()
                            password, cfg.ftpRemotePath);
     QMetaObject::invokeMethod(m_ftpWorker, "start", Qt::QueuedConnection);
     setRunning(true);
+    setUploadState(UploadRunning);
     setLastStatus(QStringLiteral("Running"));
     refreshStatus();
 }
@@ -140,6 +149,7 @@ void ReportController::onUploadSuccess(const QString &localPath, const QString &
 {
     Q_UNUSED(localPath)
     Q_UNUSED(remotePath)
+    setUploadState(UploadOk);
     setLastStatus(QStringLiteral("OK"));
     refreshStatus();
 }
@@ -147,6 +157,7 @@ void ReportController::onUploadSuccess(const QString &localPath, const QString &
 void ReportController::onUploadFailed(const QString &localPath, const QString &error)
 {
     Q_UNUSED(localPath)
+    setUploadState(UploadFailed);
     setLastStatus(error.isEmpty() ? QStringLiteral("Upload failed") : error);
     refreshStatus();
 }
@@ -154,6 +165,7 @@ void ReportController::onUploadFailed(const QString &localPath, const QString &e
 void ReportController::onFtpStopped()
 {
     setRunning(false);
+    setUploadState(UploadStopped);
     setLastStatus(QStringLiteral("Stopped"));
     refreshStatus();
 }
@@ -162,7 +174,9 @@ void ReportController::onScheduleTick()
 {
     if (!m_settings)
         return;
-    const AppConfig &cfg = m_settings->config();
+    // Single source of truth: snapshot the in-memory config once here and
+    // hand it to the worker thread — no second DB read inside generation.
+    const AppConfig cfg = m_settings->config();
     if (!cfg.serverActive || cfg.serverSendInterval <= 0)
         return;
 
@@ -196,18 +210,20 @@ void ReportController::onScheduleTick()
         return; // previous report still in progress
 
     m_generating.store(true, std::memory_order_relaxed);
-    QThreadPool::globalInstance()->start([this, from, to]() {
-        generateReport(from, to);
+    QThreadPool::globalInstance()->start([this, from, to, cfg]() {
+        runReportGeneration(from, to, cfg);
         m_generating.store(false, std::memory_order_relaxed);
     });
 }
 
 void ReportController::generateReport(const QDateTime &from, const QDateTime &to) {
-    AppConfig cfg;
-    {
-        ScopedDbConnection db;
-        cfg = AppConfigDao(db).load();
-    }
+    if (!m_settings)
+        return;
+    runReportGeneration(from, to, m_settings->config());
+}
+
+void ReportController::runReportGeneration(const QDateTime &from, const QDateTime &to,
+                                           const AppConfig &cfg) {
 
     if (cfg.filePrefix.trimmed().isEmpty()) {
         emit messageSent(QStringLiteral("Error"),

@@ -143,8 +143,8 @@ Rectangle {
                     spacing: AppTheme.spacingS
                     Rectangle {
                         implicitWidth: 8; implicitHeight: 8; radius: implicitWidth / 2
-                        color: MonitorController.statusMode === 1 ? AppColors.success
-                             : MonitorController.statusMode === 2 ? AppColors.error
+                        color: MonitorController.statusMode === MonitorController.StatusOk ? AppColors.success
+                             : MonitorController.statusMode === MonitorController.StatusError ? AppColors.error
                              : AppColors.onSurfaceVariant
                     }
                     Text {
@@ -163,9 +163,8 @@ Rectangle {
                         implicitWidth: 8; implicitHeight: 8; radius: implicitWidth / 2
                         color: {
                             if (!ReportController.isRunning) return AppColors.onSurfaceVariant;
-                            var s = ReportController.lastStatus || "";
-                            if (s.indexOf("FAIL") >= 0 || s.indexOf("ERROR") >= 0) return AppColors.error;
-                            if (s.indexOf("OK") >= 0) return AppColors.success;
+                            if (ReportController.uploadState === ReportController.UploadFailed) return AppColors.error;
+                            if (ReportController.uploadState === ReportController.UploadOk) return AppColors.success;
                             return AppColors.accentColor;
                         }
                     }
