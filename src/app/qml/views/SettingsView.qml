@@ -24,6 +24,11 @@ Rectangle {
 
     // Signals bound to TaskBar
     function saveConfig() {
+        // Transmission rows live in a ListModel — persist them through the
+        // same shared Save button instead of a tab-local one.
+        if (serverTab && serverTab.transmissionTab
+                && serverTab.transmissionTab.configChanged)
+            serverTab.transmissionTab.saveRows()
         SettingsController.saveConfig()
         isConfigChanged = false
         if (generalTab) generalTab.configChanged = false
@@ -35,6 +40,9 @@ Rectangle {
 
     function cancelConfig() {
         SettingsController.loadConfig() // Reload from DB
+        // Drop un-saved transmission-row edits as well.
+        if (serverTab && serverTab.transmissionTab)
+            serverTab.transmissionTab.reloadRows()
         isConfigChanged = false
         if (generalTab) generalTab.configChanged = false
         if (connectionTab) connectionTab.configChanged = false

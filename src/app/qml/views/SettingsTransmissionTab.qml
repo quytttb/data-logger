@@ -41,6 +41,12 @@ Item {
         return ids
     }
 
+    // Persisted by the shared Save button on the task bar
+    // (SettingsView.saveConfig calls this before SettingsController.saveConfig).
+    function saveRows() {
+        SensorListModel.saveTransmission(buildSavePayload())
+    }
+
     Component.onCompleted: reloadRows()
 
     Connections {
@@ -70,7 +76,7 @@ Item {
             spacing: AppTheme.spacingM
 
             Text {
-                text: qsTr("Thông số truyền")
+                text: qsTr("Transfer Parameters")
                 color: AppColors.accentColor
                 font.bold: true
                 font.pixelSize: AppTypography.titleSmall.pixelSize
@@ -81,7 +87,7 @@ Item {
                 spacing: AppTheme.spacingM
 
                 Text {
-                    text: qsTr("Tự động thêm cảm biến mới")
+                    text: qsTr("Auto-add new sensors")
                     color: AppColors.onSurfaceVariant
                     font.pixelSize: AppTypography.bodyMedium.pixelSize
                 }
@@ -96,7 +102,7 @@ Item {
                 Item { Layout.fillWidth: true }
 
                 AppButton {
-                    text: qsTr("Chọn tất cả")
+                    text: qsTr("Select all")
                     kind: AppButton.Neutral
                     onClicked: {
                         for (let i = 0; i < rowModel.count; ++i)
@@ -105,7 +111,7 @@ Item {
                     }
                 }
                 AppButton {
-                    text: qsTr("Bỏ chọn tất cả")
+                    text: qsTr("Deselect all")
                     kind: AppButton.Neutral
                     onClicked: {
                         for (let i = 0; i < rowModel.count; ++i)
@@ -127,10 +133,10 @@ Item {
                     anchors.rightMargin: 12
                     spacing: AppTheme.spacingS
 
-                    Text { text: qsTr("STT"); color: AppColors.accentColor; font.bold: true; font.pixelSize: AppTypography.bodyMedium.pixelSize; Layout.preferredWidth: 36 }
-                    Text { text: qsTr("Tên cảm biến"); color: AppColors.accentColor; font.bold: true; font.pixelSize: AppTypography.bodyMedium.pixelSize; Layout.preferredWidth: 160 }
-                    Text { text: qsTr("Ký hiệu cảm biến"); color: AppColors.accentColor; font.bold: true; font.pixelSize: AppTypography.bodyMedium.pixelSize; Layout.fillWidth: true }
-                    Text { text: qsTr("Truyền"); color: AppColors.accentColor; font.bold: true; font.pixelSize: AppTypography.bodyMedium.pixelSize; Layout.preferredWidth: 56; horizontalAlignment: Text.AlignHCenter }
+                    Text { text: qsTr("No."); color: AppColors.accentColor; font.bold: true; font.pixelSize: AppTypography.bodyMedium.pixelSize; Layout.preferredWidth: 36 }
+                    Text { text: qsTr("Sensor name"); color: AppColors.accentColor; font.bold: true; font.pixelSize: AppTypography.bodyMedium.pixelSize; Layout.preferredWidth: 160 }
+                    Text { text: qsTr("Sensor symbol"); color: AppColors.accentColor; font.bold: true; font.pixelSize: AppTypography.bodyMedium.pixelSize; Layout.fillWidth: true }
+                    Text { text: qsTr("Transmit"); color: AppColors.accentColor; font.bold: true; font.pixelSize: AppTypography.bodyMedium.pixelSize; Layout.preferredWidth: 56; horizontalAlignment: Text.AlignHCenter }
                 }
             }
 
@@ -212,24 +218,16 @@ Item {
                 }
             }
 
+            // Row saving goes through the shared Save button on the task bar
+            // (SettingsView.saveConfig calls saveRows()). Only row deletion
+            // stays local — there is no task-bar equivalent for it.
             RowLayout {
                 Layout.fillWidth: true
                 spacing: AppTheme.spacingM
                 Item { Layout.fillWidth: true }
 
                 AppButton {
-                    text: qsTr("LƯU")
-                    fillColor: AppColors.success
-                    onClicked: {
-                        SensorListModel.saveTransmission(root.buildSavePayload())
-                        if (root.configChanged)
-                            SettingsController.saveConfig()
-                        root.configChanged = false
-                    }
-                }
-
-                AppButton {
-                    text: qsTr("XÓA")
+                    text: qsTr("Delete")
                     fillColor: AppColors.error
                     onClicked: {
                         var ids = root.selectedSensorIds()

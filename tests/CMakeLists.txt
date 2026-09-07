@@ -1,4 +1,4 @@
-find_package(Qt6 ${QT_MIN_VERSION} REQUIRED COMPONENTS Core Sql SerialBus Test)
+find_package(Qt6 ${QT_MIN_VERSION} REQUIRED COMPONENTS Core Sql SerialBus Test Network)
 
 add_executable(tt10_test tt10_test.cpp)
 target_include_directories(tt10_test PRIVATE
@@ -56,6 +56,17 @@ target_link_libraries(app_defaults_test PRIVATE
     utils
 )
 add_test(NAME app_defaults_test COMMAND app_defaults_test)
+
+# QTest: FtpClient (passive STOR + MKD -p) với fake FTP server in-process.
+add_executable(ftp_client_test ftp_client_test.cpp)
+target_include_directories(ftp_client_test PRIVATE ${CMAKE_SOURCE_DIR}/src)
+target_link_libraries(ftp_client_test PRIVATE
+    Qt6::Core
+    Qt6::Network
+    Qt6::Test
+    network
+)
+add_test(NAME ftp_client_test COMMAND ftp_client_test)
 
 # Integration: Modbus RTU master ↔ pymodbus slave trên cặp serial ảo (socat).
 # Tự QSKIP nếu thiếu socat/python3/pymodbus — không bắt buộc trên mọi máy dev.

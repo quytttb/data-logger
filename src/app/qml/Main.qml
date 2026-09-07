@@ -135,7 +135,12 @@ ApplicationWindow {
         AppNotifier.show(body || title, semantic, { detailTitle: title, detailText: body })
     }
 
-    AppToastHost { id: appToastHost }
+    // Toasts dock bottom-right so they never cover the header/taskbar.
+    AppToastHost {
+        id: appToastHost
+        x: parent ? parent.width - width - 24 : 0
+        y: parent ? parent.height - height - 24 : 0
+    }
 
     MessageDetailDialog {
         id: messageDetailDialog

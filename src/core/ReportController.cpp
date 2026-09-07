@@ -237,5 +237,6 @@ void ReportController::generateReport(const QDateTime &from, const QDateTime &to
 
     refreshStatus();
     emit reportGenerated(path);
-    emit messageSent(QStringLiteral("Success"), QStringLiteral("Report saved: ") + fname);
+    // No success toast: scheduled transmission must run silently and only
+    // surface errors (messageSent Error paths below stay as-is).
 }

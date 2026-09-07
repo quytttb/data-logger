@@ -29,8 +29,8 @@ Item {
             Layout.bottomMargin: AppTheme.spacingS
             background: Rectangle { color: "transparent" }
 
-            ThemedTabButton { text: qsTr("Cài đặt chung"); width: implicitWidth + 30 }
-            ThemedTabButton { text: qsTr("Thông số truyền"); width: implicitWidth + 30 }
+            ThemedTabButton { text: qsTr("General Settings"); width: implicitWidth + 30 }
+            ThemedTabButton { text: qsTr("Transfer Parameters"); width: implicitWidth + 30 }
         }
 
         StackLayout {

@@ -1,4 +1,6 @@
 qt_add_library(network STATIC
+    ftp/FtpClient.cpp
+    ftp/FtpClient.h
     modbus/ModbusWorker.cpp
     modbus/ModbusWorker.h
     workers/DatabaseWorker.cpp

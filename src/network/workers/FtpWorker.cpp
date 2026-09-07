@@ -1,20 +1,14 @@
 #include "FtpWorker.h"
 #include "data/db/Database.h"
 #include "data/repositories/ReportLogDao.h"
+#include "network/ftp/FtpClient.h"
 #include <QFile>
-#include <QFileInfo>
-#include <QNetworkRequest>
-#include <QNetworkReply>
-#include <QEventLoop>
-#include <QTimer>
-#include <QUrl>
 #include <QDebug>
 
 namespace {
 constexpr int kTickIntervalMs      = 60 * 1000;  // scan pending reports each minute
 constexpr int kHeartbeatIntervalMs = 30 * 1000;  // liveness ping to MonitorController
 constexpr int kUploadTimeoutMs     = 2 * 60 * 1000; // H-2: không treo worker vô hạn khi FTP server im lặng
-constexpr int kRequestTimeoutMs    = 120 * 1000;
 }
 
 FtpWorker::FtpWorker(QObject *parent) : QObject(parent) {}
@@ -32,9 +26,6 @@ void FtpWorker::configure(const QString &address, int port,
 void FtpWorker::start() {
     if (m_running) return;
     m_running = true;
-
-    if (!m_nam)
-        m_nam = new QNetworkAccessManager(this);
 
     if (!m_tickTimer) {
         m_tickTimer = new QTimer(this);
@@ -79,7 +70,8 @@ void FtpWorker::tick() {
 
     for (auto &log : pending) {
         if (!m_running) break;
-        if (uploadFile(log.filePath, log.remotePath.isEmpty() ? m_remotePath : log.remotePath)) {
+        QString error;
+        if (uploadFile(log.filePath, log.remotePath.isEmpty() ? m_remotePath : log.remotePath, &error)) {
             ScopedDbConnection db2;
             ReportLogDao dao2(db2);
             dao2.updateStatus(log.id, "success");
@@ -88,53 +80,33 @@ void FtpWorker::tick() {
             ScopedDbConnection db2;
             ReportLogDao dao2(db2);
             dao2.updateStatus(log.id, "failed", log.retryCount + 1);
-            emit uploadFailed(log.filePath, "upload failed");
+            qWarning().noquote() << QStringLiteral("FtpWorker upload error: %1 (%2)")
+                                        .arg(log.filePath, error);
+            emit uploadFailed(log.filePath, error);
         }
     }
 }
 
-bool FtpWorker::uploadFile(const QString &localPath, const QString &remoteDir) {
-    QFile file(localPath);
-    if (!file.open(QIODevice::ReadOnly)) {
-        qWarning() << "FtpWorker: cannot open" << localPath;
+bool FtpWorker::uploadFile(const QString &localPath, const QString &remoteDir, QString *error) {
+    if (!QFile::exists(localPath)) {
+        if (error)
+            *error = QStringLiteral("local file missing: ") + localPath;
         return false;
     }
 
-    QFileInfo fi(localPath);
     // H-2 fix: ghép path an toàn — remoteDir có thể kết thúc bằng '/' khiến
     // path ra "dir//file" (một số FTP server từ chối).
     QString dir = remoteDir;
     while (dir.endsWith(QLatin1Char('/')) && dir.size() > 1)
         dir.chop(1);
-    const QString remotePath = dir + QLatin1Char('/') + fi.fileName();
 
-    QUrl url;
-    url.setScheme(QStringLiteral("ftp"));
-    url.setHost(m_address);
-    url.setPort(m_port);
-    url.setUserName(m_username);
-    url.setPassword(m_password);
-    url.setPath(remotePath);
-
-    QNetworkRequest req(url);
-    req.setTransferTimeout(kRequestTimeoutMs); // H-2: không chờ vô hạn khi server im lặng
-    QNetworkReply *reply = m_nam->put(req, &file);
-
-    QEventLoop loop;
-    connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
-    QTimer::singleShot(kUploadTimeoutMs, &loop, &QEventLoop::quit); // fallback cứng
-    loop.exec();
-
-    bool ok = reply->isFinished() && reply->error() == QNetworkReply::NoError;
-    if (!ok) {
-        if (!reply->isFinished()) {
-            qWarning() << "FtpWorker: upload timed out for" << remotePath;
-            reply->abort();
-        } else {
-            qWarning() << "FtpWorker upload error:" << reply->errorString();
-        }
+    FtpClient client(kUploadTimeoutMs);
+    QString clientError;
+    if (client.upload(m_address, m_port > 0 ? m_port : kDefaultPort,
+                      m_username, m_password, dir, localPath, &clientError)) {
+        return true;
     }
-    reply->deleteLater();
-    file.close();
-    return ok;
+    if (error)
+        *error = clientError;
+    return false;
 }

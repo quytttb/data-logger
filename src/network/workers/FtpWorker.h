@@ -1,10 +1,10 @@
 #pragma once
 #include <QObject>
 #include <QTimer>
-#include <QNetworkAccessManager>
 
 // Picks up pending report files from the ReportLog table and uploads them
-// Uploads generated report files to FTP on a schedule.
+// Uploads generated report files to FTP on a schedule (via FtpClient —
+// Qt 6 QNAM has no ftp:// backend).
 class FtpWorker : public QObject {
     Q_OBJECT
 
@@ -30,11 +30,11 @@ private slots:
     void onHeartbeat();
 
 private:
-    bool uploadFile(const QString &localPath, const QString &remoteDir);
+    bool uploadFile(const QString &localPath, const QString &remoteDir,
+                    QString *error = nullptr);
 
     QTimer *m_tickTimer = nullptr;
     QTimer *m_heartbeatTimer = nullptr;
-    QNetworkAccessManager *m_nam = nullptr;
 
     static constexpr int kDefaultPort = 21;  // FTP control port
 

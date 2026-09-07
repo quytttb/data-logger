@@ -52,7 +52,7 @@ Rectangle {
                 Switch { id: dActive; checked: true }
             }
 
-            Text { text: qsTr("Ký hiệu cảm biến:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize; visible: root.isAnalog }
+            Text { text: qsTr("Sensor symbol:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize; visible: root.isAnalog }
             ComboBox {
                 id: dSensorSymbol
                 Layout.fillWidth: true
