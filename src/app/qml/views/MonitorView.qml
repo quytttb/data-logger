@@ -68,9 +68,9 @@ Rectangle {
                     radius: AppTheme.cardRadius
                     color: AppColors.surfaceContainerLow
                     border.color: {
-                        if (card.isAlarm) return AppColors.error;
+                        if (card.isAlarm) return IoColors.alarm;
                         if (card.status === "OK" || card.status === "ON") return AppColors.success;
-                        if (card.status === "ERR") return AppColors.error;
+                        if (card.status === "ERR") return IoColors.alarm;
                         if (card.isDI && card.value === "1") return IoColors.diActive;
                         return AppColors.outlineVariant;
                     }
@@ -111,7 +111,7 @@ Rectangle {
 
                             Rectangle {
                                 visible: card.isAlarm && card.isAnalog
-                                color: AppColors.error
+                                color: IoColors.alarm
                                 radius: AppTheme.radiusTiny
                                 implicitWidth: alarmLabel.implicitWidth + 8
                                 implicitHeight: alarmLabel.implicitHeight + 4
@@ -147,8 +147,8 @@ Rectangle {
                                 visible: card.isAnalog
                                 anchors.centerIn: parent
                                 text: card.value
-                                color: card.isAlarm ? AppColors.error
-                                     : (card.status === "ERR" ? AppColors.error : AppColors.primaryText)
+                                color: card.isAlarm ? IoColors.alarm
+                                     : (card.status === "ERR" ? IoColors.alarm : AppColors.primaryText)
                                 font.pixelSize: card.value === "---" ? 28 : 36
                                 font.family: AppTypography.monoFamily
                                 font.bold: true

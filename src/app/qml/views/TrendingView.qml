@@ -184,9 +184,10 @@ Rectangle {
                     axisX: DateTimeAxis {
                         id: xAxis
                         labelFormat: "HH:mm:ss"
-                        // Five-minute window: one label per minute is readable
-                        // on the 7-inch kiosk display.
-                        tickInterval: 60 * 1000
+                        // tickInterval is a tick COUNT (not milliseconds):
+                        // 6 labels over the 5-minute window — readable on
+                        // the 7-inch kiosk display.
+                        tickInterval: 6
                     }
 
                     axisY: ValueAxis {

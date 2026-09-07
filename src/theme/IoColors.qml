@@ -18,4 +18,8 @@ QtObject {
     readonly property color ioInactive:       "#616161"   // OFF-state fill
     readonly property color ioInactiveBorder: "#9E9E9E"   // OFF-state border
     readonly property color ioFallback:       "#888888"   // unknown DI dot fallback
+    // Sensor alarm red — restores the pre-kit AppColors.error ("#EF5350").
+    // Kit M3 dark error ("#FFB4AB") is too pale for alarm borders/badges
+    // on the kiosk display.
+    readonly property color alarm:            "#EF5350"   // alarm border / badge / value
 }
