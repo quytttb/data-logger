@@ -11,6 +11,7 @@
 #include <QElapsedTimer>
 #include <QMutexLocker>
 #include <QSemaphore>
+#include <algorithm>
 #include <limits>
 #include <QFile>
 #include <QSet>
@@ -28,6 +29,22 @@ static const QStringList kPalette = {
 static const QHash<QString, QString> kDiTypeNames = {
     {"00","Monitoring"},{"01","Calibrating"},{"02","Error"},{"03","Maintenance"}
 };
+
+// Fixed semantic colors for DI status (instead of dynamic palette)
+static const QHash<QString, QString> kDiStatusColors = {
+    {"Error",       "#EF5350"},  // red (M3 error)
+    {"Maintenance", "#FB8C00"},  // orange
+    {"Calibrating", "#FDD835"},  // yellow
+    {"Monitoring",  "#66BB6A"}   // green (M3 success-ish)
+};
+
+// Priority order for DI status display (higher number = higher priority)
+static int diStatusPriority(const QString &label) {
+    if (label == "Error") return 3;
+    if (label == "Maintenance") return 2;
+    if (label == "Calibrating") return 1;
+    return 0; // Monitoring
+}
 
 namespace {
 constexpr int kCpuPollMs       = 10000;  // CPU temperature poll
@@ -426,10 +443,17 @@ void MonitorController::onDataReady(QVariantMap payload) {
         if (di.value("state").toBool()) {
             QString code  = di.value("di_type").toString();
             QString label = kDiTypeNames.value(code, di.value("label").toString());
-            QString color = m_diLabelToColor.value(label, QStringLiteral("#938F99"));
+            QString color = kDiStatusColors.value(label, QStringLiteral("#938F99"));
             coloredDi.append(QVariantMap{{"label", label}, {"color", color}});
         }
     }
+    
+    // Sort by priority: Error > Maintenance > Calibrating > Monitoring
+    std::sort(coloredDi.begin(), coloredDi.end(), [](const QVariant &a, const QVariant &b) {
+        QString labelA = a.toMap().value("label").toString();
+        QString labelB = b.toMap().value("label").toString();
+        return diStatusPriority(labelA) > diStatusPriority(labelB);
+    });
 
     int sensorId    = payload["sensor_id"].toInt();
     double value    = payload["value"].toDouble();

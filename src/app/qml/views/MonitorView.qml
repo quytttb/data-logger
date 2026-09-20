@@ -77,24 +77,27 @@ Rectangle {
                     radius: AppTheme.cardRadius
                     color: AppColors.surfaceContainerLow
                     border.color: {
-                        // Analog: viền theo status và alarm
+                        // Analog: viền theo màu DI status đang active (đã sort theo ưu tiên)
                         if (card.isAnalog) {
-                            if (card.isAlarm) return AppColors.error;
-                            if (card.status === "OK") return AppColors.success;
-                            if (card.status === "ERR") return AppColors.error;
-                            return AppColors.outlineVariant;
+                            if (card.diStates && card.diStates.length > 0) {
+                                return card.diStates[0].color;
+                            }
+                            return AppColors.outlineVariant; // không có DI active
                         }
                         // DI/DO: viền theo ON/OFF
                         if (card.isDI && card.value === "1") return IoColors.diActive;
                         if (card.isDO && card.value === "1") return IoColors.doActive;
-                        if (card.status === "ERR") return AppColors.error;
                         return AppColors.outlineVariant;
                     }
                     border.width: {
-                        if (card.isAlarm) return 3;
-                        if (card.status === "OK" || card.status === "ON") return 2;
-                        if (card.isDI && card.value === "1") return 2;
-                        if (card.isDO && card.value === "1") return 2;
+                        // Analog: Error/Maintenance dày hơn (3), còn lại 2
+                        if (card.isAnalog && card.diStates && card.diStates.length > 0) {
+                            var label = card.diStates[0].label;
+                            if (label === "Error" || label === "Maintenance") return 3;
+                            return 2;
+                        }
+                        // DI/DO: ON dày hơn
+                        if ((card.isDI || card.isDO) && card.value === "1") return 2;
                         return 1;
                     }
 
@@ -122,7 +125,7 @@ Rectangle {
                             Text {
                                 text: card.displayName
                                 color: AppColors.accentColor
-                                font.pixelSize: AppTypography.bodyLarge.pixelSize; font.bold: true
+                                font.pixelSize: AppTypography.titleSmall.pixelSize; font.bold: true
                                 elide: Text.ElideRight
                                 Layout.fillWidth: true
                             }
@@ -131,7 +134,7 @@ Rectangle {
                                 visible: card.isAnalog
                                 text: card.unit
                                 color: AppColors.onSurfaceVariant
-                                font.pixelSize: AppTypography.bodyLarge.pixelSize; font.bold: true
+                                font.pixelSize: AppTypography.titleSmall.pixelSize; font.bold: true
                                 horizontalAlignment: Text.AlignRight
                                 wrapMode: Text.NoWrap
                                 maximumLineCount: 1
@@ -169,7 +172,7 @@ Rectangle {
                                     Text {
                                         anchors.centerIn: parent
                                         text: card.value === "1" ? qsTr("ON") : qsTr("OFF")
-                                        color: AppColors.onPrimary; font.pixelSize: AppTypography.bodyLarge.pixelSize; font.bold: true
+                                        color: AppColors.onPrimary; font.pixelSize: AppTypography.titleSmall.pixelSize; font.bold: true
                                     }
                                 }
                                 Text {
@@ -193,7 +196,7 @@ Rectangle {
                                     Text {
                                         anchors.centerIn: parent
                                         text: card.value === "1" ? qsTr("ON") : qsTr("OFF")
-                                        color: AppColors.onPrimary; font.pixelSize: AppTypography.bodyLarge.pixelSize; font.bold: true
+                                        color: AppColors.onPrimary; font.pixelSize: AppTypography.titleSmall.pixelSize; font.bold: true
                                     }
                                 }
                                 Text {
@@ -210,49 +213,20 @@ Rectangle {
                             Layout.fillWidth: true
                             spacing: 4
 
-                            // Status display (analog: OK/ALARM/ERR + DI states; DI/DO: keep as is)
-                            Flow {
-                                visible: card.isAnalog
-                                Layout.fillWidth: true
-                                spacing: 4
-
-                                // Main status badge
-                                Rectangle {
-                                    visible: card.status !== ""
-                                    color: card.status === "ALARM" ? AppColors.error
-                                         : card.status === "ERR" ? AppColors.error
-                                         : AppColors.success
-                                    radius: AppTheme.radiusTiny
-                                    implicitWidth: statusText.implicitWidth + 8
-                                    implicitHeight: statusText.implicitHeight + 4
-                                    Text {
-                                        id: statusText
-                                        anchors.centerIn: parent
-                                        text: card.status
-                                        color: AppColors.onPrimary
-                                        font.pixelSize: AppTypography.labelSmall.pixelSize
-                                        font.bold: true
-                                    }
-                                }
-
-                                // DI states badges (linked DI sensors)
-                                Repeater {
-                                    model: card.diStates || []
-                                    delegate: Rectangle {
-                                        required property var modelData
-                                        color: modelData.color || "#938F99"
-                                        radius: AppTheme.radiusTiny
-                                        implicitWidth: diStateText.implicitWidth + 8
-                                        implicitHeight: diStateText.implicitHeight + 4
-                                        Text {
-                                            id: diStateText
-                                            anchors.centerIn: parent
-                                            text: modelData.label || ""
-                                            color: AppColors.onPrimary
-                                            font.pixelSize: AppTypography.labelSmall.pixelSize
-                                            font.bold: true
-                                        }
-                                    }
+                            // Status badge: hiển thị trạng thái DI ưu tiên cao nhất (đã sort trong C++)
+                            Rectangle {
+                                visible: card.isAnalog && card.diStates && card.diStates.length > 0
+                                color: card.diStates && card.diStates.length > 0 ? card.diStates[0].color : "#938F99"
+                                radius: AppTheme.radiusTiny
+                                implicitWidth: statusText.implicitWidth + 8
+                                implicitHeight: statusText.implicitHeight + 4
+                                Text {
+                                    id: statusText
+                                    anchors.centerIn: parent
+                                    text: card.diStates && card.diStates.length > 0 ? card.diStates[0].label : ""
+                                    color: AppColors.onPrimary
+                                    font.pixelSize: AppTypography.labelSmall.pixelSize
+                                    font.bold: true
                                 }
                             }
 
