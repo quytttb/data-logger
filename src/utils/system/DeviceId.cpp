@@ -15,15 +15,17 @@ QString readCpuSerial()
         return {};
 
     while (!f.atEnd()) {
-        const QByteArray line = f.readLine().trimmed();
-        if (!line.startsWith("Serial"))
+        QByteArray line = f.readLine();
+        // Look for "Serial" (case-sensitive) with flexible whitespace
+        if (!line.contains("Serial"))
             continue;
         const int colon = line.indexOf(':');
         if (colon < 0)
             continue;
         QString serial = QString::fromLatin1(line.mid(colon + 1)).trimmed();
         serial.remove(QRegularExpression(QStringLiteral("[^0-9a-fA-F]")));
-        return serial;
+        if (!serial.isEmpty())
+            return serial;
     }
     return {};
 }
