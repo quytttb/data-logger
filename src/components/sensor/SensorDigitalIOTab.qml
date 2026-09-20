@@ -133,12 +133,6 @@ Rectangle {
                         id: editDiTypeCombo
                         Layout.fillWidth: true
                         model: ["00 — Monitoring", "01 — Calibrating", "02 — Error", "03 — Maintenance"]
-                        onActivated: {
-                            if (!root.selectedLink) return
-                            root.updateLinkDiTypeRequested(
-                                root.selectedLink.id,
-                                root.diTypeCodeFromComboText(currentText))
-                        }
                     }
                 }
 
@@ -151,29 +145,44 @@ Rectangle {
                         CheckBox {
                             id: editDoTrigMax
                             text: qsTr("Trigger on Max")
-                            onToggled: {
-                                if (!root.selectedLink || root.selectedLink.ioType !== "DO") return
-                                root.updateLinkDoTriggersRequested(
-                                    root.selectedLink.id, checked, editDoTrigMin.checked)
-                            }
                         }
                         CheckBox {
                             id: editDoTrigMin
                             text: qsTr("Trigger on Min")
-                            onToggled: {
-                                if (!root.selectedLink || root.selectedLink.ioType !== "DO") return
-                                root.updateLinkDoTriggersRequested(
-                                    root.selectedLink.id, editDoTrigMax.checked, checked)
-                            }
                         }
                     }
                 }
 
-                AppButton {
-                    text: qsTr("Back to attach")
-                    kind: AppButton.Neutral
+                RowLayout {
                     Layout.fillWidth: true
-                    onClicked: dioListView.currentIndex = -1
+                    spacing: 8
+
+                    AppButton {
+                        text: qsTr("Update")
+                        kind: AppButton.Primary
+                        Layout.fillWidth: true
+                        onClicked: {
+                            if (!root.selectedLink) return
+                            if (root.selectedLink.ioType === "DI") {
+                                root.updateLinkDiTypeRequested(
+                                    root.selectedLink.id,
+                                    root.diTypeCodeFromComboText(editDiTypeCombo.currentText))
+                            } else if (root.selectedLink.ioType === "DO") {
+                                root.updateLinkDoTriggersRequested(
+                                    root.selectedLink.id,
+                                    editDoTrigMax.checked,
+                                    editDoTrigMin.checked)
+                            }
+                        }
+                    }
+
+                    AppButton {
+                        text: qsTr("Detach")
+                        kind: AppButton.Neutral
+                        fillColor: AppColors.error
+                        Layout.fillWidth: true
+                        onClicked: root.deleteSelectedDio()
+                    }
                 }
             }
 
@@ -332,13 +341,26 @@ Rectangle {
                     width: ListView.view.width
                     height: 48
                     radius: AppTheme.radiusTiny
-                    color: linkRow.modelData.ioType === "DO" ? IoColors.doTint : IoColors.diTint
-                    border.color: ListView.view.currentIndex === linkRow.index ? AppColors.primaryColor : "transparent"
-                    border.width: ListView.view.currentIndex === linkRow.index ? 2 : 0
+                    // Tap-to-select highlight (pattern từ SettingsSensorsTab)
+                    color: ListView.view.currentIndex === linkRow.index
+                           ? AppColors.withAlpha(AppColors.primaryColor, 0.16)
+                           : (linkRow.modelData.ioType === "DO" ? IoColors.doTint : IoColors.diTint)
+
+                    // Left accent bar marks the selected row clearly
+                    Rectangle {
+                        anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
+                        width: 3
+                        visible: ListView.view.currentIndex === linkRow.index
+                        color: AppColors.primaryColor
+                    }
 
                     MouseArea {
                         anchors.fill: parent
-                        onClicked: ListView.view.currentIndex = linkRow.index
+                        onClicked: {
+                            var lv = ListView.view
+                            if (!lv) return
+                            lv.currentIndex = (lv.currentIndex === linkRow.index) ? -1 : linkRow.index
+                        }
                     }
 
                     RowLayout {

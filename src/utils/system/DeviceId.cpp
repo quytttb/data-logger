@@ -33,7 +33,19 @@ QString effectiveHardwareId()
     const QString serial = readCpuSerial();
     if (!serial.isEmpty())
         return serial;
-    // Dev / non-Pi fallback so desktop builds remain runnable.
+    
+    // Fallback only for desktop development (non-Pi).
+    // On Pi without readable /proc/cpuinfo Serial, treat as hardware fault
+    // rather than silently using SD-card-resident machine-id (defeats lock).
+    // Check if we're on a Pi by testing for /proc/device-tree (Pi-specific).
+    QFile piMarker(QStringLiteral("/proc/device-tree/model"));
+    if (piMarker.exists()) {
+        // We're on a Pi but CPU serial is unreadable → return empty to fail lock
+        qWarning() << "[DeviceId] Running on Pi but CPU serial not readable from /proc/cpuinfo";
+        return {};
+    }
+    
+    // Dev/non-Pi fallback so desktop builds remain runnable.
     const QByteArray mid = QSysInfo::machineUniqueId();
     if (mid.isEmpty())
         return {};

@@ -40,6 +40,10 @@ struct AppConfig {
     // Polling
     int pollInterval = AppDefaults::pollInterval;
 
+    // Display
+    QString monitorViewMode = AppDefaults::monitorViewMode;
+    bool monitorShowDigitalIO = AppDefaults::monitorShowDigitalIO;
+
     // Alarm behaviour (audit M5)
     // Absolute hysteresis applied when RELEASING a min/max alarm so relays do
     // not chatter around a threshold. 0 = legacy behaviour (no hysteresis).

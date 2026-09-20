@@ -128,20 +128,6 @@ Item {
             spacing: 8
 
             AppButton {
-                visible: root.sensorSubTabIndex === 2 && root.hasSelectedDio
-                iconName: "trashCan"
-                fillColor: AppColors.error
-                onClicked: root.deleteSelectedDio()
-            }
-
-            Rectangle {
-                implicitWidth: 1; implicitHeight: 28
-                color: AppColors.outlineVariant
-                Layout.alignment: Qt.AlignVCenter
-                visible: root.sensorSubTabIndex === 2 && root.hasSelectedDio
-            }
-
-            AppButton {
                 text: qsTr("Cancel")
                 kind: AppButton.Neutral
                 font.bold: true

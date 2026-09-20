@@ -1,5 +1,6 @@
 #include "DeviceLock.h"
 #include "DeviceId.h"
+#include "AppPaths.h"
 #include <QFile>
 #include <QDir>
 #include <QSqlDatabase>
@@ -10,7 +11,11 @@ namespace DeviceLock {
 
 namespace {
 
-constexpr auto kBackupPath = "/var/lib/datalogger/.device_key";
+// Backup file now lives in writable app data dir (not /var/lib which is root-only).
+// This path is guaranteed writable by the kiosk user and created by AppPaths::ensureDirectories().
+QString backupPath() {
+    return AppPaths::dataDir() + QStringLiteral("/.device_key");
+}
 
 QString readDbFingerprint()
 {
@@ -43,7 +48,7 @@ bool writeDbFingerprint(const QString &fingerprint)
 
 QString readFileFingerprint()
 {
-    QFile f(QString::fromLatin1(kBackupPath));
+    QFile f(backupPath());
     if (!f.open(QIODevice::ReadOnly | QIODevice::Text))
         return {};
     return QString::fromUtf8(f.readAll()).trimmed();
@@ -51,10 +56,12 @@ QString readFileFingerprint()
 
 bool writeFileFingerprint(const QString &fingerprint)
 {
-    QDir().mkpath(QStringLiteral("/var/lib/datalogger"));
-    QFile f(QString::fromLatin1(kBackupPath));
-    if (!f.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate))
+    // dataDir() is already created by AppPaths::ensureDirectories() in main
+    QFile f(backupPath());
+    if (!f.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)) {
+        qCritical() << "[DeviceLock] Failed to write backup file:" << backupPath();
         return false;
+    }
     f.write(fingerprint.toUtf8());
     f.close();
     return true;
@@ -75,14 +82,29 @@ State check()
     const bool hasDb   = !dbFp.isEmpty();
     const bool hasFile = !fileFp.isEmpty();
 
+    // First run: both stores empty → Unbound (will auto-bind)
     if (!hasDb && !hasFile)
         return State::Unbound;
 
-    if (!hasDb || !hasFile)
+    // Tamper detection: one store missing → Unauthorized (do NOT re-bind)
+    // This prevents bypass by deleting just the DB row or just the file.
+    if (!hasDb || !hasFile) {
+        qCritical() << "[DeviceLock] Tamper detected: DB license=" << hasDb
+                    << "backup file=" << hasFile << "— one store is missing";
         return State::Unauthorized;
+    }
 
-    if (dbFp != fileFp || dbFp != current)
+    // Both stores present: verify consistency and match current hardware
+    if (dbFp != fileFp) {
+        qCritical() << "[DeviceLock] Tamper detected: DB and backup file fingerprints mismatch";
         return State::Unauthorized;
+    }
+    
+    if (dbFp != current) {
+        qCritical() << "[DeviceLock] Hardware mismatch: stored fingerprint does not match current CPU serial"
+                    << "— SD card likely moved to different device";
+        return State::Unauthorized;
+    }
 
     return State::Authorized;
 }

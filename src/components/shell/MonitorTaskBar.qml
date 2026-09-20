@@ -58,47 +58,37 @@ Item {
 
         Item { Layout.fillWidth: true }
 
-        Rectangle {
-            Layout.preferredWidth: errLabel.implicitWidth + 24
-            Layout.preferredHeight: 32
-            radius: AppTheme.listItemRadius
-            color: (MonitorController.watchdogStatus !== "OK" && MonitorController.watchdogStatus !== "N/A") || MonitorController.errorCount > 0 ? AppColors.errorContainer : AppColors.surfaceContainerHigh
-            visible: MonitorController.isPolling
+        // Clock and date (moved from sidebar)
+        Column {
             Layout.alignment: Qt.AlignVCenter
+            spacing: 2
 
             Text {
-                id: errLabel
-                anchors.centerIn: parent
-                text: {
-                    if (MonitorController.watchdogStatus !== "OK" && MonitorController.watchdogStatus !== "N/A")
-                        return "SYSTEM FAULT - " + MonitorController.watchdogStatus;
-                    if (MonitorController.errorCount > 0)
-                        return "Modbus read errors: " + MonitorController.errorCount;
-                    return "No read errors";
-                }
-                color: (MonitorController.watchdogStatus !== "OK" && MonitorController.watchdogStatus !== "N/A") || MonitorController.errorCount > 0 ? AppColors.error : AppColors.onSurfaceVariant
-                font.pixelSize: AppTypography.labelMedium.pixelSize
+                id: clockTime
+                text: Qt.formatDateTime(new Date(), SettingsController.timeFormat)
+                font.pixelSize: AppTypography.titleLarge.pixelSize
                 font.bold: true
+                color: AppColors.primaryText
+                horizontalAlignment: Text.AlignRight
+            }
+
+            Text {
+                id: clockDate
+                text: Qt.formatDateTime(new Date(), SettingsController.dateFormat)
+                font.pixelSize: AppTypography.bodyMedium.pixelSize
+                color: AppColors.onSurfaceVariant
+                horizontalAlignment: Text.AlignRight
             }
         }
+    }
 
-        // Start/Stop control: placed far right to avoid accidental presses
-        AppButton {
-            enabled: !MonitorController.isStopping && (MonitorController.isPolling || MonitorController.hasActiveSensors)
-            iconName: MonitorController.isStopping ? "refresh"
-                : MonitorController.isPolling ? "stop" : "playArrow"
-            iconSpinning: MonitorController.isStopping
-            text: MonitorController.isStopping ? qsTr("Stopping…")
-                : MonitorController.isPolling ? qsTr("Stop") : qsTr("Start")
-            font.bold: true
-            fillColor: MonitorController.isPolling ? AppColors.error : AppColors.success
-            onClicked: {
-                if (MonitorController.isPolling)
-                    MonitorController.stopPolling()
-                else
-                    MonitorController.startPolling()
-            }
-            Layout.alignment: Qt.AlignVCenter
+    Timer {
+        interval: 1000
+        running: true
+        repeat: true
+        onTriggered: {
+            clockTime.text = Qt.formatDateTime(new Date(), SettingsController.timeFormat)
+            clockDate.text = Qt.formatDateTime(new Date(), SettingsController.dateFormat)
         }
     }
 }

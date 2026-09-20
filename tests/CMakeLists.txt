@@ -116,3 +116,16 @@ target_link_libraries(integration_modbus_test PRIVATE
     Qt6::Test
 )
 add_test(NAME integration_modbus_test COMMAND integration_modbus_test)
+
+# QTest: DeviceLock state machine (Unbound/Authorized/Unauthorized + tamper detection)
+add_executable(device_lock_test device_lock_test.cpp)
+target_include_directories(device_lock_test PRIVATE ${CMAKE_SOURCE_DIR}/src)
+target_link_libraries(device_lock_test PRIVATE
+    Qt6::Core
+    Qt6::Sql
+    Qt6::Test
+    utils
+    data
+)
+add_test(NAME device_lock_test COMMAND device_lock_test)
+

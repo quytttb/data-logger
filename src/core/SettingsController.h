@@ -34,6 +34,10 @@ class SettingsController : public QObject {
     // Polling
     Q_PROPERTY(int    pollInterval   READ pollInterval  WRITE setPollInterval  NOTIFY configLoaded)
 
+    // Display
+    Q_PROPERTY(QString monitorViewMode READ monitorViewMode WRITE setMonitorViewMode NOTIFY configLoaded)
+    Q_PROPERTY(bool monitorShowDigitalIO READ monitorShowDigitalIO WRITE setMonitorShowDigitalIO NOTIFY configLoaded)
+
     // Serial
     Q_PROPERTY(QString serialPort    READ serialPort    WRITE setSerialPort    NOTIFY configLoaded)
     Q_PROPERTY(int    serialBaudrate READ serialBaudrate WRITE setSerialBaudrate NOTIFY configLoaded)
@@ -88,6 +92,8 @@ public:
     QString ftpRemotePath() const { return m_cfg.ftpRemotePath; }
     QString filePrefix()    const { return m_cfg.filePrefix; }
     int    pollInterval()   const { return m_cfg.pollInterval; }
+    QString monitorViewMode() const { return m_cfg.monitorViewMode; }
+    bool   monitorShowDigitalIO() const { return m_cfg.monitorShowDigitalIO; }
     QString serialPort()    const { return m_cfg.serialPort; }
     int    serialBaudrate() const { return m_cfg.serialBaudrate; }
     int    serialBytesize() const { return m_cfg.serialBytesize; }
@@ -129,6 +135,8 @@ public:
     void setFtpRemotePath(const QString &v) { m_cfg.ftpRemotePath = v; }
     void setFilePrefix(const QString &v)    { m_cfg.filePrefix = v; }
     void setPollInterval(int v)             { m_cfg.pollInterval = v; }
+    void setMonitorViewMode(const QString &v) { m_cfg.monitorViewMode = v; }
+    void setMonitorShowDigitalIO(bool v)    { m_cfg.monitorShowDigitalIO = v; }
     void setSerialPort(const QString &v)    { m_cfg.serialPort = v; }
     void setSerialBaudrate(int v)           { m_cfg.serialBaudrate = v; }
     void setSerialBytesize(int v)           { m_cfg.serialBytesize = v; }

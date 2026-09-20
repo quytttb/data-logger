@@ -21,6 +21,9 @@ inline const QString ftpProtocol = QStringLiteral("sftp");
 
 constexpr int pollInterval = 3;
 
+inline const QString monitorViewMode = QStringLiteral("grid");
+constexpr bool monitorShowDigitalIO = true;
+
 inline const QString serialPort = QStringLiteral("/dev/ttyUSB0");
 constexpr int serialBaudrate = 9600;
 constexpr int serialBytesize = 8;

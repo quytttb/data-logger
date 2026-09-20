@@ -44,9 +44,7 @@ Item {
                 AppButton {
                     Layout.preferredHeight: 44
                     enabled: root.testerView !== null && !TesterController.isConnecting
-                             && !MonitorController.isPolling
                     text: TesterController.isConnecting ? qsTr("Connecting…")
-                        : MonitorController.isPolling ? qsTr("Monitor is running")
                         : TesterController.isConnected ? qsTr("Disconnect") : qsTr("Connect")
                     font.pixelSize: AppTypography.labelMedium.pixelSize
                     font.bold: true

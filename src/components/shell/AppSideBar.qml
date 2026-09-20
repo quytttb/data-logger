@@ -41,6 +41,9 @@ Rectangle {
             }
         }
 
+        // Spacer above nav items to center them vertically
+        Item { Layout.fillHeight: true }
+
         Column {
             id: navColumn
             Layout.fillWidth: true
@@ -117,102 +120,5 @@ Rectangle {
         }
 
         Item { Layout.fillHeight: true }
-
-        // Divider
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 1
-            color: AppColors.dividerLine
-            Layout.margins: 8
-        }
-
-        // Time and Status Column (Optimized for 7-inch touch)
-        Column {
-            Layout.fillWidth: true
-            spacing: 16
-            Layout.bottomMargin: AppTheme.spacingSM
-
-            // Status Column (Line by Line)
-            Column {
-                width: parent.width
-                spacing: AppTheme.spacingS
-
-                // Modbus
-                RowLayout {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    spacing: AppTheme.spacingS
-                    Rectangle {
-                        implicitWidth: 8; implicitHeight: 8; radius: implicitWidth / 2
-                        color: MonitorController.statusMode === MonitorController.StatusOk ? AppColors.success
-                             : MonitorController.statusMode === MonitorController.StatusError ? AppColors.error
-                             : AppColors.onSurfaceVariant
-                    }
-                    Text {
-                        text: qsTr("Modbus")
-                        font.pixelSize: AppTypography.labelTiny.pixelSize
-                        color: AppColors.onSurfaceVariant
-                        font.bold: true
-                    }
-                }
-
-                // FTP
-                RowLayout {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    spacing: AppTheme.spacingS
-                    Rectangle {
-                        implicitWidth: 8; implicitHeight: 8; radius: implicitWidth / 2
-                        color: {
-                            if (!ReportController.isRunning) return AppColors.onSurfaceVariant;
-                            if (ReportController.uploadState === ReportController.UploadFailed) return AppColors.error;
-                            if (ReportController.uploadState === ReportController.UploadOk) return AppColors.success;
-                            return AppColors.accentColor;
-                        }
-                    }
-                    Text {
-                        text: qsTr("FTP")
-                        font.pixelSize: AppTypography.labelTiny.pixelSize
-                        color: AppColors.onSurfaceVariant
-                        font.bold: true
-                    }
-                }
-            }
-
-            // Clock (Stacked numbers with seconds & year)
-            Column {
-                width: parent.width
-                spacing: 4
-
-                Text {
-                    id: clockTimeLabel
-                    width: parent.width
-                    text: Qt.formatDateTime(new Date(), "HH\n:mm\n:ss")
-                    font.family: AppTypography.labelMedium.family
-                    font.pixelSize: AppTypography.titleLarge.pixelSize
-                    font.bold: true
-                    color: AppColors.primaryText
-                    horizontalAlignment: Text.AlignHCenter
-                    lineHeight: 1.0
-                }
-
-                Text {
-                    id: clockDateLabel
-                    width: parent.width
-                    text: Qt.formatDateTime(new Date(), "dd/MM/yyyy")
-                    font.pixelSize: AppTypography.labelSmall.pixelSize
-                    color: AppColors.onSurfaceVariant
-                    horizontalAlignment: Text.AlignHCenter
-                }
-            }
-        }
-    }
-
-    Timer {
-        interval: 1000
-        running: true
-        repeat: true
-        onTriggered: {
-            clockTimeLabel.text = Qt.formatDateTime(new Date(), "HH\n:mm\n:ss")
-            clockDateLabel.text = Qt.formatDateTime(new Date(), "dd/MM/yyyy")
-        }
     }
 }

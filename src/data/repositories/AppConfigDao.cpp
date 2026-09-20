@@ -35,6 +35,12 @@ AppConfig AppConfigDao::rowToConfig(const QSqlRecord &r) {
     if (c.ftpProtocol.isEmpty())
         c.ftpProtocol = QStringLiteral("ftp");
     c.pollInterval      = r.value("poll_interval").toInt();
+    c.monitorViewMode   = r.value("monitor_view_mode").toString();
+    if (c.monitorViewMode.isEmpty())
+        c.monitorViewMode = QStringLiteral("grid");
+    c.monitorShowDigitalIO = r.contains(QStringLiteral("monitor_show_digital_io"))
+        ? r.value("monitor_show_digital_io").toBool()
+        : true;
     c.serialPort        = r.value("serial_port").toString();
     c.serialBaudrate    = r.value("serial_baudrate").toInt();
     c.serialBytesize    = r.value("serial_bytesize").toInt();
@@ -113,6 +119,7 @@ bool AppConfigDao::save(const AppConfig &c) {
             station_code, station_name, time_format, date_format, timezone,
             buzzer_enable, ftp_address, ftp_port, ftp_username,
             ftp_password, ftp_remote_path, file_prefix, ftp_protocol, poll_interval,
+            monitor_view_mode, monitor_show_digital_io,
             serial_port, serial_baudrate, serial_bytesize, serial_parity, serial_stopbits,
             server_active, server_device_type, server_name, server_send_interval,
             server_start_time, server_base_folder, server_time_folder, file_suffix,
@@ -124,6 +131,7 @@ bool AppConfigDao::save(const AppConfig &c) {
             :sc, :sn, :tf, :df, :tz,
             :be, :fa, :fp, :fu,
             :fpw, :frp, :fpfx, :fprot, :pi,
+            :mvm, :msdi,
             :sp, :sb, :sbs, :spar, :ssb,
             :sact, :sdt, :snm, :ssi,
             :sst, :sbf, :stf, :ssf,
@@ -137,7 +145,7 @@ bool AppConfigDao::save(const AppConfig &c) {
             station_code=:sc, station_name=:sn, time_format=:tf, date_format=:df,
             timezone=:tz, buzzer_enable=:be, ftp_address=:fa,
             ftp_port=:fp, ftp_username=:fu, ftp_password=:fpw, ftp_remote_path=:frp,
-            file_prefix=:fpfx, ftp_protocol=:fprot, poll_interval=:pi, serial_port=:sp, serial_baudrate=:sb,
+            file_prefix=:fpfx, ftp_protocol=:fprot, poll_interval=:pi, monitor_view_mode=:mvm, monitor_show_digital_io=:msdi, serial_port=:sp, serial_baudrate=:sb,
             serial_bytesize=:sbs, serial_parity=:spar, serial_stopbits=:ssb,
             server_active=:sact, server_device_type=:sdt, server_name=:snm,
             server_send_interval=:ssi, server_start_time=:sst, server_base_folder=:sbf,
@@ -165,6 +173,8 @@ bool AppConfigDao::save(const AppConfig &c) {
     q.bindValue(":fpfx", nnText(c.filePrefix));
     q.bindValue(":fprot", nnText(c.ftpProtocol.isEmpty() ? QStringLiteral("ftp") : c.ftpProtocol));
     q.bindValue(":pi",   c.pollInterval);
+    q.bindValue(":mvm",  nnText(c.monitorViewMode.isEmpty() ? QStringLiteral("grid") : c.monitorViewMode));
+    q.bindValue(":msdi", c.monitorShowDigitalIO ? 1 : 0);
     q.bindValue(":sp",   nnText(c.serialPort));
     q.bindValue(":sb",   c.serialBaudrate);
     q.bindValue(":sbs",  c.serialBytesize);

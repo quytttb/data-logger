@@ -88,6 +88,38 @@ Item {
                         }
                     }
 
+                    Text { text: qsTr("Monitor layout:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize }
+                    ComboBox {
+                        Layout.fillWidth: true
+                        model: ["Grid", "List"]
+                        currentIndex: {
+                            var mode = SettingsController ? SettingsController.monitorViewMode : "grid"
+                            return mode === "list" ? 1 : 0
+                        }
+                        onActivated: {
+                            SettingsController.monitorViewMode = (currentIndex === 1 ? "list" : "grid")
+                            root.configChanged = true
+                        }
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 4
+                        Text { 
+                            text: qsTr("Show DI/DO sensors:") 
+                            color: AppColors.onSurfaceVariant 
+                            font.pixelSize: AppTypography.bodyMedium.pixelSize
+                            Layout.fillWidth: true
+                        }
+                        Switch {
+                            checked: SettingsController ? SettingsController.monitorShowDigitalIO : true
+                            onToggled: {
+                                SettingsController.monitorShowDigitalIO = checked
+                                root.configChanged = true
+                            }
+                        }
+                    }
+
                 }
 
                 // ── COLUMN 2: Date & Time ──

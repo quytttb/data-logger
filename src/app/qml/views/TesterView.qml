@@ -43,9 +43,37 @@ Item {
     }
 
     function connectOrDisconnect() {
-        if (TesterController.isConnected)
+        if (TesterController.isConnected) {
+            // Disconnect: disconnect tester, then restart monitor if it was running before
             TesterController.disconnectSerial()
-        else
+            if (testerRoot._monitorWasRunning) {
+                MonitorController.startPolling()
+                testerRoot._monitorWasRunning = false
+            }
+        } else {
+            // Connect: stop monitor first (if running), then connect tester
+            if (MonitorController.isPolling) {
+                testerRoot._monitorWasRunning = true
+                MonitorController.stopPolling()
+                // Wait for monitor to stop before connecting
+                testerRoot._waitForMonitorStop()
+            } else {
+                testerRoot._monitorWasRunning = false
+                TesterController.connectSerial(
+                    SettingsController.serialPort,
+                    SettingsController.serialBaudrate,
+                    SettingsController.serialBytesize,
+                    SettingsController.serialParity,
+                    SettingsController.serialStopbits
+                )
+            }
+        }
+    }
+
+    property bool _monitorWasRunning: false
+
+    function _waitForMonitorStop() {
+        if (!MonitorController.isPolling) {
             TesterController.connectSerial(
                 SettingsController.serialPort,
                 SettingsController.serialBaudrate,
@@ -53,6 +81,9 @@ Item {
                 SettingsController.serialParity,
                 SettingsController.serialStopbits
             )
+        } else {
+            Qt.callLater(testerRoot._waitForMonitorStop)
+        }
     }
 
     function performScan() {

@@ -90,6 +90,8 @@ bool Database::createTables(QSqlDatabase &db) {
             ftp_remote_path TEXT NOT NULL DEFAULT '/',
             file_prefix TEXT NOT NULL DEFAULT '',
             poll_interval INTEGER NOT NULL DEFAULT 3,
+            monitor_view_mode TEXT NOT NULL DEFAULT 'grid',
+            monitor_show_digital_io INTEGER NOT NULL DEFAULT 1,
             serial_port TEXT NOT NULL DEFAULT '/dev/ttyUSB0',
             serial_baudrate INTEGER NOT NULL DEFAULT 9600,
             serial_bytesize INTEGER NOT NULL DEFAULT 8,
@@ -225,6 +227,9 @@ bool Database::migrate(QSqlDatabase &db) {
         // Audit M5: alarm hysteresis + configurable DO fail-safe policy.
         {"app_config",  "alarm_hysteresis",        "REAL NOT NULL DEFAULT 0"},
         {"app_config",  "do_failsafe_on_reconnect", "INTEGER NOT NULL DEFAULT 1"},
+        // Monitor view mode (grid/list)
+        {"app_config",  "monitor_view_mode",       "TEXT NOT NULL DEFAULT 'grid'"},
+        {"app_config",  "monitor_show_digital_io", "INTEGER NOT NULL DEFAULT 1"},
     };
 
     for (const auto &a : additions) {

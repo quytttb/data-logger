@@ -82,7 +82,7 @@ bool MonitorController::hasActiveSensors() const {
 }
 
 QString MonitorController::statusText() const {
-    if (m_statusTag == "monitoring")     return "Monitoring…";
+    if (m_statusTag == "monitoring")     return "Running…";
     if (m_statusTag == "stopping")       return "Stopping…";
     if (m_statusTag == "connection_lost")return "Connection lost — retrying…";
     if (m_statusTag == "stopped")        return "Stopped";
@@ -342,9 +342,15 @@ void MonitorController::stopPollingSync() {
     m_isStopping   = false;
     if (m_mbtcp) m_mbtcp->setLoggerStatus(false, false);
 }
-
 void MonitorController::refreshSensors() {
-    if (m_isPolling) return;
+    // Auto-restart if running: stop sync, reload from DB, restart
+    if (m_isPolling) {
+        qInfo() << "refreshSensors: auto-restarting monitor for live config update";
+        stopPollingSync();
+        QTimer::singleShot(200, this, &MonitorController::startPolling);
+        return;
+    }
+    
     QList<Sensor> sensors;
     {
         ScopedDbConnection db;
@@ -357,14 +363,21 @@ void MonitorController::refreshSensors() {
     for (const auto &s : sensors)
         maps.append({{"id", s.id}, {"name", s.name}, {"unit", s.unit},
                       {"sensor_type", sensorTypeToString(s.sensorType)}});
+
     refreshSensorsFromList(maps);
 }
 
 void MonitorController::refreshSensorsFromList(const QList<QVariantMap> &maps) {
-    if (m_isPolling) return;
+    // Auto-restart if running (same as refreshSensors)
+    if (m_isPolling) {
+        qInfo() << "refreshSensorsFromList: auto-restarting monitor for live config update";
+        stopPollingSync();
+        QTimer::singleShot(200, this, &MonitorController::startPolling);
+        return;
+    }
+    
     m_model->loadSensors(maps);
     resetTrendBuffers(maps);
-    emit activeSensorsChanged();
 }
 
 void MonitorController::registerHeartbeat(const QString &workerName) {

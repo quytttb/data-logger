@@ -111,12 +111,6 @@ void TesterController::refresh_ports()
 
 void TesterController::connectSerial(const QString &port, int baudrate,
                                       int bytesize, const QString &parity, int stopbits) {
-    if (MonitorController::instance() && MonitorController::instance()->isPolling()) {
-        setStatus(QStringLiteral("Cannot connect: Monitor is currently polling on the serial port."));
-        emit messageSent(QStringLiteral("Port Conflict"),
-                         QStringLiteral("Stop monitoring before using the Modbus Tester."));
-        return;
-    }
     setConnecting(true);
     QMetaObject::invokeMethod(m_worker, "doConnect", Qt::QueuedConnection,
                               Q_ARG(QString, port), Q_ARG(int, baudrate),
