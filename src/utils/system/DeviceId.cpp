@@ -16,15 +16,17 @@ QString readCpuSerial()
         return {};
     }
 
-    int lineNum = 0;
-    while (!f.atEnd()) {
-        QByteArray line = f.readLine();
-        lineNum++;
-        
+    QByteArray content = f.readAll();
+    qDebug() << "[DeviceId] Read" << content.size() << "bytes from /proc/cpuinfo";
+    
+    QList<QByteArray> lines = content.split('\n');
+    qDebug() << "[DeviceId] Parsing" << lines.size() << "lines";
+    
+    for (const QByteArray &line : lines) {
         if (!line.contains("Serial"))
             continue;
             
-        qDebug() << "[DeviceId] Found 'Serial' at line" << lineNum << ":" << line.trimmed();
+        qDebug() << "[DeviceId] Found 'Serial' line:" << line;
         
         const int colon = line.indexOf(':');
         if (colon < 0) {
@@ -42,7 +44,7 @@ QString readCpuSerial()
             return serial;
     }
     
-    qWarning() << "[DeviceId] Serial field not found in" << lineNum << "lines";
+    qWarning() << "[DeviceId] Serial field not found";
     return {};
 }
 
