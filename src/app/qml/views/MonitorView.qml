@@ -350,7 +350,8 @@ Rectangle {
                         Label {
                             text: sensorRow.displayName
                             color: AppColors.accentColor
-                            font: AppTypography.titleSmall
+                            font.family: AppTypography.titleSmall.family
+                            font.pixelSize: AppTypography.titleSmall.pixelSize
                             font.bold: true
                             elide: Text.ElideRight
                             Layout.fillWidth: true
