@@ -11,40 +11,28 @@ namespace {
 QString readCpuSerial()
 {
     QFile f(QStringLiteral("/proc/cpuinfo"));
-    if (!f.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        qWarning() << "[DeviceId] Cannot open /proc/cpuinfo";
+    if (!f.open(QIODevice::ReadOnly | QIODevice::Text))
         return {};
-    }
 
+    // Read entire file at once - /proc/cpuinfo is special and readLine() may not work reliably
     QByteArray content = f.readAll();
-    qDebug() << "[DeviceId] Read" << content.size() << "bytes from /proc/cpuinfo";
-    
     QList<QByteArray> lines = content.split('\n');
-    qDebug() << "[DeviceId] Parsing" << lines.size() << "lines";
     
     for (const QByteArray &line : lines) {
         if (!line.contains("Serial"))
             continue;
-            
-        qDebug() << "[DeviceId] Found 'Serial' line:" << line;
         
         const int colon = line.indexOf(':');
-        if (colon < 0) {
-            qDebug() << "[DeviceId] No colon found in line";
+        if (colon < 0)
             continue;
-        }
         
         QString serial = QString::fromLatin1(line.mid(colon + 1)).trimmed();
-        qDebug() << "[DeviceId] Serial before cleanup:" << serial;
-        
         serial.remove(QRegularExpression(QStringLiteral("[^0-9a-fA-F]")));
-        qDebug() << "[DeviceId] Serial after cleanup:" << serial;
         
         if (!serial.isEmpty())
             return serial;
     }
     
-    qWarning() << "[DeviceId] Serial field not found";
     return {};
 }
 
