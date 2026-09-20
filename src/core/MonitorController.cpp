@@ -379,7 +379,8 @@ void MonitorController::refreshSensors() {
     maps.reserve(sensors.size());
     for (const auto &s : sensors)
         maps.append({{"id", s.id}, {"name", s.name}, {"unit", s.unit},
-                      {"sensor_type", sensorTypeToString(s.sensorType)}});
+                       {"decimals", s.decimals},
+                       {"sensor_type", sensorTypeToString(s.sensorType)}});
 
     refreshSensorsFromList(maps);
 }
@@ -590,14 +591,16 @@ void MonitorController::resetTrendBuffers(const QList<QVariantMap> &sensors) {
     m_analogSensors.clear();
     for (int i = 0; i < sensors.size(); ++i) {
         const auto &s = sensors[i];
+        const QString type = s.value("sensor_type", "ANALOG").toString();
+        if (type != QStringLiteral("ANALOG"))
+            continue;
         int id = s["id"].toInt();
         m_trendBuffers[id] = {};
-        const QString type = s.value("sensor_type", "ANALOG").toString();
-        m_trendIsDigital[id] = (type == QStringLiteral("DI") || type == QStringLiteral("DO"));
+        m_trendIsDigital[id] = false;
         m_analogSensors.append(QVariantMap{
             {"id", id}, {"name", s["name"]}, {"unit", s.value("unit","")},
             {"color", kPalette[i % kPalette.size()]},
-            {"sensorType", s.value("sensor_type","ANALOG")},
+            {"sensorType", type},
         });
     }
     updateTrendAxes();

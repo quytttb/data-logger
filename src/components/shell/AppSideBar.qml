@@ -14,6 +14,7 @@ Rectangle {
 
     property int currentTab: 0
     signal selectTab(int index)
+    signal restartRequested()
 
     // Right-edge divider separating the rail from the main canvas.
     Rectangle {
@@ -40,9 +41,6 @@ Rectangle {
                 fillMode: Image.PreserveAspectFit
             }
         }
-
-        // Spacer above nav items to center them vertically
-        Item { Layout.fillHeight: true }
 
         Column {
             id: navColumn
@@ -120,5 +118,15 @@ Rectangle {
         }
 
         Item { Layout.fillHeight: true }
+
+        AppButton {
+            Layout.alignment: Qt.AlignHCenter
+            Layout.bottomMargin: AppTheme.spacingM
+            iconName: "restart_alt"
+            iconOnly: true
+            kind: AppButton.Error
+            tooltipText: qsTr("Restart device")
+            onClicked: sideBarRoot.restartRequested()
+        }
     }
 }

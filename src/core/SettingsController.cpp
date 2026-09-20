@@ -59,6 +59,7 @@ void SettingsController::loadConfig() {
         m_cfg = dao.load();
     }
     emit configLoaded();
+    emit monitorViewModeChanged();
     emit themeChanged();
     emit provisionQrChanged();
 }

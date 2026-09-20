@@ -18,13 +18,9 @@ Rectangle {
             required property string seriesName
             required property color seriesColor
             required property var initialBuffer
-            required property bool digitalSeries
             name: seriesName
             color: seriesColor
             width: 2
-            // QML lint của Qt 6.11.1 chưa expose enum QLineSeries::LineStyle;
-            // giá trị 3 là StepCenter, 0 là Straight.
-            lineStyle: digitalSeries ? 3 : 0
 
             Component.onCompleted: {
                 if (!initialBuffer)
@@ -85,8 +81,7 @@ Rectangle {
                         let series = lineSeriesComponent.createObject(graphsView, {
                             seriesName: label,
                             seriesColor: s.color,
-                            initialBuffer: buf,
-                            digitalSeries: s.sensorType === "DI" || s.sensorType === "DO"
+                            initialBuffer: buf
                         })
                         graphsView.addSeries(series)
                         chartHolder.seriesMap[s.id] = series

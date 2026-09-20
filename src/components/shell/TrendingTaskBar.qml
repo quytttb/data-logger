@@ -10,22 +10,22 @@ Item {
     readonly property bool hasSensors: MonitorController.analogSensors
                                        && MonitorController.analogSensors.length > 0
 
-    Flickable {
-        id: legendFlick
+    Item {
+        id: legendArea
         anchors.fill: parent
         anchors.leftMargin: 15
         anchors.rightMargin: 15
         visible: root.hasSensors
         clip: true
-        contentWidth: legendRow.implicitWidth
-        contentHeight: height
-        boundsBehavior: Flickable.StopAtBounds
-        flickableDirection: Flickable.HorizontalFlick
 
-        Row {
-            id: legendRow
+        Flow {
+            id: legendFlow
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            height: Math.min(implicitHeight, 48)
             spacing: 24
-            height: legendFlick.height
+            rowSpacing: 8
 
             Repeater {
                 id: legendRepeater
@@ -34,7 +34,7 @@ Item {
                 delegate: Row {
                     id: chip
                     spacing: 8
-                    height: legendRow.height
+                    height: 20
                     required property var modelData
 
                     Rectangle {
@@ -55,6 +55,27 @@ Item {
                         font.bold: true
                     }
                 }
+            }
+        }
+
+        // The header fits two legend rows. Mask a third row with an explicit
+        // ellipsis instead of allowing the title bar to grow or scroll.
+        Rectangle {
+            id: overflowMask
+            visible: legendFlow.implicitHeight > 48
+            anchors.right: parent.right
+            anchors.bottom: legendFlow.bottom
+            width: overflowText.implicitWidth + 12
+            height: 20
+            color: AppColors.surface
+
+            Text {
+                id: overflowText
+                anchors.centerIn: parent
+                text: "..."
+                color: AppColors.primaryText
+                font.pixelSize: AppTypography.bodySmall.pixelSize
+                font.bold: true
             }
         }
     }

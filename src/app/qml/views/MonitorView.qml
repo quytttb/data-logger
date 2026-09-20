@@ -24,7 +24,7 @@ Rectangle {
             clip: true
             boundsBehavior: Flickable.StopAtBounds
             model: MonitorModel
-            visible: count > 0
+            visible: count > 0 && SettingsController.monitorViewMode === "grid"
 
             // Padding lives on the scroll content (Flickable margins): it only
             // appears before the first row / after the last row, and scrolls with
@@ -249,6 +249,155 @@ Rectangle {
                                 }
                             }
                         }
+                    }
+                }
+            }
+        }
+
+        ListView {
+            id: sensorList
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            clip: true
+            boundsBehavior: Flickable.StopAtBounds
+            model: MonitorModel
+            visible: count > 0 && SettingsController.monitorViewMode === "list"
+            spacing: AppTheme.spacingS
+            leftMargin: 15
+            rightMargin: 15
+            topMargin: 15
+            bottomMargin: 15
+
+            header: Rectangle {
+                width: sensorList.width - sensorList.leftMargin - sensorList.rightMargin
+                height: 40
+                radius: AppTheme.listItemRadius
+                color: AppColors.surfaceContainerHigh
+                border.color: AppColors.outlineVariant
+                border.width: 1
+
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: AppTheme.spacingM
+                    anchors.rightMargin: AppTheme.spacingM
+                    spacing: AppTheme.spacingM
+
+                    Label { text: qsTr("Sensor"); font.bold: true; color: AppColors.onSurfaceVariant; Layout.preferredWidth: parent.width * 0.30 }
+                    Label { text: qsTr("Value"); font.bold: true; color: AppColors.onSurfaceVariant; horizontalAlignment: Text.AlignRight; Layout.preferredWidth: parent.width * 0.20 }
+                    Label { text: qsTr("Unit"); font.bold: true; color: AppColors.onSurfaceVariant; horizontalAlignment: Text.AlignHCenter; Layout.preferredWidth: parent.width * 0.10 }
+                    Label { text: qsTr("Status"); font.bold: true; color: AppColors.onSurfaceVariant; horizontalAlignment: Text.AlignHCenter; Layout.preferredWidth: parent.width * 0.20 }
+                    Label { text: qsTr("Updated"); font.bold: true; color: AppColors.onSurfaceVariant; horizontalAlignment: Text.AlignRight; Layout.preferredWidth: parent.width * 0.20 }
+                }
+            }
+
+            delegate: Rectangle {
+                id: sensorRow
+                required property string value
+                required property string unit
+                required property string lastUpdate
+                required property bool isAlarm
+                required property string alarmType
+                required property string sensorType
+                required property string displayName
+                required property var diStates
+
+                readonly property bool isAnalog: sensorType === "ANALOG"
+                readonly property bool isDI: sensorType === "DI"
+                readonly property bool isDO: sensorType === "DO"
+                readonly property bool isOn: value === "1"
+                readonly property color stateColor: {
+                    if (isAnalog && diStates && diStates.length > 0)
+                        return diStates[0].color
+                    if (isDI && isOn)
+                        return IoColors.diActive
+                    if (isDO && isOn)
+                        return IoColors.doActive
+                    return AppColors.outlineVariant
+                }
+
+                width: sensorList.width - sensorList.leftMargin - sensorList.rightMargin
+                height: visible ? 64 : 0
+                visible: isAnalog || SettingsController.monitorShowDigitalIO
+                radius: AppTheme.listItemRadius
+                color: AppColors.surfaceContainerLow
+                border.color: stateColor
+                border.width: (isAlarm || (isAnalog && diStates && diStates.length > 0) || ((isDI || isDO) && isOn)) ? 2 : 1
+
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: AppTheme.spacingM
+                    anchors.rightMargin: AppTheme.spacingM
+                    spacing: AppTheme.spacingM
+
+                    RowLayout {
+                        Layout.preferredWidth: parent.width * 0.30
+                        spacing: AppTheme.spacingS
+
+                        Rectangle {
+                            visible: !sensorRow.isAnalog
+                            Layout.preferredWidth: 32
+                            Layout.preferredHeight: 20
+                            radius: AppTheme.radiusTiny
+                            color: sensorRow.isDI ? IoColors.diStrong : IoColors.doStrong
+                            Label {
+                                anchors.centerIn: parent
+                                text: sensorRow.isDI ? qsTr("DI") : qsTr("DO")
+                                color: AppColors.onPrimary
+                                font.bold: true
+                            }
+                        }
+                        Label {
+                            text: sensorRow.displayName
+                            color: AppColors.accentColor
+                            font: AppTypography.titleSmall
+                            font.bold: true
+                            elide: Text.ElideRight
+                            Layout.fillWidth: true
+                        }
+                    }
+
+                    Label {
+                        text: sensorRow.isAnalog ? sensorRow.value : (sensorRow.isOn ? qsTr("ON") : qsTr("OFF"))
+                        color: sensorRow.isAlarm ? AppColors.error : AppColors.primaryText
+                        font.family: sensorRow.isAnalog ? AppTypography.monoFamily : AppTypography.titleSmall.family
+                        font.pixelSize: AppTypography.titleMedium.pixelSize
+                        font.bold: true
+                        horizontalAlignment: Text.AlignRight
+                        Layout.preferredWidth: parent.width * 0.20
+                    }
+                    Label {
+                        text: sensorRow.isAnalog ? sensorRow.unit : ""
+                        color: AppColors.onSurfaceVariant
+                        horizontalAlignment: Text.AlignHCenter
+                        elide: Text.ElideRight
+                        Layout.preferredWidth: parent.width * 0.10
+                    }
+                    Rectangle {
+                        readonly property string label: sensorRow.isAnalog && sensorRow.diStates && sensorRow.diStates.length > 0
+                            ? sensorRow.diStates[0].label
+                            : (sensorRow.isAnalog && sensorRow.isAlarm
+                               ? (sensorRow.alarmType === "min" ? qsTr("MIN alarm") : qsTr("MAX alarm"))
+                               : (sensorRow.isDI || sensorRow.isDO ? (sensorRow.isOn ? qsTr("Active") : qsTr("Inactive")) : qsTr("No status")))
+                        Layout.preferredWidth: parent.width * 0.20
+                        Layout.preferredHeight: 28
+                        radius: AppTheme.radiusTiny
+                        color: sensorRow.isAlarm ? AppColors.error : AppColors.withAlpha(sensorRow.stateColor, 0.2)
+                        Label {
+                            anchors.centerIn: parent
+                            width: parent.width - 8
+                            text: parent.label
+                            color: sensorRow.isAlarm ? AppColors.onPrimary : sensorRow.stateColor
+                            font.bold: true
+                            horizontalAlignment: Text.AlignHCenter
+                            elide: Text.ElideRight
+                        }
+                    }
+                    Label {
+                        text: sensorRow.lastUpdate
+                        color: AppColors.onSurfaceVariant
+                        horizontalAlignment: Text.AlignRight
+                        elide: Text.ElideLeft
+                        Layout.preferredWidth: parent.width * 0.20
                     }
                 }
             }

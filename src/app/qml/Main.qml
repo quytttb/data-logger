@@ -65,6 +65,12 @@ ApplicationWindow {
                 }
                 root.currentTab = i
             }
+            onRestartRequested: rebootConfirm.showConfirm(
+                qsTr("Confirm reboot"),
+                qsTr("Reboot this device now? The application will start again automatically after boot."),
+                function() { SettingsController.rebootSystem() },
+                qsTr("Reboot"),
+                AppColors.error)
         }
 
         ColumnLayout {
@@ -146,6 +152,11 @@ ApplicationWindow {
         id: messageDetailDialog
         parent: Overlay.overlay
         anchors.centerIn: parent
+    }
+
+    MessagePopup {
+        id: rebootConfirm
+        parent: Overlay.overlay
     }
 
     Connections {

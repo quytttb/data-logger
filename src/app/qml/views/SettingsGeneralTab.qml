@@ -12,8 +12,6 @@ Item {
     id: root
     property bool configChanged: false
 
-    MessagePopup { id: rebootConfirm }
-
     Flickable {
         id: flick
         anchors.fill: parent
@@ -176,28 +174,6 @@ Item {
                     }
                 }
 
-                // ── COLUMN 3: System ──
-                ColumnLayout {
-                    Layout.fillWidth: true; Layout.alignment: Qt.AlignTop; spacing: 8
-
-                    Text { text: qsTr("System"); color: AppColors.accentColor; font.bold: true; font.pixelSize: AppTypography.titleSmall.pixelSize }
-                    Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: AppColors.outlineVariant }
-
-                    Text { text: qsTr("Restart this device:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize }
-                    AppButton {
-                        Layout.fillWidth: true
-                        text: qsTr("System Reboot")
-                        iconName: "restart_alt"
-                        kind: AppButton.Primary
-                        fillColor: AppColors.error
-                        onClicked: rebootConfirm.showConfirm(
-                            "Confirm reboot",
-                            "Reboot this device now? The application will start again automatically after boot.",
-                            function() { if (SettingsController) SettingsController.rebootSystem() },
-                            "Reboot",
-                            AppColors.error)
-                    }
-                }
             }
         }
     }

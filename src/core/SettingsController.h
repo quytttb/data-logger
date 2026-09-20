@@ -35,7 +35,7 @@ class SettingsController : public QObject {
     Q_PROPERTY(int    pollInterval   READ pollInterval  WRITE setPollInterval  NOTIFY configLoaded)
 
     // Display
-    Q_PROPERTY(QString monitorViewMode READ monitorViewMode WRITE setMonitorViewMode NOTIFY configLoaded)
+    Q_PROPERTY(QString monitorViewMode READ monitorViewMode WRITE setMonitorViewMode NOTIFY monitorViewModeChanged)
     Q_PROPERTY(bool monitorShowDigitalIO READ monitorShowDigitalIO WRITE setMonitorShowDigitalIO NOTIFY configLoaded)
 
     // Serial
@@ -135,7 +135,12 @@ public:
     void setFtpRemotePath(const QString &v) { m_cfg.ftpRemotePath = v; }
     void setFilePrefix(const QString &v)    { m_cfg.filePrefix = v; }
     void setPollInterval(int v)             { m_cfg.pollInterval = v; }
-    void setMonitorViewMode(const QString &v) { m_cfg.monitorViewMode = v; }
+    void setMonitorViewMode(const QString &v) {
+        if (m_cfg.monitorViewMode == v)
+            return;
+        m_cfg.monitorViewMode = v;
+        emit monitorViewModeChanged();
+    }
     void setMonitorShowDigitalIO(bool v)    { m_cfg.monitorShowDigitalIO = v; }
     void setSerialPort(const QString &v)    { m_cfg.serialPort = v; }
     void setSerialBaudrate(int v)           { m_cfg.serialBaudrate = v; }
@@ -178,6 +183,7 @@ public slots:
 signals:
     void configLoaded();
     void configSaved();
+    void monitorViewModeChanged();
     void themeChanged();
     void serverActiveChanged();
     void provisionQrChanged();

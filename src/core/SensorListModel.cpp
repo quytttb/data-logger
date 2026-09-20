@@ -300,6 +300,9 @@ QString SensorListModel::validateSensorProps(const QVariantMap &props)
     const int poll = props.value(QStringLiteral("pollInterval"), 0).toInt();
     if (poll < 1)
         return QStringLiteral("Poll interval must be at least 1 second.");
+    const int decimals = props.value(QStringLiteral("decimals"), 4).toInt();
+    if (decimals < 0 || decimals > 6)
+        return QStringLiteral("Decimals must be between 0 and 6.");
     return {};
 }
 

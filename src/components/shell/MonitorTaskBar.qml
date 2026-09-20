@@ -24,7 +24,8 @@ Item {
                 : MonitorController.statusMode === MonitorController.StatusError ? AppColors.error : AppColors.success
 
             Layout.preferredHeight: 44
-            Layout.preferredWidth: statusRow.implicitWidth + 36
+            Layout.preferredWidth: Math.min(statusRow.implicitWidth + 36, 300)
+            Layout.maximumWidth: 300
             radius: AppTheme.listItemRadius
             color: AppColors.surfaceContainerHigh
             border.width: 1
@@ -33,7 +34,9 @@ Item {
 
             RowLayout {
                 id: statusRow
-                anchors.centerIn: parent
+                anchors.fill: parent
+                anchors.leftMargin: 18
+                anchors.rightMargin: 18
                 spacing: AppTheme.spacingS
 
                 Rectangle {
@@ -51,33 +54,92 @@ Item {
                     font.bold: true
                     elide: Text.ElideRight
                     wrapMode: Text.NoWrap
+                    Layout.fillWidth: true
+                    Layout.minimumWidth: 0
                     Layout.alignment: Qt.AlignVCenter
+                }
+            }
+        }
+
+        Rectangle {
+            id: ftpPill
+            readonly property color stateColor: !ReportController.isRunning
+                ? AppColors.onSurfaceVariant
+                : ReportController.uploadState === ReportController.UploadFailed ? AppColors.error
+                : ReportController.uploadState === ReportController.UploadOk ? AppColors.success
+                : AppColors.accentColor
+            readonly property string stateText: !ReportController.isRunning ? qsTr("FTP Off")
+                : ReportController.uploadState === ReportController.UploadFailed ? qsTr("FTP Failed")
+                : ReportController.uploadState === ReportController.UploadOk ? qsTr("FTP OK")
+                : qsTr("FTP Running")
+
+            Layout.preferredHeight: 44
+            Layout.preferredWidth: ftpRow.implicitWidth + 28
+            radius: AppTheme.listItemRadius
+            color: AppColors.surfaceContainerHigh
+            border.width: 1
+            border.color: AppColors.withAlpha(stateColor, 0.5)
+
+            RowLayout {
+                id: ftpRow
+                anchors.centerIn: parent
+                spacing: AppTheme.spacingS
+
+                Rectangle {
+                    Layout.preferredWidth: 14
+                    Layout.preferredHeight: 14
+                    radius: width / 2
+                    color: ftpPill.stateColor
+                }
+                Label {
+                    text: ftpPill.stateText
+                    color: ftpPill.stateColor
+                    font.pixelSize: AppTypography.titleMedium.pixelSize
+                    font.bold: true
                 }
             }
         }
 
         Item { Layout.fillWidth: true }
 
-        // Clock and date (moved from sidebar)
-        Column {
+        RowLayout {
             Layout.alignment: Qt.AlignVCenter
-            spacing: 2
+            spacing: AppTheme.spacingS
 
-            Text {
-                id: clockTime
-                text: Qt.formatDateTime(new Date(), SettingsController.timeFormat)
-                font.pixelSize: AppTypography.titleLarge.pixelSize
-                font.bold: true
-                color: AppColors.primaryText
-                horizontalAlignment: Text.AlignRight
+            Rectangle {
+                Layout.preferredHeight: 44
+                Layout.preferredWidth: clockDate.implicitWidth + 28
+                radius: AppTheme.listItemRadius
+                color: AppColors.surfaceContainerHigh
+                border.width: 1
+                border.color: AppColors.withAlpha(AppColors.onSurfaceVariant, 0.35)
+
+                Text {
+                    id: clockDate
+                    anchors.centerIn: parent
+                    text: Qt.formatDateTime(new Date(), SettingsController.dateFormat)
+                    font.pixelSize: AppTypography.titleLarge.pixelSize
+                    font.bold: true
+                    color: AppColors.primaryText
+                }
             }
 
-            Text {
-                id: clockDate
-                text: Qt.formatDateTime(new Date(), SettingsController.dateFormat)
-                font.pixelSize: AppTypography.bodyMedium.pixelSize
-                color: AppColors.onSurfaceVariant
-                horizontalAlignment: Text.AlignRight
+            Rectangle {
+                Layout.preferredHeight: 44
+                Layout.preferredWidth: clockTime.implicitWidth + 28
+                radius: AppTheme.listItemRadius
+                color: AppColors.surfaceContainerHigh
+                border.width: 1
+                border.color: AppColors.withAlpha(AppColors.onSurfaceVariant, 0.35)
+
+                Text {
+                    id: clockTime
+                    anchors.centerIn: parent
+                    text: Qt.formatDateTime(new Date(), SettingsController.timeFormat)
+                    font.pixelSize: AppTypography.headlineSmall.pixelSize
+                    font.bold: true
+                    color: AppColors.primaryText
+                }
             }
         }
     }
@@ -87,8 +149,9 @@ Item {
         running: true
         repeat: true
         onTriggered: {
-            clockTime.text = Qt.formatDateTime(new Date(), SettingsController.timeFormat)
-            clockDate.text = Qt.formatDateTime(new Date(), SettingsController.dateFormat)
+            const now = new Date()
+            clockTime.text = Qt.formatDateTime(now, SettingsController.timeFormat)
+            clockDate.text = Qt.formatDateTime(now, SettingsController.dateFormat)
         }
     }
 }

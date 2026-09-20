@@ -12,10 +12,11 @@ Register map cua slave:
     0   int16   Nhiet do thiet bi, don vi 0.1 C
     10  float32 Muc bon, % (ABCD)
   Discrete input (1x)
-    0   DI loai 01: Calibrating
-    1   DI loai 02: Error
-    2   DI loai 03: Maintenance
-    3   DI doc lap: trang thai xung
+    0   DI loai 00: Monitoring
+    1   DI loai 01: Calibrating
+    2   DI loai 02: Error
+    3   DI loai 03: Maintenance
+  (4 trang thai DI luan phien, moi thoi diem chi 1 DI on)
   Coil (0x)
     0   DO lien ket alarm max
     1   DO lien ket alarm min
@@ -103,19 +104,19 @@ def main() -> None:
         write_float32(inputs, 10, tank_level)
 
         # Luân phiên Monitoring -> Calibrating -> Error -> Maintenance, mỗi
-        # trạng thái giữ 15 giây; chỉ một DI trạng thái được bật tại một thời điểm.
+        # trạng thái giữ 15 giây; mỗi thời điểm chỉ một DI được bật.
         state = int(time.time() / 15) % 4
         discrete_inputs.setValues(0, [
+            1 if state == 0 else 0,
             1 if state == 1 else 0,
             1 if state == 2 else 0,
             1 if state == 3 else 0,
-            1 if int(time.time() / 5) % 2 else 0,
         ])
         discrete_inputs.setValues(4, [
+            1 if state == 0 else 0,
             1 if state == 1 else 0,
             1 if state == 2 else 0,
             1 if state == 3 else 0,
-            1 if int(time.time() / 5) % 2 else 0,
         ])
 
     update_value()

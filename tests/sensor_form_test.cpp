@@ -55,6 +55,15 @@ private slots:
             {QStringLiteral("pollInterval"), 0},
         };
         QVERIFY(!SensorListModel::validateSensorProps(badPoll).isEmpty());
+
+        QVariantMap badDecimals{
+            {QStringLiteral("name"), QStringLiteral("T")},
+            {QStringLiteral("slaveId"), 1},
+            {QStringLiteral("registerAddress"), 0},
+            {QStringLiteral("pollInterval"), 3},
+            {QStringLiteral("decimals"), 7},
+        };
+        QVERIFY(!SensorListModel::validateSensorProps(badDecimals).isEmpty());
     }
 
     void coefficientModes()
