@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.VirtualKeyboard
+import QtQuick.VirtualKeyboard.Settings
 
 // On-screen keyboard for touch input. Slides up from the bottom whenever a text
 // field gains focus and slides back down on blur. It overlays the bottom of the

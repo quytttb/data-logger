@@ -24,97 +24,106 @@ Rectangle {
             padding: 0
             contentSpacing: 0
 
-            AppTableView {
-                id: histTable
+            // ElevatedPane contentItem là ColumnLayout nên children phải dùng Layout.*.
+            // Bọc bảng + overlay trong 1 Item dùng Layout.fill* — sau đó AppTableView
+            // và overlay mới được phép anchors.fill lên Item này (anchors trên Item
+            // do Layout quản lý sẽ bị warning "managed by a layout").
+            Item {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                model: HistoryViewModel.tableModel
-                loading: HistoryViewModel.isLoading
-                reuseItems: true
-                hasData: HistoryViewModel.tableModel.rowsSize > 0
-                colWeights: [0.28, 0.22, 0.12, 0.18, 0.2]
-                colMinimums: [140, 100, 60, 80, 80]
-                headerAlignRight: function(col) { return col === 4 }
-                emptyMessage: HistoryViewModel.lastError.length > 0
-                              ? HistoryViewModel.lastError
-                              : (!HistoryViewModel.searchedOnce
-                                  ? qsTr("Adjust the time range or sensor, then search.")
-                                  : qsTr("No records found for the selected filters."))
 
-                delegate: ItemDelegate {
-                    id: histCell
-                    required property int row
-                    required property int column
-                    required property string recordedAt
-                    required property string sensorName
-                    required property string unit
-                    required property string value
-                    required property string rawValue
+                AppTableView {
+                    id: histTable
+                    anchors.fill: parent
+                    model: HistoryViewModel.tableModel
+                    loading: HistoryViewModel.isLoading
+                    reuseItems: true
+                    hasData: HistoryViewModel.tableModel.rowsSize > 0
+                    colWeights: [0.28, 0.22, 0.12, 0.18, 0.2]
+                    colMinimums: [140, 100, 60, 80, 80]
+                    headerAlignRight: function(col) { return col === 4 }
+                    emptyMessage: HistoryViewModel.lastError.length > 0
+                                  ? HistoryViewModel.lastError
+                                  : (!HistoryViewModel.searchedOnce
+                                      ? qsTr("Adjust the time range or sensor, then search.")
+                                      : qsTr("No records found for the selected filters."))
 
-                    implicitHeight: 40
-                    padding: 0
-                    hoverEnabled: false
+                    delegate: ItemDelegate {
+                        id: histCell
+                        required property int row
+                        required property int column
+                        required property string recordedAt
+                        required property string sensorName
+                        required property string unit
+                        required property string value
+                        required property string rawValue
 
-                    background: TableCellBackground {
-                        cellHovered: false
-                    }
+                        implicitHeight: 40
+                        padding: 0
+                        hoverEnabled: false
 
-                    contentItem: Label {
-                        anchors {
-                            left: parent.left
-                            leftMargin: histCell.column === 0 ? 16 : 8
-                            right: parent.right
-                            rightMargin: 8
-                            verticalCenter: parent.verticalCenter
+                        background: TableCellBackground {
+                            cellHovered: false
                         }
-                        text: {
-                            switch (histCell.column) {
-                            case 0: return histCell.recordedAt
-                            case 1: return histCell.sensorName
-                            case 2: return histCell.unit
-                            case 3: return histCell.value
-                            case 4: return histCell.rawValue
-                            default: return ""
+
+                        contentItem: Label {
+                            anchors {
+                                left: parent.left
+                                leftMargin: histCell.column === 0 ? 16 : 8
+                                right: parent.right
+                                rightMargin: 8
+                                verticalCenter: parent.verticalCenter
                             }
+                            text: {
+                                switch (histCell.column) {
+                                case 0: return histCell.recordedAt
+                                case 1: return histCell.sensorName
+                                case 2: return histCell.unit
+                                case 3: return histCell.value
+                                case 4: return histCell.rawValue
+                                default: return ""
+                                }
+                            }
+                            horizontalAlignment: histCell.column === 4 ? Text.AlignRight : Text.AlignLeft
+                            font.family: (histCell.column === 3 || histCell.column === 4) ? AppTypography.monoFamily : ""
+                            font.weight: histCell.column === 3 ? Font.DemiBold : Font.Normal
+                            color: {
+                                if (histCell.column === 2) return AppColors.tableHeaderText
+                                if (histCell.column === 0) return AppColors.tableCellMuted
+                                if (histCell.column === 3) return AppColors.success
+                                return AppColors.primaryText
+                            }
+                            elide: Text.ElideRight
                         }
-                        horizontalAlignment: histCell.column === 4 ? Text.AlignRight : Text.AlignLeft
-                        font.family: (histCell.column === 3 || histCell.column === 4) ? AppTypography.monoFamily : ""
-                        font.weight: histCell.column === 3 ? Font.DemiBold : Font.Normal
-                        color: {
-                            if (histCell.column === 2) return AppColors.tableHeaderText
-                            if (histCell.column === 0) return AppColors.tableCellMuted
-                            if (histCell.column === 3) return AppColors.success
-                            return AppColors.primaryText
-                        }
-                        elide: Text.ElideRight
                     }
                 }
-            }
 
-            // Loading overlay centre: feedback rõ ràng thay vì UI đơ
-            Rectangle {
-                id: loadingOverlay
-                anchors.fill: parent
-                visible: HistoryViewModel.isLoading
-                color: AppColors.withAlpha(AppColors.surfaceContainerLow, 0.6)
-                z: 2
+                // Loading overlay che toàn bộ bảng: Item ở trên không do Layout quản lý
+                // nên overlay được phép anchors.fill: histTable.
+                Rectangle {
+                    id: loadingOverlay
+                    anchors.fill: histTable
+                    visible: HistoryViewModel.isLoading
+                    color: AppColors.withAlpha(AppColors.surfaceContainerLow, 0.6)
+                    z: 2
 
-                ColumnLayout {
-                    anchors.centerIn: parent
-                    spacing: 12
+                    ColumnLayout {
+                        anchors.centerIn: parent
+                        spacing: 12
 
-                    BusyIndicator {
-                        Layout.alignment: Qt.AlignHCenter
-                        running: parent.parent.visible
-                        implicitWidth: 48
-                        implicitHeight: 48
-                    }
+                        BusyIndicator {
+                            Layout.alignment: Qt.AlignHCenter
+                            running: loadingOverlay.visible
+                            implicitWidth: 48
+                            implicitHeight: 48
+                        }
 
-                    Label {
-                        Layout.alignment: Qt.AlignHCenter
-                        text: qsTr("Loading history…")
-                        color: AppColors.primaryText
-                        font: AppTypography.titleMedium
+                        Label {
+                            Layout.alignment: Qt.AlignHCenter
+                            text: qsTr("Loading history…")
+                            color: AppColors.primaryText
+                            font: AppTypography.titleMedium
+                        }
                     }
                 }
             }
