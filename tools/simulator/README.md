@@ -8,9 +8,11 @@ Giả lập cảm biến Modbus RTU để test Data Logger **không cần phần
 # 1. Cài gói phụ thuộc
 sudo apt-get update && sudo apt-get install -y socat python3-pymodbus
 
-# 2. Copy 2 file này vào Pi
+# 2. Copy 3 file này vào Pi
 sudo mkdir -p /usr/local/lib/data-logger
 sudo cp modbus_rtu_simulator.py /usr/local/lib/data-logger/
+sudo cp modbus-simulator.sh  /usr/local/lib/data-logger/
+sudo chmod +x /usr/local/lib/data-logger/modbus-simulator.sh
 sudo cp modbus-simulator.service /etc/systemd/system/
 
 # 3. Reload systemd và bật service
@@ -21,6 +23,24 @@ sudo systemctl enable --now modbus-simulator.service
 Service sẽ tạo cặp serial ảo:
 - **DataLogger dùng**: `/run/data-logger/ttyVIRT0`
 - **Slave giả lập lắng nghe**: `/run/data-logger/ttyVIRT1`
+
+## Tự phục hồi (auto-heal)
+
+Wrapper `modbus-simulator.sh` xử lý dọn dẹp mỗi lần service chạy, nên
+**không cần chạy lệnh thủ công** khi reboot hoặc sau khi bị kẹt:
+
+1. Kill **socat cũ còn sót** (pattern theo đúng link pty `ttyVIRT0/ttyVIRT1`
+   của service này) → tránh lỗi *"Device or resource busy"* khi app cầm pty master cũ.
+2. Đồn **symlink cũ** trong `/run/data-logger` trước khi tạo cặp pty mới.
+3. Đợi cả hai link tồn tại rồi mới chạy python slave (tránh race lúc boot).
+4. Trap đảm bảo socat được kill cùng khi python thoát.
+
+Nếu app vẫn báo "Connection lost/Cannot connect" do cúp/khởi động Pi, chỉ cần
+đợi app **tự reconnect** (ModbusWorker có backoff tự động). Khi cần can thiệp sâu:
+
+```bash
+sudo systemctl restart modbus-simulator datalogger
+```
 
 ## Cấu hình DataLogger
 
@@ -52,27 +72,26 @@ Sau đó **Settings → Sensors → Thêm cảm biến**:
 
 ## Tham số simulator (tùy chỉnh)
 
-Chỉnh file `/usr/local/lib/data-logger/modbus_rtu_simulator.py` hoặc tạo override systemd:
+Tạo file override systemd (không đụng vào unit mặc định):
 
 ```bash
-# Tạo file override
 sudo systemctl edit modbus-simulator.service
 ```
 
-Nội dung override:
+Nội dung override (ghi đè `ExecStart` ban đầu):
 ```ini
 [Service]
-ExecStart=
-ExecStart=/bin/sh -c '/usr/bin/socat pty,link=/run/data-logger/ttyVIRT0,raw,echo=0,mode=0660 pty,link=/run/data-logger/ttyVIRT1,raw,echo=0,mode=0660 & socat_pid=$!; trap "kill $socat_pid 2>/dev/null || true" EXIT; while [ ! -e /run/data-logger/ttyVIRT1 ]; do sleep 0.1; done; exec /usr/bin/python3 /usr/local/lib/data-logger/modbus_rtu_simulator.py --port /run/data-logger/ttyVIRT1 --slave-id 1 --baudrate 9600 --value 25.0 --amplitude 2.0 --period 60.0'
+ExecStart=/usr/local/lib/data-logger/modbus-simulator.sh
+Environment=SIM_VALUE=25.0 SIM_AMPLITUDE=2.0 SIM_PERIOD=60.0
 ```
 
-| Tham số | Mặc định | Mô tả |
-|---------|----------|-------|
-| `--slave-id` | `1` | Modbus slave ID |
-| `--baudrate` | `9600` | Tốc độ serial |
-| `--value` | `25.0` | Giá trị trung bình (°C) |
-| `--amplitude` | `2.0` | Biên độ dao động (±°C) |
-| `--period` | `60.0` | Chu kỳ sin (giây) |
+| Biến | Mặc định | Mô tả |
+|------|----------|-------|
+| `SLAVE_ID` | `1` | Modbus slave ID |
+| `BAUDRATE` | `9600` | Tốc độ serial |
+| `SIM_VALUE` | `25.0` | Giá trị trung bình (°C) |
+| `SIM_AMPLITUDE` | `10.0` | Biên độ dao động (±°C) |
+| `SIM_PERIOD` | `60.0` | Chu kỳ sin (giây) |
 
 ## Kiểm tra thủ công
 
@@ -109,6 +128,7 @@ Output mong đợi (giá trị dao động quanh 23–27):
 sudo systemctl disable --now modbus-simulator.service
 sudo rm /etc/systemd/system/modbus-simulator.service
 sudo rm /usr/local/lib/data-logger/modbus_rtu_simulator.py
+sudo rm /usr/local/lib/data-logger/modbus-simulator.sh
 sudo systemctl daemon-reload
 ```
 
