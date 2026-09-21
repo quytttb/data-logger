@@ -352,7 +352,7 @@ ElevatedPane {
                 currentIndex: -1
                 onCurrentIndexChanged: {
                     root.syncEditPanelFromSelection()
-                    if (_pendingSelectId >= 0 && model) {
+                    if (root._pendingSelectId >= 0 && model) {
                         // Model vừa được thay — IndexChange này là reset;
                         // khôi phục đã được xử lý ở SettingsView._refreshLinks
                     }

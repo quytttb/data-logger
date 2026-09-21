@@ -18,6 +18,7 @@ Rectangle {
     // Kept locally — TableView.currentRow is not writable.
     property int currentRow: -1
 
+
     onVisibleChanged: {
         if (visible)
             root.currentRow = -1
@@ -57,7 +58,9 @@ Rectangle {
                 s.active ? "1" : "0"
             ])
         }
+        // qmllint disable unqualified
         sensorTableModel.setRows(rows)
+        // qmllint enable unqualified
     }
 
     Connections {
@@ -73,7 +76,9 @@ Rectangle {
         AppTableView {
             id: sensorTable
             Layout.fillWidth: true; Layout.fillHeight: true
+            // qmllint disable unqualified
             model: sensorTableModel
+            // qmllint enable unqualified
             hasData: SensorListModel.count > 0
             colWeights: [0.17, 0.08, 0.07, 0.07, 0.08, 0.10, 0.09, 0.07, 0.22, 0.05]
             colMinimums: [120, 50, 45, 45, 50, 65, 55, 45, 100, 50]

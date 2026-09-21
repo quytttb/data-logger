@@ -120,7 +120,7 @@ ApplicationWindow {
     Connections {
         target: Qt.inputMethod
         function onKeyboardRectangleChanged() {
-            if (!Qt.inputMethod.visible)
+            if (!inputPanel.active)
                 return
             const focusItem = root.activeFocusItem
             if (!focusItem)
@@ -128,17 +128,21 @@ ApplicationWindow {
             // Geometry is measured against the shrunk content area (the
             // keyboard already lifted the shell via kioskContent.bottomMargin),
             // not the full window, so the scroll offset is exact.
-            const kbTop = root.height - (inputPanel ? inputPanel.height : 0)
+            const kbTop = root.height - inputPanel.height
             const pos = focusItem.mapToItem(kioskContent, 0, 0)
             const fieldBottom = pos.y + focusItem.height
             if (fieldBottom <= kbTop)
                 return
             let f = focusItem.parent
-            while (f && !(f.hasOwnProperty("contentY") && f.hasOwnProperty("contentHeight")))
+            while (f && !(f instanceof Flickable))
                 f = f.parent
-            if (f) {
+            if (f instanceof Flickable) {
                 const offset = fieldBottom - kbTop + 8
+                // Dynamic-upcast lookup is safe at runtime (any Flickable
+                // subclass) — qmllint cannot see the narrowed type.
+                // qmllint disable missing-property
                 f.contentY = Math.max(0, f.contentY + offset)
+                // qmllint enable missing-property
             }
         }
     }
