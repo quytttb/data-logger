@@ -130,7 +130,6 @@ void TesterWorker::doWriteRegister(int slaveId, int address,
         emit messageSent(QStringLiteral("Error"), QStringLiteral("Not connected."));
         return;
     }
-    Q_UNUSED(dataFormat)
 
     const QString reg = ModbusCodec::normalizeRegisterType(registerType);
     if (reg == QStringLiteral("coil")) {
@@ -138,15 +137,11 @@ void TesterWorker::doWriteRegister(int slaveId, int address,
         return;
     }
 
-    QVector<quint16> regs;
-    if (dataType == QStringLiteral("float32")) {
-        float f = float(value); quint32 r; memcpy(&r, &f, 4);
-        regs << quint16(r >> 16) << quint16(r & 0xFFFF);
-    } else if (dataType == QStringLiteral("int32") || dataType == QStringLiteral("uint32")) {
-        quint32 r = quint32(qint32(value));
-        regs << quint16(r >> 16) << quint16(r & 0xFFFF);
-    } else {
-        regs << quint16(qint16(value));
+    const QVector<quint16> regs = ModbusCodec::encodeRegisters(value, dataType, dataFormat);
+    if (regs.isEmpty()) {
+        emit writeCompleted({{QStringLiteral("ok"), false},
+                             {QStringLiteral("error"), QStringLiteral("Value out of range or NaN/Inf for ") + dataType}});
+        return;
     }
 
     QModbusDataUnit unit(QModbusDataUnit::HoldingRegisters, address, regs.size());

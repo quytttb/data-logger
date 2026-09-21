@@ -4,6 +4,7 @@
 #include "data/repositories/AppConfigDao.h"
 #include "data/models/AnalogDigitalLink.h"
 #include "tt10/SensorSymbols.h"
+#include "utils/modbus/ModbusCodec.h"
 #include <cmath>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -303,6 +304,19 @@ QString SensorListModel::validateSensorProps(const QVariantMap &props)
     const int decimals = props.value(QStringLiteral("decimals"), 4).toInt();
     if (decimals < 0 || decimals > 6)
         return QStringLiteral("Decimals must be between 0 and 6.");
+    // Validate Modbus codec combo — tránh lưu BADC/DCBA cho int16 v.v.
+    {
+        const QString rt = props.value(QStringLiteral("registerType"), "holding").toString();
+        const QString dt = props.value(QStringLiteral("dataType"), "int16").toString();
+        const QString df = props.value(QStringLiteral("dataFormat"), "AB").toString();
+        const QString sensorType = props.value(QStringLiteral("sensorType"), "ANALOG").toString();
+        // Chỉ validate cho ANALOG — DI/DO không dùng data_format
+        if (sensorType == QLatin1String("ANALOG")) {
+            const QString err = ModbusCodec::validateSensorModbusConfig(rt, dt, df);
+            if (!err.isEmpty())
+                return err;
+        }
+    }
     return {};
 }
 
@@ -549,7 +563,12 @@ bool SensorListModel::update_link_di_type(int linkId, const QString &diType)
             }
         }
     }
-    if (ok) emit linksChanged();
+    if (ok) {
+        emit messageSent(QStringLiteral("Success"), QStringLiteral("DI status updated."));
+        emit linksChanged();
+    } else {
+        emit messageSent(QStringLiteral("Error"), QStringLiteral("Failed to update DI link."));
+    }
     return ok;
 }
 
@@ -568,6 +587,11 @@ bool SensorListModel::update_link_do_triggers(int linkId, bool trigMax, bool tri
             }
         }
     }
-    if (ok) emit linksChanged();
+    if (ok) {
+        emit messageSent(QStringLiteral("Success"), QStringLiteral("DO triggers updated."));
+        emit linksChanged();
+    } else {
+        emit messageSent(QStringLiteral("Error"), QStringLiteral("Failed to update DO link."));
+    }
     return ok;
 }
