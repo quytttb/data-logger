@@ -16,11 +16,22 @@ FtpWorker::FtpWorker(QObject *parent) : QObject(parent) {}
 void FtpWorker::configure(const QString &address, int port,
                            const QString &username, const QString &password,
                            const QString &remotePath) {
+    QMutexLocker lock(&m_cfgMutex);
     m_address    = address;
     m_port       = port;
     m_username   = username;
     m_password   = password;
     m_remotePath = remotePath;
+}
+
+void FtpWorker::snapshotConfig(QString *address, int *port, QString *user,
+                               QString *pass, QString *remotePath) {
+    QMutexLocker lock(&m_cfgMutex);
+    if (address)    *address    = m_address;
+    if (port)       *port       = m_port;
+    if (user)       *user       = m_username;
+    if (pass)       *pass       = m_password;
+    if (remotePath) *remotePath = m_remotePath;
 }
 
 void FtpWorker::start() {
@@ -57,7 +68,12 @@ void FtpWorker::onHeartbeat() {
 }
 
 void FtpWorker::tick() {
-    if (!m_running || m_address.isEmpty()) return;
+    if (!m_running)
+        return;
+    QString cfgAddr, cfgUser, cfgPass, cfgRemote;
+    int cfgPort = kDefaultPort;
+    snapshotConfig(&cfgAddr, &cfgPort, &cfgUser, &cfgPass, &cfgRemote);
+    if (cfgAddr.isEmpty()) return;
 
     QList<ReportLog> pending;
     {
@@ -71,11 +87,11 @@ void FtpWorker::tick() {
     for (auto &log : pending) {
         if (!m_running) break;
         QString error;
-        if (uploadFile(log.filePath, log.remotePath.isEmpty() ? m_remotePath : log.remotePath, &error)) {
+        if (uploadFile(log.filePath, log.remotePath.isEmpty() ? cfgRemote : log.remotePath, &error)) {
             ScopedDbConnection db2;
             ReportLogDao dao2(db2);
             dao2.updateStatus(log.id, "success");
-            emit uploadSuccess(log.filePath, log.remotePath.isEmpty() ? m_remotePath : log.remotePath);
+            emit uploadSuccess(log.filePath, log.remotePath.isEmpty() ? cfgRemote : log.remotePath);
         } else {
             ScopedDbConnection db2;
             ReportLogDao dao2(db2);
@@ -102,8 +118,11 @@ bool FtpWorker::uploadFile(const QString &localPath, const QString &remoteDir, Q
 
     FtpClient client(kUploadTimeoutMs);
     QString clientError;
-    if (client.upload(m_address, m_port > 0 ? m_port : kDefaultPort,
-                      m_username, m_password, dir, localPath, &clientError)) {
+    QString snapAddr, snapUser, snapPass;
+    int snapPort = kDefaultPort;
+    snapshotConfig(&snapAddr, &snapPort, &snapUser, &snapPass, nullptr);
+    if (client.upload(snapAddr, snapPort > 0 ? snapPort : kDefaultPort,
+                      snapUser, snapPass, dir, localPath, &clientError)) {
         return true;
     }
     if (error)

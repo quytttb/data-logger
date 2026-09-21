@@ -13,6 +13,8 @@
 #include <QTextStream>
 #include <QDir>
 #include <QDebug>
+#include <QThread>
+#include <QSemaphore>
 #include <QQmlEngine>
 #include <QJSEngine>
 #include <QThreadPool>
@@ -22,6 +24,23 @@ IMPLEMENT_QML_SINGLETON(ReportController)
 
 namespace {
 constexpr int kScheduleTickMs = 60 * 1000;  // report scheduler tick (1 min)
+constexpr int kStopWorkerMs   = 5000;
+
+bool stopFtpWorkerBounded(FtpWorker *worker, int timeoutMs) {
+    if (!worker) return true;
+    QThread *t = worker->thread();
+    if (!t || !t->isRunning()) {
+        QMetaObject::invokeMethod(worker, "stop", Qt::QueuedConnection);
+        return true;
+    }
+    auto sem = std::make_shared<QSemaphore>();
+    QMetaObject::invokeMethod(worker, "stop", Qt::QueuedConnection);
+    QMetaObject::invokeMethod(worker, [sem]() { sem->release(); }, Qt::QueuedConnection);
+    const bool done = sem->tryAcquire(1, timeoutMs);
+    if (!done)
+        qWarning() << "ReportController: FtpWorker stop did not complete within" << timeoutMs << "ms";
+    return done;
+}
 }
 
 ReportController::ReportController(QObject *parent) : QObject(parent)
@@ -59,14 +78,9 @@ void ReportController::setSettingsController(SettingsController *settings)
         disconnect(m_settings, nullptr, this, nullptr);
     }
     m_settings = settings;
-    if (m_settings) {
-        connect(m_settings, &SettingsController::configSaved,
-                this, &ReportController::applyServerConfig);
-        connect(m_settings, &SettingsController::serverActiveChanged, this, [this]() {
-            if (m_settings && !m_settings->serverActive())
-                applyServerConfig();
-        });
-    }
+    // Không subscribe configSaved ở đây — main.cpp đã là single owner gọi
+    // applyServerConfig() qua applyConfig() lambda. Để ReportController cũng
+    // subscribe sẽ gọi apply 2 lần mỗi lần Save (duplicate stop/configure/start).
 }
 
 void ReportController::setRunning(bool v)
@@ -122,7 +136,7 @@ void ReportController::applyServerConfig()
     const AppConfig &cfg = m_settings->config();
 
     if (!cfg.serverActive || cfg.ftpAddress.trimmed().isEmpty()) {
-        QMetaObject::invokeMethod(m_ftpWorker, "stop", Qt::BlockingQueuedConnection);
+        stopFtpWorkerBounded(m_ftpWorker, kStopWorkerMs);
         setRunning(false);
         setUploadState(UploadStopped);
         setLastStatus(QStringLiteral("Stopped"));
@@ -134,14 +148,28 @@ void ReportController::applyServerConfig()
         ? QString()
         : Crypto::decrypt(cfg.ftpPassword);
 
-    // Stop worker first so configure() is safe (worker not in tick())
-    QMetaObject::invokeMethod(m_ftpWorker, "stop", Qt::BlockingQueuedConnection);
-    m_ftpWorker->configure(cfg.ftpAddress, cfg.ftpPort, cfg.ftpUsername,
-                           password, cfg.ftpRemotePath);
+    // Reconfigure là data race nếu worker đang tick() upload (timeout 2 phút).
+    // Trước đây configure() trực tiếp từ UI thread trong khi FtpWorker đọc
+    // m_address/m_username... từ worker thread. Nay FtpWorker::configure()
+    // đã lock mutex nên có thể configure ngay cả khi stop timeout, nhưng vẫn
+    // phải ưu tiên stop thành công trước khi start lại.
+    const bool stopped = stopFtpWorkerBounded(m_ftpWorker, kStopWorkerMs);
+    // Configure qua queued invoke để không chạm object thuộc worker thread
+    // trong khi queued stop() có thể vẫn đang chạy tail của tick().
+    const QString addr = cfg.ftpAddress, user = cfg.ftpUsername, rpath = cfg.ftpRemotePath;
+    const int port = cfg.ftpPort;
+    QMetaObject::invokeMethod(m_ftpWorker, [w = m_ftpWorker, addr, port, user, password, rpath]() {
+        w->configure(addr, port, user, password, rpath);
+    }, Qt::QueuedConnection);
     QMetaObject::invokeMethod(m_ftpWorker, "start", Qt::QueuedConnection);
+    if (!stopped) {
+        qWarning() << "ReportController: reconfigured FtpWorker while previous stop timed out — config will take effect after current upload";
+        setLastStatus(QStringLiteral("Reconfiguring…"));
+    } else {
+        setLastStatus(QStringLiteral("Running"));
+    }
     setRunning(true);
     setUploadState(UploadRunning);
-    setLastStatus(QStringLiteral("Running"));
     refreshStatus();
 }
 
