@@ -19,14 +19,16 @@ Item {
         contentHeight: formContent.implicitHeight + 40
         clip: true; boundsBehavior: Flickable.StopAtBounds
 
-        Rectangle {
-            width: flick.width; height: flick.contentHeight
-            color: AppColors.surfaceContainerLow; radius: AppTheme.cardRadius
-            border.color: AppColors.outlineVariant; border.width: 1
+        ElevatedPane {
+            width: flick.width
+            height: flick.contentHeight
+            padding: 20
+            contentSpacing: 0
 
             RowLayout {
                 id: formContent
-                anchors.fill: parent; anchors.margins: 20
+                Layout.fillWidth: true
+                Layout.fillHeight: true
                 spacing: AppTheme.spacingL
 
                 // ── COLUMN 1: Device ──

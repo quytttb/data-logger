@@ -6,6 +6,7 @@ import QtQuick.VirtualKeyboard
 import DataLogger.Core
 import DataLogger.Components
 import LoggerKit.Theme
+import LoggerKit.Components
 
 Item {
     id: root
@@ -49,18 +50,15 @@ Item {
         contentHeight: formContent.implicitHeight + remotePath.height + 60
         clip: true; boundsBehavior: Flickable.StopAtBounds
 
-        Rectangle {
+        ElevatedPane {
             width: flick.width; height: flick.contentHeight
-            color: AppColors.surfaceContainerLow; radius: AppTheme.cardRadius
-            border.color: AppColors.outlineVariant; border.width: 1
+            padding: 20
+            contentSpacing: AppTheme.spacingM
 
             RowLayout {
                 id: remotePath
-                anchors.top: parent.top
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.margins: 20
-                height: 40
+                Layout.fillWidth: true
+                Layout.preferredHeight: 40
                 spacing: AppTheme.spacingM
 
                 Text {
@@ -101,24 +99,15 @@ Item {
 
             Rectangle {
                 id: divider
-                anchors.top: remotePath.bottom
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.topMargin: 10
-                anchors.leftMargin: 20
-                anchors.rightMargin: 20
-                height: 1
+                Layout.fillWidth: true
+                Layout.preferredHeight: 1
                 color: AppColors.outlineVariant
             }
 
             RowLayout {
                 id: formContent
-                anchors.top: divider.bottom
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.bottom: parent.bottom
-                anchors.margins: 20
-                anchors.topMargin: 10
+                Layout.fillWidth: true
+                Layout.fillHeight: true
                 spacing: AppTheme.spacingL
 
                 // ── COLUMN 1: General ──

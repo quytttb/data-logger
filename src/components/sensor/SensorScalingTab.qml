@@ -4,12 +4,13 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.VirtualKeyboard
 import LoggerKit.Theme
+import LoggerKit.Components
 
 // TAB 1: Scaling & Alarms
-Rectangle {
+ElevatedPane {
     id: root
-    color: AppColors.surfaceContainerLow; radius: AppTheme.cardRadius
-    border.color: AppColors.outlineVariant; border.width: 1
+    padding: 20
+    contentSpacing: 0
 
     // ── Expose form fields ──
     property alias dMinThreshold: dMinThreshold
@@ -25,8 +26,7 @@ Rectangle {
     property alias dCoeffJson: dCoeffJson
 
     ColumnLayout {
-        anchors.left: parent.left; anchors.right: parent.right
-        anchors.top: parent.top; anchors.margins: 20
+        Layout.fillWidth: true
         spacing: 8
 
         Text { text: qsTr("Scaling & Alarms"); color: AppColors.accentColor; font.bold: true; font.pixelSize: AppTypography.titleSmall.pixelSize }

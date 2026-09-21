@@ -5,11 +5,12 @@ import QtQuick.Layouts
 import QtQuick.VirtualKeyboard
 import DataLogger.Core
 import LoggerKit.Theme
+import LoggerKit.Components
 
-Rectangle {
+ElevatedPane {
     id: root
-    color: AppColors.surfaceContainerLow; radius: AppTheme.cardRadius
-    border.color: AppColors.outlineVariant; border.width: 1
+    padding: 20
+    contentSpacing: 0
 
     property bool isTesterMode: false
 
@@ -38,7 +39,8 @@ Rectangle {
     property alias dDataFmt: dDataFmt
 
     RowLayout {
-        anchors.fill: parent; anchors.margins: 20
+        Layout.fillWidth: true
+        Layout.fillHeight: true
         spacing: AppTheme.spacingL
 
         ColumnLayout {
