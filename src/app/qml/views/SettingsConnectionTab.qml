@@ -62,15 +62,15 @@ Item {
                     width: parent.width
                     spacing: AppTheme.spacingM
 
-                    Rectangle {
+                    ElevatedPane {
                         Layout.fillWidth: true
                         implicitHeight: lsRow.implicitHeight + 40
-                        color: AppColors.surfaceContainerLow; radius: AppTheme.cardRadius
-                        border.color: AppColors.outlineVariant; border.width: 1
+                        padding: 20
+                        contentSpacing: 0
 
                         RowLayout {
                             id: lsRow
-                            anchors.fill: parent; anchors.margins: 20
+                            Layout.fillWidth: true
                             spacing: AppTheme.spacingL
 
                             // ── Modbus RTU (Serial + Framing) ─────────────────────
@@ -111,29 +111,16 @@ Item {
                                                 onEditTextChanged: { if (ready) { SettingsController.serialPort = editText; root.configChanged = true } }
                                                 onActivated: function(index) { SettingsController.serialPort = currentText; root.configChanged = true }
                                             }
-                                            Button {
+                                            AppButton {
                                                 id: refreshPortsBtn
-                                                implicitWidth: 32
-                                                implicitHeight: 32
+                                                iconName: "refresh"
+                                                iconOnly: true
+                                                kind: AppButton.Primary
+                                                controlSize: 32
+                                                iconSide: 18
                                                 Layout.preferredWidth: 32
                                                 Layout.preferredHeight: 32
                                                 onClicked: TesterController.refresh_ports()
-                                                
-                                                contentItem: Item {
-                                                    anchors.fill: parent
-                                                    UiIcon {
-                                                        anchors.centerIn: parent
-                                                        name: "refresh"
-                                                        size: AppTheme.iconSizeSm
-                                                        iconColor: AppColors.onPrimary
-                                                    }
-                                                }
-                                                background: Rectangle {
-                                                    anchors.fill: parent
-                                                    color: !refreshPortsBtn.enabled ? AppColors.disabledContent : AppColors.primaryColor
-                                                    radius: AppTheme.listItemRadius
-                                                    opacity: refreshPortsBtn.pressed ? 0.75 : 1.0
-                                                }
                                             }
                                         }
 
@@ -209,15 +196,15 @@ Item {
                     width: parent.width
                     spacing: AppTheme.spacingM
 
-                    Rectangle {
+                    ElevatedPane {
                         Layout.fillWidth: true
                         implicitHeight: nsRow.implicitHeight + 40
-                        color: AppColors.surfaceContainerLow; radius: AppTheme.cardRadius
-                        border.color: AppColors.outlineVariant; border.width: 1
+                        padding: 20
+                        contentSpacing: 0
 
                         RowLayout {
                             id: nsRow
-                            anchors.fill: parent; anchors.margins: 20
+                            Layout.fillWidth: true
                             spacing: AppTheme.spacingL
 
                             // ── Modbus TCP Server ──────────────────────────────────
@@ -339,7 +326,7 @@ Item {
                                           ? ("⚠ " + ModbusTcpServerService.lastError)
                                           : ""
                                     visible: ModbusTcpServerService.lastError.length > 0
-                                    color: AppColors.error; font.pixelSize: AppTypography.bodyMedium.pixelSize - 1
+                                    color: AppColors.error; font.pixelSize: AppTypography.bodySmall.pixelSize
                                     Layout.fillWidth: true; wrapMode: Text.Wrap
                                 }
                             }
@@ -455,12 +442,12 @@ Item {
                                         checkable: true
                                         text: checked ? qsTr("Hide") : qsTr("Show")
                                         kind: AppButton.Secondary
-                                        font.pixelSize: AppTypography.bodyMedium.pixelSize - 1
+                                        font.pixelSize: AppTypography.bodySmall.pixelSize
                                     }
                                     AppButton {
                                         text: qsTr("Regenerate")
                                         kind: AppButton.Secondary
-                                        font.pixelSize: AppTypography.bodyMedium.pixelSize - 1
+                                        font.pixelSize: AppTypography.bodySmall.pixelSize
                                         onClicked: SettingsController.regenerateRestToken()
                                     }
                                     AppButton {
@@ -479,7 +466,7 @@ Item {
                                           ? ("⚠ " + RestApiService.lastError)
                                           : ""
                                     visible: RestApiService.lastError.length > 0
-                                    color: AppColors.error; font.pixelSize: AppTypography.bodyMedium.pixelSize - 1
+                                    color: AppColors.error; font.pixelSize: AppTypography.bodySmall.pixelSize
                                     Layout.fillWidth: true; wrapMode: Text.Wrap
                                 }
                             }

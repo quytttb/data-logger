@@ -30,7 +30,7 @@ Rectangle {
             // Padding lives on the scroll content (Flickable margins): it only
             // appears before the first row / after the last row, and scrolls with
             // the content — no rigid dead-band around the viewport.
-            readonly property int outerMargin: 15
+            readonly property int outerMargin: AppTheme.spacingM
             leftMargin: outerMargin
             rightMargin: outerMargin
             topMargin: outerMargin
@@ -155,7 +155,7 @@ Rectangle {
                                 text: card.value
                                 color: card.isAlarm ? AppColors.error
                                      : (card.status === "ERR" ? AppColors.error : AppColors.primaryText)
-                                font.pixelSize: card.value === "---" ? 32 : 42
+                                font.pixelSize: AppTypography.displaySmall.pixelSize
                                 font.family: AppTypography.monoFamily
                                 font.bold: true
                             }
@@ -217,7 +217,7 @@ Rectangle {
                             // Status badge: hiển thị trạng thái DI ưu tiên cao nhất (đã sort trong C++)
                             Rectangle {
                                 visible: card.isAnalog && card.diStates && card.diStates.length > 0
-                                color: card.diStates && card.diStates.length > 0 ? card.diStates[0].color : "#938F99"
+                                color: card.diStates && card.diStates.length > 0 ? card.diStates[0].color : AppColors.outline
                                 radius: AppTheme.radiusTiny
                                 implicitWidth: statusText.implicitWidth + 8
                                 implicitHeight: statusText.implicitHeight + 4
@@ -264,10 +264,10 @@ Rectangle {
             model: MonitorModel
             visible: count > 0 && SettingsController.monitorViewMode === "list"
             spacing: AppTheme.spacingS
-            leftMargin: 15
-            rightMargin: 15
-            topMargin: 15
-            bottomMargin: 15
+            leftMargin: AppTheme.spacingM
+            rightMargin: AppTheme.spacingM
+            topMargin: AppTheme.spacingM
+            bottomMargin: AppTheme.spacingM
 
             header: Rectangle {
                 width: sensorList.width - sensorList.leftMargin - sensorList.rightMargin

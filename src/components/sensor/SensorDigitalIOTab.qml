@@ -6,10 +6,10 @@ import DataLogger.Theme
 import LoggerKit.Theme
 import LoggerKit.Components
 
-Rectangle {
+ElevatedPane {
     id: root
-    color: AppColors.surfaceContainerLow; radius: AppTheme.cardRadius
-    border.color: AppColors.outlineVariant; border.width: 1
+    padding: 20
+    contentSpacing: 0
 
     signal attachDiRequested(int diSensorId, string diType)
     signal attachDoRequested(int doSensorId, bool trigMax, bool trigMin)
@@ -107,7 +107,8 @@ Rectangle {
     MessagePopup { id: dioDeletePopup }
 
     RowLayout {
-        anchors.fill: parent; anchors.margins: 20
+        Layout.fillWidth: true
+        Layout.fillHeight: true
         spacing: AppTheme.spacingL
 
         ColumnLayout {
@@ -403,7 +404,7 @@ Rectangle {
                             Text {
                                 anchors.centerIn: parent
                                 text: linkRow.modelData.ioType
-                                color: "#FFF"
+                                color: AppColors.onPrimary
                                 font.bold: true
                                 font.pixelSize: AppTypography.bodySmall.pixelSize
                             }

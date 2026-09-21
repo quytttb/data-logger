@@ -88,7 +88,7 @@ Popup {
         Text {
             text: qsTr("Factory LAN only")
             color: AppColors.onSurfaceVariant
-            font.pixelSize: AppTypography.bodyMedium.pixelSize - 1
+            font.pixelSize: AppTypography.bodySmall.pixelSize
             Layout.fillWidth: true
             horizontalAlignment: Text.AlignHCenter
         }
@@ -96,7 +96,7 @@ Popup {
         Text {
             text: qsTr("QR contains the API secret — do not share outside LAN")
             color: AppColors.error
-            font.pixelSize: AppTypography.bodyMedium.pixelSize - 1
+            font.pixelSize: AppTypography.bodySmall.pixelSize
             Layout.fillWidth: true
             wrapMode: Text.Wrap
             horizontalAlignment: Text.AlignHCenter
@@ -106,7 +106,7 @@ Popup {
             visible: RestApiService.state !== "listening"
             text: qsTr("REST server not listening yet — enable Active and Save first")
             color: AppColors.onSurfaceVariant
-            font.pixelSize: AppTypography.bodyMedium.pixelSize - 2
+            font.pixelSize: AppTypography.labelMedium.pixelSize
             Layout.fillWidth: true
             wrapMode: Text.Wrap
             horizontalAlignment: Text.AlignHCenter

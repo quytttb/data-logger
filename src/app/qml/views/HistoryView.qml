@@ -81,7 +81,7 @@ Rectangle {
                             }
                         }
                         horizontalAlignment: histCell.column === 4 ? Text.AlignRight : Text.AlignLeft
-                        font.family: (histCell.column === 3 || histCell.column === 4) ? "monospace" : ""
+                        font.family: (histCell.column === 3 || histCell.column === 4) ? AppTypography.monoFamily : ""
                         font.weight: histCell.column === 3 ? Font.DemiBold : Font.Normal
                         color: {
                             if (histCell.column === 2) return AppColors.tableHeaderText

@@ -45,9 +45,9 @@ ColumnLayout {
 
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: 10
-                anchors.rightMargin: 10
-                spacing: 8
+                anchors.leftMargin: AppTheme.spacingSM
+                anchors.rightMargin: AppTheme.spacingSM
+                spacing: AppTheme.spacingS
 
                 Loader {
                     id: modbusTbLoader
@@ -130,8 +130,8 @@ ColumnLayout {
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.verticalCenter: parent.verticalCenter
-                anchors.leftMargin: 10
-                anchors.rightMargin: 10
+                anchors.leftMargin: AppTheme.spacingSM
+                anchors.rightMargin: AppTheme.spacingSM
                 height: 6
                 from: 0
                 to: 100
