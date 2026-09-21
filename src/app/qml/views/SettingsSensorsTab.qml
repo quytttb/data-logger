@@ -2,7 +2,6 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import DataLogger.Core
-import DataLogger.Components
 import LoggerKit.Theme
 import LoggerKit.Components
 
@@ -13,189 +12,129 @@ Rectangle {
     border.color: AppColors.elevatedBorder
     border.width: 1
 
-    property alias listView: sensorListView
-
     signal sensorDoubleClicked()
 
+    // Selection index exposed to SettingsView (was listView.currentIndex).
+    // Kept locally — TableView.currentRow is not writable.
+    property int currentRow: -1
+
     onVisibleChanged: {
-        if (visible) {
-            sensorListView.currentIndex = -1
-        }
+        if (visible)
+            root.currentRow = -1
     }
 
-    // Shared column layout for header + rows (keeps cells aligned).
-    readonly property int colMarginH: 16
-    readonly property int colSpacing: 8
+    function _regTypeShort(t) {
+        var s = String(t).toLowerCase().trim()
+        if (s.indexOf("holding") >= 0 || s === "hr") return "HOLD"
+        if (s === "inputs" || s.indexOf("discrete") >= 0 || s === "di") return "DISC"
+        if (s.indexOf("input") >= 0 || s === "ir") return "INPT"
+        if (s.indexOf("coil") >= 0) return "COIL"
+        if (s.indexOf("invalid") >= 0) return "INV"
+        return t.substring(0, 4).toUpperCase()
+    }
+
+    // Snapshot mirror of SensorListModel (AppTableView needs a table model).
+    function rebuildRows() {
+        var rows = []
+        for (var i = 0; i < SensorListModel.count; ++i) {
+            var s = SensorListModel.sensorAt(i)
+            var regType = String(s.registerType).toLowerCase().trim()
+            var isBool = regType.indexOf("coil") >= 0 || regType.indexOf("discrete") >= 0
+            var thr = isBool ? "" : (
+                (s.minThreshold !== undefined && s.minThreshold !== "" ? s.minThreshold : "-")
+                + "  →  "
+                + (s.maxThreshold !== undefined && s.maxThreshold !== "" ? s.maxThreshold : "-"))
+            rows.push([
+                s.displayName,
+                s.unit,
+                String(s.slaveId),
+                String(s.registerAddress),
+                root._regTypeShort(s.registerType),
+                isBool ? "" : s.dataType,
+                isBool ? "" : s.dataFormat,
+                isBool ? "" : (s.pollInterval + "s"),
+                thr,
+                s.active ? "1" : "0"
+            ])
+        }
+        sensorTableModel.setRows(rows)
+    }
+
+    Connections {
+        target: SensorListModel
+        function onModelReset() { root.rebuildRows() }
+    }
+
+    Component.onCompleted: root.rebuildRows()
 
     ColumnLayout {
         anchors.fill: parent; spacing: 0
 
-        // ── Header ──
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: AppTheme.tableHeaderHeight
-            color: AppColors.surfaceContainerHigh
-            topLeftRadius: AppTheme.cardRadius
-            topRightRadius: AppTheme.cardRadius
-
-            RowLayout {
-                anchors.fill: parent
-                anchors.leftMargin: root.colMarginH
-                anchors.rightMargin: root.colMarginH
-                spacing: root.colSpacing
-
-                Text { text: qsTr("Name");       color: AppColors.tableHeaderText; font: AppTypography.labelLarge; Layout.preferredWidth: 120 }
-                Text { text: qsTr("Unit");       color: AppColors.tableHeaderText; font: AppTypography.labelLarge; Layout.preferredWidth: 50 }
-                Text { text: qsTr("Slave");      color: AppColors.tableHeaderText; font: AppTypography.labelLarge; Layout.preferredWidth: 45; horizontalAlignment: Text.AlignHCenter }
-                Text { text: qsTr("Addr");       color: AppColors.tableHeaderText; font: AppTypography.labelLarge; Layout.preferredWidth: 45; horizontalAlignment: Text.AlignHCenter }
-                Text { text: qsTr("Reg");        color: AppColors.tableHeaderText; font: AppTypography.labelLarge; Layout.preferredWidth: 50; horizontalAlignment: Text.AlignHCenter }
-                Text { text: qsTr("Type");       color: AppColors.tableHeaderText; font: AppTypography.labelLarge; Layout.preferredWidth: 65; horizontalAlignment: Text.AlignHCenter }
-                Text { text: qsTr("Format");     color: AppColors.tableHeaderText; font: AppTypography.labelLarge; Layout.preferredWidth: 55; horizontalAlignment: Text.AlignHCenter }
-                Text { text: qsTr("Intv");       color: AppColors.tableHeaderText; font: AppTypography.labelLarge; Layout.preferredWidth: 45; horizontalAlignment: Text.AlignHCenter }
-                Text { text: qsTr("Thresholds"); color: AppColors.tableHeaderText; font: AppTypography.labelLarge; Layout.fillWidth: true; horizontalAlignment: Text.AlignHCenter }
-                Text { text: qsTr("Active");     color: AppColors.tableHeaderText; font: AppTypography.labelLarge; Layout.preferredWidth: 50; horizontalAlignment: Text.AlignHCenter }
-            }
-
-            Rectangle {
-                anchors.bottom: parent.bottom
-                width: parent.width
-                height: 1
-                color: AppColors.outline
-            }
-        }
-
-        ListView {
-            id: sensorListView
-            clip: true
-            smooth: false
+        AppTableView {
+            id: sensorTable
             Layout.fillWidth: true; Layout.fillHeight: true
-            model: SensorListModel
-            boundsBehavior: Flickable.StopAtBounds
-            visible: count > 0
+            model: sensorTableModel
+            hasData: SensorListModel.count > 0
+            colWeights: [0.17, 0.08, 0.07, 0.07, 0.08, 0.10, 0.09, 0.07, 0.22, 0.05]
+            colMinimums: [120, 50, 45, 45, 50, 65, 55, 45, 100, 50]
+            emptyMessage: qsTr("No sensors yet.\nClick [+ Add sensor] to create one.")
+            emptyIconName: "chip"
 
             delegate: Rectangle {
-                id: sensorRow
-                required property int index
-                required property string displayName
-                required property string unit
-                required property int slaveId
-                required property int registerAddress
-                required property string registerType
-                required property string dataType
-                required property string dataFormat
-                required property var minThreshold
-                required property var maxThreshold
-                required property int pollInterval
-                required property bool active
+                id: cell
+                required property int row
+                required property int column
+                required property var display
 
-                width: ListView.view.width; height: 40
-                // Tap-to-select highlight (no hover state — touch device).
-                color: ListView.isCurrentItem
-                       ? AppColors.withAlpha(AppColors.primaryColor, 0.16)
-                       : "transparent"
+                implicitHeight: 40
+                color: "transparent"
 
-                // Left accent bar marks the selected row clearly on touch.
-                Rectangle {
-                    anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
-                    width: 3
-                    visible: sensorRow.ListView.isCurrentItem
-                    color: AppColors.primaryColor
-                }
+                TableCellBackground { cellHovered: sensorTable.hoveredRow === cell.row }
 
                 Rectangle {
-                    anchors.bottom: parent.bottom
-                    width: parent.width
-                    height: 1
-                    color: AppColors.outlineVariant
-                }
-
-                // Called from nested MouseArea so that ListView.view is
-                // resolved in the delegate root's context (not MouseArea's).
-                function toggleSelection() {
-                    var lv = ListView.view
-                    if (!lv) return
-                    lv.currentIndex = (lv.currentIndex === sensorRow.index) ? -1 : sensorRow.index
+                    anchors.fill: parent
+                    color: root.currentRow === cell.row
+                           ? AppColors.withAlpha(AppColors.primaryColor, 0.16)
+                           : "transparent"
                 }
 
                 MouseArea {
                     anchors.fill: parent
-                    onClicked: sensorRow.toggleSelection()
+                    onClicked: root.currentRow = cell.row
                     onDoubleClicked: root.sensorDoubleClicked()
                 }
 
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.leftMargin: root.colMarginH
-                    anchors.rightMargin: root.colMarginH
-                    spacing: root.colSpacing
-                    Text { text: sensorRow.displayName; color: AppColors.primaryText; font.pixelSize: AppTypography.bodyMedium.pixelSize; font.weight: Font.DemiBold; Layout.preferredWidth: 120; elide: Text.ElideRight }
-                    Text { text: sensorRow.unit; color: AppColors.tableCellMuted; font: AppTypography.bodyMedium; Layout.preferredWidth: 50; elide: Text.ElideRight }
-                    Text { text: sensorRow.slaveId; color: AppColors.tableCellMuted; font.pixelSize: AppTypography.bodyMedium.pixelSize; font.family: AppTypography.monoFamily; Layout.preferredWidth: 45; horizontalAlignment: Text.AlignHCenter }
-                    Text { text: sensorRow.registerAddress; color: AppColors.tableCellMuted; font.pixelSize: AppTypography.bodyMedium.pixelSize; font.family: AppTypography.monoFamily; Layout.preferredWidth: 45; horizontalAlignment: Text.AlignHCenter }
-                    Text {
-                        text: {
-                            var t = String(sensorRow.registerType).toLowerCase().trim()
-                            if (t.indexOf("holding") >= 0 || t === "hr") return "HOLD"
-                            if (t === "inputs" || t.indexOf("discrete") >= 0 || t === "di") return "DISC"
-                            if (t.indexOf("input") >= 0 || t === "ir") return "INPT"
-                            if (t.indexOf("coil") >= 0) return "COIL"
-                            if (t.indexOf("invalid") >= 0) return "INV"
-                            return t.substring(0, 4).toUpperCase()
-                        }
-                        color: AppColors.tableCellMuted; font: AppTypography.bodyMedium; Layout.preferredWidth: 50; horizontalAlignment: Text.AlignHCenter
+                Text {
+                    id: cellText
+                    visible: cell.column !== 9
+                    anchors {
+                        left: parent.left
+                        leftMargin: cell.column === 0 ? AppTheme.spacingM : AppTheme.spacingS
+                        right: parent.right
+                        rightMargin: AppTheme.spacingS
+                        verticalCenter: parent.verticalCenter
                     }
-                    Text {
-                        readonly property bool isBool: {
-                            var t = String(sensorRow.registerType).toLowerCase().trim()
-                            return t.indexOf("coil") >= 0 || t.indexOf("discrete") >= 0
-                        }
-                        text: isBool ? "" : sensorRow.dataType
-                        color: AppColors.tableCellMuted; font: AppTypography.bodyMedium; Layout.preferredWidth: 65; horizontalAlignment: Text.AlignHCenter
-                    }
-                    Text {
-                        readonly property bool isBool: {
-                            var t = String(sensorRow.registerType).toLowerCase().trim()
-                            return t.indexOf("coil") >= 0 || t.indexOf("discrete") >= 0
-                        }
-                        text: isBool ? "" : sensorRow.dataFormat
-                        color: AppColors.tableCellMuted; font: AppTypography.bodyMedium; Layout.preferredWidth: 55; horizontalAlignment: Text.AlignHCenter
-                    }
-                    Text {
-                        readonly property bool isBool: {
-                            var t = String(sensorRow.registerType).toLowerCase().trim()
-                            return t.indexOf("coil") >= 0 || t.indexOf("discrete") >= 0
-                        }
-                        text: isBool ? "" : (sensorRow.pollInterval + "s")
-                        color: AppColors.tableCellMuted; font: AppTypography.bodyMedium; Layout.preferredWidth: 45; horizontalAlignment: Text.AlignHCenter
-                    }
-                    Text {
-                        text: {
-                            var t = String(sensorRow.registerType).toLowerCase().trim()
-                            var isBool = t.indexOf("coil") >= 0 || t.indexOf("discrete") >= 0
-                            if (isBool) return ""
-                            return (sensorRow.minThreshold !== undefined && sensorRow.minThreshold !== "" ? sensorRow.minThreshold : "-") + "  →  " + (sensorRow.maxThreshold !== undefined && sensorRow.maxThreshold !== "" ? sensorRow.maxThreshold : "-")
-                        }
-                        color: AppColors.tableCellMuted; font: AppTypography.bodyMedium; Layout.fillWidth: true; elide: Text.ElideRight; horizontalAlignment: Text.AlignHCenter
-                    }
-                    Item {
-                        Layout.preferredWidth: 50; Layout.fillHeight: true
-                        Rectangle {
-                            width: 12; height: 12; radius: width / 2
-                            anchors.centerIn: parent
-                            color: sensorRow.active ? AppColors.success : AppColors.error
-                            border.color: AppColors.outlineVariant; border.width: 1
-                        }
-                    }
+                    text: cell.column === 9 ? "" : String(cell.display)
+                    color: cell.column === 0 ? AppColors.primaryText : AppColors.tableCellMuted
+                    font.pixelSize: AppTypography.bodyMedium.pixelSize
+                    font.family: (cell.column === 2 || cell.column === 3) ? AppTypography.monoFamily : ""
+                    font.weight: cell.column === 0 ? Font.DemiBold : Font.Normal
+                    horizontalAlignment: (cell.column >= 2 && cell.column <= 8) ? Text.AlignHCenter : Text.AlignLeft
+                    verticalAlignment: Text.AlignVCenter
+                    elide: Text.ElideRight
+                }
+
+                // Active indicator dot (column 9).
+                Rectangle {
+                    visible: cell.column === 9
+                    width: 12; height: 12; radius: width / 2
+                    anchors.centerIn: parent
+                    color: (cell.display === "1" || cell.display === true)
+                           ? AppColors.success : AppColors.error
+                    border.color: AppColors.outlineVariant
+                    border.width: 1
                 }
             }
-        }
-
-        EmptyStatePlaceholder {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            visible: sensorListView.count === 0
-            message: "No sensors yet.\nClick [+ Add sensor] to create one."
-            iconName: "chip"
         }
     }
 }

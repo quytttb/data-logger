@@ -3,7 +3,6 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import DataLogger.Core
-import DataLogger.Components
 import LoggerKit.Theme
 import LoggerKit.Components
 
@@ -11,21 +10,31 @@ Item {
     id: root
     property bool configChanged: false
 
+    // sensorId lives in a side array (it is cofig state, not a display column).
+    property var txIds: []
+
+    JsonTableModel { id: txTable }
+
     function reloadRows() {
-        rowModel.clear()
-        let rows = SensorListModel.transmissionRows()
-        for (let i = 0; i < rows.length; ++i)
-            rowModel.append(rows[i])
+        txIds = []
+        var rows = SensorListModel.transmissionRows()
+        var cells = []
+        for (var i = 0; i < rows.length; ++i) {
+            var r = rows[i]
+            txIds.push(r.sensorId)
+            cells.push([String(r.stt), r.name, r.sensorSymbol || "", r.transmitEnabled === true])
+        }
+        txTable.setHeaders(["No.", "Sensor name", "Sensor symbol", "Transmit"])
+        txTable.setRows(cells)
     }
 
     function buildSavePayload() {
-        let out = []
-        for (let i = 0; i < rowModel.count; ++i) {
-            let row = rowModel.get(i)
+        var out = []
+        for (var i = 0; i < txTable.count; ++i) {
             out.push({
-                sensorId: row.sensorId,
-                sensorSymbol: row.sensorSymbol,
-                transmitEnabled: row.transmitEnabled
+                sensorId: txIds[i],
+                sensorSymbol: txTable.cell(i, 2),
+                transmitEnabled: txTable.cell(i, 3) === true
             })
         }
         return out
@@ -39,15 +48,15 @@ Item {
 
     // Rows checked for bulk-disable (Delete button).
     function buildDisablePayload() {
-        let out = []
-        for (let i = 0; i < rowModel.count; ++i) {
-            let row = rowModel.get(i)
-            if (row.transmitEnabled)
-                out.push({
-                    sensorId: row.sensorId,
-                    sensorSymbol: row.sensorSymbol,
-                    transmitEnabled: false
-                })
+        var out = []
+        for (var i = 0; i < txTable.count; ++i) {
+            if (txTable.cell(i, 3) !== true)
+                continue
+            out.push({
+                sensorId: txIds[i],
+                sensorSymbol: txTable.cell(i, 2),
+                transmitEnabled: false
+            })
         }
         return out
     }
@@ -66,186 +75,150 @@ Item {
         }
     }
 
-    ListModel { id: rowModel }
-
-    Rectangle {
+    ElevatedPane {
         anchors.fill: parent
-        color: AppColors.surfaceContainerLow
-        radius: AppTheme.cardRadius
-        border.color: AppColors.outlineVariant
-        border.width: 1
+        padding: 20
+        contentSpacing: AppTheme.spacingM
 
-        ColumnLayout {
-            anchors.fill: parent
-            anchors.margins: 20
+        Text {
+            text: qsTr("Transfer Parameters")
+            color: AppColors.accentColor
+            font.bold: true
+            font.pixelSize: AppTypography.titleSmall.pixelSize
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
             spacing: AppTheme.spacingM
 
             Text {
-                text: qsTr("Transfer Parameters")
-                color: AppColors.accentColor
-                font.bold: true
-                font.pixelSize: AppTypography.titleSmall.pixelSize
+                text: qsTr("Auto-add new sensors")
+                color: AppColors.onSurfaceVariant
+                font.pixelSize: AppTypography.bodyMedium.pixelSize
             }
+            Switch {
+                id: autoAddSwitch
+                checked: SettingsController ? SettingsController.autoAddTransmit : true
+                onToggled: {
+                    SettingsController.autoAddTransmit = checked
+                    root.configChanged = true
+                }
+            }
+            Item { Layout.fillWidth: true }
 
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: AppTheme.spacingM
+            AppButton {
+                text: qsTr("Select all")
+                kind: AppButton.Neutral
+                onClicked: {
+                    for (var i = 0; i < txTable.count; ++i)
+                        txTable.setCell(i, 3, true)
+                    root.configChanged = true
+                }
+            }
+            AppButton {
+                text: qsTr("Deselect all")
+                kind: AppButton.Neutral
+                onClicked: {
+                    for (var i = 0; i < txTable.count; ++i)
+                        txTable.setCell(i, 3, false)
+                    root.configChanged = true
+                }
+            }
+        }
+
+        AppTableView {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            model: txTable
+            colWeights: [0.08, 0.36, 0.46, 0.10]
+            colMinimums: [36, 140, 120, 56]
+            // Editable cells carry ComboBox/CheckBox state — a fresh delegate
+            // per change keeps control state in sync with the model.
+            reuseItems: false
+            emptyMessage: qsTr("No analog sensors to transfer yet.")
+
+            delegate: Item {
+                id: cell
+                required property int row
+                required property int column
+                required property var display
+
+                implicitHeight: 44
 
                 Text {
-                    text: qsTr("Auto-add new sensors")
-                    color: AppColors.onSurfaceVariant
+                    visible: cell.column !== 2 && cell.column !== 3
+                    anchors {
+                        left: parent.left
+                        leftMargin: cell.column === 0 ? AppTheme.spacingM : AppTheme.spacingS
+                        right: parent.right
+                        rightMargin: AppTheme.spacingS
+                        verticalCenter: parent.verticalCenter
+                    }
+                    text: String(cell.display)
+                    color: cell.column === 0 ? AppColors.onSurfaceVariant : AppColors.primaryText
                     font.pixelSize: AppTypography.bodyMedium.pixelSize
+                    font.weight: cell.column === 1 ? Font.DemiBold : Font.Normal
+                    verticalAlignment: Text.AlignVCenter
+                    elide: Text.ElideRight
                 }
-                Switch {
-                    id: autoAddSwitch
-                    checked: SettingsController ? SettingsController.autoAddTransmit : true
-                    onToggled: {
-                        SettingsController.autoAddTransmit = checked
-                        root.configChanged = true
-                    }
-                }
-                Item { Layout.fillWidth: true }
 
-                AppButton {
-                    text: qsTr("Select all")
-                    kind: AppButton.Neutral
-                    onClicked: {
-                        for (let i = 0; i < rowModel.count; ++i)
-                            rowModel.setProperty(i, "transmitEnabled", true)
-                        root.configChanged = true
-                    }
-                }
-                AppButton {
-                    text: qsTr("Deselect all")
-                    kind: AppButton.Neutral
-                    onClicked: {
-                        for (let i = 0; i < rowModel.count; ++i)
-                            rowModel.setProperty(i, "transmitEnabled", false)
-                        root.configChanged = true
-                    }
-                }
-            }
-
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 36
-                color: AppColors.surfaceContainerHigh
-                radius: AppTheme.radiusTiny
-
-                RowLayout {
+                Item {
+                    visible: cell.column === 3
                     anchors.fill: parent
-                    anchors.leftMargin: 12
-                    anchors.rightMargin: 12
-                    spacing: AppTheme.spacingS
-
-                    Text { text: qsTr("No."); color: AppColors.accentColor; font.bold: true; font.pixelSize: AppTypography.bodyMedium.pixelSize; Layout.preferredWidth: 36 }
-                    Text { text: qsTr("Sensor name"); color: AppColors.accentColor; font.bold: true; font.pixelSize: AppTypography.bodyMedium.pixelSize; Layout.preferredWidth: 160 }
-                    Text { text: qsTr("Sensor symbol"); color: AppColors.accentColor; font.bold: true; font.pixelSize: AppTypography.bodyMedium.pixelSize; Layout.fillWidth: true }
-                    Text { text: qsTr("Transmit"); color: AppColors.accentColor; font.bold: true; font.pixelSize: AppTypography.bodyMedium.pixelSize; Layout.preferredWidth: 56; horizontalAlignment: Text.AlignHCenter }
-                }
-            }
-
-            ListView {
-                id: txList
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                clip: true
-                model: rowModel
-                spacing: 6
-
-                delegate: Rectangle {
-                    id: delegateRoot
-                    required property int index
-                    required property int stt
-                    required property int sensorId
-                    required property string name
-                    required property string sensorSymbol
-                    required property bool transmitEnabled
-
-                    // qmllint disable unqualified
-                    width: txList.width
-                    height: 44
-                    color: delegateRoot.index % 2 === 0 ? AppColors.surfaceContainerLow : AppColors.surfaceContainerHigh
-                    radius: AppTheme.radiusTiny
-
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.leftMargin: 12
-                        anchors.rightMargin: 12
-                        spacing: AppTheme.spacingS
-
-                        Text {
-                            text: String(delegateRoot.stt)
-                            color: AppColors.onSurfaceVariant
-                            font.pixelSize: AppTypography.bodyMedium.pixelSize
-                            Layout.preferredWidth: 36
-                        }
-
-                        Text {
-                            text: delegateRoot.name
-                            color: AppColors.onSurfaceVariant
-                            font.pixelSize: AppTypography.bodyMedium.pixelSize
-                            Layout.preferredWidth: 160
-                            elide: Text.ElideRight
-                        }
-
-                        ComboBox {
-                            Layout.fillWidth: true
-                            editable: true
-                            model: SensorSymbols.symbols
-                            Component.onCompleted: {
-                                let symIdx = find(delegateRoot.sensorSymbol || "")
-                                if (symIdx >= 0)
-                                    currentIndex = symIdx
-                                else
-                                    editText = delegateRoot.sensorSymbol || ""
-                            }
-                            onEditTextChanged: {
-                                rowModel.setProperty(delegateRoot.index, "sensorSymbol", editText)
-                                root.configChanged = true
-                            }
-                            onActivated: {
-                                rowModel.setProperty(delegateRoot.index, "sensorSymbol", currentText)
-                                root.configChanged = true
-                            }
-                        }
-
-                        // Centered in its column to line up with the header.
-                        Item {
-                            Layout.preferredWidth: 56
-                            Layout.fillHeight: true
-                            CheckBox {
-                                anchors.centerIn: parent
-                                checked: delegateRoot.transmitEnabled
-                                onToggled: {
-                                    rowModel.setProperty(delegateRoot.index, "transmitEnabled", checked)
-                                    root.configChanged = true
-                                }
-                            }
+                    CheckBox {
+                        anchors.centerIn: parent
+                        checked: cell.display === true
+                        onToggled: {
+                            txTable.setCell(cell.row, 3, checked)
+                            root.configChanged = true
                         }
                     }
-                    // qmllint enable unqualified
+                }
+
+                ComboBox {
+                    id: symCombo
+                    visible: cell.column === 2
+                    anchors.fill: parent
+                    editable: true
+                    model: SensorSymbols.symbols
+                    Component.onCompleted: {
+                        let v = String(cell.display)
+                        let idx = find(v)
+                        if (idx >= 0) currentIndex = idx
+                        else editText = v
+                    }
+                    onActivated: {
+                        txTable.setCell(cell.row, 2, currentText)
+                        root.configChanged = true
+                    }
+                    onEditingFinished: {
+                        var v = currentText.length > 0 ? currentText : editText
+                        if (txTable.cell(cell.row, 2) !== v) {
+                            txTable.setCell(cell.row, 2, v)
+                            root.configChanged = true
+                        }
+                    }
                 }
             }
+        }
 
-            // Row saving goes through the shared Save button on the task bar
-            // (SettingsView.saveConfig calls saveRows()). Only row deletion
-            // stays local — there is no task-bar equivalent for it.
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: AppTheme.spacingM
-                Item { Layout.fillWidth: true }
+        // Row saving goes through the shared Save button on the task bar
+        // (SettingsView.saveConfig calls saveRows()). Only row deletion
+        // stays local — there is no task-bar equivalent for it.
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: AppTheme.spacingM
+            Item { Layout.fillWidth: true }
 
-                AppButton {
-                    text: qsTr("Delete")
-                    fillColor: AppColors.error
-                    onClicked: {
-                        var rows = root.buildDisablePayload()
-                        if (rows.length === 0)
-                            return
-                        SensorListModel.applyTransmission(rows)
-                        root.configChanged = false
-                    }
+            AppButton {
+                text: qsTr("Delete")
+                fillColor: AppColors.error
+                onClicked: {
+                    var rows = root.buildDisablePayload()
+                    if (rows.length === 0)
+                        return
+                    SensorListModel.applyTransmission(rows)
+                    root.configChanged = false
                 }
             }
         }

@@ -123,7 +123,7 @@ Item {
         TesterController.write_single(regType, addr, valStr, slaveId, dataType)
     }
 
-    function clearResultsTable() { scanModel.clear(); filteredModel.clear() }
+    function clearResultsTable() { scanModel.clear(); resultTable.clear() }
 
     function toggleScan() {
         if (TesterController.isScanning)
@@ -142,7 +142,7 @@ Item {
         function onScanResultReceived(addr, val) {
             scanModel.append({ "address": addr, "value": val })
             if (!testerRoot.hideZeros || !testerRoot._isZeroValue(val))
-                filteredModel.append({ "address": addr, "value": val })
+                testerRoot._appendResultRow(addr, val)
         }
         function onWriteResult(result) {
             if (result.ok) {
@@ -165,17 +165,33 @@ Item {
         }
     }
 
+    // Full result history (hidden source; feeds resultTable which applies
+    // the hideZeros filter). Kept separate from the visible table so toggling
+    // hideZeros can rebuild without losing un-filtered rows.
     ListModel { id: scanModel }
-    ListModel { id: filteredModel }
+
+    JsonTableModel {
+        id: resultTable
+        Component.onCompleted: setHeaders(["Address", "Value"])
+    }
+
+    // Mirrors the visible-filtered table incrementally (no full reset, so
+    // TableView scroll position stays put while a scan streams in).
+    function _appendResultRow(addr, val) {
+        let idx = resultTable.findRow(0, addr)
+        if (idx >= 0) resultTable.setCell(idx, 1, val)
+        else resultTable.appendRow([addr, val])
+    }
 
     function _rebuildFiltered() {
-        filteredModel.clear()
+        let rows = []
         for (let i = 0; i < scanModel.count; i++) {
             let item = scanModel.get(i)
             if (testerRoot.hideZeros && testerRoot._isZeroValue(item.value))
                 continue
-            filteredModel.append({ "address": item.address, "value": item.value })
+            rows.push([item.address, item.value])
         }
+        resultTable.setRows(rows)
     }
 
     function _isZeroValue(val) {
@@ -257,66 +273,47 @@ Item {
 
                 Label { text: qsTr("Scan results"); font.pixelSize: AppTypography.bodyMedium.pixelSize; font.bold: true; color: AppColors.accentColor; Layout.fillWidth: true }
 
-                Rectangle {
+                ElevatedPane {
                     Layout.fillWidth: true; Layout.fillHeight: true
-                    color: AppColors.surfaceContainerLow
-                    border.color: AppColors.elevatedBorder
-                    radius: AppTheme.cardRadius
-                    clip: true
+                    padding: 0
+                    contentSpacing: 0
 
-                    ColumnLayout {
-                        anchors.fill: parent; spacing: 0
+                    AppTableView {
+                        id: resultsTable
+                        Layout.fillWidth: true; Layout.fillHeight: true
+                        model: resultTable
+                        colWeights: [0.35, 0.65]
+                        colMinimums: [90, 60]
+                        emptyMessage: qsTr("No scan results yet.")
 
-                        // ── Header ──
-                        Rectangle {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: AppTheme.tableHeaderHeight
-                            color: AppColors.surfaceContainerHigh
-                            topLeftRadius: AppTheme.cardRadius
-                            topRightRadius: AppTheme.cardRadius
+                        delegate: Rectangle {
+                            id: rc
+                            required property int row
+                            required property int column
+                            required property var display
 
-                            RowLayout {
-                                anchors.fill: parent
-                                anchors.leftMargin: 16; anchors.rightMargin: 16
-                                spacing: 8
-                                Label { text: qsTr("Address"); color: AppColors.tableHeaderText; font: AppTypography.labelLarge; Layout.preferredWidth: 100 }
-                                Label { text: qsTr("Value"); color: AppColors.tableHeaderText; font: AppTypography.labelLarge; Layout.fillWidth: true }
+                            implicitHeight: 40
+                            color: "transparent"
+
+                            TableCellBackground {
+                                cellHovered: resultsTable.hoveredRow === rc.row
                             }
 
-                            Rectangle {
-                                anchors.bottom: parent.bottom
-                                width: parent.width; height: 1
-                                color: AppColors.outline
-                            }
-                        }
-
-                        ListView {
-                            id: resultsListView
-                            Layout.fillWidth: true; Layout.fillHeight: true
-                            model: filteredModel; clip: true; spacing: 0
-                            boundsBehavior: Flickable.StopAtBounds
-                            delegate: Rectangle {
-                                id: resultRow
-                                required property int index
-                                required property int address
-                                required property string value
-
-                                width: ListView.view.width; height: 40
-                                color: "transparent"
-
-                                Rectangle {
-                                    anchors.bottom: parent.bottom
-                                    width: parent.width; height: 1
-                                    color: AppColors.outlineVariant
+                            Text {
+                                anchors {
+                                    left: parent.left
+                                    leftMargin: AppTheme.spacingM
+                                    right: parent.right
+                                    rightMargin: AppTheme.spacingS
+                                    verticalCenter: parent.verticalCenter
                                 }
-
-                                RowLayout {
-                                    anchors.fill: parent
-                                    anchors.leftMargin: 16; anchors.rightMargin: 16
-                                    spacing: 8
-                                    Text { text: resultRow.address; color: AppColors.tableCellMuted; font.pixelSize: AppTypography.bodyMedium.pixelSize; font.family: AppTypography.monoFamily; Layout.preferredWidth: 100 }
-                                    Text { text: resultRow.value; color: AppColors.success; font.pixelSize: AppTypography.bodyMedium.pixelSize; font.family: AppTypography.monoFamily; font.weight: Font.DemiBold; Layout.fillWidth: true; elide: Text.ElideRight }
-                                }
+                                text: String(rc.display)
+                                color: rc.column === 0 ? AppColors.tableCellMuted : AppColors.success
+                                font.pixelSize: AppTypography.bodyMedium.pixelSize
+                                font.family: AppTypography.monoFamily
+                                font.weight: rc.column === 1 ? Font.DemiBold : Font.Normal
+                                verticalAlignment: Text.AlignVCenter
+                                elide: Text.ElideRight
                             }
                         }
                     }

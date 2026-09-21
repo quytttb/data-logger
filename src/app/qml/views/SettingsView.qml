@@ -12,7 +12,7 @@ Rectangle {
 
     property int settingsTabIndex: 0
     property bool isConfigChanged: false
-    property bool hasSelectedSensor: sensorsTab.listView.currentIndex >= 0
+    property bool hasSelectedSensor: sensorsTab.currentRow >= 0
     property bool isAddMode: true
     property int editSensorId: -1
     property int sensorSubTabIndex: 0
@@ -86,8 +86,8 @@ Rectangle {
     }
 
     function editSelectedSensor() {
-        if (sensorsTab.listView.currentIndex < 0) return
-        var s = SensorListModel.sensorAt(sensorsTab.listView.currentIndex)
+        if (sensorsTab.currentRow < 0) return
+        var s = SensorListModel.sensorAt(sensorsTab.currentRow)
         if (!s || !s.sensorId) return
 
         isAddMode = false
@@ -107,8 +107,8 @@ Rectangle {
     }
 
     function deleteSelectedSensor() {
-        if (sensorsTab.listView.currentIndex < 0) return
-        var s = SensorListModel.sensorAt(sensorsTab.listView.currentIndex)
+        if (sensorsTab.currentRow < 0) return
+        var s = SensorListModel.sensorAt(sensorsTab.currentRow)
         if (!s || !s.sensorId) return
 
         var msg = "Delete sensor \"" + s.name + "\"?"
