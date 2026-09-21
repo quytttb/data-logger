@@ -1,8 +1,9 @@
 #include "Tt10ReportWriter.h"
 #include "data/repositories/SensorDataDao.h"
-#include <QFile>
+#include <QSaveFile>
 #include <QTextStream>
 #include <QStringConverter>
+#include <cmath>
 
 namespace {
 
@@ -70,7 +71,7 @@ bool write(const QString &path,
            const QDateTime &from,
            const QDateTime &to)
 {
-    QFile file(path);
+    QSaveFile file(path);
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
         return false;
 
@@ -88,9 +89,11 @@ bool write(const QString &path,
         // 10000 rows and averaging them — a window with >10000 samples used to
         // silently produce the wrong average.
         const auto agg = dataDao.aggregateWindow(sensor.id, from, to);
-        const QString valueStr = agg.average.has_value()
-            ? QString::number(*agg.average, 'f', sensor.decimals)
-            : QStringLiteral("---");
+        QString valueStr;
+        if (agg.average.has_value() && std::isfinite(*agg.average))
+            valueStr = QString::number(*agg.average, 'f', sensor.decimals);
+        else
+            valueStr = QStringLiteral("---");
         const QString status = dominantStatusFromDistinct(agg.distinctStatuses);
 
         fields << sensorSymbolForReport(sensor)
@@ -101,8 +104,10 @@ bool write(const QString &path,
     }
 
     out << fields.join(QLatin1Char('\t')) << QLatin1Char('\n');
-    file.close();
-    return true;
+    out.flush();
+    if (out.status() != QTextStream::Ok)
+        return false;
+    return file.commit();
 }
 
 } // namespace Tt10ReportWriter

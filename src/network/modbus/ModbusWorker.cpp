@@ -280,6 +280,10 @@ void ModbusWorker::pollAnalog(const QVariantMap &cfg) {
     }
 
     double value = Formula::applyFormula(rawValue, coeff);
+    if (!std::isfinite(value))
+        value = 0.0;
+    if (!std::isfinite(rawValue))
+        rawValue = 0.0;
 
     auto minTh = cfg.value("min_threshold");
     auto maxTh = cfg.value("max_threshold");
@@ -379,13 +383,16 @@ void ModbusWorker::pollStandaloneDo(const QVariantMap &cfg) {
     auto *reply = m_client->sendReadRequest(request, slaveId);
     if (!reply) { emit modbusError(QStringLiteral("DO no reply sensor %1").arg(sensorId)); return; }
 
-    QEventLoop loop;
-    connect(reply, &QModbusReply::finished, &loop, &QEventLoop::quit);
-    loop.exec();
+    if (!waitReply(reply, QStringLiteral("DO reply timeout sensor %1").arg(sensorId)))
+        return;
 
     bool state = false;
-    if (reply->error() == QModbusDevice::NoError)
-        state = reply->result().value(0);
+    if (reply->error() != QModbusDevice::NoError) {
+        emit modbusError(QStringLiteral("DO sensor %1: %2").arg(sensorId).arg(reply->errorString()));
+        reply->deleteLater();
+        return; // Không phát OFF giả — giữ trạng thái cũ, tránh ghi DB sai
+    }
+    state = reply->result().value(0);
     m_doStates[sensorId] = state;
     reply->deleteLater();
 
