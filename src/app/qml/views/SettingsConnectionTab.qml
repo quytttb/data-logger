@@ -14,6 +14,7 @@ Item {
     property bool configChanged: false
 
     ProvisionQrPopup { id: provisionQrPopup }
+    MessagePopup { id: tokenRegenPopup }
 
     Connections {
         target: SettingsController
@@ -448,7 +449,14 @@ Item {
                                         text: qsTr("Regenerate")
                                         kind: AppButton.Secondary
                                         font.pixelSize: AppTypography.bodySmall.pixelSize
-                                        onClicked: SettingsController.regenerateRestToken()
+                                        onClicked: tokenRegenPopup.showConfirm(
+                                            qsTr("Regenerate API token"),
+                                            qsTr("The Central Logger will need the new "
+                                                 + "token to keep reading this edge. Continue?"),
+                                            function() { SettingsController.regenerateRestToken() },
+                                            qsTr("Regenerate"),
+                                            AppColors.error
+                                        )
                                     }
                                     AppButton {
                                         enabled: SettingsController.provisionQrAvailable

@@ -128,14 +128,14 @@ Rectangle {
     }
 
     function _refreshLinks() {
-        const keepId = sensorForm._pendingSelectId >= 0 ? sensorForm._pendingSelectId : -1
+        const keepId = sensorForm.dioPendingSelectId >= 0 ? sensorForm.dioPendingSelectId : -1
         sensorForm.dioRepeaterRef.model = SensorListModel.get_analog_links(editSensorId)
         sensorForm.loadLinks(
             SensorListModel.list_di_sensors(),
             SensorListModel.list_do_sensors(editSensorId))
         if (keepId >= 0) {
-            sensorForm.restoreSelectionById(keepId)
-            sensorForm._pendingSelectId = -1
+            sensorForm.restoreDioSelectionById(keepId)
+            sensorForm.dioPendingSelectId = -1
         }
     }
 

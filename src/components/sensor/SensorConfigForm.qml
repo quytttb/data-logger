@@ -54,6 +54,11 @@ Item {
 
     property alias dioRepeaterRef: dioTab.dioRepeaterRef
 
+    // Sticky selection bridge (SensorDigitalIOTab internals used by
+    // SettingsView._refreshLinks after DI/DO link edits).
+    property alias dioPendingSelectId: dioTab._pendingSelectId
+    function restoreDioSelectionById(linkId) { dioTab.restoreSelectionById(linkId) }
+
     // Exposed DIO functions for TaskBar buttons
     property bool hasSelectedDio: dioTab.hasSelectedDio
     function deleteSelectedDio() { dioTab.deleteSelectedDio() }
