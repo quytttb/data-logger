@@ -69,6 +69,9 @@ Rectangle {
                 readonly property bool isAnalog: card.sensorType === "ANALOG"
                 readonly property bool isDI: card.sensorType === "DI"
                 readonly property bool isDO: card.sensorType === "DO"
+                // Guard: diStates có thể rỗng/undefined trong lúc model khởi tạo — tránh TypeError
+                readonly property var topStatus: card.diStates && card.diStates.length > 0 ? card.diStates[0] : null
+                readonly property bool hasStatus: topStatus !== null
 
                 Rectangle {
                     id: cardBg
@@ -216,18 +219,18 @@ Rectangle {
                             // Status badge: hiển thị trạng thái DI ưu tiên cao nhất (đã sort trong C++)
                             // Màu khớp dạng List: nền trong suốt + text màu trạng thái (không gộp badge)
                             Rectangle {
-                                visible: card.isAnalog && card.diStates && card.diStates.length > 0
-                                color: AppColors.withAlpha(card.diStates[0].color, 0.2)
+                                visible: card.isAnalog && card.hasStatus
+                                color: card.hasStatus ? AppColors.withAlpha(card.topStatus.color, 0.2) : "transparent"
                                 border.width: 1
-                                border.color: card.diStates[0].color
+                                border.color: card.hasStatus ? card.topStatus.color : "transparent"
                                 radius: AppTheme.radiusTiny
                                 implicitWidth: statusText.implicitWidth + 10
                                 implicitHeight: statusText.implicitHeight + 4
                                 Text {
                                     id: statusText
                                     anchors.centerIn: parent
-                                    text: card.diStates[0].label
-                                    color: card.diStates[0].color
+                                    text: card.hasStatus ? card.topStatus.label : ""
+                                    color: card.hasStatus ? card.topStatus.color : "transparent"
                                     font.pixelSize: AppTypography.labelSmall.pixelSize
                                     font.bold: true
                                 }
