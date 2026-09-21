@@ -128,10 +128,15 @@ Rectangle {
     }
 
     function _refreshLinks() {
+        const keepId = sensorForm._pendingSelectId >= 0 ? sensorForm._pendingSelectId : -1
         sensorForm.dioRepeaterRef.model = SensorListModel.get_analog_links(editSensorId)
         sensorForm.loadLinks(
             SensorListModel.list_di_sensors(),
             SensorListModel.list_do_sensors(editSensorId))
+        if (keepId >= 0) {
+            sensorForm.restoreSelectionById(keepId)
+            sensorForm._pendingSelectId = -1
+        }
     }
 
     function closeSensorForm() {
@@ -219,10 +224,14 @@ Rectangle {
                     settingsRoot._refreshLinks()
                 }
                 onUpdateLinkDiTypeRequested: function(linkId, diType) {
-                    SensorListModel.update_link_di_type(linkId, diType)
+                    if (!SensorListModel.update_link_di_type(linkId, diType))
+                        return
+                    settingsRoot._refreshLinks()
                 }
                 onUpdateLinkDoTriggersRequested: function(linkId, trigMax, trigMin) {
-                    SensorListModel.update_link_do_triggers(linkId, trigMax, trigMin)
+                    if (!SensorListModel.update_link_do_triggers(linkId, trigMax, trigMin))
+                        return
+                    settingsRoot._refreshLinks()
                 }
             }
         }

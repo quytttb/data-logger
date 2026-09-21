@@ -40,27 +40,45 @@ Rectangle {
     }
 
     readonly property var selectedLink: {
-        if (dioListView.currentIndex < 0 || !dioRepeater.model
-                || dioListView.currentIndex >= dioRepeater.model.length)
+        const m = dioRepeater.model
+        if (!m || dioListView.currentIndex < 0 || dioListView.currentIndex >= m.length)
             return null
-        return dioRepeater.model[dioListView.currentIndex]
+        return m[dioListView.currentIndex]
     }
 
-    property bool hasSelectedDio: dioListView.currentIndex >= 0
+    // Sticky selection across model refresh — ListView resets currentIndex khi
+    // Repeater model thay bằng array mới. Lưu id và khôi phục sau khi gán model.
+    property int _pendingSelectId: -1
+
+    property bool hasSelectedDio: selectedLink !== null
 
     function clearSelection() {
+        _pendingSelectId = -1
         dioListView.currentIndex = -1
+    }
+
+    function restoreSelectionById(linkId) {
+        const m = dioRepeater.model
+        if (!m || linkId < 0) return
+        for (let i = 0; i < m.length; ++i) {
+            if (m[i].id === linkId) { dioListView.currentIndex = i; break }
+        }
     }
 
     function deleteSelectedDio() {
         if (!selectedLink) return
-        var link = selectedLink
+        const linkId = selectedLink.id
+        const linkIo = selectedLink.ioType
+        const linkLabel = selectedLink.label
+        const linkSlave = selectedLink.slaveId
+        const linkAddr = selectedLink.address
+        _pendingSelectId = -1
         dioDeletePopup.showConfirm(
             "Confirm detach",
-            "Detach " + link.ioType + " \"" + link.label + "\" (Slave " + link.slaveId + "; Addr " + link.address + ")?",
+            "Detach " + linkIo + " \"" + linkLabel + "\" (Slave " + linkSlave + "; Addr " + linkAddr + ")?",
             function() {
-                root.removeDioRequested(link.id)
-                dioListView.currentIndex = -1
+                root.removeDioRequested(linkId)
+                // selection được clear trong onRemove handler qua _refreshLinks
             },
             "Detach",
             AppColors.error
@@ -70,6 +88,8 @@ Rectangle {
     onVisibleChanged: {
         if (visible)
             dioListView.currentIndex = -1
+        else
+            _pendingSelectId = -1
     }
 
     function syncEditPanelFromSelection() {
@@ -82,11 +102,6 @@ Rectangle {
             editDoTrigMax.checked = selectedLink.triggerOnMax
             editDoTrigMin.checked = selectedLink.triggerOnMin
         }
-    }
-
-    Connections {
-        target: dioListView
-        function onCurrentIndexChanged() { root.syncEditPanelFromSelection() }
     }
 
     MessagePopup { id: dioDeletePopup }
@@ -163,13 +178,15 @@ Rectangle {
                         Layout.fillWidth: true
                         onClicked: {
                             if (!root.selectedLink) return
+                            const linkId = root.selectedLink.id
+                            root._pendingSelectId = linkId
                             if (root.selectedLink.ioType === "DI") {
                                 root.updateLinkDiTypeRequested(
-                                    root.selectedLink.id,
+                                    linkId,
                                     root.diTypeCodeFromComboText(editDiTypeCombo.currentText))
                             } else if (root.selectedLink.ioType === "DO") {
                                 root.updateLinkDoTriggersRequested(
-                                    root.selectedLink.id,
+                                    linkId,
                                     editDoTrigMax.checked,
                                     editDoTrigMin.checked)
                             }
@@ -332,6 +349,13 @@ Rectangle {
                 clip: true; spacing: 4
                 model: dioRepeater.model
                 currentIndex: -1
+                onCurrentIndexChanged: {
+                    root.syncEditPanelFromSelection()
+                    if (_pendingSelectId >= 0 && model) {
+                        // Model vừa được thay — IndexChange này là reset;
+                        // khôi phục đã được xử lý ở SettingsView._refreshLinks
+                    }
+                }
 
                 delegate: Rectangle {
                     id: linkRow
@@ -356,10 +380,11 @@ Rectangle {
 
                     MouseArea {
                         anchors.fill: parent
+                        // Để delegate nhận click ngay cả khi Repeater model là JS array
+                        // (ListView sẽ tự highlight currentIndex mà không cần model owned)
                         onClicked: {
-                            var lv = ListView.view
-                            if (!lv) return
-                            lv.currentIndex = (lv.currentIndex === linkRow.index) ? -1 : linkRow.index
+                            ListView.view.currentIndex = (ListView.view.currentIndex === linkRow.index) ? -1 : linkRow.index
+                            root._pendingSelectId = -1
                         }
                     }
 
