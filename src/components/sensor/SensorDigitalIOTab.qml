@@ -306,6 +306,7 @@ ElevatedPane {
                                         width: parent.width
                                         text: diSensorOpt.modelData.split("\n")[0]
                                         elide: Text.ElideRight
+                                        leftPadding: 8
                                     }
                                     Label {
                                         width: parent.width
@@ -316,6 +317,7 @@ ElevatedPane {
                                         font: AppTypography.labelSmall
                                         color: AppColors.onSurfaceVariant
                                         elide: Text.ElideRight
+                                        leftPadding: 8
                                     }
                                 }
                             }
@@ -391,6 +393,7 @@ ElevatedPane {
                                         width: parent.width
                                         text: doSensorOpt.modelData.split("\n")[0]
                                         elide: Text.ElideRight
+                                        leftPadding: 8
                                     }
                                     Label {
                                         width: parent.width
@@ -401,6 +404,7 @@ ElevatedPane {
                                         font: AppTypography.labelSmall
                                         color: AppColors.onSurfaceVariant
                                         elide: Text.ElideRight
+                                        leftPadding: 8
                                     }
                                 }
                             }
