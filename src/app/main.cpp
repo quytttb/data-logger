@@ -178,11 +178,6 @@ int main(int argc, char *argv[]) {
     monitorCtrl->refreshSensorsFromList(sensorList->activeMonitorMaps());
     historyVm->reloadFiltersFromMaps(sensorList->activeMonitorMaps());
 
-    // Auto-start monitoring if there are active sensors (replaces manual Start button)
-    if (monitorCtrl->hasActiveSensors()) {
-        QTimer::singleShot(500, monitorCtrl, &MonitorController::startPolling);
-        qInfo() << "Auto-starting monitoring: active sensors detected";
-    }
 
     settingsCtrl->loadConfig();
     const AppConfig &cfg = settingsCtrl->config();

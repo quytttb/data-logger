@@ -52,7 +52,6 @@ constexpr int kWatchdogMs      = 5000;   // worker heartbeat check
 constexpr int kThreadCheckMs   = 50;     // async stop: re-poll thread state
 constexpr int kThreadJoinMs    = 3000;   // graceful worker-thread join timeout
 constexpr int kStopWorkerMs    = 5000;   // bounded wait for worker stop slot (H-1)
-constexpr int kRecoveryDelayMs = 2000;   // delay before auto-restart after worker death
 constexpr int kModbusTimeoutSec = 1;     // ModbusWorker::configure expects timeout in seconds
 constexpr int kMaxConsecutiveErrors = 10; // auto-stop monitoring after this many back-to-back Modbus errors
 
@@ -92,6 +91,13 @@ MonitorController::MonitorController(MonitorModel *model,
     m_watchdogTimer = new QTimer(this);
     m_watchdogTimer->setInterval(kWatchdogMs);
     connect(m_watchdogTimer, &QTimer::timeout, this, &MonitorController::checkWatchdog);
+
+    m_retryTimer = new QTimer(this);
+    m_retryTimer->setSingleShot(true);
+    connect(m_retryTimer, &QTimer::timeout, this, [this]() {
+        emit retryStateChanged();
+        startPolling();
+    });
 }
 
 bool MonitorController::hasActiveSensors() const {
@@ -99,16 +105,18 @@ bool MonitorController::hasActiveSensors() const {
 }
 
 QString MonitorController::statusText() const {
-    if (m_statusTag == "monitoring")     return "Running…";
-    if (m_statusTag == "stopping")       return "Stopping…";
-    if (m_statusTag == "connection_lost")return "Connection lost — retrying…";
-    if (m_statusTag == "stopped")        return "Stopped";
-    if (m_statusTag == "stopped_worker") return "Stopped (worker exited)";
-    return "Ready";
+    if (m_statusTag == "monitoring")      return "Running…";
+    if (m_statusTag == "stopping")        return "Stopping…";
+    if (m_statusTag == "connection_lost") return "Connection lost — retrying…";
+    if (m_statusTag == "error_retrying")  return "Error — retrying…";
+    if (!hasActiveSensors())              return "No sensors";
+    if (m_statusTag == "ready")           return "Ready";
+    return "Starting…";
 }
 
 void MonitorController::startPolling() {
     if (m_isPolling) return;
+    cancelRetry();
 
     AppConfig cfg;
     QList<Sensor> allSensors;
@@ -123,6 +131,8 @@ void MonitorController::startPolling() {
     }
 
     if (allSensors.isEmpty()) {
+        // D: tránh stale "Error — retrying…" khi đã xóa hết sensor trong lúc retry
+        if (m_statusTag == "error_retrying") applyStatus("ready", StatusIdle);
         emit messageSent("Error", "No active sensors. Open Settings to add sensors.");
         return;
     }
@@ -287,6 +297,8 @@ void MonitorController::startWorkerThreads(const AppConfig &cfg,
 }
 
 void MonitorController::stopPolling() {
+    cancelRetry();
+    m_retryCount = 0;
     if (!m_isPolling || m_isStopping) return;
     m_watchdogTimer->stop();
     m_isStopping = true;
@@ -316,7 +328,7 @@ void MonitorController::finalizeStop() {
     m_isPolling  = false;
     m_isStopping = false;
     if (m_mbtcp) m_mbtcp->setLoggerStatus(false, false);
-    applyStatus("stopped", StatusIdle);
+    applyStatus("ready", StatusIdle);
     emit pollingChanged();
     emit stoppingChanged();
     m_model->setAllStatus("---");
@@ -324,6 +336,7 @@ void MonitorController::finalizeStop() {
 }
 
 void MonitorController::stopPollingSync() {
+    cancelRetry();
     if (!m_isPolling) return;
     m_watchdogTimer->stop();
     // H-1 fix: chờ bounded, KHÔNG delete QThread sau wait() timeout (UB) —
@@ -360,9 +373,12 @@ void MonitorController::stopPollingSync() {
     if (m_mbtcp) m_mbtcp->setLoggerStatus(false, false);
 }
 void MonitorController::refreshSensors() {
-    // Auto-restart if running: stop sync, reload from DB, restart
-    if (m_isPolling) {
+    // G: khi đổi config trong lúc retry — reset backoff để thử lại "tươi" với config mới
+    bool retryingBefore = isRetrying();
+    if (m_isPolling || retryingBefore) {
         qInfo() << "refreshSensors: auto-restarting monitor for live config update";
+        cancelRetry();
+        if (retryingBefore) { m_retryCount = 0; emit retryStateChanged(); }
         stopPollingSync();
         QTimer::singleShot(200, this, &MonitorController::startPolling);
         return;
@@ -386,9 +402,11 @@ void MonitorController::refreshSensors() {
 }
 
 void MonitorController::refreshSensorsFromList(const QList<QVariantMap> &maps) {
-    // Auto-restart if running (same as refreshSensors)
-    if (m_isPolling) {
+    bool retryingBefore = isRetrying();
+    if (m_isPolling || retryingBefore) {
         qInfo() << "refreshSensorsFromList: auto-restarting monitor for live config update";
+        cancelRetry();
+        if (retryingBefore) { m_retryCount = 0; emit retryStateChanged(); }
         stopPollingSync();
         QTimer::singleShot(200, this, &MonitorController::startPolling);
         return;
@@ -436,6 +454,12 @@ QVariantMap MonitorController::readingsSnapshot() const {
 void MonitorController::onDataReady(QVariantMap payload) {
     if (!m_isPolling || m_isStopping) return;
     m_consecutiveErrors = 0; // a successful read clears the back-to-back error streak
+    if (m_retryCount > 0) {
+        const bool wasRetrying = isRetrying();
+        m_retryCount = 0;
+        if (wasRetrying) emit retryStateChanged();
+        qInfo() << "Monitor recovered after retries";
+    }
 
     QVariantList rawDi = payload.value("di_states").toList();
     QVariantList coloredDi;
@@ -494,13 +518,18 @@ void MonitorController::onModbusError(QString msg) {
     qWarning().noquote() << QStringLiteral("Modbus warning #%1 — %2").arg(m_errorCount).arg(msg);
 
     if (m_consecutiveErrors >= kMaxConsecutiveErrors) {
+        // Throttle popup: chỉ hiện lần đầu của chu kỳ retry, tránh spam kiosk
+        if (isRetrying()) {
+            qWarning().noquote() << "Modbus errors remain, retry already pending";
+            return;
+        }
         qCritical().noquote()
-            << QStringLiteral("Auto-stopping monitoring after %1 consecutive Modbus errors")
+            << QStringLiteral("Scheduling retry after %1 consecutive Modbus errors")
                    .arg(m_consecutiveErrors);
         emit messageSent(QStringLiteral("Monitoring"),
-                         QStringLiteral("Auto-stopped after %1 consecutive Modbus timeouts/errors.")
+                         QStringLiteral("Connection failed after %1 consecutive Modbus timeouts/errors. Retrying…")
                              .arg(m_consecutiveErrors));
-        stopPolling();
+        scheduleRetry(QStringLiteral("Modbus: %1 consecutive errors").arg(m_consecutiveErrors));
     }
 }
 
@@ -516,12 +545,7 @@ void MonitorController::onModbusStopped() {
     if (m_modbusThread) m_modbusThread->quit();
     if (m_isStopping) return;
     if (m_isPolling) {
-        m_isStopping = true;
-        applyStatus("stopped_worker", StatusError);
-        emit stoppingChanged();
-        if (m_dbWorker) QMetaObject::invokeMethod(m_dbWorker, "stop");
-        if (m_dbThread) m_dbThread->quit();
-        checkThreadsFinished();
+        scheduleRetry(QStringLiteral("ModbusWorker exited unexpectedly"));
     }
 }
 
@@ -563,13 +587,8 @@ void MonitorController::checkWatchdog() {
         m_watchdogStatus = "ERR: " + misses.join(',');
         for (const auto &m : misses) emit watchdogAlert("Worker dead: " + m);
         if ((misses.contains("ModbusWorker") || misses.contains("DatabaseWorker"))
-                && m_isPolling && !m_recoveryInProgress) {
-            m_recoveryInProgress = true;
-            stopPollingSync();
-            QTimer::singleShot(kRecoveryDelayMs, this, [this]() {
-                m_recoveryInProgress = false;
-                startPolling();
-            });
+                && m_isPolling && !m_isStopping) {
+            scheduleRetry("Watchdog: workers " + misses.join(',') + " unresponsive");
         }
     } else {
         m_watchdogStatus = "OK";
@@ -583,6 +602,45 @@ void MonitorController::applyStatus(const QString &tag, Status mode) {
     m_statusTag = tag;
     m_statusMode = mode;
     emit statusChanged();
+}
+
+int MonitorController::computeRetryDelayMs(int retryCount) {
+    if (retryCount < 0) retryCount = 0;
+    int delayMs = kRetryBaseMs * (1 << qMin(retryCount, 4));
+    return qMin(delayMs, kRetryMaxMs);
+}
+
+void MonitorController::scheduleRetry(const QString &reason) {
+    if (m_retryTimer && m_retryTimer->isActive()) {
+        qWarning().noquote() << "Monitor retry already pending, additional trigger:" << reason;
+        return; // already waiting
+    }
+
+    qWarning().noquote() << "Monitor error, scheduling retry:" << reason;
+
+    // Clean up current polling state synchronously
+    stopPollingSync();
+    emit pollingChanged();
+
+    // Mark UI as error state
+    applyStatus("error_retrying", StatusError);
+    m_model->setAllStatus("ERR");
+    markReadingsCacheErr();
+
+    // Calculate backoff: 5s, 10s, 20s, 40s, 60s max
+    int delayMs = computeRetryDelayMs(m_retryCount);
+    m_retryCount++;
+
+    qInfo() << "Retry #" << m_retryCount << "in" << (delayMs / 1000) << "s";
+    m_retryTimer->start(delayMs);
+    emit retryStateChanged();
+}
+
+void MonitorController::cancelRetry() {
+    if (m_retryTimer && m_retryTimer->isActive()) {
+        m_retryTimer->stop();
+        emit retryStateChanged();
+    }
 }
 
 void MonitorController::resetTrendBuffers(const QList<QVariantMap> &sensors) {

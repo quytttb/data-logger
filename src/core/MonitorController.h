@@ -26,6 +26,7 @@ class MonitorController : public QObject {
 
     Q_PROPERTY(bool   isPolling        READ isPolling        NOTIFY pollingChanged)
     Q_PROPERTY(bool   isStopping       READ isStopping       NOTIFY stoppingChanged)
+    Q_PROPERTY(bool   isRetrying       READ isRetrying       NOTIFY retryStateChanged)
     Q_PROPERTY(QString statusText      READ statusText       NOTIFY statusChanged)
     Q_PROPERTY(Status  statusMode       READ statusMode       NOTIFY statusChanged)
     Q_PROPERTY(int    errorCount       READ errorCount       NOTIFY errorCountChanged)
@@ -57,6 +58,7 @@ public:
 
     bool   isPolling()        const { return m_isPolling; }
     bool   isStopping()       const { return m_isStopping; }
+    bool   isRetrying()       const { return m_retryTimer && m_retryTimer->isActive(); }
     bool   rtuConnected()     const { return m_rtuConnected.load(); }
     QString statusText()      const;
     Status statusMode()       const { return m_statusMode; }
@@ -85,6 +87,9 @@ public:
                                       const QHash<int, std::deque<std::pair<double,double>>> &buffers,
                                       const QHash<int, bool> &isDigital);
 
+    // Backoff delay calculation for retry
+    static int computeRetryDelayMs(int retryCount);
+
     // REST snapshot (called from network thread)
     QVariantMap readingsSnapshot() const;
 
@@ -112,6 +117,7 @@ signals:
     void cpuTempChanged();
     void watchdogChanged();
     void watchdogAlert(QString message);
+    void retryStateChanged();
     void messageSent(QString title, QString body);
     void recordsCommitted(int count);
     // Realtime trending signals
@@ -143,6 +149,8 @@ private:
 
     void finalizeStop();
     void applyStatus(const QString &tag, Status mode);
+    void scheduleRetry(const QString &reason);
+    void cancelRetry();
     void resetTrendBuffers(const QList<QVariantMap> &sensors);
     void pushTrendPoint(int sensorId, const QString &recordedAt, double value);
     void updateTrendAxes();
@@ -164,7 +172,6 @@ private:
     std::atomic<bool> m_isPolling          {false};
     std::atomic<bool> m_rtuConnected       {false};
     bool              m_isStopping        = false;
-    bool              m_recoveryInProgress = false;
     Status    m_statusMode = StatusIdle;
     int      m_errorCount = 0;          // cumulative Modbus errors since polling started (UI badge)
     int      m_consecutiveErrors = 0;   // back-to-back errors; reset on any successful read
@@ -195,4 +202,10 @@ private:
     QTimer *m_cpuTimer      = nullptr;
     struct HeartbeatState { int misses = 0; double lastTime = 0; };
     QHash<QString, HeartbeatState> m_heartbeats;
+
+    // Auto-retry after error (exponential backoff)
+    QTimer *m_retryTimer = nullptr;
+    int     m_retryCount = 0;
+    static constexpr int kRetryBaseMs = 5000;   // 5s initial delay
+    static constexpr int kRetryMaxMs  = 60000;  // cap 60s
 };

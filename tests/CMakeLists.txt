@@ -129,3 +129,16 @@ target_link_libraries(device_lock_test PRIVATE
 )
 add_test(NAME device_lock_test COMMAND device_lock_test)
 
+# QTest: MonitorController retry backoff calculation
+add_executable(monitor_retry_test monitor_retry_test.cpp)
+target_include_directories(monitor_retry_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/src
+    ${CMAKE_SOURCE_DIR}/src/core
+)
+target_link_libraries(monitor_retry_test PRIVATE
+    Qt6::Core
+    Qt6::Test
+    datalogger_core
+)
+add_test(NAME monitor_retry_test COMMAND monitor_retry_test)
+

@@ -51,8 +51,8 @@ Item {
                 testerRoot._monitorWasRunning = false
             }
         } else {
-            // Connect: stop monitor first (if running), then connect tester
-            if (MonitorController.isPolling) {
+            // Connect: stop monitor first (if running or retrying), then connect tester
+            if (MonitorController.isPolling || MonitorController.isRetrying) {
                 testerRoot._monitorWasRunning = true
                 MonitorController.stopPolling()
                 // Wait for monitor to stop before connecting
@@ -73,7 +73,7 @@ Item {
     property bool _monitorWasRunning: false
 
     function _waitForMonitorStop() {
-        if (!MonitorController.isPolling) {
+        if (!MonitorController.isPolling && !MonitorController.isStopping) {
             TesterController.connectSerial(
                 SettingsController.serialPort,
                 SettingsController.serialBaudrate,

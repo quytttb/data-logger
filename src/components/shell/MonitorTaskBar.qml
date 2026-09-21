@@ -19,9 +19,11 @@ Item {
         // Status pill: live monitoring state (read-only indicator, not a control)
         Rectangle {
             id: statusPill
-            readonly property color stateColor: !MonitorController.isPolling
-                ? AppColors.onSurfaceVariant
-                : MonitorController.statusMode === MonitorController.StatusError ? AppColors.error : AppColors.success
+            readonly property color stateColor: MonitorController.statusMode === MonitorController.StatusError
+                ? AppColors.error
+                : MonitorController.statusMode === MonitorController.StatusOk
+                    ? AppColors.success
+                    : AppColors.onSurfaceVariant
 
             Layout.preferredHeight: 44
             Layout.preferredWidth: Math.min(statusRow.implicitWidth + 36, 300)
