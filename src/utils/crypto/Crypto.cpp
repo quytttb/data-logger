@@ -5,6 +5,7 @@
 #include <QDir>
 #include <QFile>
 #include <QSaveFile>
+#include <QMutex>
 #include <QtDebug>
 
 #include <openssl/evp.h>
@@ -24,6 +25,7 @@ constexpr int kTagBytes  = 16;  // GCM authentication tag
 // Khóa 256-bit lưu RIÊNG ngoài DB trong file 0600 — audit C1 yêu cầu key
 // không nằm trong cùng file với dữ liệu cần bảo vệ.
 QByteArray g_key;
+QMutex g_keyMutex;
 
 // Availability-first: khi AES-GCM không khả dụng, secret fallback về Base64
 // obfuscation để app KHÔNG chết (thiết bị 24/7, xin giấy phép sửa rất lâu).
@@ -45,10 +47,12 @@ QString keyFilePath()
 
 QByteArray loadOrGenerateKey()
 {
+    QMutexLocker lock(&g_keyMutex);
     if (!g_key.isEmpty())
         return g_key;
 
-    QFile file(keyFilePath());
+    const QString keyPath = keyFilePath();
+    QFile file(keyPath);
     if (file.exists()) {
         if (!file.open(QIODevice::ReadOnly)) {
             markDegraded("cannot open key file — secrets will not decrypt");
@@ -64,27 +68,34 @@ QByteArray loadOrGenerateKey()
     }
 
     // First run (or corrupt key): generate a fresh random key.
+    // Toàn bộ quá trình tạo + commit giữ mutex để 2 thread không tạo 2 key
+    // khác nhau rồi file chứa key B nhưng RAM chứa key A (mất decrypt sau restart).
+    // Key chỉ được publish vào g_key SAU KHI commit thành công.
     QByteArray key(kKeyBytes, Qt::Uninitialized);
     if (RAND_bytes(reinterpret_cast<unsigned char *>(key.data()), kKeyBytes) != 1) {
         markDegraded("RAND_bytes failed — cannot generate key");
         return {};
     }
-    g_key = key;
 
     QDir().mkpath(AppPaths::configDir());
-    QSaveFile saveFile(keyFilePath());
+    QSaveFile saveFile(keyPath);
     if (!saveFile.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
         markDegraded("cannot write key file");
-        return g_key;
+        return {};
     }
-    saveFile.write(g_key.toHex());
+    saveFile.write(key.toHex());
     saveFile.setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner);
     if (!saveFile.commit()) {
         markDegraded("failed to commit key file");
-        return g_key;
+        return {};
     }
     // umask có thể đã nới permission khi QSaveFile rename — siết lại 0600 explicit.
-    QFile::setPermissions(keyFilePath(), QFileDevice::ReadOwner | QFileDevice::WriteOwner);
+    if (!QFile::setPermissions(keyPath, QFileDevice::ReadOwner | QFileDevice::WriteOwner)) {
+        qWarning() << "Crypto: failed to chmod 0600" << keyPath;
+        markDegraded("cannot chmod key file — permissions may be too open");
+        // Không fail hoàn toàn: key đã commit, vẫn dùng được nhưng báo degraded
+    }
+    g_key = key;
     return g_key;
 }
 
