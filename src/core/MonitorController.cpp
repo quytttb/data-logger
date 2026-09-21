@@ -58,14 +58,16 @@ constexpr int kMaxConsecutiveErrors = 10; // auto-stop monitoring after this man
 // H-1 fix: gọi slot "stop" kiểu queued rồi chờ semaphore có timeout thay cho
 // BlockingQueuedConnection — không bao giờ treo UI/recovery nếu worker thread
 // đang kẹt giữa một request (nay đã có timeout riêng, nhưng vẫn phải bounded).
+// Semaphore nằm trên heap (shared_ptr) để lambda queued không giữ reference
+// tới stack frame đã hủy khi timeout (UAF).
 bool stopWorkerBounded(QObject *worker, int timeoutMs) {
     if (!worker) return true;
     QThread *t = worker->thread();
     if (!t || !t->isRunning()) return true;
-    QSemaphore sem;
+    auto sem = std::make_shared<QSemaphore>();
     QMetaObject::invokeMethod(worker, "stop", Qt::QueuedConnection);
-    QMetaObject::invokeMethod(worker, [&sem]() { sem.release(); }, Qt::QueuedConnection);
-    const bool done = sem.tryAcquire(1, timeoutMs);
+    QMetaObject::invokeMethod(worker, [sem]() { sem->release(); }, Qt::QueuedConnection);
+    const bool done = sem->tryAcquire(1, timeoutMs);
     if (!done)
         qWarning() << "Stop slot did not complete within" << timeoutMs << "ms";
     return done;
@@ -261,10 +263,11 @@ void MonitorController::startWorkerThreads(const AppConfig &cfg,
     // Audit M4: persist unflushed queue across shutdown so a crash / SIGTERM
     // can't silently drop buffered readings. Spill file lives in dataDir.
     dbWorker->setSpillPath(AppPaths::dataDir() + QStringLiteral("/db_worker_spill.json"));
-    m_dbThread = new QThread(this);
+    m_dbThread = new QThread(); // no parent — abandon if hung, delete on finished
     dbWorker->moveToThread(m_dbThread);
     connect(m_dbThread, &QThread::started,            dbWorker, &DatabaseWorker::start);
     connect(m_dbThread, &QThread::finished,           dbWorker, &QObject::deleteLater);
+    connect(m_dbThread, &QThread::finished,           m_dbThread, &QObject::deleteLater);
     connect(dbWorker, &DatabaseWorker::workerStopped, m_dbThread, &QThread::quit);
     connect(dbWorker, &DatabaseWorker::dbError,       this, &MonitorController::onDbError);
     connect(dbWorker, &DatabaseWorker::recordsSaved,  this, &MonitorController::onRecordsSaved);
@@ -280,10 +283,11 @@ void MonitorController::startWorkerThreads(const AppConfig &cfg,
     mbWorker->setSensors(pollSensors);
     mbWorker->setDigitalIos(digitalIoMap);
 
-    m_modbusThread = new QThread(this);
+    m_modbusThread = new QThread(); // no parent — abandon if hung, delete on finished
     mbWorker->moveToThread(m_modbusThread);
     connect(m_modbusThread, &QThread::started,          mbWorker, &ModbusWorker::start);
     connect(m_modbusThread, &QThread::finished,         mbWorker, &QObject::deleteLater);
+    connect(m_modbusThread, &QThread::finished,         m_modbusThread, &QObject::deleteLater);
     connect(mbWorker, &ModbusWorker::workerStopped,     this, &MonitorController::onModbusStopped);
     connect(mbWorker, &ModbusWorker::dataReady,         this, &MonitorController::onDataReady);
     connect(mbWorker, &ModbusWorker::modbusError,       this, &MonitorController::onModbusError);
@@ -323,8 +327,20 @@ void MonitorController::checkThreadsFinished() {
 void MonitorController::finalizeStop() {
     m_modbusWorker = nullptr;
     m_dbWorker     = nullptr;
-    if (m_modbusThread) { m_modbusThread->deleteLater(); m_modbusThread = nullptr; }
-    if (m_dbThread)     { m_dbThread->deleteLater();     m_dbThread = nullptr; }
+    // Threads are self-deleting on finished (no parent) — just clear pointers.
+    // In normal stopPolling() flow quit() was already called and finished will
+    // delete them. If called from elsewhere, deleteLater is safe.
+    if (m_modbusThread) {
+        if (m_modbusThread->isRunning())
+            m_modbusThread->quit();
+        // finished→deleteLater already connected; clear pointer
+        m_modbusThread = nullptr;
+    }
+    if (m_dbThread) {
+        if (m_dbThread->isRunning())
+            m_dbThread->quit();
+        m_dbThread = nullptr;
+    }
     m_isPolling  = false;
     m_isStopping = false;
     if (m_mbtcp) m_mbtcp->setLoggerStatus(false, false);
@@ -339,31 +355,24 @@ void MonitorController::stopPollingSync() {
     cancelRetry();
     if (!m_isPolling) return;
     m_watchdogTimer->stop();
-    // H-1 fix: chờ bounded, KHÔNG delete QThread sau wait() timeout (UB) —
-    // thread kẹt sẽ được hủy qua finished→deleteLater/quit.
     stopWorkerBounded(m_modbusWorker, kStopWorkerMs);
     stopWorkerBounded(m_dbWorker, kStopWorkerMs);
     if (m_modbusThread) {
-        m_modbusThread->quit();
-        if (m_modbusThread->wait(kThreadJoinMs)) {
-            delete m_modbusThread;
-        } else {
-            qWarning() << "stopPollingSync: modbus thread hung — will delete on finish";
-            connect(m_modbusThread, &QThread::finished,
-                    m_modbusThread, &QObject::deleteLater);
-        }
+        auto *t = m_modbusThread;
         m_modbusThread = nullptr;
+        t->quit();
+        if (!t->wait(kThreadJoinMs)) {
+            qWarning() << "stopPollingSync: modbus thread hung — will delete on finish";
+            // already connected finished→deleteLater
+        }
     }
     if (m_dbThread) {
-        m_dbThread->quit();
-        if (m_dbThread->wait(kThreadJoinMs)) {
-            delete m_dbThread;
-        } else {
-            qWarning() << "stopPollingSync: db thread hung — will delete on finish";
-            connect(m_dbThread, &QThread::finished,
-                    m_dbThread, &QObject::deleteLater);
-        }
+        auto *t = m_dbThread;
         m_dbThread = nullptr;
+        t->quit();
+        if (!t->wait(kThreadJoinMs)) {
+            qWarning() << "stopPollingSync: db thread hung — will delete on finish";
+        }
     }
     // Workers are deleted automatically via thread->finished → deleteLater
     m_modbusWorker = nullptr;

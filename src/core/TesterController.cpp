@@ -5,6 +5,8 @@
 #include <QFileInfo>
 #include <QDebug>
 #include <QDir>
+#include <QSemaphore>
+#include <memory>
 #include <QQmlEngine>
 #include <QJSEngine>
 #include <algorithm>
@@ -18,10 +20,15 @@ constexpr int kThreadJoinMs = 3000;  // graceful worker-thread join timeout
 TesterController::TesterController(QObject *parent) : QObject(parent)
 {
     m_worker       = new TesterWorker();
-    m_workerThread = new QThread(this);
+    m_workerThread = new QThread();
+    // Không parent QThread cho controller — nếu thread kẹt khi controller bị hủy,
+    // QObject parent-child sẽ xóa QThread đang chạy và abort process
+    // ("QThread: Destroyed while thread is still running"). Để thread tự quản
+    // lý lifetime, detach và xóa sau khi finished.
 
     m_worker->moveToThread(m_workerThread);
     connect(m_workerThread, &QThread::finished, m_worker, &QObject::deleteLater);
+    connect(m_workerThread, &QThread::finished, m_workerThread, &QObject::deleteLater);
 
     connect(m_worker, &TesterWorker::connectionResult,
             this,     &TesterController::onConnectionResult);
@@ -45,9 +52,19 @@ TesterController::TesterController(QObject *parent) : QObject(parent)
 }
 
 TesterController::~TesterController() {
-    QMetaObject::invokeMethod(m_worker, "doDisconnect", Qt::BlockingQueuedConnection);
-    m_workerThread->quit();
-    m_workerThread->wait(kThreadJoinMs);
+    auto sem = std::make_shared<QSemaphore>();
+    QMetaObject::invokeMethod(m_worker, "doDisconnect", Qt::QueuedConnection);
+    QMetaObject::invokeMethod(m_worker, [sem]() { sem->release(); }, Qt::QueuedConnection);
+    if (!sem->tryAcquire(1, kThreadJoinMs))
+        qWarning() << "TesterController: doDisconnect did not complete within" << kThreadJoinMs << "ms";
+    if (m_workerThread) {
+        m_workerThread->quit();
+        if (!m_workerThread->wait(kThreadJoinMs))
+            qWarning() << "TesterController: worker thread did not finish within" << kThreadJoinMs << "ms"
+                       << "(thread abandoned — will be deleted on finished)";
+        // Nếu vẫn chạy, không deleteNow: thread sẽ tự deleteLater khi finished
+        // (đã connect ở constructor). Tránh "QThread: Destroyed while still running".
+    }
 }
 
 // ── Property setters ───────────────────────────────────────────────────────

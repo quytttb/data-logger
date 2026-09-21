@@ -34,15 +34,25 @@ constexpr int kThreadJoinMs = 5000;  // graceful FTP thread join on quit
 
 // H-1: mọi chờ I/O phải bounded — dừng worker kiểu queued + semaphore timeout
 // thay vì BlockingQueuedConnection (treo quit nếu worker thread kẹt).
+// Semaphore nằm trên heap (shared_ptr) để queued lambda không giữ reference
+// tới stack frame đã hủy khi timeout (UAF).
 void stopWorkerOnQuit(QObject *worker, QThread *thread) {
-    QSemaphore sem;
+    if (!worker || !thread)
+        return;
+    auto sem = std::make_shared<QSemaphore>();
     QMetaObject::invokeMethod(worker, "stop", Qt::QueuedConnection);
-    QMetaObject::invokeMethod(worker, [&sem]() { sem.release(); }, Qt::QueuedConnection);
-    if (!sem.tryAcquire(1, kThreadJoinMs))
+    QMetaObject::invokeMethod(worker, [sem]() { sem->release(); }, Qt::QueuedConnection);
+    if (!sem->tryAcquire(1, kThreadJoinMs))
         qWarning() << "Worker slot 'stop' did not complete during shutdown";
     thread->quit();
-    if (!thread->wait(kThreadJoinMs)) // thread object lives until application teardown
-        qWarning() << "Worker thread did not finish during shutdown (leaked until process exit)";
+    if (!thread->wait(kThreadJoinMs)) {
+        qWarning() << "Worker thread did not finish during shutdown (abandoned — will delete on finished)";
+        // Không deleteNow: thread sẽ tự deleteLater khi finished (đã connect).
+        // Tránh "QThread: Destroyed while still running" khi app là parent.
+        return;
+    }
+    // Thread đã finish — deleteLater đã được queue, nhưng wait() đã trả về
+    // nên không còn risk. Không cần delete thêm.
 }
 }
 
@@ -125,18 +135,20 @@ int main(int argc, char *argv[]) {
     auto *sensorSymbols = new SensorSymbols(&app);
     auto *appDefaultsQml = new AppDefaultsQml(&app);
 
-    auto *ftpWorker  = new FtpWorker();          // no parent — owned by ftpThread
-    auto *ftpThread  = new QThread(&app);
+    auto *ftpWorker  = new FtpWorker();          // no parent — self-deleting on thread finished
+    auto *ftpThread  = new QThread();               // no parent — abandon if hung on quit
     ftpWorker->moveToThread(ftpThread);
     QObject::connect(ftpThread, &QThread::finished, ftpWorker, &QObject::deleteLater);
+    QObject::connect(ftpThread, &QThread::finished, ftpThread, &QObject::deleteLater);
     ftpThread->start();
 
     // Retention: purge old sensor_data / reports / logs on its own thread so
     // the 24/7 device never fills its SD card (audit C4/H7).
-    auto *retentionWorker = new RetentionWorker(); // no parent — owned by retentionThread
-    auto *retentionThread = new QThread(&app);
+    auto *retentionWorker = new RetentionWorker(); // no parent — self-deleting on thread finished
+    auto *retentionThread = new QThread();          // no parent — abandon if hung on quit
     retentionWorker->moveToThread(retentionThread);
     QObject::connect(retentionThread, &QThread::finished, retentionWorker, &QObject::deleteLater);
+    QObject::connect(retentionThread, &QThread::finished, retentionThread, &QObject::deleteLater);
     QObject::connect(retentionThread, &QThread::started, retentionWorker, &RetentionWorker::start);
     retentionThread->start();
 
@@ -220,6 +232,11 @@ int main(int argc, char *argv[]) {
         reportCtrl->applyServerConfig();
     };
     QObject::connect(settingsCtrl, &SettingsController::configSaved, &app, applyConfig);
+    // Nếu user tắt serverActive ngay trong Settings (trước khi Save), vẫn stop upload
+    QObject::connect(settingsCtrl, &SettingsController::serverActiveChanged, &app, [&]() {
+        if (!settingsCtrl->config().serverActive)
+            reportCtrl->applyServerConfig();
+    });
 
     // Also react to config changes coming from the REST API so that the
     // in-memory SettingsController stays in sync with the DB.
