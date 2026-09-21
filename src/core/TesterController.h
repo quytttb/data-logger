@@ -1,5 +1,6 @@
 #pragma once
 #include <QObject>
+#include <QPointer>
 #include <QThread>
 #include <QString>
 #include <QStringList>
@@ -8,6 +9,7 @@
 #include "utils/qml/QmlSingleton.h"
 
 class TesterWorker;
+class MonitorController;
 
 // QML-facing singleton that forwards invokable calls to TesterWorker (which
 // runs on a dedicated thread) and exposes state properties back to QML.
@@ -38,6 +40,11 @@ public:
 
 public slots:
     Q_INVOKABLE void connectSerial(const QString &port, int baudrate,
+                                    int bytesize, const QString &parity, int stopbits);
+    // Tester steals the RS-485 port: pause monitoring first (if running or
+    // retrying) and connect once it is fully idle — no QML polling loop.
+    Q_INVOKABLE void connectWithMonitorPause(MonitorController *monitor,
+                                    const QString &port, int baudrate,
                                     int bytesize, const QString &parity, int stopbits);
     Q_INVOKABLE void disconnectSerial();
     Q_INVOKABLE void refresh_ports();
@@ -86,6 +93,8 @@ private slots:
     void onScanResultByAddress(int address, const QString &value);
     void onScanProgressUpdated(int current, int total);
     void onScanFinished();
+    void tryPendingConnect();
+    void resumeMonitorIfNeeded();
 
 private:
     void setScanning(bool v);
@@ -102,4 +111,15 @@ private:
     bool    m_stopping    = false;
     QString m_statusText  = "Disconnected";
     QStringList m_availablePorts;
+
+    // Connect-with-monitor-pause coordination (tester owns the serial port
+    // while connected; monitoring resumes on disconnect/connection failure).
+    QPointer<MonitorController> m_monitor;
+    bool      m_monitorWasRunning = false;
+    bool      m_waitingConnect    = false;
+    QString   m_pendingPort;
+    int       m_pendingBaudrate = 0;
+    int       m_pendingBytesize = 0;
+    QString   m_pendingParity;
+    int       m_pendingStopbits = 0;
 };

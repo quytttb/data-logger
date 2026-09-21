@@ -135,6 +135,56 @@ void TesterController::connectSerial(const QString &port, int baudrate,
                               Q_ARG(int, stopbits));
 }
 
+void TesterController::connectWithMonitorPause(MonitorController *monitor,
+                                               const QString &port, int baudrate,
+                                               int bytesize, const QString &parity,
+                                               int stopbits) {
+    m_monitor = monitor;
+    if (!monitor || (!monitor->isPolling() && !monitor->isRetrying())) {
+        connectSerial(port, baudrate, bytesize, parity, stopbits);
+        return;
+    }
+
+    // Tester steals the RS-485 port: pause monitoring (cancels retry) and
+    // connect once the worker threads are fully stopped. Waiting is
+    // signal-driven (tryPendingConnect) — never a busy/poll loop.
+    m_monitorWasRunning = true;
+    m_waitingConnect   = true;
+    m_pendingPort      = port;
+    m_pendingBaudrate  = baudrate;
+    m_pendingBytesize  = bytesize;
+    m_pendingParity    = parity;
+    m_pendingStopbits  = stopbits;
+
+    if (!monitor->isStopping())
+        monitor->stopPolling();
+
+    connect(monitor, &MonitorController::pollingChanged,
+            this, &TesterController::tryPendingConnect, Qt::UniqueConnection);
+    connect(monitor, &MonitorController::retryStateChanged,
+            this, &TesterController::tryPendingConnect, Qt::UniqueConnection);
+    tryPendingConnect(); // in case stopPolling finished synchronously
+}
+
+void TesterController::tryPendingConnect()
+{
+    if (!m_waitingConnect || !m_monitor)
+        return;
+    if (m_monitor->isPolling() || m_monitor->isRetrying() || m_monitor->isStopping())
+        return; // monitor still shutting down — keep waiting
+    m_waitingConnect = false;
+    connectSerial(m_pendingPort, m_pendingBaudrate, m_pendingBytesize,
+                  m_pendingParity, m_pendingStopbits);
+}
+
+void TesterController::resumeMonitorIfNeeded()
+{
+    if (!m_monitorWasRunning || !m_monitor)
+        return;
+    m_monitorWasRunning = false;
+    m_monitor->startPolling();
+}
+
 void TesterController::disconnectSerial() {
     QMetaObject::invokeMethod(m_worker, "doDisconnect", Qt::QueuedConnection);
 }
@@ -218,6 +268,10 @@ void TesterController::onConnectionResult(bool connected, const QString &statusT
     setStatus(statusText);
     setConnecting(false);
     emit connectionChanged();
+    // Disconnected (user action) or the fall-in connect failed: the RS-485
+    // port is free again — hand it back to monitoring if the tester paused it.
+    if (!connected)
+        resumeMonitorIfNeeded();
 }
 
 void TesterController::onReadCompleted(const QVariantMap &result) {

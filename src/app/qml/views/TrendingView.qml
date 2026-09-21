@@ -96,7 +96,10 @@ Rectangle {
 
                     series.append(x, y)
 
-                    let cutoff = x - MonitorController.trendWindowMs
+                    // Trim horizon comes from the C++ trend buffers
+                    // (MonitorController.trendXMin) — QML never recomputes the
+                    // trendWindowMs math itself.
+                    let cutoff = MonitorController.trendXMin
                     for (let key in chartHolder.seriesMap) {
                         let s = chartHolder.seriesMap[key]
                         while (s.count > 0 && s.at(0).x < cutoff)

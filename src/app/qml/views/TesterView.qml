@@ -44,45 +44,20 @@ Item {
 
     function connectOrDisconnect() {
         if (TesterController.isConnected) {
-            // Disconnect: disconnect tester, then restart monitor if it was running before
+            // Disconnect: TesterController hands the serial port back to
+            // monitoring if the tester had paused it.
             TesterController.disconnectSerial()
-            if (testerRoot._monitorWasRunning) {
-                MonitorController.startPolling()
-                testerRoot._monitorWasRunning = false
-            }
         } else {
-            // Connect: stop monitor first (if running or retrying), then connect tester
-            if (MonitorController.isPolling || MonitorController.isRetrying) {
-                testerRoot._monitorWasRunning = true
-                MonitorController.stopPolling()
-                // Wait for monitor to stop before connecting
-                testerRoot._waitForMonitorStop()
-            } else {
-                testerRoot._monitorWasRunning = false
-                TesterController.connectSerial(
-                    SettingsController.serialPort,
-                    SettingsController.serialBaudrate,
-                    SettingsController.serialBytesize,
-                    SettingsController.serialParity,
-                    SettingsController.serialStopbits
-                )
-            }
-        }
-    }
-
-    property bool _monitorWasRunning: false
-
-    function _waitForMonitorStop() {
-        if (!MonitorController.isPolling && !MonitorController.isStopping) {
-            TesterController.connectSerial(
+            // Connect: pause monitoring first (if running or retrying), then
+            // connect once it is fully idle — handled inside TesterController.
+            TesterController.connectWithMonitorPause(
+                MonitorController,
                 SettingsController.serialPort,
                 SettingsController.serialBaudrate,
                 SettingsController.serialBytesize,
                 SettingsController.serialParity,
                 SettingsController.serialStopbits
             )
-        } else {
-            Qt.callLater(testerRoot._waitForMonitorStop)
         }
     }
 
