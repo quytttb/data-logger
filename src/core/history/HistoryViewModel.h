@@ -5,6 +5,7 @@
 #include <QVariantList>
 #include <QUrl>
 #include <QFutureWatcher>
+#include <QTimer>
 #include <QtQmlIntegration/qqmlintegration.h>
 #include "core/history/HistoryTableModel.h"
 #include "utils/qml/QmlSingleton.h"
@@ -71,6 +72,11 @@ private slots:
     void onFiltersFinished();
 
 private:
+    // Đổ 1 batch rows vào model rồi hẹn batch tiếp qua event loop — mỗi batch
+    // chỉ vài ms, UI kịp repaint + BusyIndicator quay, không khựng như setRows
+    // 1 lần 2000 rows. gen để hủy chuỗi cũ khi có search mới/clear.
+    void pushChunk(int gen);
+    static constexpr int kChunkRows = 500;
     static QDateTime parseDateString(const QString &s, bool endOfDay);
     void setLoading(bool v);
     void setFiltersLoading(bool v);
@@ -86,6 +92,8 @@ private:
     QStringList  m_sensorNames{QStringLiteral("All sensors")};
     QVariantList m_sensorIds{0};
     int          m_searchGen = 0;
+    int          m_chunkGen = 0;
+    QList<HistoryRow> m_pendingRows;
     bool         m_hasPending = false;
     QString      m_pendingFromDate;
     QString      m_pendingToDate;

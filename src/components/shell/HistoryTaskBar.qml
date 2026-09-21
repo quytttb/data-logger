@@ -40,7 +40,7 @@ Item {
 
         DateField {
             id: fromField
-            Layout.preferredWidth: 118
+            Layout.preferredWidth: 150
             Layout.preferredHeight: 40
             initialDate: {
                 const d = new Date()
@@ -58,7 +58,7 @@ Item {
 
         DateField {
             id: toField
-            Layout.preferredWidth: 118
+            Layout.preferredWidth: 150
             Layout.preferredHeight: 40
             initialDate: new Date()
         }
@@ -75,6 +75,7 @@ Item {
 
         AppButton {
             iconName: "magnify"
+            iconOnly: true
             enabled: !HistoryViewModel.isLoading && SensorListModel.count > 0
             onClicked: root.doSearch()
             Layout.alignment: Qt.AlignVCenter
@@ -82,6 +83,7 @@ Item {
 
         AppButton {
             iconName: "refresh"
+            iconOnly: true
             iconSpinning: HistoryViewModel.isLoading
             enabled: !HistoryViewModel.isLoading && SensorListModel.count > 0
             onClicked: root.doSearch()

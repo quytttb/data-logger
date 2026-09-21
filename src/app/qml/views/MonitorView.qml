@@ -291,9 +291,9 @@ Rectangle {
                     spacing: AppTheme.spacingM
 
                     Label { text: qsTr("Sensor"); font.bold: true; color: AppColors.onSurfaceVariant; Layout.preferredWidth: parent.width * 0.35 }
-                    Label { text: qsTr("Value"); font.bold: true; color: AppColors.onSurfaceVariant; horizontalAlignment: Text.AlignRight; Layout.preferredWidth: parent.width * 0.20 }
+                    Label { text: qsTr("Value"); font.bold: true; color: AppColors.onSurfaceVariant; horizontalAlignment: Text.AlignRight; Layout.preferredWidth: parent.width * 0.26 }
                     Label { text: qsTr("Unit"); font.bold: true; color: AppColors.onSurfaceVariant; horizontalAlignment: Text.AlignHCenter; Layout.preferredWidth: parent.width * 0.15 }
-                    Label { text: qsTr("Status"); font.bold: true; color: AppColors.onSurfaceVariant; horizontalAlignment: Text.AlignHCenter; Layout.preferredWidth: parent.width * 0.30 }
+                    Label { text: qsTr("Status"); font.bold: true; color: AppColors.onSurfaceVariant; horizontalAlignment: Text.AlignHCenter; Layout.preferredWidth: parent.width * 0.24 }
                 }
             }
 
@@ -371,7 +371,8 @@ Rectangle {
                         font.pixelSize: AppTypography.titleMedium.pixelSize
                         font.bold: true
                         horizontalAlignment: Text.AlignRight
-                        Layout.preferredWidth: parent.width * 0.20
+                        elide: Text.ElideRight
+                        Layout.preferredWidth: parent.width * 0.26
                     }
                     Label {
                         text: sensorRow.isAnalog ? sensorRow.unit : ""
@@ -386,7 +387,8 @@ Rectangle {
                             : (sensorRow.isAnalog && sensorRow.isAlarm
                                ? (sensorRow.alarmType === "min" ? qsTr("MIN alarm") : qsTr("MAX alarm"))
                                : (sensorRow.isDI || sensorRow.isDO ? (sensorRow.isOn ? qsTr("Active") : qsTr("Inactive")) : qsTr("No status")))
-                        Layout.preferredWidth: parent.width * 0.30
+                        Layout.preferredWidth: parent.width * 0.24
+                        Layout.maximumWidth: 200
                         Layout.preferredHeight: 28
                         radius: AppTheme.radiusTiny
                         color: sensorRow.isAlarm ? AppColors.error : AppColors.withAlpha(sensorRow.stateColor, 0.2)

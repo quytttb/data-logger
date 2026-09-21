@@ -90,6 +90,7 @@ Rectangle {
             hasData: SensorListModel.count > 0
             colWeights: [0.17, 0.08, 0.07, 0.07, 0.08, 0.10, 0.09, 0.07, 0.22, 0.05]
             colMinimums: [120, 50, 45, 45, 50, 65, 55, 45, 100, 50]
+            headerAlignCenter: function(col) { return col >= 2 }
             emptyMessage: qsTr("No sensors yet.\nClick [+ Add sensor] to create one.")
             emptyIconName: "chip"
 
@@ -130,7 +131,8 @@ Rectangle {
                     text: cell.column === 9 ? "" : String(cell.display)
                     color: cell.column === 0 ? AppColors.primaryText : AppColors.tableCellMuted
                     font.pixelSize: AppTypography.bodyMedium.pixelSize
-                    font.family: (cell.column === 2 || cell.column === 3) ? AppTypography.monoFamily : ""
+                    font.family: (cell.column === 2 || cell.column === 3) ? AppTypography.monoFamily
+                               : AppTypography.bodyMedium.family
                     font.weight: cell.column === 0 ? Font.DemiBold : Font.Normal
                     horizontalAlignment: (cell.column >= 2 && cell.column <= 8) ? Text.AlignHCenter : Text.AlignLeft
                     verticalAlignment: Text.AlignVCenter

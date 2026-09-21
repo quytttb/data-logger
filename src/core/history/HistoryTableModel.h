@@ -22,6 +22,9 @@ public:
     QHash<int, QByteArray> roleNames() const override;
 
     void setRows(const QList<HistoryRow> &rows);
+    // Nạp thêm rows theo batch (beginInsertRows) — HistoryViewModel đổ kết quả
+    // search theo từng chunk 500 để UI thread kịp repaint giữa các batch.
+    void appendRows(const QList<HistoryRow> &rows);
     const QList<HistoryRow> &rows() const { return m_rows; }
 
 signals:

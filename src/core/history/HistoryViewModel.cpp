@@ -122,6 +122,7 @@ void HistoryViewModel::search(const QString &fromDate, const QString &toDate, in
     }
     setLoading(true);
     m_searchGen++;
+    m_chunkGen++; // hủy chuỗi chunk cũ (nếu search chồng lên nhau)
     const int gen = m_searchGen;
     m_watcher->setFuture(QtConcurrent::run([sensorId, from, to, gen]() -> HistorySearchResult {
         HistorySearchResult result;
@@ -178,14 +179,44 @@ void HistoryViewModel::onSearchFinished()
         emit messageSent(QStringLiteral("History"), result.error);
         return;
     }
-    m_model.setRows(result.rows);
-    m_searchedOnce = true;
-    emit searchedOnceChanged();
+    // Đổ rows theo từng batch 500 qua event loop thay vì setRows 1 lần 2000 rows:
+    // mỗi batch chỉ vài ms, overlay loading vẫn hiện + BusyIndicator quay mượt.
+    m_chunkGen++;
+    m_pendingRows = result.rows;
+    m_model.setRows({});
     emit recordCountChanged();
+    if (m_pendingRows.isEmpty()) {
+        m_searchedOnce = true;
+        emit searchedOnceChanged();
+        return;
+    }
+    setLoading(true);
+    const int chunkGen = m_chunkGen;
+    QTimer::singleShot(0, this, [this, chunkGen]() { pushChunk(chunkGen); });
+}
+
+void HistoryViewModel::pushChunk(int gen)
+{
+    if (gen != m_chunkGen)
+        return; // search mới/clear đã hủy chuỗi này
+    if (m_pendingRows.isEmpty()) {
+        setLoading(false);
+        m_searchedOnce = true;
+        emit searchedOnceChanged();
+        emit recordCountChanged();
+        return;
+    }
+    const auto chunk = m_pendingRows.mid(0, kChunkRows);
+    m_pendingRows = m_pendingRows.mid(chunk.size());
+    m_model.appendRows(chunk);
+    emit recordCountChanged();
+    QTimer::singleShot(0, this, [this, gen]() { pushChunk(gen); });
 }
 
 void HistoryViewModel::clear()
 {
+    m_chunkGen++; // hủy chuỗi chunk đang chạy (nếu có)
+    m_pendingRows.clear();
     m_model.setRows({});
     emit recordCountChanged();
 }

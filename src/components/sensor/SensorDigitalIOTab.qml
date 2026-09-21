@@ -22,7 +22,9 @@ ElevatedPane {
     property var doSensors: []
 
     function sensorOptionLabel(s) {
-        return s.name + " (Slave " + s.slaveId + "; Addr " + s.address + ")"
+        // 2 dòng: dòng 1 = tên sensor, dòng 2 = (Slave; Addr) — tên dài sẽ được
+        // popup ComboBox bọc xuống dòng 2 thay vì bị cắt mất phần Slave/Addr.
+        return s.name + "\n(Slave " + s.slaveId + "; Addr " + s.address + ")"
     }
 
     function diTypeName(code) {
@@ -284,6 +286,39 @@ ElevatedPane {
                             id: diSensorCombo
                             Layout.fillWidth: true
                             model: root.diSensors.map(function(s) { return root.sensorOptionLabel(s) })
+                            // Nút đóng chỉ hiện tên (dòng 1); popup hiện đủ 2 dòng
+                            // "Tên sensor" + "(Slave N; Addr M)" để không khuất Slave/Addr.
+                            contentItem: Label {
+                                text: diSensorCombo.displayText.split("\n")[0]
+                                elide: Text.ElideRight
+                                verticalAlignment: Text.AlignVCenter
+                                rightPadding: 28
+                            }
+                            delegate: ItemDelegate {
+                                id: diSensorOpt
+                                required property string modelData
+                                required property int index
+                                width: diSensorCombo.width
+                                contentItem: Column {
+                                    width: diSensorOpt.width - diSensorOpt.leftPadding - diSensorOpt.rightPadding
+                                    spacing: 0
+                                    Label {
+                                        width: parent.width
+                                        text: diSensorOpt.modelData.split("\n")[0]
+                                        elide: Text.ElideRight
+                                    }
+                                    Label {
+                                        width: parent.width
+                                        text: (function() {
+                                            var p = diSensorOpt.modelData.split("\n")
+                                            return p.length > 1 ? p[1] : ""
+                                        })()
+                                        font: AppTypography.labelSmall
+                                        color: AppColors.onSurfaceVariant
+                                        elide: Text.ElideRight
+                                    }
+                                }
+                            }
                         }
 
                         Text { text: qsTr("Status code:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize }
@@ -336,6 +371,39 @@ ElevatedPane {
                             id: doSensorCombo
                             Layout.fillWidth: true
                             model: root.doSensors.map(function(s) { return root.sensorOptionLabel(s) })
+                            // Nút đóng chỉ hiện tên (dòng 1); popup hiện đủ 2 dòng
+                            // "Tên sensor" + "(Slave N; Addr M)" để không khuất Slave/Addr.
+                            contentItem: Label {
+                                text: doSensorCombo.displayText.split("\n")[0]
+                                elide: Text.ElideRight
+                                verticalAlignment: Text.AlignVCenter
+                                rightPadding: 28
+                            }
+                            delegate: ItemDelegate {
+                                id: doSensorOpt
+                                required property string modelData
+                                required property int index
+                                width: doSensorCombo.width
+                                contentItem: Column {
+                                    width: doSensorOpt.width - doSensorOpt.leftPadding - doSensorOpt.rightPadding
+                                    spacing: 0
+                                    Label {
+                                        width: parent.width
+                                        text: doSensorOpt.modelData.split("\n")[0]
+                                        elide: Text.ElideRight
+                                    }
+                                    Label {
+                                        width: parent.width
+                                        text: (function() {
+                                            var p = doSensorOpt.modelData.split("\n")
+                                            return p.length > 1 ? p[1] : ""
+                                        })()
+                                        font: AppTypography.labelSmall
+                                        color: AppColors.onSurfaceVariant
+                                        elide: Text.ElideRight
+                                    }
+                                }
+                            }
                         }
 
                         RowLayout {
@@ -365,7 +433,7 @@ ElevatedPane {
         ColumnLayout {
             Layout.fillHeight: true
             Layout.fillWidth: true
-            Layout.preferredWidth: 1
+            Layout.preferredWidth: 1.8
             spacing: 8
 
             RowLayout {
@@ -391,6 +459,7 @@ ElevatedPane {
                 reuseItems: true
                 colWeights: [0.12, 0.38, 0.25, 0.25]
                 colMinimums: [50, 120, 90, 110]
+                headerAlignCenter: function(col) { return col === 0 }
                 emptyMessage: qsTr("No digital sensors attached.\nSelect DI or DO on the left to attach.")
 
                 delegate: Rectangle {

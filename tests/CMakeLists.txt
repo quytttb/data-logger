@@ -166,3 +166,16 @@ target_link_libraries(json_table_model_test PRIVATE
 )
 add_test(NAME json_table_model_test COMMAND json_table_model_test)
 
+# QTest: HistoryTableModel — setRows thay thế + appendRows nạp theo chunk.
+add_executable(history_table_model_test history_table_model_test.cpp)
+target_include_directories(history_table_model_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/src
+    ${CMAKE_SOURCE_DIR}/src/core
+)
+target_link_libraries(history_table_model_test PRIVATE
+    Qt6::Core
+    Qt6::Test
+    datalogger_core
+)
+add_test(NAME history_table_model_test COMMAND history_table_model_test)
+

@@ -51,3 +51,13 @@ void HistoryTableModel::setRows(const QList<HistoryRow> &rows) {
     endResetModel();
     emit countChanged();
 }
+
+void HistoryTableModel::appendRows(const QList<HistoryRow> &rows) {
+    if (rows.isEmpty())
+        return;
+    const int first = m_rows.size();
+    beginInsertRows({}, first, first + rows.size() - 1);
+    m_rows.append(rows);
+    endInsertRows();
+    emit countChanged();
+}
