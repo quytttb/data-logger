@@ -45,6 +45,7 @@ private:
     QMutex   m_mutex;
     bool     m_running = false;
     QString  m_spillPath;
+    int      m_spilledCount = 0; // số record từ spill file chưa được ack ghi DB
 
     static constexpr int kFlushIntervalMs = 1000;
     static constexpr int kMaxQueueSize    = 10000;
