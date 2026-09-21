@@ -18,5 +18,6 @@ QString SensorSymbols::displayLabel(const QString &sensorSymbol, const QString &
         return name;
     if (name.trimmed().isEmpty())
         return sym;
-    return sym + QStringLiteral(" - ") + name;
+    // Tên đầy đủ hiển thị: Symbol_Tên (dùng ở Monitor + bảng Sensors).
+    return sym + QStringLiteral("_") + name;
 }

@@ -25,7 +25,7 @@ For each active ANALOG sensor with `transmit_enabled`, five columns repeat:
 ## Sensor UI
 
 - ComboBox **Ký hiệu cảm biến** on add/edit (ANALOG only); suggestions from `SensorSymbols.symbols` (Bảng 34)
-- Display label: `sensorSymbol - name` in Settings table and Monitor cards
+- Display label: `sensorSymbol_name` in Settings table and Monitor cards
 - **Thông số truyền** tab: choose sensors, edit `sensorSymbol`, toggle `transmit_enabled`
 
 ## Status codes

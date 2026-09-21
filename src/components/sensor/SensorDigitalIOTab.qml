@@ -286,40 +286,13 @@ ElevatedPane {
                             id: diSensorCombo
                             Layout.fillWidth: true
                             model: root.diSensors.map(function(s) { return root.sensorOptionLabel(s) })
-                            // Nút đóng chỉ hiện tên (dòng 1); popup hiện đủ 2 dòng
-                            // "Tên sensor" + "(Slave N; Addr M)" để không khuất Slave/Addr.
+                            // Không custom delegate: popup mặc định tự xuống dòng ở "\n"
+                            // (tên dòng 1, Slave/Addr dòng 2). Nút đóng chỉ hiện tên.
                             contentItem: Label {
                                 text: diSensorCombo.displayText.split("\n")[0]
                                 elide: Text.ElideRight
                                 verticalAlignment: Text.AlignVCenter
                                 rightPadding: 28
-                            }
-                            delegate: ItemDelegate {
-                                id: diSensorOpt
-                                required property string modelData
-                                required property int index
-                                width: diSensorCombo.width
-                                contentItem: Column {
-                                    width: diSensorOpt.width - diSensorOpt.leftPadding - diSensorOpt.rightPadding
-                                    spacing: 0
-                                    Label {
-                                        width: parent.width
-                                        text: diSensorOpt.modelData.split("\n")[0]
-                                        elide: Text.ElideRight
-                                        leftPadding: 8
-                                    }
-                                    Label {
-                                        width: parent.width
-                                        text: (function() {
-                                            var p = diSensorOpt.modelData.split("\n")
-                                            return p.length > 1 ? p[1] : ""
-                                        })()
-                                        font: AppTypography.labelSmall
-                                        color: AppColors.onSurfaceVariant
-                                        elide: Text.ElideRight
-                                        leftPadding: 8
-                                    }
-                                }
                             }
                         }
 
@@ -373,40 +346,13 @@ ElevatedPane {
                             id: doSensorCombo
                             Layout.fillWidth: true
                             model: root.doSensors.map(function(s) { return root.sensorOptionLabel(s) })
-                            // Nút đóng chỉ hiện tên (dòng 1); popup hiện đủ 2 dòng
-                            // "Tên sensor" + "(Slave N; Addr M)" để không khuất Slave/Addr.
+                            // Không custom delegate: popup mặc định tự xuống dòng ở "\n"
+                            // (tên dòng 1, Slave/Addr dòng 2). Nút đóng chỉ hiện tên.
                             contentItem: Label {
                                 text: doSensorCombo.displayText.split("\n")[0]
                                 elide: Text.ElideRight
                                 verticalAlignment: Text.AlignVCenter
                                 rightPadding: 28
-                            }
-                            delegate: ItemDelegate {
-                                id: doSensorOpt
-                                required property string modelData
-                                required property int index
-                                width: doSensorCombo.width
-                                contentItem: Column {
-                                    width: doSensorOpt.width - doSensorOpt.leftPadding - doSensorOpt.rightPadding
-                                    spacing: 0
-                                    Label {
-                                        width: parent.width
-                                        text: doSensorOpt.modelData.split("\n")[0]
-                                        elide: Text.ElideRight
-                                        leftPadding: 8
-                                    }
-                                    Label {
-                                        width: parent.width
-                                        text: (function() {
-                                            var p = doSensorOpt.modelData.split("\n")
-                                            return p.length > 1 ? p[1] : ""
-                                        })()
-                                        font: AppTypography.labelSmall
-                                        color: AppColors.onSurfaceVariant
-                                        elide: Text.ElideRight
-                                        leftPadding: 8
-                                    }
-                                }
                             }
                         }
 

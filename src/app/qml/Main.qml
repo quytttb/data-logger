@@ -79,7 +79,11 @@ ApplicationWindow {
                 onRestartRequested: rebootConfirm.showConfirm(
                     qsTr("Confirm reboot"),
                     qsTr("Reboot this device now? The application will start again automatically after boot."),
-                    function() { SettingsController.rebootSystem() },
+                    function() {
+                        // Hiện splash logo 4M 1s trước khi reboot để che log tắt máy.
+                        shutdownSplash.visible = true
+                        shutdownTimer.restart()
+                    },
                     qsTr("Reboot"),
                     AppColors.error)
             }
@@ -247,5 +251,21 @@ ApplicationWindow {
     Splash {
         anchors.fill: parent
         z: 1000
+    }
+
+    // Shutdown splash: hiện logo 4M 1s trước khi reboot (che log systemd).
+    Splash {
+        id: shutdownSplash
+        anchors.fill: parent
+        z: 1001
+        autoHide: false
+        statusText: qsTr("Shutting down…")
+    }
+
+    Timer {
+        id: shutdownTimer
+        interval: 1000
+        repeat: false
+        onTriggered: SettingsController.rebootSystem()
     }
 }

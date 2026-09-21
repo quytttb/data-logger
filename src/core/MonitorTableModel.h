@@ -54,9 +54,15 @@ signals:
 
 private slots:
     void rebuild();
+    // Cập nhật đúng dòng đổi (không reset) — TableView giữ delegate, hết flicker
+    // badge mỗi poll. Chỉ rebuild toàn bộ khi cấu trúc đổi.
+    void onSourceDataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight);
 
 private:
+    QVariantMap readRow(int srcRow) const;
+    static bool rowVisible(const QString &sensorType, bool showDigitalIO);
     QAbstractItemModel *m_source = nullptr;
     bool m_showDigitalIO = true;
     QList<QVariantMap> m_rows; // displayName/value/unit/sensorType/isAlarm/alarmType/diStates
+    QVector<int> m_srcRows;    // dòng source tương ứng từng dòng proxy (per-row update)
 };

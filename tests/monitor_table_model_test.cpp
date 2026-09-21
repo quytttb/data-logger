@@ -73,14 +73,18 @@ void MonitorTableModelTest::liveUpdate()
 
     MonitorTableModel m;
     QSignalSpy countSpy(&m, &MonitorTableModel::countChanged);
+    QSignalSpy resetSpy(&m, &QAbstractItemModel::modelReset);
     m.setSourceModel(&source);
     QCOMPARE(countSpy.count(), 1);
+    resetSpy.clear(); // bỏ qua reset của lần rebuild ban đầu
 
     // Poll update từ source phải phản chiếu sang table (rebuild đồng bộ).
     source.updateValue(1, 25.5, 2550, QStringLiteral("2026-09-21T10:00:00"),
                        false, {}, {});
     QCOMPARE(m.data(m.index(0, 0), MonitorTableModel::ValueRole).toString(),
              QString("25.50"));
+    // Poll chỉ dataChanged per-row, KHÔNG reset model (chống flicker badge).
+    QCOMPARE(resetSpy.count(), 0);
 
     // Alarm lan sang table.
     source.updateValue(1, 99.9, 9990, QStringLiteral("2026-09-21T10:01:00"),
@@ -93,7 +97,9 @@ void MonitorTableModelTest::liveUpdate()
     source.loadSensors({sensorMap(1, QStringLiteral("T1"), QStringLiteral("ANALOG")),
                         sensorMap(4, QStringLiteral("T2"), QStringLiteral("ANALOG"))});
     QCOMPARE(m.rowCount(), 2);
-    QVERIFY(countSpy.count() >= 3);
+    // setSourceModel + loadSensors: 2 lần countChanged. Poll per-row không
+    // emit countChanged (số dòng không đổi) — đúng, tránh TableView relayout.
+    QCOMPARE(countSpy.count(), 2);
 }
 
 QTEST_MAIN(MonitorTableModelTest)

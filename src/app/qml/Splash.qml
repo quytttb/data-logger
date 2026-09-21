@@ -10,9 +10,14 @@ import LoggerKit.Theme
 // LƯU Ý eglfs: chỉ 1 OpenGL window duy nhất nên splash PHẢI là overlay trong
 // Main (không dùng engine/window thứ 2 — sẽ FATAL crash).
 // Tự ẩn sau 900ms kể từ lúc tạo (đủ cho first paint + startPolling).
+// Chế độ shutdown (autoHide=false): hiện logo 4M + "Shutting down…" 1s
+// trước khi reboot, che log systemd lúc tắt máy. C++ / QML điều khiển
+// visible thủ công ở chế độ này.
 Item {
     id: splashRoot
-    visible: true
+    property bool autoHide: true
+    property string statusText: qsTr("Starting…")
+    visible: autoHide
 
     Rectangle {
         anchors.fill: parent
@@ -46,7 +51,7 @@ Item {
 
         Text {
             anchors.horizontalCenter: parent.horizontalCenter
-            text: qsTr("Starting…")
+            text: splashRoot.statusText
             color: AppColors.onSurfaceVariant
             font: AppTypography.bodyMedium
         }
@@ -54,7 +59,7 @@ Item {
 
     Timer {
         interval: 900
-        running: true
+        running: splashRoot.autoHide
         repeat: false
         onTriggered: splashRoot.visible = false
     }
