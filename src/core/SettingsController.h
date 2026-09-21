@@ -21,6 +21,9 @@ class SettingsController : public QObject {
     Q_PROPERTY(QString timeFormat    READ timeFormat    WRITE setTimeFormat    NOTIFY configLoaded)
     Q_PROPERTY(QString dateFormat    READ dateFormat    WRITE setDateFormat    NOTIFY configLoaded)
     Q_PROPERTY(QString timezone      READ timezone      WRITE setTimezone      NOTIFY configLoaded)
+    // UI language (vi/en) — stored in app_config.ui_locale, applied at boot
+    // via QLocale::setDefault(); Vietnam-only kiosk, default "vi".
+    Q_PROPERTY(QString uiLocale      READ uiLocale      WRITE setUiLocale      NOTIFY configLoaded)
     Q_PROPERTY(bool   buzzerEnable   READ buzzerEnable  WRITE setBuzzerEnable  NOTIFY configLoaded)
 
     // FTP
@@ -84,6 +87,7 @@ public:
     QString timeFormat()    const { return m_cfg.timeFormat; }
     QString dateFormat()    const { return m_cfg.dateFormat; }
     QString timezone()      const { return m_cfg.timezone; }
+    QString uiLocale()      const { return m_cfg.uiLocale; }
     bool   buzzerEnable()   const { return m_cfg.buzzerEnable; }
     QString ftpAddress()    const { return m_cfg.ftpAddress; }
     int    ftpPort()        const { return m_cfg.ftpPort; }
@@ -127,6 +131,7 @@ public:
     void setTimeFormat(const QString &v)    { m_cfg.timeFormat = v; }
     void setDateFormat(const QString &v)    { m_cfg.dateFormat = v; }
     void setTimezone(const QString &v)      { m_cfg.timezone = v; }
+    void setUiLocale(const QString &v)      { m_cfg.uiLocale = v; }
     void setBuzzerEnable(bool v)            { m_cfg.buzzerEnable = v; }
     void setFtpAddress(const QString &v)    { m_cfg.ftpAddress = v; }
     void setFtpPort(int v)                  { m_cfg.ftpPort = v; }
@@ -179,6 +184,11 @@ public slots:
     // Reboot the host machine (kiosk has no exit button). Relies on a polkit rule
     // shipped in the package so the unprivileged kiosk user may reboot.
     Q_INVOKABLE void rebootSystem();
+
+    // Boot-time system date/time sync (kiosk has no OS settings UI):
+    // defaults the zone to Asia/Ho_Chi_Minh (Vietnam) and pushes timezone +
+    // NTP to the OS. Called from main.cpp after config load.
+    Q_INVOKABLE void syncSystemTime();
 
 signals:
     void configLoaded();

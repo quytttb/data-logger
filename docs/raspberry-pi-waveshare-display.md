@@ -41,6 +41,20 @@ drm.edid_firmware=HDMI-A-1:edid/waveshare-1024x600.bin,HDMI-A-2:edid/waveshare-1
 
 3. Reboot.
 
+> **Kiosk privacy (tuỳ chọn khuyến nghị):** để không lộ thông tin hệ thống trên
+> màn hình trong lúc boot (kernel log, mount, login prompt...), thêm tiếp vào
+> `/boot/firmware/cmdline.txt`:
+>
+> ```
+> quiet logo.nologo consoleblank=0
+> ```
+>
+> - `quiet` chặn hầu hết kernel/driver log; `logo.nologo` bỏ splash logo.
+> - App vẫn tự chạy fullscreen sau boot (service `datalogger.service`, EGLFS);
+>   màn hình chỉ đọc được khi ứng dụng đã vẽ.
+
+### Kiểm tra
+
 ### Kiểm tra
 
 ```bash

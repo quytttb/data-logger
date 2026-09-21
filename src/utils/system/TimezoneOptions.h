@@ -42,6 +42,8 @@ inline QList<QPair<QString, QString>> entries()
         {QStringLiteral("UTC+5:30"), QStringLiteral("Asia/Kolkata")},
         {QStringLiteral("UTC+6"),  QStringLiteral("Etc/GMT-6")},
         {QStringLiteral("UTC+7"),  QStringLiteral("Etc/GMT-7")},
+        // Vietnam (edge is a VN-only kiosk): named zone, timedatectl-safe, no DST.
+        {QStringLiteral("Ho Chi Minh (UTC+7)"), QStringLiteral("Asia/Ho_Chi_Minh")},
         {QStringLiteral("UTC+8"),  QStringLiteral("Etc/GMT-8")},
         {QStringLiteral("UTC+9"),  QStringLiteral("Etc/GMT-9")},
         {QStringLiteral("UTC+10"), QStringLiteral("Etc/GMT-10")},

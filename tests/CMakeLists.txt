@@ -142,6 +142,16 @@ target_link_libraries(monitor_retry_test PRIVATE
 )
 add_test(NAME monitor_retry_test COMMAND monitor_retry_test)
 
+# QTest: LocaleOptions — vi/en UI locale list (single source of truth).
+add_executable(locale_options_test locale_options_test.cpp)
+target_include_directories(locale_options_test PRIVATE ${CMAKE_SOURCE_DIR}/src)
+target_link_libraries(locale_options_test PRIVATE
+    Qt6::Core
+    Qt6::Test
+    utils
+)
+add_test(NAME locale_options_test COMMAND locale_options_test)
+
 # QTest: JsonTableModel — multi-column bridge for AppTableView.
 add_executable(json_table_model_test json_table_model_test.cpp)
 target_include_directories(json_table_model_test PRIVATE

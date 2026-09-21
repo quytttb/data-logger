@@ -125,12 +125,29 @@ bool SettingsController::runTimedatectl(const QStringList &args) {
 bool SettingsController::applyTimeSettings() {
     // m_cfg.timezone already stores an IANA zone id (e.g. "Etc/GMT-7") that
     // timedatectl accepts directly — see SettingsGeneralTab.qml combo box.
-    const QString zone = m_cfg.timezone.trimmed();
-    if (zone.isEmpty()) {
-        qWarning() << "[SettingsController] Empty timezone; skipping set-timezone";
-        return false;
+    // Empty falls back to Vietnam (the edge is a VN-only kiosk).
+    QString zone = m_cfg.timezone.trimmed();
+    if (zone.isEmpty())
+        zone = QStringLiteral("Asia/Ho_Chi_Minh");
+    const bool ok = runTimedatectl({QStringLiteral("set-timezone"), zone});
+    // Enable systemd-timesyncd so the clock self-corrects once internet is
+    // available — no in-app network code needed.
+    runTimedatectl({QStringLiteral("set-ntp"), QStringLiteral("true")});
+    return ok;
+}
+
+void SettingsController::syncSystemTime()
+{
+    // Boot-time sync (kiosk: no OS UI to configure date/time). Zone defaults
+    // to Asia/Ho_Chi_Minh and is persisted, then applied to the OS.
+    if (m_cfg.timezone.trimmed().isEmpty()) {
+        m_cfg.timezone = QStringLiteral("Asia/Ho_Chi_Minh");
+        ScopedDbConnection db;
+        AppConfigDao dao(db);
+        dao.save(m_cfg);
     }
-    return runTimedatectl({QStringLiteral("set-timezone"), zone});
+    if (!applyTimeSettings())
+        qWarning() << "[SettingsController] boot time sync failed (timedatectl)";
 }
 
 void SettingsController::saveSerialConfig(const QString &port, int baudrate,

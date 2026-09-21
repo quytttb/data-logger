@@ -1,7 +1,8 @@
 [Unit]
 Description=Data Logger (Qt EGLFS kiosk)
 # Take over the primary console: stop the login prompt so the app owns tty1/DRM.
-After=systemd-user-sessions.service getty@tty1.service network.target
+After=systemd-user-sessions.service getty@tty1.service network-online.target
+Wants=network-online.target
 Conflicts=getty@tty1.service
 
 [Service]

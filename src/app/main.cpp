@@ -1,4 +1,5 @@
 #include <QGuiApplication>
+#include <QLocale>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QIcon>
@@ -193,6 +194,11 @@ int main(int argc, char *argv[]) {
 
     settingsCtrl->loadConfig();
     const AppConfig &cfg = settingsCtrl->config();
+
+    // Vietnam-only kiosk: apply the stored UI locale at boot and push the
+    // system timezone (+ NTP via timedatectl) down to the OS.
+    QLocale::setDefault(QLocale(cfg.uiLocale.isEmpty() ? QStringLiteral("vi") : cfg.uiLocale));
+    settingsCtrl->syncSystemTime();
 
     restApi->setReadingsProvider([monitorCtrl]() -> QVariantMap {
         return monitorCtrl->readingsSnapshot();

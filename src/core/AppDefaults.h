@@ -16,6 +16,7 @@ class AppDefaultsQml : public QObject {
     Q_PROPERTY(int restApiPort READ restApiPort CONSTANT)
     Q_PROPERTY(QString bindAny READ bindAny CONSTANT)
     Q_PROPERTY(QString timezone READ timezone CONSTANT)
+    Q_PROPERTY(QString uiLocale READ uiLocale CONSTANT)
     Q_PROPERTY(QString timeFormat READ timeFormat CONSTANT)
     Q_PROPERTY(QString dateFormat READ dateFormat CONSTANT)
     Q_PROPERTY(QStringList baudrates READ baudrates CONSTANT)
@@ -23,6 +24,7 @@ class AppDefaultsQml : public QObject {
     Q_PROPERTY(QStringList byteOrders READ byteOrders CONSTANT)
     Q_PROPERTY(QStringList parityOptions READ parityOptions CONSTANT)
     Q_PROPERTY(QVariantList timezoneOptions READ timezoneOptions CONSTANT)
+    Q_PROPERTY(QVariantList localeOptions READ localeOptions CONSTANT)
 
 public:
     explicit AppDefaultsQml(QObject *parent = nullptr);
@@ -33,6 +35,7 @@ public:
     int restApiPort() const;
     QString bindAny() const;
     QString timezone() const;
+    QString uiLocale() const;
     QString timeFormat() const;
     QString dateFormat() const;
     QStringList baudrates() const;
@@ -43,4 +46,6 @@ public:
     // Dropdown index for an IANA zone id (falls back to the host system
     // entry, never to row 0). Replaces manual indexOfValue loops in QML.
     Q_INVOKABLE int timezoneIndex(const QString &tz) const;
+    QVariantList localeOptions() const;
+    Q_INVOKABLE int localeIndex(const QString &code) const;
 };

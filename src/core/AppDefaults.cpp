@@ -1,6 +1,7 @@
 #include "AppDefaults.h"
 #include "utils/system/AppDefaults.h"
 #include "utils/system/TimezoneOptions.h"
+#include "utils/system/LocaleOptions.h"
 #include "utils/modbus/ModbusCodec.h"
 
 IMPLEMENT_QML_SINGLETON(AppDefaultsQml)
@@ -13,6 +14,7 @@ QString AppDefaultsQml::bindAny() const    { return AppDefaults::bindAnyIPv4; }
 QString AppDefaultsQml::timezone() const   { return AppDefaults::timezone; }
 QString AppDefaultsQml::timeFormat() const { return AppDefaults::timeFormat; }
 QString AppDefaultsQml::dateFormat() const { return AppDefaults::dateFormat; }
+QString AppDefaultsQml::uiLocale() const  { return AppDefaults::uiLocale; }
 
 QStringList AppDefaultsQml::baudrates() const
 {
@@ -40,6 +42,21 @@ QStringList AppDefaultsQml::parityOptions() const
 QVariantList AppDefaultsQml::timezoneOptions() const
 {
     return TimezoneOptions::modelWithSystem(AppDefaults::timezone);
+}
+
+QVariantList AppDefaultsQml::localeOptions() const
+{
+    return LocaleOptions::model();
+}
+
+int AppDefaultsQml::localeIndex(const QString &code) const
+{
+    const QVariantList model = LocaleOptions::model();
+    for (int i = 0; i < model.size(); ++i) {
+        if (model[i].toMap().value(QStringLiteral("value")).toString() == code)
+            return i;
+    }
+    return 0; // "vi"
 }
 
 int AppDefaultsQml::timezoneIndex(const QString &tz) const
