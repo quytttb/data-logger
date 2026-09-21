@@ -18,6 +18,11 @@ Rectangle {
     // Kept locally — TableView.currentRow is not writable.
     property int currentRow: -1
 
+    // Snapshot table model fed by rebuildRows(); AppTableView (kit) requires
+    // a multi-column QAbstractTableModel, SensorListModel is a list model.
+    JsonTableModel {
+        id: sensorTableModel
+    }
 
     onVisibleChanged: {
         if (visible)
