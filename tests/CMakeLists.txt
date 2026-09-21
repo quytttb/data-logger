@@ -142,3 +142,17 @@ target_link_libraries(monitor_retry_test PRIVATE
 )
 add_test(NAME monitor_retry_test COMMAND monitor_retry_test)
 
+# QTest: JsonTableModel — multi-column bridge for AppTableView.
+add_executable(json_table_model_test json_table_model_test.cpp)
+target_include_directories(json_table_model_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/src
+    ${CMAKE_SOURCE_DIR}/src/core
+)
+target_link_libraries(json_table_model_test PRIVATE
+    Qt6::Core
+    Qt6::Qml
+    Qt6::Test
+    datalogger_core
+)
+add_test(NAME json_table_model_test COMMAND json_table_model_test)
+

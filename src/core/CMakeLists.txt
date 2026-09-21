@@ -15,6 +15,8 @@ qt_add_qml_module(datalogger_core
         history/HistoryViewModel.h
         history/HistoryTableModel.cpp
         history/HistoryTableModel.h
+        table/JsonTableModel.cpp
+        table/JsonTableModel.h
         TesterController.cpp
         TesterController.h
         ReportController.cpp
@@ -39,6 +41,7 @@ target_include_directories(datalogger_core
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/history
         ${CMAKE_CURRENT_SOURCE_DIR}/tt10
+        ${CMAKE_CURRENT_SOURCE_DIR}/table
 )
 
 target_link_libraries(datalogger_core PUBLIC
