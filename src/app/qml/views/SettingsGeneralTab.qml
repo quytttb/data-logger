@@ -4,7 +4,6 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.VirtualKeyboard
 import DataLogger.Core
-import DataLogger.Components
 import LoggerKit.Theme
 import LoggerKit.Components
 
