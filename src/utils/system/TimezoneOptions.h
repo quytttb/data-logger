@@ -74,6 +74,16 @@ inline int indexOf(const QString &iana)
     return -1;
 }
 
+// Dropdown display label. entries().first stays the legacy DB label (used by
+// the UTC+7 migration); the dropdown gets a more precise label so "UTC+7" and
+// the Vietnam named zone are not ambiguous.
+inline QString displayLabel(const QString &legacyLabel, const QString &iana)
+{
+    if (iana == QStringLiteral("Etc/GMT-7"))
+        return QStringLiteral("UTC+7 (Etc/GMT-7)");
+    return legacyLabel;
+}
+
 // Dropdown model (list of {label, value} maps). A host timezone outside the
 // fixed list is prepended as "System (<id>)" so it stays selectable.
 inline QVariantList modelWithSystem(const QString &systemTz)
@@ -84,7 +94,7 @@ inline QVariantList modelWithSystem(const QString &systemTz)
     for (const auto &e : list) {
         if (e.second == systemTz)
             known = true;
-        out.append(QVariantMap{{QStringLiteral("label"), e.first},
+        out.append(QVariantMap{{QStringLiteral("label"), displayLabel(e.first, e.second)},
                                {QStringLiteral("value"), e.second}});
     }
     if (!known) {

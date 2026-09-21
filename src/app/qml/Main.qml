@@ -125,8 +125,11 @@ ApplicationWindow {
             const focusItem = root.activeFocusItem
             if (!focusItem)
                 return
+            // Geometry is measured against the shrunk content area (the
+            // keyboard already lifted the shell via kioskContent.bottomMargin),
+            // not the full window, so the scroll offset is exact.
             const kbTop = root.height - (inputPanel ? inputPanel.height : 0)
-            const pos = focusItem.mapToItem(root.contentItem, 0, 0)
+            const pos = focusItem.mapToItem(kioskContent, 0, 0)
             const fieldBottom = pos.y + focusItem.height
             if (fieldBottom <= kbTop)
                 return

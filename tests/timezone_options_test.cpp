@@ -45,7 +45,9 @@ private slots:
         const QVariantList model = TimezoneOptions::modelWithSystem(QStringLiteral("Etc/GMT-7"));
         QCOMPARE(model.size(), 27);
         QCOMPARE(model.at(20).toMap().value(QStringLiteral("label")).toString(),
-                 QStringLiteral("UTC+7"));
+                 QStringLiteral("UTC+7 (Etc/GMT-7)"));
+        QCOMPARE(model.at(21).toMap().value(QStringLiteral("label")).toString(),
+                 QStringLiteral("Ho Chi Minh (UTC+7)"));
         // Ho Chi Minh is a real entry, not a "System (...)" fallback.
         QCOMPARE(model.at(21).toMap().value(QStringLiteral("value")).toString(),
                  QStringLiteral("Asia/Ho_Chi_Minh"));
