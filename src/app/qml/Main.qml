@@ -48,51 +48,94 @@ ApplicationWindow {
         if (currentTab !== 1) HistoryViewModel.clear()
     }
 
-    RowLayout {
-        anchors.fill: parent
-        spacing: 0
-
-        AppSideBar {
-            Layout.preferredWidth: AppTheme.railWidth
-            Layout.fillHeight: true
-            currentTab: root.currentTab
-            onSelectTab: function (i) {
-                // If leaving Settings while Add/Edit form is open, cancel it
-                if (root.currentTab === 3 && i !== 3) {
-                    if (tabContent.settingsTabIndex() === 4) {
-                        tabContent.closeSettingsSensorForm()
-                    }
-                }
-                root.currentTab = i
-            }
-            onRestartRequested: rebootConfirm.showConfirm(
-                qsTr("Confirm reboot"),
-                qsTr("Reboot this device now? The application will start again automatically after boot."),
-                function() { SettingsController.rebootSystem() },
-                qsTr("Reboot"),
-                AppColors.error)
+    // Kiosk shell. The whole layout shrinks when the on-screen keyboard is
+    // visible (Qt VirtualKeyboard official pattern: bind content bottom to the
+    // InputPanel top) so focused fields are never covered by the keyboard.
+    Item {
+        id: kioskContent
+        anchors {
+            left: parent.left
+            right: parent.right
+            top: parent.top
+            bottom: parent.bottom
+            bottomMargin: inputPanel && inputPanel.active ? inputPanel.height : 0
+        }
+        Behavior on anchors.bottomMargin {
+            NumberAnimation { duration: 200; easing.type: Easing.InOutQuad }
         }
 
-        ColumnLayout {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
+        RowLayout {
+            anchors.fill: parent
             spacing: 0
 
-            MainHeaderChrome {
-                id: headerChrome
-                Layout.fillWidth: true
+            AppSideBar {
+                Layout.preferredWidth: AppTheme.railWidth
+                Layout.fillHeight: true
                 currentTab: root.currentTab
-                scanProgCur: root.scanProgCur
-                scanProgTot: root.scanProgTot
-                appRoot: root
-                contentRef: tabContent
+                onSelectTab: function (i) {
+                    // If leaving Settings while Add/Edit form is open, cancel it
+                    if (root.currentTab === 3 && i !== 3) {
+                        if (tabContent.settingsTabIndex() === 4) {
+                            tabContent.closeSettingsSensorForm()
+                        }
+                    }
+                    root.currentTab = i
+                }
+                onRestartRequested: rebootConfirm.showConfirm(
+                    qsTr("Confirm reboot"),
+                    qsTr("Reboot this device now? The application will start again automatically after boot."),
+                    function() { SettingsController.rebootSystem() },
+                    qsTr("Reboot"),
+                    AppColors.error)
             }
 
-            MainTabContent {
-                id: tabContent
-                currentTab: root.currentTab
+            ColumnLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
+                spacing: 0
+
+                MainHeaderChrome {
+                    id: headerChrome
+                    Layout.fillWidth: true
+                    currentTab: root.currentTab
+                    scanProgCur: root.scanProgCur
+                    scanProgTot: root.scanProgTot
+                    appRoot: root
+                    contentRef: tabContent
+                }
+
+                MainTabContent {
+                    id: tabContent
+                    currentTab: root.currentTab
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                }
+            }
+        }
+    }
+
+    // Keep the focused text field scrolled into view when the keyboard moves
+    // in (Flickable.ensureVisible — official Qt API, applied to whichever
+    // Flickable contains the active editor).
+    Connections {
+        target: Qt.inputMethod
+        function onKeyboardRectangleChanged() {
+            if (!Qt.inputMethod.visible)
+                return
+            const focusItem = root.activeFocusItem
+            if (!focusItem)
+                return
+            const kbTop = root.height - (inputPanel ? inputPanel.height : 0)
+            const pos = focusItem.mapToItem(root.contentItem, 0, 0)
+            const fieldBottom = pos.y + focusItem.height
+            if (fieldBottom <= kbTop)
+                return
+            let f = focusItem.parent
+            while (f && !(f.hasOwnProperty("contentY") && f.hasOwnProperty("contentHeight")))
+                f = f.parent
+            if (f) {
+                const offset = fieldBottom - kbTop + 8
+                f.contentY = Math.max(0, f.contentY + offset)
             }
         }
     }
