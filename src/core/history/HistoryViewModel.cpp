@@ -111,6 +111,11 @@ void HistoryViewModel::search(const QString &fromDate, const QString &toDate, in
     }
 
     setError({});
+    // Đã có kết quả cho đúng bộ lọc này → bỏ qua, không query lại.
+    if (m_searchedOnce && !m_watcher->isRunning() && m_lastError.isEmpty()
+        && fromDate == m_lastFromDate && toDate == m_lastToDate
+        && sensorId == m_lastSensorId)
+        return;
     if (m_watcher->isRunning()) {
         // Gộp request: chỉ nhớ pending, chạy khi search hiện tại xong.
         m_hasPending = true;
@@ -123,6 +128,9 @@ void HistoryViewModel::search(const QString &fromDate, const QString &toDate, in
     setLoading(true);
     m_searchGen++;
     m_chunkGen++; // hủy chuỗi chunk cũ (nếu search chồng lên nhau)
+    m_lastFromDate = fromDate;
+    m_lastToDate = toDate;
+    m_lastSensorId = sensorId;
     const int gen = m_searchGen;
     m_watcher->setFuture(QtConcurrent::run([sensorId, from, to, gen]() -> HistorySearchResult {
         HistorySearchResult result;
@@ -218,5 +226,10 @@ void HistoryViewModel::clear()
     m_chunkGen++; // hủy chuỗi chunk đang chạy (nếu có)
     m_pendingRows.clear();
     m_model.setRows({});
+    // Reset để lần bấm tab tới search lại từ đầu (guard searchedOnce).
+    if (m_searchedOnce) {
+        m_searchedOnce = false;
+        emit searchedOnceChanged();
+    }
     emit recordCountChanged();
 }

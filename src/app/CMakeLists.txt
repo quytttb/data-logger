@@ -25,6 +25,7 @@ qt_add_qml_module(app
     VERSION ${DATALOGGER_QML_MODULE_VERSION}
     QML_FILES
         qml/Main.qml
+        qml/Splash.qml
         qml/OnScreenKeyboard.qml
         qml/MainTabContent.qml
         qml/views/MonitorView.qml

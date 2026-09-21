@@ -23,6 +23,8 @@ qt_add_qml_module(datalogger_core
         ReportController.h
         MonitorModel.cpp
         MonitorModel.h
+        MonitorTableModel.cpp
+        MonitorTableModel.h
         SensorListModel.cpp
         SensorListModel.h
         tt10/SensorSymbols.cpp

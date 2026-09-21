@@ -231,7 +231,7 @@ Rectangle {
                                     anchors.centerIn: parent
                                     text: card.hasStatus ? card.topStatus.label : ""
                                     color: card.hasStatus ? card.topStatus.color : "transparent"
-                                    font.pixelSize: AppTypography.labelSmall.pixelSize
+                                    font.pixelSize: AppTypography.labelMedium.pixelSize
                                     font.bold: true
                                 }
                             }
@@ -253,7 +253,7 @@ Rectangle {
                                     text: card.alarmType === "min" ? qsTr("▼ MIN")
                                         : (card.alarmType === "max" ? qsTr("▲ MAX") : qsTr("ALARM"))
                                     color: AppColors.error
-                                    font.pixelSize: AppTypography.labelSmall.pixelSize; font.bold: true
+                                    font.pixelSize: AppTypography.labelMedium.pixelSize; font.bold: true
                                 }
                             }
                         }
@@ -262,141 +262,165 @@ Rectangle {
             }
         }
 
-        ListView {
-            id: sensorList
+        // Bridge MonitorModel (list) sang TableView: cùng AppTableView + colWidths
+        // với Sensors/Attach/History nên header/cell luôn thẳng hàng.
+        MonitorTableModel {
+            id: monitorTableModel
+            sourceModel: MonitorModel
+            showDigitalIO: SettingsController.monitorShowDigitalIO
+        }
+
+        AppTableView {
+            id: monitorTable
             Layout.fillWidth: true
             Layout.fillHeight: true
-            clip: true
-            boundsBehavior: Flickable.StopAtBounds
-            model: MonitorModel
-            visible: count > 0 && SettingsController.monitorViewMode === "list"
-            spacing: AppTheme.spacingS
-            leftMargin: AppTheme.spacingM
-            rightMargin: AppTheme.spacingM
-            topMargin: AppTheme.spacingM
-            bottomMargin: AppTheme.spacingM
-
-            header: Rectangle {
-                width: sensorList.width - sensorList.leftMargin - sensorList.rightMargin
-                height: 40
-                radius: AppTheme.listItemRadius
-                color: AppColors.surfaceContainerHigh
-                border.color: AppColors.outlineVariant
-                border.width: 1
-
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.leftMargin: AppTheme.spacingM
-                    anchors.rightMargin: AppTheme.spacingM
-                    spacing: AppTheme.spacingM
-
-                    Label { text: qsTr("Sensor"); font.bold: true; color: AppColors.onSurfaceVariant; Layout.preferredWidth: parent.width * 0.35 }
-                    Label { text: qsTr("Value"); font.bold: true; color: AppColors.onSurfaceVariant; horizontalAlignment: Text.AlignRight; Layout.preferredWidth: parent.width * 0.26 }
-                    Label { text: qsTr("Unit"); font.bold: true; color: AppColors.onSurfaceVariant; horizontalAlignment: Text.AlignHCenter; Layout.preferredWidth: parent.width * 0.15 }
-                    Label { text: qsTr("Status"); font.bold: true; color: AppColors.onSurfaceVariant; horizontalAlignment: Text.AlignHCenter; Layout.preferredWidth: parent.width * 0.24 }
-                }
-            }
+            visible: SettingsController.monitorViewMode === "list"
+            model: monitorTableModel
+            hasData: monitorTableModel.count > 0
+            colWeights: [0.35, 0.26, 0.15, 0.24]
+            colMinimums: [120, 70, 50, 160]
+            headerAlignRight: function(col) { return col === 1 }
+            headerAlignCenter: function(col) { return col === 2 || col === 3 }
+            emptyMessage: qsTr("No active sensors.\nOpen Settings to add sensors, then press Start monitoring.")
+            emptyIconName: "chip"
 
             delegate: Rectangle {
-                id: sensorRow
+                id: monCell
+                required property int row
+                required property int column
+                required property string displayName
                 required property string value
                 required property string unit
-                required property string lastUpdate
+                required property string sensorType
                 required property bool isAlarm
                 required property string alarmType
-                required property string sensorType
-                required property string displayName
                 required property var diStates
 
-                readonly property bool isAnalog: sensorType === "ANALOG"
-                readonly property bool isDI: sensorType === "DI"
-                readonly property bool isDO: sensorType === "DO"
-                readonly property bool isOn: value === "1"
+                readonly property bool isAnalog: monCell.sensorType === "ANALOG"
+                readonly property bool isDI: monCell.sensorType === "DI"
+                readonly property bool isDO: monCell.sensorType === "DO"
+                readonly property bool isOn: monCell.value === "1"
+                // Guard: diStates có thể rỗng/undefined lúc model khởi tạo
+                readonly property var topStatus: monCell.diStates && monCell.diStates.length > 0 ? monCell.diStates[0] : null
+                readonly property bool hasStatus: monCell.topStatus !== null
                 readonly property color stateColor: {
-                    if (isAnalog && diStates && diStates.length > 0)
-                        return diStates[0].color
-                    if (isDI && isOn)
+                    if (monCell.isAnalog && monCell.hasStatus)
+                        return monCell.topStatus.color
+                    if (monCell.isDI && monCell.isOn)
                         return IoColors.diActive
-                    if (isDO && isOn)
+                    if (monCell.isDO && monCell.isOn)
                         return IoColors.doActive
                     return AppColors.outlineVariant
                 }
 
-                width: sensorList.width - sensorList.leftMargin - sensorList.rightMargin
-                height: visible ? 64 : 0
-                visible: isAnalog || SettingsController.monitorShowDigitalIO
-                radius: AppTheme.listItemRadius
-                color: AppColors.surfaceContainerLow
-                border.color: stateColor
-                border.width: (isAlarm || (isAnalog && diStates && diStates.length > 0) || ((isDI || isDO) && isOn)) ? 2 : 1
+                implicitHeight: 64
+                color: "transparent"
 
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.leftMargin: AppTheme.spacingM
-                    anchors.rightMargin: AppTheme.spacingM
-                    spacing: AppTheme.spacingM
+                TableCellBackground { cellHovered: false }
 
-                    RowLayout {
-                        Layout.preferredWidth: parent.width * 0.35
-                        spacing: AppTheme.spacingS
-
-                        Rectangle {
-                            visible: !sensorRow.isAnalog
-                            Layout.preferredWidth: 32
-                            Layout.preferredHeight: 20
-                            radius: AppTheme.radiusTiny
-                            color: sensorRow.isDI ? IoColors.diStrong : IoColors.doStrong
-                            Label {
-                                anchors.centerIn: parent
-                                text: sensorRow.isDI ? qsTr("DI") : qsTr("DO")
-                                color: AppColors.onPrimary
-                                font.bold: true
-                            }
-                        }
-                        Label {
-                            text: sensorRow.displayName
-                            color: AppColors.accentColor
-                            font.family: AppTypography.titleSmall.family
-                            font.pixelSize: AppTypography.titleSmall.pixelSize
-                            font.bold: true
-                            elide: Text.ElideRight
-                            Layout.fillWidth: true
-                        }
-                    }
-
-                    Label {
-                        text: sensorRow.isAnalog ? sensorRow.value : (sensorRow.isOn ? qsTr("ON") : qsTr("OFF"))
-                        color: sensorRow.isAlarm ? AppColors.error : AppColors.primaryText
-                        font.family: sensorRow.isAnalog ? AppTypography.monoFamily : AppTypography.titleSmall.family
-                        font.pixelSize: AppTypography.titleMedium.pixelSize
-                        font.bold: true
-                        horizontalAlignment: Text.AlignRight
-                        elide: Text.ElideRight
-                        Layout.preferredWidth: parent.width * 0.26
-                    }
-                    Label {
-                        text: sensorRow.isAnalog ? sensorRow.unit : ""
-                        color: AppColors.onSurfaceVariant
-                        horizontalAlignment: Text.AlignHCenter
-                        elide: Text.ElideRight
-                        Layout.preferredWidth: parent.width * 0.15
-                    }
+                // ── Cột Sensor: pill DI/DO + tên ──
+                Row {
+                    visible: monCell.column === 0
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.leftMargin: 16
+                    anchors.rightMargin: 8
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 8
                     Rectangle {
-                        readonly property string label: sensorRow.isAnalog && sensorRow.diStates && sensorRow.diStates.length > 0
-                            ? sensorRow.diStates[0].label
-                            : (sensorRow.isAnalog && sensorRow.isAlarm
-                               ? (sensorRow.alarmType === "min" ? qsTr("MIN alarm") : qsTr("MAX alarm"))
-                               : (sensorRow.isDI || sensorRow.isDO ? (sensorRow.isOn ? qsTr("Active") : qsTr("Inactive")) : qsTr("No status")))
-                        Layout.preferredWidth: parent.width * 0.24
-                        Layout.maximumWidth: 200
-                        Layout.preferredHeight: 28
-                        radius: AppTheme.radiusTiny
-                        color: sensorRow.isAlarm ? AppColors.error : AppColors.withAlpha(sensorRow.stateColor, 0.2)
+                        visible: !monCell.isAnalog
+                        width: 32; height: 20; radius: AppTheme.radiusTiny
+                        anchors.verticalCenter: parent.verticalCenter
+                        color: monCell.isDI ? IoColors.diStrong : IoColors.doStrong
                         Label {
                             anchors.centerIn: parent
+                            text: monCell.isDI ? qsTr("DI") : qsTr("DO")
+                            color: AppColors.onPrimary
+                            font.bold: true
+                            font.pixelSize: AppTypography.labelSmall.pixelSize
+                        }
+                    }
+                    Label {
+                        width: parent.width - (monCell.isAnalog ? 0 : 40) - 24
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: monCell.displayName
+                        color: AppColors.accentColor
+                        font.family: AppTypography.titleSmall.family
+                        font.pixelSize: AppTypography.titleSmall.pixelSize
+                        font.bold: true
+                        elide: Text.ElideRight
+                    }
+                }
+
+                // ── Cột Value ──
+                Label {
+                    visible: monCell.column === 1
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.leftMargin: 8
+                    anchors.rightMargin: 8
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: monCell.isAnalog ? monCell.value : (monCell.isOn ? qsTr("ON") : qsTr("OFF"))
+                    color: monCell.isAlarm ? AppColors.error : AppColors.primaryText
+                    font.family: monCell.isAnalog ? AppTypography.monoFamily : AppTypography.titleSmall.family
+                    font.pixelSize: AppTypography.titleMedium.pixelSize
+                    font.bold: true
+                    horizontalAlignment: Text.AlignRight
+                    elide: Text.ElideRight
+                }
+
+                // ── Cột Unit ──
+                Label {
+                    visible: monCell.column === 2
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.leftMargin: 4
+                    anchors.rightMargin: 4
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: monCell.isAnalog ? monCell.unit : ""
+                    color: AppColors.onSurfaceVariant
+                    font.pixelSize: AppTypography.titleSmall.pixelSize
+                    font.bold: true
+                    horizontalAlignment: Text.AlignHCenter
+                    elide: Text.ElideRight
+                }
+
+                // ── Cột Status: 2 badge co theo text (trạng thái + trigger/alarm) ──
+                Row {
+                    visible: monCell.column === 3
+                    anchors.centerIn: parent
+                    spacing: 4
+                    Rectangle {
+                        implicitWidth: Math.min(statusLabel.implicitWidth + 16, 150)
+                        implicitHeight: 28
+                        radius: AppTheme.radiusTiny
+                        color: monCell.isAlarm ? AppColors.error : AppColors.withAlpha(monCell.stateColor, 0.2)
+                        Label {
+                            id: statusLabel
+                            anchors.centerIn: parent
                             width: parent.width - 8
-                            text: parent.label
-                            color: sensorRow.isAlarm ? AppColors.onPrimary : sensorRow.stateColor
+                            text: (monCell.isAnalog && monCell.hasStatus) ? monCell.topStatus.label
+                                : ((monCell.isDI || monCell.isDO) ? (monCell.isOn ? qsTr("Active") : qsTr("Inactive")) : qsTr("No status"))
+                            color: monCell.isAlarm ? AppColors.onPrimary : monCell.stateColor
+                            font.pixelSize: AppTypography.labelMedium.pixelSize
+                            font.bold: true
+                            horizontalAlignment: Text.AlignHCenter
+                            elide: Text.ElideRight
+                        }
+                    }
+                    Rectangle {
+                        visible: monCell.isAnalog && monCell.isAlarm
+                        implicitWidth: Math.min(triggerLabel.implicitWidth + 16, 150)
+                        implicitHeight: 28
+                        radius: AppTheme.radiusTiny
+                        color: AppColors.error
+                        Label {
+                            id: triggerLabel
+                            anchors.centerIn: parent
+                            width: parent.width - 8
+                            text: monCell.alarmType === "min" ? qsTr("MIN alarm") : qsTr("MAX alarm")
+                            color: AppColors.onPrimary
+                            font.pixelSize: AppTypography.labelMedium.pixelSize
                             font.bold: true
                             horizontalAlignment: Text.AlignHCenter
                             elide: Text.ElideRight

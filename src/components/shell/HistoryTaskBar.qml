@@ -23,7 +23,12 @@ Item {
 
     // Filters are kept fresh in memory by main.cpp (SensorListModel::modelReset
     // → reloadFiltersFromMaps), so no DB hit on the UI thread here.
-    Component.onCompleted: Qt.callLater(root.doSearch)
+    // Kiosk touch: chỉ search lần đầu — bấm tab lại không query lại khi đã có
+    // kết quả (ViewModel cũng guard cùng bộ lọc, đề phòng race).
+    Component.onCompleted: {
+        if (!HistoryViewModel.searchedOnce)
+            Qt.callLater(root.doSearch)
+    }
 
     RowLayout {
         anchors.left: parent.left

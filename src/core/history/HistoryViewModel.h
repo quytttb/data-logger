@@ -94,6 +94,11 @@ private:
     int          m_searchGen = 0;
     int          m_chunkGen = 0;
     QList<HistoryRow> m_pendingRows;
+    // Cache bộ lọc của lần search gần nhất — search() với cùng params khi đã
+    // có kết quả thì bỏ qua, tránh query lại mỗi lần bấm tab History.
+    QString      m_lastFromDate;
+    QString      m_lastToDate;
+    int          m_lastSensorId = -1;
     bool         m_hasPending = false;
     QString      m_pendingFromDate;
     QString      m_pendingToDate;

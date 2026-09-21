@@ -58,7 +58,6 @@ Rectangle {
                     readonly property int tabIdx: index
                     readonly property bool isActive: sideBarRoot.currentTab === tabIdx
                     padding: 4
-                    hoverEnabled: true
 
                     background: Item {}
 
@@ -77,15 +76,6 @@ Rectangle {
                                 radius: AppTheme.navPillRadius
                                 visible: navDelegate.isActive
                                 color: AppColors.accentContainer
-                            }
-
-                            Rectangle {
-                                anchors.centerIn: parent
-                                width: AppTheme.navPillWidth
-                                height: AppTheme.navPillHeight
-                                radius: AppTheme.navPillRadius
-                                visible: navDelegate.hovered && !navDelegate.isActive
-                                color: AppColors.hoverFill
                             }
 
                             UiIcon {

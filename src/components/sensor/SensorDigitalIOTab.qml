@@ -475,7 +475,7 @@ ElevatedPane {
                     implicitHeight: 44
                     color: "transparent"
 
-                    TableCellBackground { cellHovered: dioTable.hoveredRow === linkCell.row }
+                    TableCellBackground { cellHovered: false }
 
                     Rectangle {
                         anchors.fill: parent

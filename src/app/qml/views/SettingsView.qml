@@ -201,10 +201,11 @@ Rectangle {
             }
 
             // ── Tab 3: Sensors List ──
+            // Touch-only: chọn bằng tap (toggle), mở form bằng nút Pencil —
+            // không double-click.
             SettingsSensorsTab {
                 id: sensorsTab
                 Layout.fillWidth: true; Layout.fillHeight: true
-                onSensorDoubleClicked: settingsRoot.editSelectedSensor()
             }
 
             // ── Tab 4: Add/Edit Sensor Form ──

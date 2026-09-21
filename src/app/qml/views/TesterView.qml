@@ -271,7 +271,7 @@ Item {
                             color: "transparent"
 
                             TableCellBackground {
-                                cellHovered: resultsTable.hoveredRow === rc.row
+                                cellHovered: false
                             }
 
                             Text {

@@ -52,6 +52,17 @@ drm.edid_firmware=HDMI-A-1:edid/waveshare-1024x600.bin,HDMI-A-2:edid/waveshare-1
 > - `quiet` chặn hầu hết kernel/driver log; `logo.nologo` bỏ splash logo.
 > - App vẫn tự chạy fullscreen sau boot (service `datalogger.service`, EGLFS);
 >   màn hình chỉ đọc được khi ứng dụng đã vẽ.
+>
+> Nếu vẫn còn dòng `systemd` hiện lúc boot, thêm tiếp (cùng dòng duy nhất):
+>
+> ```
+> loglevel=3 systemd.show_status=auto rd.systemd.show_status=auto
+> ```
+>
+> - `loglevel=3` chỉ hiện lỗi kernel; `systemd.show_status=auto` chỉ hiện
+>   trạng thái khi boot lỗi/chậm, không in OK dài.
+> - Khoảng đen 1-2s lúc Qt nạp QML được che bằng splash logo 4M
+>   (`src/app/qml/Splash.qml`, tự đóng sau khi Main vẽ frame đầu).
 
 ### Kiểm tra
 

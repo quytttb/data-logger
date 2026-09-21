@@ -5,14 +5,12 @@ import DataLogger.Core
 import LoggerKit.Theme
 import LoggerKit.Components
 
-Rectangle {
+    Rectangle {
     id: root
     color: AppColors.surfaceContainerLow
     radius: AppTheme.cardRadius
     border.color: AppColors.elevatedBorder
     border.width: 1
-
-    signal sensorDoubleClicked()
 
     // Selection index exposed to SettingsView (was listView.currentIndex).
     // Kept locally — TableView.currentRow is not writable.
@@ -100,22 +98,30 @@ Rectangle {
                 required property int column
                 required property var display
 
-                implicitHeight: 40
+                implicitHeight: 44
                 color: "transparent"
 
-                TableCellBackground { cellHovered: sensorTable.hoveredRow === cell.row }
+                TableCellBackground { cellHovered: false }
 
+                // Touch-only: tap chọn / tap lại bỏ chọn (toggle). Edit chỉ qua
+                // nút Pencil — không double-click (cảm ứng dễ chạm nhầm).
                 Rectangle {
                     anchors.fill: parent
                     color: root.currentRow === cell.row
                            ? AppColors.withAlpha(AppColors.primaryColor, 0.16)
                            : "transparent"
+                    // Left accent bar đánh dấu dòng đang chọn (đồng bộ bảng Attach).
+                    Rectangle {
+                        anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
+                        width: 3
+                        visible: root.currentRow === cell.row
+                        color: AppColors.primaryColor
+                    }
                 }
 
                 MouseArea {
                     anchors.fill: parent
-                    onClicked: root.currentRow = cell.row
-                    onDoubleClicked: root.sensorDoubleClicked()
+                    onClicked: root.currentRow = (root.currentRow === cell.row) ? -1 : cell.row
                 }
 
                 Text {
