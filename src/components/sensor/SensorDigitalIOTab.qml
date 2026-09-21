@@ -3,6 +3,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import DataLogger.Theme
+import DataLogger.Core
 import LoggerKit.Theme
 import LoggerKit.Components
 
@@ -39,12 +40,22 @@ ElevatedPane {
         return t.indexOf("—") >= 0 ? t.split("—")[0].trim() : t
     }
 
+    // Snapshot table model for the attached-sensors table (AppTableView needs
+    // a columnar model; parallel linkIds[] keeps selection by row index).
+    JsonTableModel {
+        id: dioTableModel
+    }
+    property var linkIds: []
+
     readonly property var selectedLink: {
         const m = dioRepeater.model
-        if (!m || dioListView.currentIndex < 0 || dioListView.currentIndex >= m.length)
+        if (!m || root.dioListRow < 0 || root.dioListRow >= m.length)
             return null
-        return m[dioListView.currentIndex]
+        return m[root.dioListRow]
     }
+
+    // Selection row index (mirrors ListView.currentIndex semantics).
+    property int dioListRow: -1
 
     // Sticky selection across model refresh — ListView resets currentIndex khi
     // Repeater model thay bằng array mới. Lưu id và khôi phục sau khi gán model.
@@ -54,15 +65,44 @@ ElevatedPane {
 
     function clearSelection() {
         _pendingSelectId = -1
-        dioListView.currentIndex = -1
+        root.dioListRow = -1
+        root.rebuildTable()
     }
 
     function restoreSelectionById(linkId) {
         const m = dioRepeater.model
         if (!m || linkId < 0) return
         for (let i = 0; i < m.length; ++i) {
-            if (m[i].id === linkId) { dioListView.currentIndex = i; break }
+            if (m[i].id === linkId) { root.dioListRow = i; break }
         }
+    }
+
+    // Rebuild the table snapshot from the current links array (same array that
+    // fish the view). Called on model changes via _refreshLinks in SettingsView.
+    function rebuildTable() {
+        const m = dioRepeater.model
+        const rows = []
+        const ids = []
+        if (m) {
+            for (let i = 0; i < m.length; ++i) {
+                const l = m[i]
+                rows.push([
+                    l.ioType,
+                    l.label,
+                    (l.ioType === "DI" ? root.diTypeName(l.diType)
+                                       : (l.ioType === "DO"
+                                          ? ((l.triggerOnMax ? "Max" : "") +
+                                             (l.triggerOnMax && l.triggerOnMin ? ", " : "") +
+                                             (l.triggerOnMin ? "Min" : ""))
+                                          : "")),
+                    "Slave " + l.slaveId + " · Addr " + l.address
+                ])
+                ids.push(l.id)
+            }
+        }
+        root.linkIds = ids
+        dioTableModel.setHeaders(["Type", "Sensor", "DI type / Trigger", "Modbus"])
+        dioTableModel.setRows(rows)
     }
 
     function deleteSelectedDio() {
@@ -87,7 +127,7 @@ ElevatedPane {
 
     onVisibleChanged: {
         if (visible)
-            dioListView.currentIndex = -1
+            root.dioListRow = -1
         else
             _pendingSelectId = -1
     }
@@ -343,124 +383,82 @@ ElevatedPane {
             }
             Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: AppColors.outlineVariant }
 
-            ListView {
-                id: dioListView
-                smooth: false
+            AppTableView {
+                id: dioTable
                 Layout.fillWidth: true; Layout.fillHeight: true
-                clip: true; spacing: 4
-                model: dioRepeater.model
-                currentIndex: -1
-                onCurrentIndexChanged: {
-                    root.syncEditPanelFromSelection()
-                    if (root._pendingSelectId >= 0 && model) {
-                        // Model vừa được thay — IndexChange này là reset;
-                        // khôi phục đã được xử lý ở SettingsView._refreshLinks
-                    }
-                }
+                model: dioTableModel
+                hasData: dioTableModel.count > 0
+                loading: false
+                reuseItems: true
+                colWeights: [0.12, 0.38, 0.25, 0.25]
+                colMinimums: [50, 120, 90, 110]
+                emptyMessage: qsTr("No digital sensors attached.\nSelect DI or DO on the left to attach.")
 
                 delegate: Rectangle {
-                    id: linkRow
-                    required property int index
-                    required property var modelData
+                    id: linkCell
+                    required property int row
+                    required property int column
+                    required property var display
 
-                    width: ListView.view.width
-                    height: 48
-                    radius: AppTheme.radiusTiny
-                    // Tap-to-select highlight (pattern từ SettingsSensorsTab)
-                    color: ListView.view.currentIndex === linkRow.index
-                           ? AppColors.withAlpha(AppColors.primaryColor, 0.16)
-                           : (linkRow.modelData.ioType === "DO" ? IoColors.doTint : IoColors.diTint)
+                    implicitHeight: 44
+                    color: "transparent"
 
-                    // Left accent bar marks the selected row clearly
+                    TableCellBackground { cellHovered: dioTable.hoveredRow === linkCell.row }
+
                     Rectangle {
-                        anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
-                        width: 3
-                        visible: ListView.view.currentIndex === linkRow.index
-                        color: AppColors.primaryColor
+                        anchors.fill: parent
+                        color: root.dioListRow === linkCell.row
+                               ? AppColors.withAlpha(AppColors.primaryColor, 0.16)
+                               : "transparent"
+                        // Left accent bar đánh dấu dòng đang chọn
+                        Rectangle {
+                            anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
+                            width: 3
+                            visible: root.dioListRow === linkCell.row
+                            color: AppColors.primaryColor
+                        }
                     }
 
                     MouseArea {
                         anchors.fill: parent
-                        // Để delegate nhận click ngay cả khi Repeater model là JS array
-                        // (ListView sẽ tự highlight currentIndex mà không cần model owned)
                         onClicked: {
-                            ListView.view.currentIndex = (ListView.view.currentIndex === linkRow.index) ? -1 : linkRow.index
+                            // Tap lại dòng đang chọn => bỏ chọn (toggle)
+                            root.dioListRow = (root.dioListRow === linkCell.row) ? -1 : linkCell.row
                             root._pendingSelectId = -1
                         }
                     }
 
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.leftMargin: 10
-                        anchors.rightMargin: 10
-                        spacing: AppTheme.spacingSM
-
-                        Rectangle {
-                            Layout.preferredWidth: 38
-                            Layout.preferredHeight: 26
-                            Layout.alignment: Qt.AlignVCenter
-                            radius: AppTheme.radiusTiny
-                            color: linkRow.modelData.ioType === "DO" ? AppColors.error : AppColors.success
-                            Text {
-                                anchors.centerIn: parent
-                                text: linkRow.modelData.ioType
-                                color: AppColors.onPrimary
-                                font.bold: true
-                                font.pixelSize: AppTypography.bodySmall.pixelSize
-                            }
-                        }
-
+                    Rectangle {
+                        visible: linkCell.column === 0
+                        anchors.centerIn: parent
+                        width: 34; height: 22; radius: AppTheme.radiusTiny
+                        color: (linkCell.display === "DO") ? AppColors.error : AppColors.success
                         Text {
-                            text: linkRow.modelData.label
-                            color: AppColors.primaryText
-                            font.pixelSize: AppTypography.titleSmall.pixelSize
-                            Layout.fillWidth: true
-                            Layout.minimumWidth: 60
-                            elide: Text.ElideRight
-                            verticalAlignment: Text.AlignVCenter
-                        }
-
-                        Text {
-                            visible: linkRow.modelData.ioType === "DI"
-                            text: root.diTypeName(linkRow.modelData.diType)
-                            color: AppColors.onSurfaceVariant
-                            font.pixelSize: AppTypography.bodyMedium.pixelSize
-                            Layout.preferredWidth: implicitWidth
-                            Layout.alignment: Qt.AlignVCenter
-                        }
-
-                        Text {
-                            visible: linkRow.modelData.ioType === "DO"
-                            text: {
-                                var parts = []
-                                if (linkRow.modelData.triggerOnMax) parts.push("Max")
-                                if (linkRow.modelData.triggerOnMin) parts.push("Min")
-                                return parts.length ? parts.join(", ") : "—"
-                            }
-                            color: AppColors.onSurfaceVariant
-                            font.pixelSize: AppTypography.bodyMedium.pixelSize
-                            Layout.preferredWidth: implicitWidth
-                            Layout.alignment: Qt.AlignVCenter
-                        }
-
-                        Text {
-                            text: qsTr("Slave ") + linkRow.modelData.slaveId + " · Addr " + linkRow.modelData.address
-                            color: AppColors.onSurfaceVariant
-                            font.pixelSize: AppTypography.bodyMedium.pixelSize
-                            Layout.preferredWidth: implicitWidth
-                            Layout.alignment: Qt.AlignVCenter
+                            anchors.centerIn: parent
+                            text: linkCell.display
+                            color: AppColors.onPrimary
+                            font.bold: true
+                            font.pixelSize: AppTypography.labelSmall.pixelSize
                         }
                     }
-                }
 
-                Text {
-                    visible: dioListView.count === 0
-                    anchors.centerIn: parent
-                    width: parent.width - 20
-                    text: qsTr("No digital sensors attached.\nSelect DI or DO on the left to attach.")
-                    color: AppColors.textFaint; font.pixelSize: AppTypography.bodyMedium.pixelSize
-                    horizontalAlignment: Text.AlignHCenter
-                    wrapMode: Text.WordWrap
+                    Text {
+                        visible: linkCell.column !== 0
+                        anchors {
+                            left: parent.left
+                            leftMargin: linkCell.column === 1 ? AppTheme.spacingS : 4
+                            right: parent.right
+                            rightMargin: 4
+                            verticalCenter: parent.verticalCenter
+                        }
+                        text: String(linkCell.display)
+                        color: linkCell.column === 1 ? AppColors.primaryText : AppColors.tableCellMuted
+                        font.pixelSize: AppTypography.bodyMedium.pixelSize
+                        font.bold: linkCell.column === 1
+                        elide: Text.ElideRight
+                        horizontalAlignment: Text.AlignLeft
+                        verticalAlignment: Text.AlignVCenter
+                    }
                 }
             }
         }
@@ -469,5 +467,7 @@ ElevatedPane {
     Repeater {
         id: dioRepeater
         delegate: Item { visible: false }
+        // Khi SettingsView gán model mới (get_analog_links), rebuild bảng snapshot.
+        onModelChanged: root.rebuildTable()
     }
 }

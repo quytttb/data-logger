@@ -63,8 +63,8 @@ Item {
                         root.sensorSubTabSelected(currentIndex)
                 }
                 background: Rectangle { color: "transparent" }
-                ThemedTabButton { text: qsTr("Basic && Modbus");   width: implicitWidth + 30 }
-                ThemedTabButton { text: qsTr("Scaling && Alarms"); width: implicitWidth + 30; visible: root.sensorType === "ANALOG" }
+                ThemedTabButton { text: qsTr("Basic & Modbus");   width: implicitWidth + 30 }
+                ThemedTabButton { text: qsTr("Scaling & Alarms"); width: implicitWidth + 30; visible: root.sensorType === "ANALOG" }
                 ThemedTabButton { text: qsTr("Digital I/O");       width: implicitWidth + 30; visible: !root.isAddMode && root.sensorType === "ANALOG" }
             }
         }

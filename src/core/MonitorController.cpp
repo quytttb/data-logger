@@ -107,13 +107,14 @@ bool MonitorController::hasActiveSensors() const {
 }
 
 QString MonitorController::statusText() const {
-    if (m_statusTag == "monitoring")      return "Running…";
-    if (m_statusTag == "stopping")        return "Stopping…";
-    if (m_statusTag == "connection_lost") return "Connection lost — retrying…";
-    if (m_statusTag == "error_retrying")  return "Error — retrying…";
-    if (!hasActiveSensors())              return "No sensors";
-    if (m_statusTag == "ready")           return "Ready";
-    return "Starting…";
+    // Text ngắn gọn cho badge 7\" kiosk — tránh tràn chữ (badge cắt "..." nếu dài)
+    if (m_statusTag == "monitoring")      return QStringLiteral("Running");
+    if (m_statusTag == "stopping")        return QStringLiteral("Stopping");
+    if (m_statusTag == "connection_lost") return QStringLiteral("Retrying");
+    if (m_statusTag == "error_retrying")  return QStringLiteral("Error");
+    if (!hasActiveSensors())              return QStringLiteral("No sensors");
+    if (m_statusTag == "ready")           return QStringLiteral("Ready");
+    return QStringLiteral("Starting");
 }
 
 void MonitorController::startPolling() {

@@ -2,7 +2,6 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import QtQuick.Dialogs
 
 import DataLogger.Core
 import DataLogger.Components
@@ -13,27 +12,6 @@ Item {
     id: root
     implicitHeight: 64
 
-    FileDialog {
-        id: csvSaveDialog
-        title: qsTr("Export CSV")
-        fileMode: FileDialog.SaveFile
-        nameFilters: [qsTr("CSV files (*.csv)"), qsTr("All files (*)")]
-        defaultSuffix: "csv"
-        onAccepted: HistoryViewModel.exportCsv(selectedFile)
-    }
-
-    Connections {
-        target: HistoryViewModel
-        function onExportFinished(ok, message) {
-            if (ok) {
-                AppNotifier.show(qsTr("CSV exported: %1").arg(message), "success")
-            } else {
-                AppNotifier.show(qsTr("CSV export failed"), "error",
-                                 { detailText: message, detailTitle: qsTr("Export error") })
-            }
-        }
-    }
-
     function doSearch() {
         var sensorId = 0
         var idx = sensorFilter.currentIndex
@@ -43,10 +21,9 @@ Item {
         HistoryViewModel.search(fromField.text, toField.text, sensorId)
     }
 
-    Component.onCompleted: {
-        HistoryViewModel.load_sensors()
-        Qt.callLater(root.doSearch)
-    }
+    // Filters are kept fresh in memory by main.cpp (SensorListModel::modelReset
+    // → reloadFiltersFromMaps), so no DB hit on the UI thread here.
+    Component.onCompleted: Qt.callLater(root.doSearch)
 
     RowLayout {
         anchors.left: parent.left
@@ -93,6 +70,7 @@ Item {
             model: HistoryViewModel.sensorNames
             currentIndex: 0
             Layout.alignment: Qt.AlignVCenter
+            onActivated: root.doSearch()
         }
 
         AppButton {
@@ -107,13 +85,6 @@ Item {
             iconSpinning: HistoryViewModel.isLoading
             enabled: !HistoryViewModel.isLoading && SensorListModel.count > 0
             onClicked: root.doSearch()
-            Layout.alignment: Qt.AlignVCenter
-        }
-
-        AppButton {
-            iconName: "download"
-            enabled: HistoryViewModel.recordCount > 0
-            onClicked: csvSaveDialog.open()
             Layout.alignment: Qt.AlignVCenter
         }
 

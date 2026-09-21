@@ -174,27 +174,6 @@ Item {
                         onActivated: { SettingsController.timezone = currentValue; root.configChanged = true }
                     }
 
-                    Text { text: qsTr("Language:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize }
-                    ComboBox {
-                        id: localeCombo
-                        Layout.fillWidth: true
-                        textRole: "label"
-                        valueRole: "value"
-                        // App-level UI locale (vi/en). The edge runs as a
-                        // Vietnam-only kiosk, so "vi" is the default; the value
-                        // is applied at boot via QLocale::setDefault().
-                        model: AppDefaults.localeOptions
-                        currentIndex: AppDefaults.localeIndex(
-                            SettingsController ? SettingsController.uiLocale : AppDefaults.uiLocale)
-                        Connections {
-                            target: SettingsController
-                            function onConfigLoaded() {
-                                localeCombo.currentIndex = AppDefaults.localeIndex(
-                                            SettingsController.uiLocale)
-                            }
-                        }
-                        onActivated: { SettingsController.uiLocale = currentValue; root.configChanged = true }
-                    }
                 }
 
             }

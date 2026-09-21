@@ -63,6 +63,8 @@ Item {
             }
         }
 
+        Item { Layout.fillWidth: true }
+
         Rectangle {
             id: ftpPill
             readonly property color stateColor: !ReportController.isRunning
@@ -101,8 +103,6 @@ Item {
                 }
             }
         }
-
-        Item { Layout.fillWidth: true }
 
         RowLayout {
             Layout.alignment: Qt.AlignVCenter

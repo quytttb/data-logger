@@ -15,6 +15,13 @@ InputPanel {
     // because ApplicationWindow is a Window, not an Item.
     property var window: null
 
+    Component.onCompleted: {
+        // qmllint disable unqualified
+        VirtualKeyboardSettings.activeLocales = ["en_GB"]
+        VirtualKeyboardSettings.locale = "en_GB"
+        // qmllint enable unqualified
+    }
+
     width: window ? window.width : 0
     x: 0
     y: window ? window.height : 0

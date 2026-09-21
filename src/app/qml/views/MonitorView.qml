@@ -214,17 +214,20 @@ Rectangle {
                             spacing: 4
 
                             // Status badge: hiển thị trạng thái DI ưu tiên cao nhất (đã sort trong C++)
+                            // Màu khớp dạng List: nền trong suốt + text màu trạng thái (không gộp badge)
                             Rectangle {
                                 visible: card.isAnalog && card.diStates && card.diStates.length > 0
-                                color: card.diStates && card.diStates.length > 0 ? card.diStates[0].color : AppColors.outline
+                                color: AppColors.withAlpha(card.diStates[0].color, 0.2)
+                                border.width: 1
+                                border.color: card.diStates[0].color
                                 radius: AppTheme.radiusTiny
-                                implicitWidth: statusText.implicitWidth + 8
+                                implicitWidth: statusText.implicitWidth + 10
                                 implicitHeight: statusText.implicitHeight + 4
                                 Text {
                                     id: statusText
                                     anchors.centerIn: parent
-                                    text: card.diStates && card.diStates.length > 0 ? card.diStates[0].label : ""
-                                    color: AppColors.onPrimary
+                                    text: card.diStates[0].label
+                                    color: card.diStates[0].color
                                     font.pixelSize: AppTypography.labelSmall.pixelSize
                                     font.bold: true
                                 }
@@ -232,19 +235,21 @@ Rectangle {
 
                             Item { Layout.fillWidth: true }
 
-                            // MAX/MIN alarm badge (moved from header)
+                            // MAX/MIN alarm badge — màu khớp dạng List: nền error trong suốt + text error
                             Rectangle {
                                 visible: card.isAlarm && card.isAnalog
-                                color: AppColors.error
+                                color: AppColors.withAlpha(AppColors.error, 0.2)
+                                border.width: 1
+                                border.color: AppColors.error
                                 radius: AppTheme.radiusTiny
-                                implicitWidth: alarmLabel.implicitWidth + 8
+                                implicitWidth: alarmLabel.implicitWidth + 10
                                 implicitHeight: alarmLabel.implicitHeight + 4
                                 Text {
                                     id: alarmLabel
                                     anchors.centerIn: parent
                                     text: card.alarmType === "min" ? qsTr("▼ MIN")
                                         : (card.alarmType === "max" ? qsTr("▲ MAX") : qsTr("ALARM"))
-                                    color: AppColors.onPrimary
+                                    color: AppColors.error
                                     font.pixelSize: AppTypography.labelSmall.pixelSize; font.bold: true
                                 }
                             }
@@ -282,11 +287,10 @@ Rectangle {
                     anchors.rightMargin: AppTheme.spacingM
                     spacing: AppTheme.spacingM
 
-                    Label { text: qsTr("Sensor"); font.bold: true; color: AppColors.onSurfaceVariant; Layout.preferredWidth: parent.width * 0.30 }
+                    Label { text: qsTr("Sensor"); font.bold: true; color: AppColors.onSurfaceVariant; Layout.preferredWidth: parent.width * 0.35 }
                     Label { text: qsTr("Value"); font.bold: true; color: AppColors.onSurfaceVariant; horizontalAlignment: Text.AlignRight; Layout.preferredWidth: parent.width * 0.20 }
-                    Label { text: qsTr("Unit"); font.bold: true; color: AppColors.onSurfaceVariant; horizontalAlignment: Text.AlignHCenter; Layout.preferredWidth: parent.width * 0.10 }
-                    Label { text: qsTr("Status"); font.bold: true; color: AppColors.onSurfaceVariant; horizontalAlignment: Text.AlignHCenter; Layout.preferredWidth: parent.width * 0.20 }
-                    Label { text: qsTr("Updated"); font.bold: true; color: AppColors.onSurfaceVariant; horizontalAlignment: Text.AlignRight; Layout.preferredWidth: parent.width * 0.20 }
+                    Label { text: qsTr("Unit"); font.bold: true; color: AppColors.onSurfaceVariant; horizontalAlignment: Text.AlignHCenter; Layout.preferredWidth: parent.width * 0.15 }
+                    Label { text: qsTr("Status"); font.bold: true; color: AppColors.onSurfaceVariant; horizontalAlignment: Text.AlignHCenter; Layout.preferredWidth: parent.width * 0.30 }
                 }
             }
 
@@ -330,7 +334,7 @@ Rectangle {
                     spacing: AppTheme.spacingM
 
                     RowLayout {
-                        Layout.preferredWidth: parent.width * 0.30
+                        Layout.preferredWidth: parent.width * 0.35
                         spacing: AppTheme.spacingS
 
                         Rectangle {
@@ -371,7 +375,7 @@ Rectangle {
                         color: AppColors.onSurfaceVariant
                         horizontalAlignment: Text.AlignHCenter
                         elide: Text.ElideRight
-                        Layout.preferredWidth: parent.width * 0.10
+                        Layout.preferredWidth: parent.width * 0.15
                     }
                     Rectangle {
                         readonly property string label: sensorRow.isAnalog && sensorRow.diStates && sensorRow.diStates.length > 0
@@ -379,7 +383,7 @@ Rectangle {
                             : (sensorRow.isAnalog && sensorRow.isAlarm
                                ? (sensorRow.alarmType === "min" ? qsTr("MIN alarm") : qsTr("MAX alarm"))
                                : (sensorRow.isDI || sensorRow.isDO ? (sensorRow.isOn ? qsTr("Active") : qsTr("Inactive")) : qsTr("No status")))
-                        Layout.preferredWidth: parent.width * 0.20
+                        Layout.preferredWidth: parent.width * 0.30
                         Layout.preferredHeight: 28
                         radius: AppTheme.radiusTiny
                         color: sensorRow.isAlarm ? AppColors.error : AppColors.withAlpha(sensorRow.stateColor, 0.2)
@@ -392,13 +396,6 @@ Rectangle {
                             horizontalAlignment: Text.AlignHCenter
                             elide: Text.ElideRight
                         }
-                    }
-                    Label {
-                        text: sensorRow.lastUpdate
-                        color: AppColors.onSurfaceVariant
-                        horizontalAlignment: Text.AlignRight
-                        elide: Text.ElideLeft
-                        Layout.preferredWidth: parent.width * 0.20
                     }
                 }
             }

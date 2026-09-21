@@ -134,8 +134,12 @@ Rectangle {
             SensorListModel.list_di_sensors(),
             SensorListModel.list_do_sensors(editSensorId))
         if (keepId >= 0) {
-            sensorForm.restoreDioSelectionById(keepId)
-            sensorForm.dioPendingSelectId = -1
+            // ListView xử lý model mới bất đồng bộ (queue layout); chờ 1 tick
+            // rồi mới khôi phục currentIndex, nếu không chọn lại bị rớt.
+            Qt.callLater(function() {
+                sensorForm.restoreDioSelectionById(keepId)
+                sensorForm.dioPendingSelectId = -1
+            })
         }
     }
 

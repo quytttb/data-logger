@@ -18,8 +18,6 @@ Rectangle {
         anchors.margins: AppTheme.pagePadding
         spacing: AppTheme.sectionSpacing
 
-
-
         ElevatedPane {
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -89,6 +87,34 @@ Rectangle {
                             return AppColors.primaryText
                         }
                         elide: Text.ElideRight
+                    }
+                }
+            }
+
+            // Loading overlay centre: feedback rõ ràng thay vì UI đơ
+            Rectangle {
+                id: loadingOverlay
+                anchors.fill: parent
+                visible: HistoryViewModel.isLoading
+                color: AppColors.withAlpha(AppColors.surfaceContainerLow, 0.6)
+                z: 2
+
+                ColumnLayout {
+                    anchors.centerIn: parent
+                    spacing: 12
+
+                    BusyIndicator {
+                        Layout.alignment: Qt.AlignHCenter
+                        running: parent.parent.visible
+                        implicitWidth: 48
+                        implicitHeight: 48
+                    }
+
+                    Label {
+                        Layout.alignment: Qt.AlignHCenter
+                        text: qsTr("Loading history…")
+                        color: AppColors.primaryText
+                        font: AppTypography.titleMedium
                     }
                 }
             }

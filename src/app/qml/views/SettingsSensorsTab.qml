@@ -64,6 +64,9 @@ Rectangle {
             ])
         }
         // qmllint disable unqualified
+        sensorTableModel.setHeaders([
+            "Sensor", "Unit", "Slave", "Addr", "Reg",
+            "Data type", "Format", "Poll", "Threshold", "Active"])
         sensorTableModel.setRows(rows)
         // qmllint enable unqualified
     }

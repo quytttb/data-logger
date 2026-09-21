@@ -124,7 +124,7 @@ Rectangle {
             Layout.bottomMargin: AppTheme.spacingM
             iconName: "restart_alt"
             iconOnly: true
-            kind: AppButton.Error
+            kind: AppButton.Neutral
             tooltipText: qsTr("Restart device")
             onClicked: sideBarRoot.restartRequested()
         }

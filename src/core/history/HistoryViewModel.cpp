@@ -15,6 +15,9 @@ HistoryViewModel::HistoryViewModel(QObject *parent) : QObject(parent)
     m_watcher = new QFutureWatcher<HistorySearchResult>(this);
     connect(m_watcher, &QFutureWatcher<HistorySearchResult>::finished,
             this, &HistoryViewModel::onSearchFinished);
+    m_filterWatcher = new QFutureWatcher<QList<QVariantMap>>(this);
+    connect(m_filterWatcher, &QFutureWatcher<QList<QVariantMap>>::finished,
+            this, &HistoryViewModel::onFiltersFinished);
     reloadFilters();
 }
 
@@ -37,6 +40,13 @@ void HistoryViewModel::setLoading(bool v)
     emit loadingChanged();
 }
 
+void HistoryViewModel::setFiltersLoading(bool v)
+{
+    if (m_filtersLoading == v) return;
+    m_filtersLoading = v;
+    emit filtersLoadingChanged();
+}
+
 void HistoryViewModel::setError(const QString &msg)
 {
     if (m_lastError == msg) return;
@@ -46,14 +56,31 @@ void HistoryViewModel::setError(const QString &msg)
 
 void HistoryViewModel::reloadFilters()
 {
-    ScopedDbConnection db;
-    SensorDao sensorDao(db);
-    const auto sensors = sensorDao.loadAll(/*activeOnly=*/true);
+    if (m_filterWatcher->isRunning()) return; // một lần đang chạy là đủ
 
-    QList<QVariantMap> maps;
-    maps.reserve(sensors.size());
-    for (const auto &s : sensors)
-        maps.append({{"id", s.id}, {"name", s.name}});
+    setFiltersLoading(true);
+    m_filterWatcher->setFuture(QtConcurrent::run([]() -> QList<QVariantMap> {
+        QList<QVariantMap> maps;
+        ScopedDbConnection db;
+        if (!db.get().isOpen())
+            return maps;
+        SensorDao sensorDao(db);
+        const auto sensors = sensorDao.loadAll(/*activeOnly=*/true);
+        maps.reserve(sensors.size());
+        for (const auto &s : sensors)
+            maps.append({{"id", s.id}, {"name", s.name}});
+        return maps;
+    }));
+}
+
+void HistoryViewModel::onFiltersFinished()
+{
+    setFiltersLoading(false);
+    const auto maps = m_filterWatcher->result();
+    if (maps.isEmpty()) {
+        // Không có sensor → vẫn giữ "All sensors" default, không emit lại
+        return;
+    }
     reloadFiltersFromMaps(maps);
 }
 
@@ -134,7 +161,6 @@ void HistoryViewModel::search(const QString &fromDate, const QString &toDate, in
 void HistoryViewModel::onSearchFinished()
 {
     const auto result = m_watcher->result();
-    // Không cần so stale gen nữa — pending được gộp, chỉ có 1 search chạy tại 1 thời điểm.
     Q_UNUSED(result.generation)
     m_searchGen = result.generation;
     if (m_hasPending) {
@@ -143,9 +169,7 @@ void HistoryViewModel::onSearchFinished()
         const QString pFrom = m_pendingFromDate;
         const QString pTo = m_pendingToDate;
         const int pId = m_pendingSensorId;
-        // Gọi search() sẽ set loading và chạy future mới
         search(pFrom, pTo, pId);
-        // Vẫn hiển thị kết quả cũ trong lúc chờ pending
         return;
     }
     setLoading(false);
@@ -164,48 +188,4 @@ void HistoryViewModel::clear()
 {
     m_model.setRows({});
     emit recordCountChanged();
-}
-
-static QString csvEscape(const QString &s)
-{
-    if (s.contains(QLatin1Char('"')) || s.contains(QLatin1Char(','))
-                                      || s.contains(QLatin1Char('\n')))
-        return QLatin1Char('"') + QString(s).replace(QLatin1Char('"'), QStringLiteral("\"\""))
-               + QLatin1Char('"');
-    return s;
-}
-
-void HistoryViewModel::exportCsv(const QUrl &fileUrl)
-{
-    const QString path = fileUrl.toLocalFile();
-    const auto &rows   = m_model.rows();
-
-    if (rows.isEmpty()) {
-        emit exportFinished(false, tr("No data to export."));
-        return;
-    }
-
-    QFile file(path);
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)) {
-        emit exportFinished(false, tr("Cannot open file: %1").arg(file.errorString()));
-        return;
-    }
-
-    QTextStream out(&file);
-    out.setEncoding(QStringConverter::Utf8);
-    out << "\xEF\xBB\xBF";
-    out << "Time,Sensor,Unit,Value,Raw,Status\n";
-
-    for (const auto &r : rows) {
-        out << csvEscape(r.recordedAt.toLocalTime()
-                              .toString(QStringLiteral("dd/MM/yyyy HH:mm:ss"))) << ','
-            << csvEscape(r.sensorName) << ','
-            << csvEscape(r.unit) << ','
-            << csvEscape(r.valueText) << ','
-            << csvEscape(r.rawValueText) << ','
-            << csvEscape(r.status) << '\n';
-    }
-
-    file.close();
-    emit exportFinished(true, path);
 }

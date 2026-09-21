@@ -22,6 +22,7 @@ class HistoryViewModel : public QObject {
     Q_PROPERTY(HistoryTableModel* tableModel READ tableModel CONSTANT)
     Q_PROPERTY(bool loading READ loading NOTIFY loadingChanged)
     Q_PROPERTY(bool isLoading READ loading NOTIFY loadingChanged)
+    Q_PROPERTY(bool filtersLoading READ filtersLoading NOTIFY filtersLoadingChanged)
     Q_PROPERTY(int recordCount READ recordCount NOTIFY recordCountChanged)
     Q_PROPERTY(bool searchedOnce READ searchedOnce NOTIFY searchedOnceChanged)
     Q_PROPERTY(QString lastError READ lastError NOTIFY lastErrorChanged)
@@ -36,6 +37,7 @@ public:
 
     HistoryTableModel *tableModel() { return &m_model; }
     bool loading() const { return m_loading; }
+    bool filtersLoading() const { return m_filtersLoading; }
     int recordCount() const { return m_model.rowCount(); }
     bool searchedOnce() const { return m_searchedOnce; }
     QString lastError() const { return m_lastError; }
@@ -45,37 +47,44 @@ public:
 public slots:
     Q_INVOKABLE void search(const QString &fromDate, const QString &toDate, int sensorId);
     Q_INVOKABLE void load_sensors() { reloadFilters(); }
+    // Load sensor filter list from DB asynchronously (worker thread). The
+    // caller that already holds a fresh in-memory map (main.cpp after
+    // SensorListModel::modelReset) should use reloadFiltersFromMaps() instead —
+    // it skips the DB round-trip entirely.
     Q_INVOKABLE void reloadFilters();
     // No-DB overload: build sensor filter list from pre-loaded maps (avoids a
     // redundant DB round-trip when called from main.cpp after SensorListModel changes).
     void reloadFiltersFromMaps(const QList<QVariantMap> &maps);
     Q_INVOKABLE void clear();
-    Q_INVOKABLE void exportCsv(const QUrl &fileUrl);
 
 signals:
     void loadingChanged();
+    void filtersLoadingChanged();
     void recordCountChanged();
     void searchedOnceChanged();
     void lastErrorChanged();
     void sensorFiltersChanged();
     void messageSent(QString title, QString body);
-    void exportFinished(bool ok, const QString &message);
 
 private slots:
     void onSearchFinished();
+    void onFiltersFinished();
 
 private:
     static QDateTime parseDateString(const QString &s, bool endOfDay);
     void setLoading(bool v);
+    void setFiltersLoading(bool v);
     void setError(const QString &msg);
 
     HistoryTableModel m_model;
     QFutureWatcher<HistorySearchResult> *m_watcher = nullptr;
+    QFutureWatcher<QList<QVariantMap>> *m_filterWatcher = nullptr;
     bool         m_loading = false;
+    bool         m_filtersLoading = false;
     bool         m_searchedOnce = false;
     QString      m_lastError;
-    QStringList  m_sensorNames;
-    QVariantList m_sensorIds;
+    QStringList  m_sensorNames{QStringLiteral("All sensors")};
+    QVariantList m_sensorIds{0};
     int          m_searchGen = 0;
     bool         m_hasPending = false;
     QString      m_pendingFromDate;

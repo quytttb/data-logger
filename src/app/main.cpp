@@ -195,9 +195,10 @@ int main(int argc, char *argv[]) {
     settingsCtrl->loadConfig();
     const AppConfig &cfg = settingsCtrl->config();
 
-    // Vietnam-only kiosk: apply the stored UI locale at boot and push the
-    // system timezone (+ NTP via timedatectl) down to the OS.
-    QLocale::setDefault(QLocale(cfg.uiLocale.isEmpty() ? QStringLiteral("vi") : cfg.uiLocale));
+    // Kiosk chỉ dùng tiếng Anh (đã gỡ selector UI locale khỏi Settings).
+    // Giữ column ui_locale trong DB để migration idempotent, nhưng luôn chạy
+    // với "en". Đồng thời đẩy system timezone (+ NTP) xuống OS.
+    QLocale::setDefault(QLocale(QLocale::English));
     settingsCtrl->syncSystemTime();
 
     restApi->setReadingsProvider([monitorCtrl]() -> QVariantMap {
