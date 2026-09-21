@@ -5,17 +5,19 @@ import QtQuick.Controls
 
 import LoggerKit.Theme
 
-// Boot splash nhẹ cho kiosk eglfs: che màn hình đen trong lúc engine biên dịch
-// Main.qml (~1-2s trên Pi 3). Dùng logo 4M có sẵn trong kit — không thêm asset.
-// C++ (main.cpp) đóng splash sau khi cửa sổ Main hiện + 800ms.
-Window {
+// Boot splash nhẹ cho kiosk eglfs: che màn hình trong lúc Main khởi tạo xong
+// (~1s trên Pi 3). Dùng logo 4M có sẵn trong kit — không thêm asset.
+// LƯU Ý eglfs: chỉ 1 OpenGL window duy nhất nên splash PHẢI là overlay trong
+// Main (không dùng engine/window thứ 2 — sẽ FATAL crash).
+// Tự ẩn sau 900ms kể từ lúc tạo (đủ cho first paint + startPolling).
+Item {
     id: splashRoot
-    width: 1024
-    height: 600
-    visibility: Window.FullScreen
-    flags: Qt.SplashScreen | Qt.WindowStaysOnTopHint
-    color: "#000000"
-    title: "Data Logger"
+    visible: true
+
+    Rectangle {
+        anchors.fill: parent
+        color: "#000000"
+    }
 
     Column {
         anchors.centerIn: parent
@@ -37,7 +39,7 @@ Window {
 
         BusyIndicator {
             anchors.horizontalCenter: parent.horizontalCenter
-            running: true
+            running: splashRoot.visible
             implicitWidth: 40
             implicitHeight: 40
         }
@@ -48,5 +50,12 @@ Window {
             color: AppColors.onSurfaceVariant
             font: AppTypography.bodyMedium
         }
+    }
+
+    Timer {
+        interval: 900
+        running: true
+        repeat: false
+        onTriggered: splashRoot.visible = false
     }
 }

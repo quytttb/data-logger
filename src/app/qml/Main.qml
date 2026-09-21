@@ -43,11 +43,6 @@ ApplicationWindow {
     property int scanProgCur: 0
     property int scanProgTot: 0
 
-    onCurrentTabChanged: {
-        // Auto-clear history results when leaving the history tab
-        if (currentTab !== 1) HistoryViewModel.clear()
-    }
-
     // Kiosk shell. The whole layout shrinks when the on-screen keyboard is
     // visible (Qt VirtualKeyboard official pattern: bind content bottom to the
     // InputPanel top) so focused fields are never covered by the keyboard.
@@ -245,5 +240,12 @@ ApplicationWindow {
     OnScreenKeyboard {
         id: inputPanel
         window: root
+    }
+
+    // Boot splash (logo 4M): phủ toàn màn hình lúc khởi động, tự ẩn sau 900ms.
+    // Phải là overlay trong Main — eglfs chỉ cho 1 OpenGL window duy nhất.
+    Splash {
+        anchors.fill: parent
+        z: 1000
     }
 }

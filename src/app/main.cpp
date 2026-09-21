@@ -2,7 +2,6 @@
 #include <QLocale>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
-#include <QQuickWindow>
 #include <QIcon>
 #include <QFontDatabase>
 #include <QSemaphore>
@@ -270,25 +269,9 @@ int main(int argc, char *argv[]) {
         []() { QCoreApplication::exit(-1); },
         Qt::QueuedConnection);
 
-    // Splash nhẹ (logo 4M) che màn hình đen trong lúc Main.qml biên dịch/hiện
-    // (~1-2s trên Pi 3). Engine riêng để splash hiện ngay, không chờ Main xong.
-    QQmlApplicationEngine splashEngine;
-    splashEngine.loadFromModule("DataLogger.App", "Splash");
-    if (!splashEngine.rootObjects().isEmpty()) {
-        if (auto *splashWin = qobject_cast<QQuickWindow *>(splashEngine.rootObjects().first()))
-            splashWin->show();
-    }
-
     engine.loadFromModule("DataLogger.App", "Main");
 
     if (engine.rootObjects().isEmpty()) return -1;
-
-    // Đóng splash sau khi Main đã vẽ frame đầu (800ms đủ cho first paint kiosk).
-    QTimer::singleShot(800, &app, [&splashEngine]() {
-        const auto roots = splashEngine.rootObjects();
-        for (QObject *o : roots)
-            o->deleteLater();
-    });
 
     // Auto-start monitoring once the event loop is running, so that the UI is
     // ready to reflect the polling state and receive any startup messages.
