@@ -85,12 +85,20 @@ void HistoryViewModel::search(const QString &fromDate, const QString &toDate, in
 
     setError({});
     if (m_watcher->isRunning()) {
-        m_watcher->cancel();
-        m_watcher->waitForFinished();
+        // Gộp request: chỉ nhớ pending, chạy khi search hiện tại xong.
+        m_hasPending = true;
+        m_pendingFromDate = fromDate;
+        m_pendingToDate = toDate;
+        m_pendingSensorId = sensorId;
+        qDebug() << "HistoryViewModel: search in progress — queued pending request";
+        return;
     }
     setLoading(true);
-    m_watcher->setFuture(QtConcurrent::run([sensorId, from, to]() -> HistorySearchResult {
+    m_searchGen++;
+    const int gen = m_searchGen;
+    m_watcher->setFuture(QtConcurrent::run([sensorId, from, to, gen]() -> HistorySearchResult {
         HistorySearchResult result;
+        result.generation = gen;
         ScopedDbConnection db;
         if (!db.get().isOpen()) {
             result.error = QStringLiteral("Database not open.");
@@ -125,8 +133,22 @@ void HistoryViewModel::search(const QString &fromDate, const QString &toDate, in
 
 void HistoryViewModel::onSearchFinished()
 {
-    setLoading(false);
     const auto result = m_watcher->result();
+    // Không cần so stale gen nữa — pending được gộp, chỉ có 1 search chạy tại 1 thời điểm.
+    Q_UNUSED(result.generation)
+    m_searchGen = result.generation;
+    if (m_hasPending) {
+        // Có request mới trong lúc search — chạy ngay, không tắt loading
+        m_hasPending = false;
+        const QString pFrom = m_pendingFromDate;
+        const QString pTo = m_pendingToDate;
+        const int pId = m_pendingSensorId;
+        // Gọi search() sẽ set loading và chạy future mới
+        search(pFrom, pTo, pId);
+        // Vẫn hiển thị kết quả cũ trong lúc chờ pending
+        return;
+    }
+    setLoading(false);
     if (!result.error.isEmpty()) {
         setError(result.error);
         emit messageSent(QStringLiteral("History"), result.error);

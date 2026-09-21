@@ -12,6 +12,7 @@
 struct HistorySearchResult {
     QList<HistoryRow> rows;
     QString error;
+    int generation = 0;
 };
 
 class HistoryViewModel : public QObject {
@@ -75,4 +76,9 @@ private:
     QString      m_lastError;
     QStringList  m_sensorNames;
     QVariantList m_sensorIds;
+    int          m_searchGen = 0;
+    bool         m_hasPending = false;
+    QString      m_pendingFromDate;
+    QString      m_pendingToDate;
+    int          m_pendingSensorId = 0;
 };
