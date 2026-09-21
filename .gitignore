@@ -31,8 +31,6 @@ logs/
 config/
 var/
 
-# Local Modbus RTU simulator used for Pi/dev verification
-/tools/simulator/
 
 # IDE
 .idea/
