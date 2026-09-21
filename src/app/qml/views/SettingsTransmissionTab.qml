@@ -179,24 +179,23 @@ Item {
                     id: symCombo
                     visible: cell.column === 2
                     anchors.fill: parent
-                    editable: true
+                    // Dropdown-only. A legacy custom symbol that is missing from
+                    // the TT10 catalog is pushed into the model so it stays visible.
                     model: SensorSymbols.symbols
                     Component.onCompleted: {
                         let v = String(cell.display)
                         let idx = find(v)
-                        if (idx >= 0) currentIndex = idx
-                        else editText = v
+                        if (idx < 0) {
+                            let list = SensorSymbols.symbols.slice(0)
+                            list.push(v)
+                            symCombo.model = list
+                            idx = symCombo.count - 1
+                        }
+                        currentIndex = idx >= 0 ? idx : -1
                     }
                     onActivated: {
                         txTable.setCell(cell.row, 2, currentText)
                         root.configChanged = true
-                    }
-                    onEditingFinished: {
-                        var v = currentText.length > 0 ? currentText : editText
-                        if (txTable.cell(cell.row, 2) !== v) {
-                            txTable.setCell(cell.row, 2, v)
-                            root.configChanged = true
-                        }
                     }
                 }
             }

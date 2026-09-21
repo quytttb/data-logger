@@ -65,7 +65,7 @@ Item {
 
     // ── Public functions ──
     function resetForm() {
-        basicTab.dName.text = ""; basicTab.dSensorSymbol.editText = ""; basicTab.dUnit.currentIndex = 0; basicTab.dSlave.value = 1; basicTab.dAddr.value = 0
+        basicTab.dName.text = ""; basicTab.setSymbolValue(""); basicTab.setUnitValue(""); basicTab.dSlave.value = 1; basicTab.dAddr.value = 0
         basicTab.dRegType.currentIndex = 0; basicTab.dDataType.currentIndex = 0; basicTab.dDataFmt.currentIndex = 0
         scalingTab.dScalingMode.currentIndex = 0
         scalingTab.dLinearA.text = "1"; scalingTab.dLinearB.text = "0"
@@ -78,12 +78,8 @@ Item {
 
     function loadData(s, uiState) {
         basicTab.dName.text = s.name
-        var symIdx = basicTab.dSensorSymbol.find(s.sensorSymbol || "")
-        if (symIdx >= 0) basicTab.dSensorSymbol.currentIndex = symIdx
-        else basicTab.dSensorSymbol.editText = s.sensorSymbol || ""
-        var unitIdx = basicTab.dUnit.find(s.unit || "")
-        if (unitIdx >= 0) basicTab.dUnit.currentIndex = unitIdx
-        else basicTab.dUnit.editText = s.unit || ""
+        basicTab.setSymbolValue(s.sensorSymbol || "")
+        basicTab.setUnitValue(s.unit || "")
 
         basicTab.dSlave.value = s.slaveId; basicTab.dAddr.value = s.registerAddress
         var regLabel = s.registerType
@@ -122,8 +118,8 @@ Item {
     function getFormData() {
         return {
             name: basicTab.dName.text,
-            sensorSymbol: isAnalog ? basicTab.dSensorSymbol.editText : "",
-            unit: isAnalog ? basicTab.dUnit.editText : "",
+            sensorSymbol: isAnalog ? basicTab.currentSymbol : "",
+            unit: isAnalog ? basicTab.currentUnit : "",
             slaveId: basicTab.dSlave.value,
             registerAddress: basicTab.dAddr.value,
             registerType: basicTab.dRegType.currentText,

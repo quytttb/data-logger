@@ -97,19 +97,27 @@ Item {
                                             ComboBox {
                                                 id: masterPortCombo
                                                 Layout.fillWidth: true
-                                                model: TesterController.availablePorts
-                                                editable: true
-                                                property bool ready: false
-                                                Component.onCompleted: { editText = SettingsController.serialPort; ready = true }
+                                                model: masterPortList
+                                                // Dropdown-only (no typing). A saved port that is
+                                                // not currently listed (e.g. a custom /dev/ttyX)
+                                                // is prepended so it stays visible.
+                                                property var masterPortList: []
+                                                function resync() {
+                                                    let list = TesterController.availablePorts.slice(0)
+                                                    let cur = SettingsController ? SettingsController.serialPort : ""
+                                                    if (cur && list.indexOf(cur) < 0) list.unshift(cur)
+                                                    masterPortList = list
+                                                    currentIndex = cur ? list.indexOf(cur) : -1
+                                                }
+                                                Component.onCompleted: resync()
                                                 Connections {
                                                     target: SettingsController
-                                                    function onConfigLoaded() {
-                                                        masterPortCombo.ready = false
-                                                        masterPortCombo.editText = SettingsController.serialPort
-                                                        masterPortCombo.ready = true
-                                                    }
+                                                    function onConfigLoaded() { masterPortCombo.resync() }
                                                 }
-                                                onEditTextChanged: { if (ready) { SettingsController.serialPort = editText; root.configChanged = true } }
+                                                Connections {
+                                                    target: TesterController
+                                                    function onAvailablePortsChanged() { masterPortCombo.resync() }
+                                                }
                                                 onActivated: function(index) { SettingsController.serialPort = currentText; root.configChanged = true }
                                             }
                                             AppButton {
@@ -129,23 +137,21 @@ Item {
                                         ComboBox {
                                             id: masterBaudCombo
                                             Layout.fillWidth: true
-                                            model: AppDefaults.baudrates
-                                            editable: true
-                                            property bool ready: false
-                                            Component.onCompleted: { editText = String(SettingsController.serialBaudrate); ready = true }
+                                            model: masterBaudList
+                                            // Dropdown-only; a legacy custom baud that is not in
+                                            // the standard list is pushed in so it stays selectable.
+                                            property var masterBaudList: []
+                                            function resync() {
+                                                let list = AppDefaults.baudrates.slice(0)
+                                                let cur = SettingsController ? String(SettingsController.serialBaudrate) : ""
+                                                if (cur && list.indexOf(cur) < 0) list.push(cur)
+                                                masterBaudList = list
+                                                currentIndex = cur ? list.indexOf(cur) : -1
+                                            }
+                                            Component.onCompleted: resync()
                                             Connections {
                                                 target: SettingsController
-                                                function onConfigLoaded() {
-                                                    masterBaudCombo.ready = false
-                                                    masterBaudCombo.editText = String(SettingsController.serialBaudrate)
-                                                    masterBaudCombo.ready = true
-                                                }
-                                            }
-                                            onEditTextChanged: {
-                                                if (ready) {
-                                                    let val = parseInt(editText, 10)
-                                                    if (!isNaN(val) && val > 0) { SettingsController.serialBaudrate = val; root.configChanged = true }
-                                                }
+                                                function onConfigLoaded() { masterBaudCombo.resync() }
                                             }
                                             onActivated: function(index) {
                                                 var val = parseInt(currentText, 10)

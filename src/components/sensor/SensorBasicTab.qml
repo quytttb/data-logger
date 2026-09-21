@@ -38,6 +38,37 @@ ElevatedPane {
     property alias dDataType: dDataType
     property alias dDataFmt: dDataFmt
 
+    // Dropdown-only: no free-text typing. A previously-saved value that is not
+    // in the standard list is merged into the model so it stays visible.
+    readonly property var symbolBase: SensorSymbols.symbols.slice(0)
+    readonly property var unitBase: [
+        "°C", "°F", "%", "%RH",
+        "pH", "mg/L", "µg/L", "NTU",
+        "m³/h", "m³/s", "L/min", "L/h",
+        "m³", "m²", "m", "mm",
+        "mV", "V", "mA", "A",
+        "kPa", "Pa", "bar", "psi",
+        "dB", "dBA", "lux",
+        "ppm", "ppb", "mg/m³"
+    ]
+
+    function setSymbolValue(v) {
+        let list = root.symbolBase.slice(0)
+        if (v && list.indexOf(v) < 0) list.push(v)
+        dSensorSymbol.model = list
+        dSensorSymbol.currentIndex = v ? list.indexOf(v) : -1
+    }
+
+    function setUnitValue(v) {
+        let list = root.unitBase.slice(0)
+        if (v && list.indexOf(v) < 0) list.push(v)
+        dUnit.model = list
+        dUnit.currentIndex = v ? list.indexOf(v) : -1
+    }
+
+    readonly property string currentSymbol: dSensorSymbol.currentText
+    readonly property string currentUnit: dUnit.currentText
+
     RowLayout {
         Layout.fillWidth: true
         Layout.fillHeight: true
@@ -59,8 +90,7 @@ ElevatedPane {
                 id: dSensorSymbol
                 Layout.fillWidth: true
                 visible: root.isAnalog
-                editable: true
-                model: SensorSymbols.symbols
+                model: root.symbolBase
             }
 
             Text { text: qsTr("Name:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize }
@@ -69,17 +99,7 @@ ElevatedPane {
             Text { text: qsTr("Unit:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize; visible: root.isAnalog }
             ComboBox {
                 id: dUnit; Layout.fillWidth: true; visible: root.isAnalog
-                editable: true
-                model: [
-                    "°C", "°F", "%", "%RH",
-                    "pH", "mg/L", "µg/L", "NTU",
-                    "m³/h", "m³/s", "L/min", "L/h",
-                    "m³", "m²", "m", "mm",
-                    "mV", "V", "mA", "A",
-                    "kPa", "Pa", "bar", "psi",
-                    "dB", "dBA", "lux",
-                    "ppm", "ppb", "mg/m³"
-                ]
+                model: root.unitBase
             }
 
             Text { text: qsTr("Poll interval (s):"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize; visible: !root.isTesterMode && root.isAnalog }
