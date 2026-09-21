@@ -20,7 +20,10 @@ bool Database::init(const QString &dbPath) {
         return false;
     }
 
-    applyPragmas(db);
+    if (!applyPragmas(db)) {
+        qCritical() << "Database::init applyPragmas failed";
+        return false;
+    }
 
     if (!createTables(db)) return false;
     if (!migrate(db))      return false;
@@ -38,16 +41,30 @@ QSqlDatabase Database::openConnection() {
     if (QSqlDatabase::contains(connName)) {
         QSqlDatabase db = QSqlDatabase::database(connName, /*open=*/false);
         if (!db.isOpen()) {
-            db.open();
-            applyPragmas(db);
+            if (!db.open()) {
+                qWarning() << "Database::openConnection failed to reopen" << connName
+                           << db.lastError().text();
+            } else if (!applyPragmas(db)) {
+                qWarning() << "Database::openConnection applyPragmas failed for" << connName
+                           << "— closing";
+                db.close();
+            }
         }
         return db;
     }
 
     QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE", connName);
     db.setDatabaseName(s_dbPath);
-    db.open();
-    applyPragmas(db);
+    if (!db.open()) {
+        qWarning() << "Database::openConnection failed to open" << connName
+                   << db.lastError().text();
+        return db; // closed handle — caller phải kiểm tra isOpen()
+    }
+    if (!applyPragmas(db)) {
+        qWarning() << "Database::openConnection applyPragmas failed for" << connName
+                   << "— closing connection";
+        db.close();
+    }
     return db;
 }
 
@@ -55,20 +72,65 @@ void Database::closeConnection(QSqlDatabase &db) {
     // With thread-local reuse the connection stays open between calls.
     // Just close and null the caller's handle; removeDatabase is NOT called
     // so DAO copies on the stack never trigger Qt's "still in use" warning.
-    db.close();
+    if (db.isValid())
+        db.close();
     db = QSqlDatabase();
 }
 
-void Database::applyPragmas(QSqlDatabase &db) {
-    QSqlQuery q(db);
-    q.exec("PRAGMA journal_mode = WAL;");
-    q.exec("PRAGMA busy_timeout = 5000;");
-    q.exec("PRAGMA foreign_keys = ON;");
-    q.exec("PRAGMA synchronous = NORMAL;");
-    q.exec("PRAGMA journal_size_limit = 1000000;");
-    q.exec("PRAGMA mmap_size = 30000000;");
-    q.exec("PRAGMA temp_store = MEMORY;");
-    q.exec("PRAGMA cache_size = -20000;");
+bool Database::applyPragmas(QSqlDatabase &db) {
+    auto execPragma = [&](const QString &sql, bool required) -> bool {
+        QSqlQuery q(db);
+        if (!q.exec(sql)) {
+            if (required)
+                qWarning() << "applyPragmas failed (required):" << sql << q.lastError().text();
+            else
+                qDebug() << "applyPragmas failed (optional):" << sql << q.lastError().text();
+            return !required;
+        }
+        return true;
+    };
+
+    // Required
+    if (!execPragma(QStringLiteral("PRAGMA journal_mode = WAL;"), true)) return false;
+    if (!execPragma(QStringLiteral("PRAGMA busy_timeout = 5000;"), true)) return false;
+    if (!execPragma(QStringLiteral("PRAGMA foreign_keys = ON;"), true)) return false;
+
+    // Verify required — nếu không đạt thì coi như failed
+    {
+        QSqlQuery q(db);
+        if (q.exec(QStringLiteral("PRAGMA journal_mode;")) && q.next()) {
+            const QString mode = q.value(0).toString().toLower();
+            if (mode != QLatin1String("wal")) {
+                qWarning() << "applyPragmas: journal_mode is" << mode << "expected wal — failing";
+                return false;
+            }
+        } else {
+            qWarning() << "applyPragmas: cannot query journal_mode" << q.lastError().text();
+            return false;
+        }
+        if (q.exec(QStringLiteral("PRAGMA foreign_keys;")) && q.next()) {
+            if (q.value(0).toInt() != 1) {
+                qWarning() << "applyPragmas: foreign_keys not enabled — failing";
+                return false;
+            }
+        } else {
+            qWarning() << "applyPragmas: cannot query foreign_keys" << q.lastError().text();
+            return false;
+        }
+        // busy_timeout cũng verify bằng đọc lại (best effort nhưng vẫn warn)
+        if (q.exec(QStringLiteral("PRAGMA busy_timeout;")) && q.next()) {
+            if (q.value(0).toInt() < 4000)
+                qWarning() << "applyPragmas: busy_timeout too low:" << q.value(0).toInt();
+        }
+    }
+
+    // Best-effort
+    execPragma(QStringLiteral("PRAGMA synchronous = NORMAL;"), false);
+    execPragma(QStringLiteral("PRAGMA journal_size_limit = 1000000;"), false);
+    execPragma(QStringLiteral("PRAGMA mmap_size = 30000000;"), false);
+    execPragma(QStringLiteral("PRAGMA temp_store = MEMORY;"), false);
+    execPragma(QStringLiteral("PRAGMA cache_size = -20000;"), false);
+    return true;
 }
 
 bool Database::createTables(QSqlDatabase &db) {
@@ -299,10 +361,10 @@ bool Database::migrate(QSqlDatabase &db) {
     if (!renameSensorColumn("parameter_code", "sensor_symbol"))
         return false;
 
-    // Legacy: empty thresholds were saved as 0.0 instead of NULL.
-    QSqlQuery fix(db);
-    fix.exec("UPDATE sensor SET min_threshold=NULL, max_threshold=NULL "
-             "WHERE min_threshold=0 AND max_threshold=0");
+    // Legacy 0/0 thresholds: không tự migrate nữa. Trước đây 0/0 từng được dùng
+    // để biểu diễn "không ngưỡng" nhưng 0/0 cũng là giá trị hợp lệ cho sensor
+    // quanh zero. Không có metadata để phân biệt nên để nguyên — user tự điều
+    // chỉnh qua UI. Nếu cần, thêm màn hình xác nhận migration riêng.
 
     // Legacy: timezone was stored as an offset label ("UTC+7"). It is now an
     // IANA zone id that `timedatectl` accepts directly ("Etc/GMT-7"; the POSIX

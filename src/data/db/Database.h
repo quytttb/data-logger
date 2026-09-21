@@ -13,12 +13,12 @@ public:
     static bool init(const QString &dbPath);
 
     // Open a new connection on the calling thread (Qt requires one QSqlDatabase
-    // per thread). Always close with closeConnection() to avoid leaking
-    // named connections in Qt's connection pool.
+    // per thread). Reuses a thread-local named connection. Log đầy đủ nếu
+    // open() thất bại — caller nên kiểm tra isOpen().
     static QSqlDatabase openConnection();
 
-    // Close and unregister a connection opened with openConnection().
-    // Prefer this over db.close() so the connection name is freed immediately.
+    // Close a connection opened with openConnection(). Với thread-local reuse
+    // thì không gọi removeDatabase() — chỉ close handle.
     static void closeConnection(QSqlDatabase &db);
 
     // Apply all incremental schema migrations (idempotent).
@@ -26,7 +26,8 @@ public:
 
 private:
     static bool createTables(QSqlDatabase &db);
-    static void applyPragmas(QSqlDatabase &db);
+    // Trả false nếu required pragma (FK, busy_timeout, WAL) không áp dụng được.
+    static bool applyPragmas(QSqlDatabase &db);
     static bool addColumnIfMissing(QSqlDatabase &db, const QString &table,
                                    const QString &column, const QString &definition);
     static bool dropColumnIfExists(QSqlDatabase &db, const QString &table,
