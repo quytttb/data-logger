@@ -4,6 +4,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import DataLogger.Core
 import LoggerKit.Theme
+import LoggerKit.Components
 
 Item {
     id: root
@@ -81,31 +82,17 @@ Item {
         spacing: 12
         visible: root.hasSensors
 
-        // Nút icon filter (glyph filter_alt trong font Material Symbols
-        // bundle sẵn — không thêm icon vào kit dùng chung).
-        Button {
+        // Nút filter dùng AppButton kit (icon filterAlt) — Tonal khi đang
+        // lọc, Neutral khi xem tất cả. Đếm n/m hiện bên cạnh khi lọc.
+        AppButton {
             id: filterButton
             Layout.alignment: Qt.AlignVCenter
-            Layout.preferredWidth: 48
-            Layout.preferredHeight: 48
+            kind: root.isFiltered ? AppButton.Tonal : AppButton.Neutral
+            iconName: "filterAlt"
+            iconOnly: true
+            iconSide: 24
+            tooltipText: qsTr("Filter sensors")
             onClicked: filterPopup.open()
-
-            background: Rectangle {
-                radius: AppTheme.chipRadius
-                color: root.isFiltered ? AppColors.withAlpha(AppColors.primaryColor, 0.25)
-                                       : AppColors.surfaceContainerHigh
-                border.width: root.isFiltered ? 1 : 0
-                border.color: AppColors.primaryColor
-            }
-
-            contentItem: Text {
-                text: "\uEF4B" // filter_alt (Material Symbols Outlined)
-                font.family: "Material Symbols Outlined"
-                font.pixelSize: 26
-                color: root.isFiltered ? AppColors.primaryColor : AppColors.onSurfaceVariant
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
-            }
         }
 
         Text {
@@ -215,9 +202,10 @@ Item {
                     font.bold: true
                     Layout.fillWidth: true
                 }
-                Button {
+                AppButton {
+                    kind: AppButton.Secondary
                     text: qsTr("All")
-                    font.pixelSize: AppTypography.bodyMedium.pixelSize
+                    Layout.alignment: Qt.AlignVCenter
                     onClicked: root.selectAll()
                 }
             }
@@ -262,14 +250,12 @@ Item {
                 }
             }
 
-            Button {
+            AppButton {
+                kind: AppButton.Primary
                 text: qsTr("Done")
                 Layout.fillWidth: true
                 Layout.preferredHeight: 48
                 Layout.topMargin: 8
-                font.pixelSize: AppTypography.bodyMedium.pixelSize
-                font.bold: true
-                highlighted: true
                 onClicked: filterPopup.close()
             }
         }
