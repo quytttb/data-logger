@@ -7,6 +7,7 @@
 #include <QHash>
 #include <QSet>
 #include <QQueue>
+#include <QPointer>
 #include <deque>
 #include <atomic>
 #include <QtQmlIntegration/qqmlintegration.h>
@@ -176,8 +177,11 @@ private:
     MonitorModel            *m_model;
     ModbusTcpServerService  *m_mbtcp;
 
-    QThread        *m_modbusThread = nullptr;
-    QThread        *m_dbThread     = nullptr;
+    // QPointer: thread tự deleteLater khi finished — QPointer tự null nên
+    // checkThreadsFinished (singleShot 50ms) không bao giờ gọi isRunning()
+    // trên object đã hủy (SEGV Tester Connect, core 19:13 Pi .15).
+    QPointer<QThread> m_modbusThread;
+    QPointer<QThread> m_dbThread;
     QObject        *m_modbusWorker = nullptr;
     DatabaseWorker *m_dbWorker     = nullptr;
 

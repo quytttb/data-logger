@@ -368,19 +368,19 @@ void MonitorController::stopPollingSync() {
     stopWorkerBounded(m_modbusWorker, kStopWorkerMs);
     stopWorkerBounded(m_dbWorker, kStopWorkerMs);
     if (m_modbusThread) {
-        auto *t = m_modbusThread;
+        QPointer<QThread> t = m_modbusThread;
         m_modbusThread = nullptr;
         t->quit();
-        if (!t->wait(kThreadJoinMs)) {
+        if (!t.isNull() && !t->wait(kThreadJoinMs)) {
             qWarning() << "stopPollingSync: modbus thread hung — will delete on finish";
             // already connected finished→deleteLater
         }
     }
     if (m_dbThread) {
-        auto *t = m_dbThread;
+        QPointer<QThread> t = m_dbThread;
         m_dbThread = nullptr;
         t->quit();
-        if (!t->wait(kThreadJoinMs)) {
+        if (!t.isNull() && !t->wait(kThreadJoinMs)) {
             qWarning() << "stopPollingSync: db thread hung — will delete on finish";
         }
     }
