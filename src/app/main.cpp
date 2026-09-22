@@ -94,25 +94,28 @@ int main(int argc, char *argv[]) {
         QStringLiteral(":/qt/qml/DataLogger/App/resources/fonts/Inter/Inter-Italic.otf"),
         QStringLiteral(":/qt/qml/DataLogger/App/resources/fonts/Inter/Inter-BoldItalic.otf"),
     };
-    bool uiFontOk = false;
+    QString uiFamily;
     for (const QString &path : kUiFonts) {
         const int id = QFontDatabase::addApplicationFont(path);
-        if (id < 0)
+        if (id < 0) {
             qWarning() << "[main] Failed to load UI font from" << path;
-        else
-            uiFontOk = true;
-    }
-    if (uiFontOk) {
-        QFont uiFont(QStringLiteral("Inter"));
-        if (uiFont.exactMatch()) {
-            app.setFont(uiFont);
-            // Token AppTypography.monoFamily ("monospace") cũng trỏ về Inter —
-            // giữ đúng quy ước 1 font duy nhất mà không phải sửa kit dùng chung.
-            QFont::insertSubstitution(QStringLiteral("monospace"), QStringLiteral("Inter"));
-            qDebug() << "[main] UI font set to Inter";
-        } else {
-            qWarning() << "[main] Inter family not found after loading — keeping system font";
+            continue;
         }
+        // Log family thật mà Qt đăng ký (phòng OTF khai tên khác dự kiến).
+        const QStringList fams = QFontDatabase::applicationFontFamilies(id);
+        qDebug() << "[main] UI font loaded:" << path.split('/').constLast() << "->" << fams;
+        if (uiFamily.isEmpty() && !fams.isEmpty())
+            uiFamily = fams.constFirst();
+    }
+    if (!uiFamily.isEmpty()) {
+        QFont uiFont(uiFamily);
+        app.setFont(uiFont);
+        // Token AppTypography.monoFamily ("monospace") cũng trỏ về font này —
+        // giữ đúng quy ước 1 font duy nhất mà không phải sửa kit dùng chung.
+        QFont::insertSubstitution(QStringLiteral("monospace"), uiFamily);
+        qDebug() << "[main] UI font set to" << uiFamily;
+    } else {
+        qWarning() << "[main] No UI font family registered — keeping system font";
     }
     app.setApplicationVersion(QStringLiteral(APP_VERSION));
     app.setOrganizationName("DATALOGGER");
