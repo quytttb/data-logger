@@ -286,13 +286,26 @@ ElevatedPane {
                             id: diSensorCombo
                             Layout.fillWidth: true
                             model: root.diSensors.map(function(s) { return root.sensorOptionLabel(s) })
-                            // Không custom delegate: popup mặc định tự xuống dòng ở "\n"
-                            // (tên dòng 1, Slave/Addr dòng 2). Nút đóng chỉ hiện tên.
+                            // Wrap nhẹ: delegate mặc định + WordWrap, tối đa 2 dòng
+                            // (tên dòng 1, Slave/Addr dòng 2 ở "\n"). Nút đóng chỉ hiện tên.
                             contentItem: Label {
                                 text: diSensorCombo.displayText.split("\n")[0]
                                 elide: Text.ElideRight
                                 verticalAlignment: Text.AlignVCenter
                                 rightPadding: 28
+                            }
+                            delegate: ItemDelegate {
+                                id: diSensorOpt
+                                required property string modelData
+                                required property int index
+                                highlighted: diSensorCombo.highlightedIndex === index
+                                contentItem: Label {
+                                    text: diSensorOpt.modelData
+                                    wrapMode: Text.WordWrap
+                                    maximumLineCount: 2
+                                    elide: Text.ElideRight
+                                    verticalAlignment: Text.AlignVCenter
+                                }
                             }
                         }
 
@@ -346,13 +359,26 @@ ElevatedPane {
                             id: doSensorCombo
                             Layout.fillWidth: true
                             model: root.doSensors.map(function(s) { return root.sensorOptionLabel(s) })
-                            // Không custom delegate: popup mặc định tự xuống dòng ở "\n"
-                            // (tên dòng 1, Slave/Addr dòng 2). Nút đóng chỉ hiện tên.
+                            // Wrap nhẹ: delegate mặc định + WordWrap, tối đa 2 dòng
+                            // (tên dòng 1, Slave/Addr dòng 2 ở "\n"). Nút đóng chỉ hiện tên.
                             contentItem: Label {
                                 text: doSensorCombo.displayText.split("\n")[0]
                                 elide: Text.ElideRight
                                 verticalAlignment: Text.AlignVCenter
                                 rightPadding: 28
+                            }
+                            delegate: ItemDelegate {
+                                id: doSensorOpt
+                                required property string modelData
+                                required property int index
+                                highlighted: doSensorCombo.highlightedIndex === index
+                                contentItem: Label {
+                                    text: doSensorOpt.modelData
+                                    wrapMode: Text.WordWrap
+                                    maximumLineCount: 2
+                                    elide: Text.ElideRight
+                                    verticalAlignment: Text.AlignVCenter
+                                }
                             }
                         }
 
