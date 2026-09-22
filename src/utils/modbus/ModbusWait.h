@@ -14,9 +14,18 @@ inline bool waitForReply(QModbusReply *reply, int timeoutMs) {
     if (reply->isFinished()) return true;
 
     QEventLoop loop;
-    QObject::connect(reply, &QModbusReply::finished, &loop, &QEventLoop::quit);
-    QTimer::singleShot(timeoutMs, &loop, &QEventLoop::quit);
+    const QMetaObject::Connection cFinished =
+        QObject::connect(reply, &QModbusReply::finished, &loop, &QEventLoop::quit);
+    QTimer timer;
+    timer.setSingleShot(true);
+    const QMetaObject::Connection cTimeout =
+        QObject::connect(&timer, &QTimer::timeout, &loop, &QEventLoop::quit);
+    timer.start(timeoutMs);
     loop.exec();
+    // Ngắt kết nối sau khi chờ xong để slot quit() treo không bao giờ kích
+    // hoạt trễ trên loop đã thoát (flakiness khi timeout).
+    QObject::disconnect(cFinished);
+    QObject::disconnect(cTimeout);
     return reply->isFinished();
 }
 

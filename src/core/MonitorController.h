@@ -132,6 +132,9 @@ signals:
     void newDataPoint(int sensorId, double timestampMs, double value);
     void trendAxesChanged();
     void trendingFilterChanged();
+    // Async stop hoàn tất: worker stop() đã chạy xong + thread đã chết +
+    // cổng serial đã giải phóng. Tester chờ signal này mới được connect.
+    void pollingFullyStopped();
 
 private slots:
     void onDataReady(QVariantMap payload);

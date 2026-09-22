@@ -313,10 +313,13 @@ void MonitorController::stopPolling() {
     applyStatus("stopping", StatusIdle);
     emit stoppingChanged();
 
+    // Gọi stop() kiểu queued rồi để workerStopped tự quit thread — TUYỆT ĐỐI
+    // không quit() ngay tại đây: QThread::quit() loại bỏ event queued chưa
+    // dispatch, khiến stop() (disconnectDevice) không bao giờ chạy, cổng
+    // serial treo mở và client sau (Tester) mở chồng lên cùng port → SEGV.
+    // DatabaseWorker đã đúng pattern này (workerStopped→quit ở setup).
     if (m_modbusWorker) QMetaObject::invokeMethod(m_modbusWorker, "stop");
     if (m_dbWorker)     QMetaObject::invokeMethod(m_dbWorker, "stop");
-    if (m_modbusThread) m_modbusThread->quit();
-    if (m_dbThread)     m_dbThread->quit();
 
     checkThreadsFinished();
 }
@@ -351,6 +354,9 @@ void MonitorController::finalizeStop() {
     applyStatus("ready", StatusIdle);
     emit pollingChanged();
     emit stoppingChanged();
+    // Cổng serial đã được giải phóng hoàn toàn (stop() chạy xong, thread
+    // đã chết) — Tester được phép mở port từ thời điểm này.
+    emit pollingFullyStopped();
     m_model->setAllStatus("---");
     qInfo() << "Polling stopped.";
 }
@@ -384,6 +390,7 @@ void MonitorController::stopPollingSync() {
     m_isPolling    = false;
     m_isStopping   = false;
     if (m_mbtcp) m_mbtcp->setLoggerStatus(false, false);
+    emit pollingFullyStopped();
 }
 void MonitorController::refreshSensors() {
     // G: khi đổi config trong lúc retry — reset backoff để thử lại "tươi" với config mới

@@ -26,6 +26,12 @@ TesterWorker::~TesterWorker() {
 
 void TesterWorker::doConnect(const QString &port, int baudrate,
                               int bytesize, const QString &parity, int stopbits) {
+    if (port.trimmed().isEmpty()) {
+        emit connectionResult(false, QStringLiteral("No serial port selected."));
+        emit messageSent(QStringLiteral("Error"),
+            QStringLiteral("No serial port selected."));
+        return;
+    }
     if (m_client) {
         m_client->disconnectDevice();
         m_client->deleteLater();

@@ -163,6 +163,10 @@ void TesterController::connectWithMonitorPause(MonitorController *monitor,
             this, &TesterController::tryPendingConnect, Qt::UniqueConnection);
     connect(monitor, &MonitorController::retryStateChanged,
             this, &TesterController::tryPendingConnect, Qt::UniqueConnection);
+    // Signal chính: chỉ connect khi worker stop() xong + thread chết hẳn
+    // (cổng đã giải phóng). Hai signal trên giữ lại làm backstop.
+    connect(monitor, &MonitorController::pollingFullyStopped,
+            this, &TesterController::tryPendingConnect, Qt::UniqueConnection);
     tryPendingConnect(); // in case stopPolling finished synchronously
 }
 
