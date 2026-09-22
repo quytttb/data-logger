@@ -1,5 +1,28 @@
 # Changelog
 
+## 2.6.0 — 2026-09-22
+
+### Unify bảng + touch-only
+- Monitor list: bỏ custom `ListView`, dùng `AppTableView` qua `MonitorTableModel`
+  bridge (4 cột Sensor/Value/Unit/Status, 2 badge co theo text); grid giữ
+  `GridView`, badge `labelSmall` → `labelMedium`
+- Touch-only kiosk: xóa `hoveredRow`/`HoverHandler` khỏi kit, xóa
+  `onDoubleClicked` (edit chỉ qua nút Pencil), Sensors toggle + accent bar,
+  bỏ hover pill sidebar
+- Header/cột thẳng hàng: kit thêm `headerAlignCenter`; DIO 1:1.8, combo sensor
+  wrap 2 dòng `(Slave; Addr)`; `DateField` 118 → 150; icon button đồng bộ 48px
+- Nút restart nền error đậm; cột Sensor dùng font `bodyMedium` rõ ràng
+
+### History
+- Đổ kết quả theo batch 500 (`appendRows`) qua event loop, không khựng UI
+- Chỉ search lần đầu / cùng bộ lọc bỏ qua; bấm lại tab hiện cache ngay
+
+### Tên sensor + boot
+- Tên đầy đủ `Symbol_Tên` cho Monitor cards/table (`sensor_symbol` vào map,
+  `displayLabel` dùng `_`); DI/DO chưa gán symbol giữ tên trần
+- Splash logo 4M lúc boot (overlay, tự ẩn) + lúc reboot (hiện 1s che log tắt máy)
+- Cmdline `quiet/logo.nologo` ẩn log boot; dọn service thừa (tftpd/dnsmasq)
+
 ## 2.1.0 — 2026-07-03
 
 ### TT10 / Phụ lục 15 compliance

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(DataLogger VERSION 2.2.0 LANGUAGES CXX)
+project(DataLogger VERSION 2.6.0 LANGUAGES CXX)
 
 # Phiên bản Qt chính xác dùng cho CI + packaging scripts + build.sh:
 # packaging/qt_version.txt (CI + scripts đọc file này). CMake tự derive min-version.
