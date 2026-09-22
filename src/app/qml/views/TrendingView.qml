@@ -71,8 +71,15 @@ Rectangle {
                     if (!sensors || sensors.length === 0)
                         return
 
+                    // Multi-select filter (rỗng = tất cả). Trục Y đã được C++
+                    // adapt theo đúng tập này (updateTrendAxes + filter).
+                    let sel = MonitorController.trendingSelectedIds
+                    let useFilter = sel && sel.length > 0
+
                     for (let i = 0; i < sensors.length; i++) {
                         let s = sensors[i]
+                        if (useFilter && sel.indexOf(s.id) < 0)
+                            continue
                         let label = s.unit && s.unit.length > 0
                                     ? (s.name + " (" + s.unit + ")")
                                     : s.name
@@ -90,6 +97,10 @@ Rectangle {
                 }
 
                 function appendPoint(sid, x, y) {
+                    // Bỏ điểm của sensor đã bị filter-out (buffer C++ vẫn giữ).
+                    let sel = MonitorController.trendingSelectedIds
+                    if (sel && sel.length > 0 && sel.indexOf(sid) < 0)
+                        return
                     let series = chartHolder.seriesMap[sid]
                     if (!series) return
 
@@ -113,6 +124,7 @@ Rectangle {
                     function onAnalogSensorsListChanged() { chartHolder.rebuildSeries() }
                     function onNewDataPoint(sid, ts, val) { chartHolder.appendPoint(sid, ts, val) }
                     function onTrendAxesChanged() { chartHolder.applyTrendAxes() }
+                    function onTrendingFilterChanged() { chartHolder.rebuildSeries() }
                 }
 
                 ChartGraphsView {

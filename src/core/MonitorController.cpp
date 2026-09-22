@@ -661,6 +661,7 @@ void MonitorController::resetTrendBuffers(const QList<QVariantMap> &sensors) {
     m_trendBuffers.clear();
     m_trendIsDigital.clear();
     m_analogSensors.clear();
+    QSet<int> freshIds;
     for (int i = 0; i < sensors.size(); ++i) {
         const auto &s = sensors[i];
         const QString type = s.value("sensor_type", "ANALOG").toString();
@@ -669,27 +670,61 @@ void MonitorController::resetTrendBuffers(const QList<QVariantMap> &sensors) {
         int id = s["id"].toInt();
         m_trendBuffers[id] = {};
         m_trendIsDigital[id] = false;
+        freshIds.insert(id);
         m_analogSensors.append(QVariantMap{
             {"id", id}, {"name", s["name"]}, {"unit", s.value("unit","")},
             {"color", kPalette[i % kPalette.size()]},
             {"sensorType", type},
         });
     }
+    // Cắt id filter không còn tồn tại để UI không lọc ra tập rỗng vĩnh viễn.
+    const int before = m_trendingFilter.size();
+    m_trendingFilter.intersect(freshIds);
+    if (m_trendingFilter.size() != before)
+        emit trendingFilterChanged();
     updateTrendAxes();
     emit analogSensorsListChanged();
+}
+
+QVariantList MonitorController::trendingSelectedIds() const {
+    QVariantList out;
+    out.reserve(m_trendingFilter.size());
+    for (int id : m_trendingFilter)
+        out.append(id);
+    return out;
+}
+
+void MonitorController::setTrendingSelectedIds(const QVariantList &ids) {
+    QSet<int> next;
+    for (const QVariant &v : ids) {
+        const int id = v.toInt();
+        if (id > 0 && m_trendBuffers.contains(id))
+            next.insert(id);
+    }
+    if (next == m_trendingFilter)
+        return;
+    m_trendingFilter = next;
+    updateTrendAxes();
+    emit trendingFilterChanged();
 }
 
 MonitorController::TrendAxes MonitorController::computeTrendAxes(
         qint64 nowMs,
         const QHash<int, std::deque<std::pair<double,double>>> &buffers,
-        const QHash<int, bool> &isDigital)
+        const QHash<int, bool> &isDigital,
+        const QSet<int> &filterIds)
 {
     TrendAxes axes;
     axes.xMax = double(nowMs);
     axes.xMin = double(nowMs - kTrendWindowMs);
 
+    const auto inFilter = [&](int id) {
+        return filterIds.isEmpty() || filterIds.contains(id);
+    };
+
     bool hasAnalog = false, hasDigital = false;
     for (auto it = isDigital.cbegin(); it != isDigital.cend(); ++it) {
+        if (!inFilter(it.key())) continue;
         if (it.value()) hasDigital = true;
         else            hasAnalog  = true;
     }
@@ -697,6 +732,7 @@ MonitorController::TrendAxes MonitorController::computeTrendAxes(
     double yLo = std::numeric_limits<double>::max();
     double yHi = std::numeric_limits<double>::lowest();
     for (auto it = buffers.cbegin(); it != buffers.cend(); ++it) {
+        if (!inFilter(it.key())) continue;
         for (const auto &[ts, val] : it.value()) {
             (void)ts;
             if (val < yLo) yLo = val;
@@ -722,7 +758,8 @@ MonitorController::TrendAxes MonitorController::computeTrendAxes(
 void MonitorController::updateTrendAxes()
 {
     const TrendAxes axes = computeTrendAxes(QDateTime::currentMSecsSinceEpoch(),
-                                            m_trendBuffers, m_trendIsDigital);
+                                            m_trendBuffers, m_trendIsDigital,
+                                            m_trendingFilter);
     m_trendXMin = axes.xMin;
     m_trendXMax = axes.xMax;
     m_trendYMin = axes.yMin;

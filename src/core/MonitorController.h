@@ -5,6 +5,7 @@
 #include <QVariantList>
 #include <QMutex>
 #include <QHash>
+#include <QSet>
 #include <QQueue>
 #include <deque>
 #include <atomic>
@@ -43,6 +44,9 @@ class MonitorController : public QObject {
     Q_PROPERTY(double trendYMax READ trendYMax NOTIFY trendAxesChanged)
     Q_PROPERTY(double trendWindowMs READ trendWindowMs CONSTANT)
     Q_PROPERTY(int trendTickCount READ trendTickCount CONSTANT)
+    // Trending sensor filter (multi-select, rỗng = tất cả). QML (title bar)
+    // ghi qua setTrendingSelectedIds; trục Y tự adapt theo tập đã chọn.
+    Q_PROPERTY(QVariantList trendingSelectedIds READ trendingSelectedIds NOTIFY trendingFilterChanged)
 
 public:
     // Single health encoding for C++ and QML (sidebar dots, taskbar).
@@ -74,6 +78,7 @@ public:
     double trendYMax() const { return m_trendYMax; }
     double trendWindowMs() const { return double(kTrendWindowMs); }
     int trendTickCount() const { return kTrendTickCount; }
+    QVariantList trendingSelectedIds() const;
 
     // Axis window for the realtime chart (also the QML trim horizon).
     static constexpr qint64 kTrendWindowMs = 5 * 60 * 1000;
@@ -81,11 +86,13 @@ public:
     static constexpr int kTrendTickCount = 6;
 
     // Pure axis math over explicit inputs (static so unit tests need no
-    // controller instance, threads or DB).
+    // controller instance, threads or DB). filterIds rỗng = tính trên mọi
+    // buffer; non-empty = chỉ tính trên sensor được chọn (trục Y adapt).
     struct TrendAxes { double xMin = 0; double xMax = 0; double yMin = 0; double yMax = 1; };
     static TrendAxes computeTrendAxes(qint64 nowMs,
                                       const QHash<int, std::deque<std::pair<double,double>>> &buffers,
-                                      const QHash<int, bool> &isDigital);
+                                      const QHash<int, bool> &isDigital,
+                                      const QSet<int> &filterIds = {});
 
     // Backoff delay calculation for retry
     static int computeRetryDelayMs(int retryCount);
@@ -105,6 +112,7 @@ public slots:
     void refreshSensorsFromList(const QList<QVariantMap> &maps);
     void registerHeartbeat(const QString &workerName);
     void writeDo(int sensorId, bool value);
+    void setTrendingSelectedIds(const QVariantList &ids);
 
 signals:
     void pollingChanged();
@@ -123,6 +131,7 @@ signals:
     // Realtime trending signals
     void newDataPoint(int sensorId, double timestampMs, double value);
     void trendAxesChanged();
+    void trendingFilterChanged();
 
 private slots:
     void onDataReady(QVariantMap payload);
@@ -188,6 +197,8 @@ private:
     QHash<int, std::deque<std::pair<double,double>>> m_trendBuffers;
     // sensor_id → true for DI/DO step series (drives the digital-only Y range)
     QHash<int, bool> m_trendIsDigital;
+    // Multi-select filter cho trending (rỗng = tất cả sensor).
+    QSet<int> m_trendingFilter;
     double m_trendXMin = 0;
     double m_trendXMax = 0;
     double m_trendYMin = 0;

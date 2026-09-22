@@ -68,6 +68,40 @@ private slots:
         QCOMPARE(MonitorController::kTrendWindowMs, qint64(5 * 60 * 1000));
         QCOMPARE(MonitorController::kTrendTickCount, 6);
     }
+
+    void filterSelectsSubset()
+    {
+        // Sensor 1 ~1000, sensor 2 ~30-40: chỉ chọn sensor 2 thì Y phải
+        // co lại theo sensor 2 (margin 10% của 30..40).
+        Buffers b = buffersWith(1, {990.0, 1010.0}, 900'000);
+        b[2] = buffersWith(2, {30.0, 40.0}, 900'000)[2];
+        QHash<int, bool> types{{1, false}, {2, false}};
+        const auto axes = MonitorController::computeTrendAxes(
+            1'000'000, b, types, QSet<int>{2});
+        QCOMPARE(axes.yMin, 29.0);
+        QCOMPARE(axes.yMax, 41.0);
+    }
+
+    void filterEmptyBehavesLikeAll()
+    {
+        Buffers b = buffersWith(1, {990.0, 1010.0}, 900'000);
+        b[2] = buffersWith(2, {30.0, 40.0}, 900'000)[2];
+        QHash<int, bool> types{{1, false}, {2, false}};
+        const auto axes = MonitorController::computeTrendAxes(
+            1'000'000, b, types, QSet<int>{});
+        // margin 10% của 30..1010 = 98
+        QCOMPARE(axes.yMin, -68.0);
+        QCOMPARE(axes.yMax, 1108.0);
+    }
+
+    void filterUnknownIdFallsBackToDefault()
+    {
+        Buffers b = buffersWith(1, {10.0, 20.0}, 900'000);
+        const auto axes = MonitorController::computeTrendAxes(
+            1'000'000, b, QHash<int, bool>{{1, false}}, QSet<int>{999});
+        QCOMPARE(axes.yMin, -0.1);
+        QCOMPARE(axes.yMax, 1.1);
+    }
 };
 
 QTEST_MAIN(TestTrendAxes)

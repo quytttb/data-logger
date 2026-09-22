@@ -20,7 +20,7 @@ Rectangle {
     readonly property int fsUnit: 24        // đơn vị (grid + list)
     readonly property int fsBadge: 20       // badge status/alarm
     readonly property int fsPill: 18        // pill DI/DO
-    readonly property int fsValueGrid: 48   // value analog giữa card grid
+    readonly property int fsValueGrid: 42   // value analog giữa card grid
     readonly property int rowHList: 92      // chiều cao dòng list
     readonly property int cardHGrid: 180    // chiều cao card grid
 
@@ -84,6 +84,9 @@ Rectangle {
                 // Guard: diStates có thể rỗng/undefined trong lúc model khởi tạo — tránh TypeError
                 readonly property var topStatus: card.diStates && card.diStates.length > 0 ? card.diStates[0] : null
                 readonly property bool hasStatus: topStatus !== null
+                // C++ trả color dạng string ("#...") — ép qua property typed color
+                // để withAlpha() đọc được .r/.g/.b (truyền string trực tiếp sẽ lỗi).
+                readonly property color statusColor: card.hasStatus ? card.topStatus.color : AppColors.outlineVariant
 
                 Rectangle {
                     id: cardBg
@@ -92,17 +95,15 @@ Rectangle {
                     radius: AppTheme.cardRadius
                     color: AppColors.surfaceContainerLow
                     border.color: {
-                        // Analog: viền theo màu DI status đang active (đã sort theo ưu tiên)
+                        // Analog: viền theo màu DI status đang active (đã sort theo ưu tiên),
+                        // hạ sáng ~35% để đỡ chói trên kiosk.
                         if (card.isAnalog) {
-                            if (card.diStates && card.diStates.length > 0) {
-                                return card.diStates[0].color;
-                            }
-                            return AppColors.outlineVariant; // không có DI active
+                            return AppColors.withAlpha(card.statusColor, 0.65);
                         }
                         // DI/DO: viền theo ON/OFF
-                        if (card.isDI && card.value === "1") return IoColors.diActive;
-                        if (card.isDO && card.value === "1") return IoColors.doActive;
-                        return AppColors.outlineVariant;
+                        if (card.isDI && card.value === "1") return AppColors.withAlpha(IoColors.diActive, 0.65);
+                        if (card.isDO && card.value === "1") return AppColors.withAlpha(IoColors.doActive, 0.65);
+                        return AppColors.withAlpha(AppColors.outlineVariant, 0.65);
                     }
                     border.width: {
                         // Analog: Error/Maintenance dày hơn (3), còn lại 2
@@ -139,7 +140,7 @@ Rectangle {
 
                             Text {
                                 text: card.displayName
-                                color: AppColors.accentColor
+                                color: AppColors.primaryText
                                 font.pixelSize: monitorRoot.fsName; font.bold: true
                                 elide: Text.ElideRight
                                 Layout.fillWidth: true
@@ -171,7 +172,7 @@ Rectangle {
                                      : (card.status === "ERR" ? AppColors.error : AppColors.primaryText)
                                 font.pixelSize: monitorRoot.fsValueGrid
                                 font.family: AppTypography.monoFamily
-                                font.bold: true
+                                font.weight: Font.DemiBold
                             }
 
                             Column {
@@ -228,13 +229,12 @@ Rectangle {
                             Layout.fillWidth: true
                             spacing: 4
 
-                            // Status badge: hiển thị trạng thái DI ưu tiên cao nhất (đã sort trong C++)
-                            // Màu khớp dạng List: nền trong suốt + text màu trạng thái (không gộp badge)
+                            // Status badge: nền mờ dịu, không viền (giống style list) —
+                            // badge DO trigger (MAX/MIN) giữ nguyên bên dưới.
                             Rectangle {
                                 visible: card.isAnalog && card.hasStatus
-                                color: card.hasStatus ? AppColors.withAlpha(card.topStatus.color, 0.2) : "transparent"
-                                border.width: 1
-                                border.color: card.hasStatus ? card.topStatus.color : "transparent"
+                                color: card.hasStatus ? AppColors.withAlpha(card.topStatus.color, 0.12) : "transparent"
+                                border.width: 0
                                 radius: AppTheme.radiusTiny
                                 implicitWidth: statusText.implicitWidth + 10
                                 implicitHeight: statusText.implicitHeight + 4
@@ -356,7 +356,7 @@ Rectangle {
                         width: parent.width - (monCell.isAnalog ? 0 : 48) - 24
                         anchors.verticalCenter: parent.verticalCenter
                         text: monCell.displayName
-                        color: AppColors.accentColor
+                        color: AppColors.primaryText
                         font.family: AppTypography.titleSmall.family
                         font.pixelSize: monitorRoot.fsName
                         font.bold: true
@@ -376,7 +376,7 @@ Rectangle {
                     color: monCell.isAlarm ? AppColors.error : AppColors.primaryText
                     font.family: monCell.isAnalog ? AppTypography.monoFamily : AppTypography.titleSmall.family
                     font.pixelSize: monitorRoot.fsValueList
-                    font.bold: true
+                    font.weight: Font.DemiBold
                     horizontalAlignment: Text.AlignRight
                     elide: Text.ElideRight
                 }
