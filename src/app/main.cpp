@@ -82,6 +82,38 @@ int main(int argc, char *argv[]) {
             qDebug() << "[main] Icon font loaded:" << families.constFirst();
         }
     }
+
+    // Font chữ duy nhất của app: Inter (OFL-1.1) — hỗ trợ tiếng Việt đầy đủ,
+    // tối ưu đọc trên màn hình nhỏ. Nạp các biến thể Regular/Medium/SemiBold/
+    // Bold/Italic rồi đặt làm font mặc định toàn app.
+    static const QStringList kUiFonts = {
+        QStringLiteral(":/qt/qml/DataLogger/App/resources/fonts/Inter/Inter-Regular.otf"),
+        QStringLiteral(":/qt/qml/DataLogger/App/resources/fonts/Inter/Inter-Medium.otf"),
+        QStringLiteral(":/qt/qml/DataLogger/App/resources/fonts/Inter/Inter-SemiBold.otf"),
+        QStringLiteral(":/qt/qml/DataLogger/App/resources/fonts/Inter/Inter-Bold.otf"),
+        QStringLiteral(":/qt/qml/DataLogger/App/resources/fonts/Inter/Inter-Italic.otf"),
+        QStringLiteral(":/qt/qml/DataLogger/App/resources/fonts/Inter/Inter-BoldItalic.otf"),
+    };
+    bool uiFontOk = false;
+    for (const QString &path : kUiFonts) {
+        const int id = QFontDatabase::addApplicationFont(path);
+        if (id < 0)
+            qWarning() << "[main] Failed to load UI font from" << path;
+        else
+            uiFontOk = true;
+    }
+    if (uiFontOk) {
+        QFont uiFont(QStringLiteral("Inter"));
+        if (uiFont.exactMatch()) {
+            app.setFont(uiFont);
+            // Token AppTypography.monoFamily ("monospace") cũng trỏ về Inter —
+            // giữ đúng quy ước 1 font duy nhất mà không phải sửa kit dùng chung.
+            QFont::insertSubstitution(QStringLiteral("monospace"), QStringLiteral("Inter"));
+            qDebug() << "[main] UI font set to Inter";
+        } else {
+            qWarning() << "[main] Inter family not found after loading — keeping system font";
+        }
+    }
     app.setApplicationVersion(QStringLiteral(APP_VERSION));
     app.setOrganizationName("DATALOGGER");
     app.setOrganizationDomain("datalogger.local");

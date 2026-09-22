@@ -43,6 +43,14 @@ qt_add_qml_module(app
     RESOURCES
         ../../resources/app-icon.svg
         ../../resources/app-icon.png
+        # Inter UI font (OFL-1.1, xem resources/fonts/Inter/OFL.txt) —
+        # font chữ duy nhất của app, hỗ trợ tiếng Việt + Latin/Greek/Cyrillic.
+        ../../resources/fonts/Inter/Inter-Regular.otf
+        ../../resources/fonts/Inter/Inter-Medium.otf
+        ../../resources/fonts/Inter/Inter-SemiBold.otf
+        ../../resources/fonts/Inter/Inter-Bold.otf
+        ../../resources/fonts/Inter/Inter-Italic.otf
+        ../../resources/fonts/Inter/Inter-BoldItalic.otf
     DEPENDENCIES
         LoggerKit.Theme
         LoggerKit.Components
