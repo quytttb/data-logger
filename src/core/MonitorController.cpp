@@ -328,9 +328,15 @@ void MonitorController::stopPolling() {
 }
 
 void MonitorController::checkThreadsFinished() {
+    // Shot cũ còn sót sau khi stopPollingSync đã null pointer (refreshSensors
+    // chạy giữa async stop): cả hai null thì về luôn, tránh finalizeStop giả
+    // bắn pollingChanged/pollingFullyStopped + log "Polling stopped." thừa.
+    if (!m_modbusThread && !m_dbThread) return;
     bool mb = (!m_modbusThread || !m_modbusThread->isRunning());
     bool db = (!m_dbThread     || !m_dbThread->isRunning());
     if (mb && db) { finalizeStop(); return; }
+    // Overload (msec, receiver, member) của Qt 6: receiver làm context nên
+    // shot tự cancel khi MonitorController bị hủy — không treo slot.
     QTimer::singleShot(kThreadCheckMs, this, &MonitorController::checkThreadsFinished);
 }
 

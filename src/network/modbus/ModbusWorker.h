@@ -7,7 +7,9 @@
 #include <QHash>
 #include <QModbusRtuSerialClient>
 #include <atomic>
+#include <optional>
 #include "utils/system/AppDefaults.h"
+#include "utils/modbus/ModbusPortGuard.h"
 
 // Wraps a QModbusRtuSerialClient and polls configured sensors on a worker thread.
 class ModbusWorker : public QObject {
@@ -116,8 +118,8 @@ private:
     // Cờ thoát waitReply: stop() set trước khi disconnect để mọi nested
     // QEventLoop đang chờ reply thoát ngay, không chạm reply/client nữa.
     std::atomic<bool> m_abortWait{false};
-    // Giữ ModbusPortGuard trong lúc connected.
-    bool     m_portGuardHeld = false;
+    // Giữ ModbusPortGuard trong lúc connected (RAII: reset() là unlock).
+    std::optional<ModbusPortGuard::Guard> m_portGuard;
 
     // Audit M5
     double   m_alarmHysteresis = 0.0;

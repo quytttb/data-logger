@@ -3,6 +3,8 @@
 #include <QString>
 #include <QVariantMap>
 #include <QModbusRtuSerialClient>
+#include <optional>
+#include "utils/modbus/ModbusPortGuard.h"
 
 // Performs all blocking Modbus I/O on a dedicated worker thread so the GUI
 // thread is never blocked by QEventLoop waits inside read/write/scan ops.
@@ -56,5 +58,6 @@ private:
     QModbusRtuSerialClient *m_client  = nullptr;
     bool                    m_connected = false;
     bool                    m_scanning  = false;
-    bool                    m_portGuardHeld = false;
+    // Giữ ModbusPortGuard trong lúc connected (RAII).
+    std::optional<ModbusPortGuard::Guard> m_portGuard;
 };

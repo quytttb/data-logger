@@ -1,14 +1,12 @@
 #include "ModbusWorker.h"
 #include "utils/modbus/Formula.h"
 #include "utils/modbus/ModbusCodec.h"
+#include "utils/modbus/ModbusWait.h"
 #include "utils/modbus/ModbusPortGuard.h"
 #include <QModbusDataUnit>
 #include <QModbusReply>
 #include <QSerialPort>
 #include <QDateTime>
-#include <QEventLoop>
-#include <QTimer>
-#include <QMetaObject>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QThread>
@@ -122,16 +120,13 @@ void ModbusWorker::stop() {
 }
 
 bool ModbusWorker::acquirePort() {
-    if (m_portGuardHeld) return true;
-    if (!ModbusPortGuard::mutex().tryLock()) return false;
-    m_portGuardHeld = true;
-    return true;
+    if (m_portGuard.has_value()) return true;
+    m_portGuard = ModbusPortGuard::Guard::tryLock();
+    return m_portGuard.has_value();
 }
 
 void ModbusWorker::releasePort() {
-    if (!m_portGuardHeld) return;
-    m_portGuardHeld = false;
-    ModbusPortGuard::mutex().unlock();
+    m_portGuard.reset(); // RAII unlock đúng 1 lần, kể cả gọi thừa
 }
 
 bool ModbusWorker::connectToPort() {
@@ -233,30 +228,16 @@ bool ModbusWorker::waitReply(QModbusReply *reply, const QString &timeoutMsg) {
     if (!reply) return false;
     if (reply->isFinished()) return true;
 
-    // Loop cục bộ (thay ModbusWait) để gắn thêm abort từ stop(): stop()
-    // chạy đồng bộ trên cùng worker thread nên quit nested loop ngay.
-    QEventLoop loop;
-    const QMetaObject::Connection cFinished =
-        connect(reply, &QModbusReply::finished, &loop, &QEventLoop::quit);
-    const QMetaObject::Connection cAbort =
-        connect(this, &ModbusWorker::abortWaitRequested, &loop, &QEventLoop::quit);
-    QTimer timer;
-    timer.setSingleShot(true);
-    const QMetaObject::Connection cTimeout =
-        connect(&timer, &QTimer::timeout, &loop, &QEventLoop::quit);
-    timer.start(replyWaitMs());
-    loop.exec();
-    disconnect(cFinished);
-    disconnect(cAbort);
-    disconnect(cTimeout);
-
+    // Dùng helper chung (abort từ stop() chạy đồng bộ cùng worker thread).
+    const bool finished = ModbusWait::waitForReplyWithAbort(
+        reply, replyWaitMs(), this, &ModbusWorker::abortWaitRequested);
     if (m_abortWait.load()) {
         // stop() đang teardown — không chạm reply/client nữa, caller return
         // ngay theo các guard m_running/m_client hiện có.
         connect(reply, &QModbusReply::finished, reply, &QObject::deleteLater);
         return false;
     }
-    if (reply->isFinished())
+    if (finished)
         return true;
     // Timeout: never touch the reply again; free it whenever it finally
     // finishes, and reset the possibly-hung serial connection (auto-reconnect).

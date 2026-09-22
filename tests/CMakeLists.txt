@@ -205,3 +205,13 @@ target_link_libraries(history_table_model_test PRIVATE
 )
 add_test(NAME history_table_model_test COMMAND history_table_model_test)
 
+# QTest: ModbusPortGuard RAII — single-owner cổng RS-485 (chống SEGV Tester Connect).
+add_executable(port_guard_test port_guard_test.cpp)
+target_include_directories(port_guard_test PRIVATE ${CMAKE_SOURCE_DIR}/src)
+target_link_libraries(port_guard_test PRIVATE
+    Qt6::Core
+    Qt6::Test
+    utils
+)
+add_test(NAME port_guard_test COMMAND port_guard_test)
+

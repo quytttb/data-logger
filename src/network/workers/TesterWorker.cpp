@@ -76,25 +76,22 @@ void TesterWorker::doConnect(const QString &port, int baudrate,
 }
 
 bool TesterWorker::acquirePort(const QString &port) {
-    if (m_portGuardHeld) return true;
-    if (!ModbusPortGuard::mutex().tryLock()) return false;
+    if (m_portGuard.has_value()) return true;
+    auto g = ModbusPortGuard::Guard::tryLock();
+    if (!g) return false;
     // Probe: port bị tiến trình ngoài giữ (minicom...) thì cũng báo busy.
     // Mở + đóng ngay lập tức, vô hại với pty/tty thật.
     QSerialPort probe;
     probe.setPortName(port);
-    if (!probe.open(QIODevice::ReadWrite)) {
-        ModbusPortGuard::mutex().unlock();
-        return false;
-    }
+    if (!probe.open(QIODevice::ReadWrite))
+        return false; // g hủy ở đây → unlock đúng 1 lần
     probe.close();
-    m_portGuardHeld = true;
+    m_portGuard = std::move(g);
     return true;
 }
 
 void TesterWorker::releasePort() {
-    if (!m_portGuardHeld) return;
-    m_portGuardHeld = false;
-    ModbusPortGuard::mutex().unlock();
+    m_portGuard.reset(); // RAII unlock đúng 1 lần, kể cả gọi thừa
 }
 
 void TesterWorker::doDisconnect() {
