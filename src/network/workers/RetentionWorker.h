@@ -39,7 +39,9 @@ private:
 
     static constexpr int kFirstPurgeDelayMs = 60 * 1000;         // 1 phút sau khởi động
     static constexpr int kPurgeIntervalMs   = 24 * 60 * 60 * 1000; // hằng ngày
-    static constexpr int kSensorDataKeepDays = 90;
+    // Bản ghi sensor đồng bộ 30 ngày với file TXT báo cáo gửi Sở
+    // (kReportKeepDays) — hết hạn là xóa cả hai.
+    static constexpr int kSensorDataKeepDays = 30;
     static constexpr int kReportKeepDays     = 30;  // báo cáo đã upload: giữ local 30 ngày
     static constexpr int kLogKeepDays        = 14;
     static constexpr int kPurgeChunk         = 50000;

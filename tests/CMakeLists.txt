@@ -205,6 +205,18 @@ target_link_libraries(history_table_model_test PRIVATE
 )
 add_test(NAME history_table_model_test COMMAND history_table_model_test)
 
+# QTest: retention sensor_data 30 ngày (đồng bộ file TXT gửi Sở) — cutoff + chunked delete.
+add_executable(retention_test retention_test.cpp)
+target_include_directories(retention_test PRIVATE ${CMAKE_SOURCE_DIR}/src)
+target_link_libraries(retention_test PRIVATE
+    Qt6::Core
+    Qt6::Sql
+    Qt6::Test
+    data
+    utils
+)
+add_test(NAME retention_test COMMAND retention_test)
+
 # QTest: ModbusPortGuard RAII — single-owner cổng RS-485 (chống SEGV Tester Connect).
 add_executable(port_guard_test port_guard_test.cpp)
 target_include_directories(port_guard_test PRIVATE ${CMAKE_SOURCE_DIR}/src)
