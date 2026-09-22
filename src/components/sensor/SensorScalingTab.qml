@@ -41,7 +41,7 @@ ElevatedPane {
             Text { text: qsTr("Max threshold:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize }
             TextField { id: dMaxThreshold; Layout.fillWidth: true; placeholderText: text.length > 0 ? "" : "Empty = disabled"; inputMethodHints: Qt.ImhFormattedNumbersOnly; EnterKeyAction.actionId: EnterKeyAction.None; EnterKeyAction.label: qsTr("OK") }
 
-            Text { text: qsTr("Decimals:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize }
+            Text { text: qsTr("Decimal places:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize }
             SpinBox { id: dDecimals; from: 0; to: 6; value: 4; Layout.fillWidth: true }
         }
 

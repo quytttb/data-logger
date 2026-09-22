@@ -63,6 +63,21 @@ Item {
     property bool hasSelectedDio: dioTab.hasSelectedDio
     function deleteSelectedDio() { dioTab.deleteSelectedDio() }
 
+    // Map mọi dạng register_type lưu trong DB (token "holding"/"input"/...,
+    // label UI "Holding Registers"/...) về index của ComboBox dRegType.
+    // Trả về 0 ("Invalid") nếu không nhận diện được — thay vì giữ index cũ
+    // gây lỗi khó hiểu "Register type must be selected" khi Save.
+    function resolveRegTypeIndex(v) {
+        var s = String(v !== undefined && v !== null ? v : "").toLowerCase().trim()
+        if (s.indexOf("discrete") >= 0 || s === "di") return 1
+        if (s.indexOf("coil") >= 0) return 2
+        if (s === "input" || s === "ir" || s.indexOf("input register") >= 0) return 3
+        if (s === "holding" || s === "hr" || s.indexOf("holding register") >= 0) return 4
+        if (s === "invalid" || s === "") return 0
+        var idx = basicTab.dRegType.model.indexOf(v)
+        return idx >= 0 ? idx : 0
+    }
+
     // ── Public functions ──
     function resetForm() {
         basicTab.dName.text = ""; basicTab.setSymbolValue(""); basicTab.setUnitValue(""); basicTab.dSlave.value = 1; basicTab.dAddr.value = 0
@@ -85,11 +100,9 @@ Item {
         var regLabel = s.registerType
         if (s.sensorType === "DI") regLabel = "Discrete Inputs"
         else if (s.sensorType === "DO") regLabel = "Coils"
-        var rtIdx = basicTab.dRegType.model.indexOf(regLabel)
-        if (rtIdx < 0) rtIdx = basicTab.dRegType.model.indexOf(s.registerType)
-        if (rtIdx >= 0) basicTab.dRegType.currentIndex = rtIdx
-        basicTab.dDataType.currentIndex = basicTab.dDataType.model.indexOf(s.dataType)
-        basicTab.dDataFmt.currentIndex = basicTab.dDataFmt.model.indexOf(s.dataFormat)
+        basicTab.dRegType.currentIndex = root.resolveRegTypeIndex(regLabel)
+        basicTab.dDataType.currentIndex = Math.max(0, basicTab.dDataType.model.indexOf(s.dataType))
+        basicTab.dDataFmt.currentIndex = Math.max(0, basicTab.dDataFmt.model.indexOf(s.dataFormat))
 
         scalingTab.dScalingMode.currentIndex = Math.min(uiState.mode, scalingTab.dScalingMode.count - 1)
         scalingTab.dLinearA.text = uiState.linearA !== undefined ? String(uiState.linearA) : "1"
