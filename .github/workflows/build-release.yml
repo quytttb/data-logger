@@ -72,7 +72,7 @@ jobs:
 
       - name: Restore Qt cache
         id: cache-qt
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ${{ env.QT_INSTALL_DIR }}
           key: qt-${{ steps.qt.outputs.version }}-arm64-ubuntu2404-v3-virtualkeyboard

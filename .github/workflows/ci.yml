@@ -41,7 +41,7 @@ jobs:
             patchelf socat python3 python3-pymodbus
 
       - name: Install Qt
-        uses: jurplel/install-qt-action@v4.3.1
+        uses: jurplel/install-qt-action@v4.4.1
         with:
           version: ${{ steps.qt.outputs.version }}
           host: linux
