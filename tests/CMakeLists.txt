@@ -166,6 +166,19 @@ target_link_libraries(json_table_model_test PRIVATE
 )
 add_test(NAME json_table_model_test COMMAND json_table_model_test)
 
+# QTest: SensorSymbols.displayLabel — tên đầy đủ Symbol_Tên.
+add_executable(sensor_symbols_test sensor_symbols_test.cpp)
+target_include_directories(sensor_symbols_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/src
+    ${CMAKE_SOURCE_DIR}/src/core
+)
+target_link_libraries(sensor_symbols_test PRIVATE
+    Qt6::Core
+    Qt6::Test
+    datalogger_core
+)
+add_test(NAME sensor_symbols_test COMMAND sensor_symbols_test)
+
 # QTest: MonitorTableModel — AppTableView bridge cho MonitorModel (lọc DI/DO, live update).
 add_executable(monitor_table_model_test monitor_table_model_test.cpp)
 target_include_directories(monitor_table_model_test PRIVATE

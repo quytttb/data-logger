@@ -2,7 +2,8 @@
 #include "core/MonitorModel.h"
 #include "core/MonitorTableModel.h"
 
-static QVariantMap sensorMap(int id, const QString &name, const QString &type)
+static QVariantMap sensorMap(int id, const QString &name, const QString &type,
+                             const QString &symbol = {})
 {
     return QVariantMap{
         {QStringLiteral("id"), id},
@@ -10,6 +11,7 @@ static QVariantMap sensorMap(int id, const QString &name, const QString &type)
         {QStringLiteral("unit"), QStringLiteral("°C")},
         {QStringLiteral("decimals"), 2},
         {QStringLiteral("sensor_type"), type},
+        {QStringLiteral("sensor_symbol"), symbol},
     };
 }
 
@@ -25,7 +27,8 @@ private slots:
 void MonitorTableModelTest::headersAndMirror()
 {
     MonitorModel source(nullptr);
-    source.loadSensors({sensorMap(1, QStringLiteral("T1"), QStringLiteral("ANALOG")),
+    source.loadSensors({sensorMap(1, QStringLiteral("T1"), QStringLiteral("ANALOG"),
+                                  QStringLiteral("Temp")),
                         sensorMap(2, QStringLiteral("DI1"), QStringLiteral("DI"))});
 
     MonitorTableModel m;
@@ -37,8 +40,12 @@ void MonitorTableModelTest::headersAndMirror()
 
     m.setSourceModel(&source);
     QCOMPARE(m.rowCount(), 2);
+    // Tên đầy đủ Symbol_Tên qua MonitorModel.displayLabel.
     QCOMPARE(m.data(m.index(0, 0), MonitorTableModel::DisplayNameRole).toString(),
-             QString("T1"));
+             QString("Temp_T1"));
+    // DI chưa gán symbol → tên trần.
+    QCOMPARE(m.data(m.index(1, 0), MonitorTableModel::DisplayNameRole).toString(),
+             QString("DI1"));
     QCOMPARE(m.data(m.index(0, 0), MonitorTableModel::SensorTypeRole).toString(),
              QString("ANALOG"));
     QCOMPARE(m.data(m.index(1, 0), MonitorTableModel::SensorTypeRole).toString(),

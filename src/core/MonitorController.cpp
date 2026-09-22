@@ -203,6 +203,7 @@ void MonitorController::buildPollSensors(const QList<Sensor> &allSensors,
     for (const auto &s : allSensors)
         monitorSensorMaps.append({{"id", s.id}, {"name", s.name}, {"unit", s.unit},
                                    {"decimals", s.decimals},
+                                   {"sensor_symbol", s.sensorSymbol},
                                    {"sensor_type", sensorTypeToString(s.sensorType)}});
     m_model->loadSensors(monitorSensorMaps);
     clearReadingsCache();
@@ -408,6 +409,7 @@ void MonitorController::refreshSensors() {
     for (const auto &s : sensors)
         maps.append({{"id", s.id}, {"name", s.name}, {"unit", s.unit},
                        {"decimals", s.decimals},
+                       {"sensor_symbol", s.sensorSymbol},
                        {"sensor_type", sensorTypeToString(s.sensorType)}});
 
     refreshSensorsFromList(maps);
