@@ -55,6 +55,10 @@ public:
     enum Status { StatusIdle = 0, StatusOk = 1, StatusError = 2 };
     Q_ENUM(Status)
 
+    // Ý định sau async stop: Nothing (Tester handoff), Restart
+    // (refreshSensors: start lại sau stop), Retry (scheduleRetry: backoff).
+    enum class AfterStop { Nothing, Restart, Retry };
+
     explicit MonitorController(MonitorModel *model,
                                 ModbusTcpServerService *modbusTcp = nullptr,
                                 QObject *parent = nullptr);
@@ -105,7 +109,10 @@ public:
 
 public slots:
     void startPolling();
-    void stopPolling();
+    // Async: trả về ngay, hoàn tất trong finalizeStop() rồi thực hiện
+    // after (Restart/Retry). stopPollingSync() chỉ dùng lúc app quit
+    // (event loop sắp chết, không thể async).
+    void stopPolling(AfterStop after = AfterStop::Nothing);
     void stopPollingSync();
     void refreshSensors();
     // Overload: accepts pre-built sensor maps from SensorListModel to skip
@@ -142,12 +149,12 @@ private slots:
     void onModbusError(QString msg);
     void onConnectionChanged(bool connected);
     void onModbusStopped();
+    void onWorkerAsyncStopped();
     void onDbError(QString msg);
     void onRecordsSaved(int count);
     void onAlarmChanged(QVariantMap info);
     void readCpuTemp();
     void checkWatchdog();
-    void checkThreadsFinished();
 
 private:
     // startPolling() helpers — split out for readability.
@@ -161,6 +168,7 @@ private:
                             const QHash<int, QList<QVariantMap>> &digitalIoMap);
 
     void finalizeStop();
+    void finishRetry();
     void applyStatus(const QString &tag, Status mode);
     void scheduleRetry(const QString &reason);
     void cancelRetry();
@@ -178,8 +186,8 @@ private:
     ModbusTcpServerService  *m_mbtcp;
 
     // QPointer: thread tự deleteLater khi finished — QPointer tự null nên
-    // checkThreadsFinished (singleShot 50ms) không bao giờ gọi isRunning()
-    // trên object đã hủy (SEGV Tester Connect, core 19:13 Pi .15).
+    // không bao giờ gọi isRunning() trên object đã hủy
+    // (SEGV Tester Connect, core 19:13 Pi .15).
     QPointer<QThread> m_modbusThread;
     QPointer<QThread> m_dbThread;
     // QPointer: worker tự deleteLater khi thread finished — mọi invokeMethod
@@ -190,6 +198,12 @@ private:
     std::atomic<bool> m_isPolling          {false};
     std::atomic<bool> m_rtuConnected       {false};
     bool              m_isStopping        = false;
+    // Đếm workerStopped cho async stop (SingleShotConnection): đủ số lượng
+    // worker còn sống lúc stopPolling → finalizeStop, không poll isRunning.
+    int               m_pendingStops      = 0;
+    // Ý định sau stopPolling async + lý do retry (finishRetry dùng).
+    AfterStop         m_afterStop         = AfterStop::Nothing;
+    QString           m_retryReason;
     Status    m_statusMode = StatusIdle;
     int      m_errorCount = 0;          // cumulative Modbus errors since polling started (UI badge)
     int      m_consecutiveErrors = 0;   // back-to-back errors; reset on any successful read

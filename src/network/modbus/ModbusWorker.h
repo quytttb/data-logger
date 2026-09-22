@@ -6,7 +6,8 @@
 #include <QList>
 #include <QHash>
 #include <QModbusRtuSerialClient>
-#include <atomic>
+#include <QModbusReply>
+#include <functional>
 #include <optional>
 #include "utils/system/AppDefaults.h"
 #include "utils/modbus/ModbusPortGuard.h"
@@ -57,37 +58,47 @@ signals:
     void alarmChanged(QVariantMap info);
     void workerStopped();
     void heartbeat(QString workerName);
-    // Bắn từ stop() để thoát mọi waitReply đang block trong nested loop
-    // trước khi disconnectDevice (tránh reply treo → use-after-free).
-    void abortWaitRequested();
 
 private slots:
     void onPollTimer();
     void onHeartbeatTimer();
     void tryReconnect();
+    void onAwaitFinished();
+    void onAwaitTimeout();
 
 private:
     bool connectToPort();
-    // Chờ reply với timeout; khi timeout báo lỗi, lên lịch hủy reply an toàn
-    // (chỉ delete khi finished thực sự fire) và reset cổng serial bị kẹt.
-    bool waitReply(QModbusReply *reply, const QString &timeoutMsg);
+    // Serial op pump (Qt 6 async, không QEventLoop lồng): mọi request Modbus
+    // đi qua hàng đợi FIFO, mỗi lúc 1 in-flight. Mỗi step gửi request rồi
+    // trả về event loop; finished/timeout chạy continuation. Cùng thread nên
+    // không cần lock; stop() hủy await + xóa queue là an toàn tuyệt đối.
+    struct DoWrite { int doId = 0; int slaveId = 0; int address = 0; bool want = false; };
+    using OpDone = std::function<void()>;
+    using ReplyCont = std::function<void(QModbusReply *reply, bool timedOut)>;
+    void enqueueOp(std::function<void()> op);
+    void pumpNextOp();
+    void opDone();
+    void pollSensorAt(int idx, const QList<QVariantMap> &due);
+    void sendAndAwait(QModbusReply *reply, int timeoutMs, ReplyCont cont);
+    void abortAwait();
+    // Một sensor poll hoàn chỉnh (analog/DI/DO) rồi gọi done().
+    void pollSensorAsync(const QVariantMap &cfg, OpDone done);
+    void pollAnalogAsync(const QVariantMap &cfg, OpDone done);
+    void pollStandaloneDiAsync(const QVariantMap &cfg, OpDone done);
+    void pollStandaloneDoAsync(const QVariantMap &cfg, OpDone done);
+    void readDiChain(int sensorId, const QList<QVariantMap> &channels, int idx,
+                     QList<QVariantMap> results,
+                     std::function<void(QList<QVariantMap>)> done);
+    void writeDoChain(const QList<DoWrite> &writes, int idx, OpDone done);
+    QList<DoWrite> buildDoWrites() const;
+    void resetDoCoilsAsync(OpDone done);
+    void resetWriteAt(const QList<DoWrite> &writes, int idx, OpDone done);
+    void ensurePollTimer();
     void resetConnectionAfterHang();
     // Single-owner cổng RS-485 (ModbusPortGuard): giữ guard trong suốt thời
     // gian connected, thả khi stop()/reset. tryLock fail → báo busy.
     bool acquirePort();
     void releasePort();
-    void pollSingle(const QVariantMap &sensorCfg);
-    void pollAnalog(const QVariantMap &cfg);
-    void pollStandaloneDi(const QVariantMap &cfg);
-    void pollStandaloneDo(const QVariantMap &cfg);
-
-    QList<QVariantMap>       readDiStates(int sensorId);
-    // Converge physical DO coils to the desired state aggregated across every
-    // analog they are attached to (idempotent: only writes when state differs).
-    void                     updateDoCoils();
-    // Force all DO coils OFF on (re)connect so a stale latched relay can never
-    // disagree with the app's reported state.
-    void                     resetDoCoils();
 
     QModbusRtuSerialClient  *m_client = nullptr;
     QTimer                  *m_pollTimer = nullptr;
@@ -115,9 +126,14 @@ private:
     bool     m_running = false;
     bool     m_connected = false;
     int      m_backoffMs = kInitialBackoffMs;
-    // Cờ thoát waitReply: stop() set trước khi disconnect để mọi nested
-    // QEventLoop đang chờ reply thoát ngay, không chạm reply/client nữa.
-    std::atomic<bool> m_abortWait{false};
+    // Async pump state (chỉ chạm trên worker thread — không cần lock).
+    QTimer                  *m_replyTimer = nullptr;
+    QModbusReply            *m_awaitReply = nullptr;
+    ReplyCont                m_awaitCont;
+    QList<std::function<void()>> m_opQueue;
+    bool                     m_pumpActive = false;
+    // Transient: danh sách radical DO writes đang chain (tham số explicit
+    // qua các chain step, không dùng member để tránh state treo).
     // Giữ ModbusPortGuard trong lúc connected (RAII: reset() là unlock).
     std::optional<ModbusPortGuard::Guard> m_portGuard;
 

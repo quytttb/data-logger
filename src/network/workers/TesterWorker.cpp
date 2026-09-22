@@ -1,6 +1,5 @@
 #include "TesterWorker.h"
 #include "utils/modbus/ModbusCodec.h"
-#include "utils/modbus/ModbusWait.h"
 #include "utils/modbus/ModbusPortGuard.h"
 #include <QModbusDataUnit>
 #include <QModbusReply>
@@ -18,6 +17,7 @@ constexpr int kReplyWaitMs = kClientTimeoutMs * 2 + 500;
 TesterWorker::TesterWorker(QObject *parent) : QObject(parent) {}
 
 TesterWorker::~TesterWorker() {
+    abortAwait();
     if (m_client) {
         m_client->disconnectDevice();
         delete m_client;
@@ -43,6 +43,11 @@ void TesterWorker::doConnect(const QString &port, int baudrate,
         return;
     }
     if (m_client) {
+        // Reconnect khi idle: hủy scan/await cũ (bản block cũ để scan chạy
+        // tiếp trên client mới — sai). Op mới không bị busy reject ở đây vì
+        // doConnect là op quản lý kết nối, không phải op dữ liệu.
+        abortAwait();
+        finishScan();
         m_client->disconnectDevice();
         m_client->deleteLater();
         m_client = nullptr;
@@ -95,6 +100,8 @@ void TesterWorker::releasePort() {
 }
 
 void TesterWorker::doDisconnect() {
+    abortAwait();
+    finishScan(); // chỉ emit scanFinished nếu scan đang chạy
     if (m_client) {
         m_client->disconnectDevice();
         m_client->deleteLater();
@@ -105,6 +112,71 @@ void TesterWorker::doDisconnect() {
     releasePort();
 }
 
+// ── Async await core (1 in-flight tại 1 thời điểm, cùng thread) ──
+
+bool TesterWorker::checkBusy(const char *op) {
+    if (m_awaitReply || m_scanning) {
+        emit messageSent(QStringLiteral("Busy"),
+            QStringLiteral("%1 ignored: another operation is running.")
+                .arg(QString::fromUtf8(op)));
+        return true;
+    }
+    return false;
+}
+
+void TesterWorker::sendAndAwait(QModbusReply *reply, int timeoutMs, ReplyCont cont) {
+    Q_ASSERT(!m_awaitReply);
+    if (!m_replyTimer) {
+        // Tạo lazy trên worker thread (mọi slot đều chạy ở đây).
+        m_replyTimer = new QTimer(this);
+        m_replyTimer->setSingleShot(true);
+        connect(m_replyTimer, &QTimer::timeout, this, &TesterWorker::onAwaitTimeout);
+    }
+    if (!reply) {
+        cont(nullptr, true);
+        return;
+    }
+    connect(reply, &QModbusReply::finished, reply, &QObject::deleteLater);
+    m_awaitReply = reply;
+    m_awaitCont = std::move(cont);
+    connect(reply, &QModbusReply::finished, this, &TesterWorker::onAwaitFinished);
+    m_replyTimer->start(timeoutMs);
+}
+
+void TesterWorker::onAwaitFinished() {
+    auto *reply = qobject_cast<QModbusReply *>(sender());
+    m_replyTimer->stop();
+    auto cont = std::move(m_awaitCont);
+    m_awaitReply = nullptr;
+    m_awaitCont = {};
+    cont(reply, false);
+}
+
+void TesterWorker::onAwaitTimeout() {
+    auto *reply = m_awaitReply;
+    auto cont = std::move(m_awaitCont);
+    m_awaitReply = nullptr;
+    m_awaitCont = {};
+    cont(reply, true);
+}
+
+void TesterWorker::abortAwait() {
+    if (m_replyTimer) m_replyTimer->stop();
+    if (m_awaitReply) {
+        disconnect(m_awaitReply, &QModbusReply::finished,
+                   this, &TesterWorker::onAwaitFinished);
+        m_awaitReply->deleteLater();
+        m_awaitReply = nullptr;
+    }
+    m_awaitCont = {};
+}
+
+void TesterWorker::finishScan() {
+    if (!m_scanning) return;
+    m_scanning = false;
+    emit scanFinished();
+}
+
 void TesterWorker::doReadRegister(int slaveId, int address,
                                    const QString &registerType,
                                    const QString &dataType,
@@ -113,6 +185,7 @@ void TesterWorker::doReadRegister(int slaveId, int address,
         emit messageSent(QStringLiteral("Error"), QStringLiteral("Not connected."));
         return;
     }
+    if (checkBusy("Read")) return;
 
     const QString reg = ModbusCodec::normalizeRegisterType(registerType);
     QModbusDataUnit::RegisterType regEnum = ModbusCodec::toRegisterEnum(reg);
@@ -125,37 +198,36 @@ void TesterWorker::doReadRegister(int slaveId, int address,
         return;
     }
 
-    if (!ModbusWait::waitForReply(reply, kReplyWaitMs)) {
-        // Timeout: trả lỗi, chỉ hủy reply khi nó thực sự kết thúc.
-        connect(reply, &QModbusReply::finished, reply, &QObject::deleteLater);
-        emit readCompleted({{QStringLiteral("ok"), false},
-                            {QStringLiteral("error"), QStringLiteral("Response timeout")}});
-        return;
-    }
+    sendAndAwait(reply, kReplyWaitMs,
+            [this, slaveId, address, reg, regEnum, dataType, dataFormat](
+                    QModbusReply *reply, bool timedOut) {
+        if (timedOut || !reply) {
+            emit readCompleted({{QStringLiteral("ok"), false},
+                                {QStringLiteral("error"), QStringLiteral("Response timeout")}});
+            return;
+        }
+        if (reply->error() != QModbusDevice::NoError) {
+            emit readCompleted({{QStringLiteral("ok"), false},
+                                {QStringLiteral("error"), reply->errorString()}});
+            return;
+        }
 
-    if (reply->error() != QModbusDevice::NoError) {
-        emit readCompleted({{QStringLiteral("ok"), false},
-                            {QStringLiteral("error"), reply->errorString()}});
-        reply->deleteLater();
-        return;
-    }
+        QModbusDataUnit unit = reply->result();
 
-    QModbusDataUnit unit = reply->result();
-    reply->deleteLater();
-
-    double raw = 0;
-    if (regEnum == QModbusDataUnit::Coils || regEnum == QModbusDataUnit::DiscreteInputs) {
-        raw = unit.value(0) ? 1.0 : 0.0;
-    } else {
-        QVector<quint16> regs;
-        for (uint i = 0; i < unit.valueCount(); ++i)
-            regs << unit.value(i);
-        raw = ModbusCodec::decodeRegisters(regs, dataType, dataFormat);
-    }
-    emit readCompleted({{QStringLiteral("ok"), true}, {QStringLiteral("raw"), raw},
-                        {QStringLiteral("address"), address},
-                        {QStringLiteral("slave_id"), slaveId},
-                        {QStringLiteral("register_type"), reg}});
+        double raw = 0;
+        if (regEnum == QModbusDataUnit::Coils || regEnum == QModbusDataUnit::DiscreteInputs) {
+            raw = unit.value(0) ? 1.0 : 0.0;
+        } else {
+            QVector<quint16> regs;
+            for (uint i = 0; i < unit.valueCount(); ++i)
+                regs << unit.value(i);
+            raw = ModbusCodec::decodeRegisters(regs, dataType, dataFormat);
+        }
+        emit readCompleted({{QStringLiteral("ok"), true}, {QStringLiteral("raw"), raw},
+                            {QStringLiteral("address"), address},
+                            {QStringLiteral("slave_id"), slaveId},
+                            {QStringLiteral("register_type"), reg}});
+    });
 }
 
 void TesterWorker::doWriteRegister(int slaveId, int address,
@@ -167,6 +239,7 @@ void TesterWorker::doWriteRegister(int slaveId, int address,
         emit messageSent(QStringLiteral("Error"), QStringLiteral("Not connected."));
         return;
     }
+    if (checkBusy("Write")) return;
 
     const QString reg = ModbusCodec::normalizeRegisterType(registerType);
     if (reg == QStringLiteral("coil")) {
@@ -188,19 +261,16 @@ void TesterWorker::doWriteRegister(int slaveId, int address,
         emit messageSent(QStringLiteral("Error"), QStringLiteral("No reply object."));
         return;
     }
-    bool ok;
-    QString errorText;
-    if (!ModbusWait::waitForReply(reply, kReplyWaitMs)) {
-        connect(reply, &QModbusReply::finished, reply, &QObject::deleteLater);
-        ok = false;
-        errorText = QStringLiteral("Response timeout");
-    } else {
-        ok = (reply->error() == QModbusDevice::NoError);
-        errorText = reply->errorString();
-        reply->deleteLater();
-    }
-    emit writeCompleted({{QStringLiteral("ok"), ok},
-                         {QStringLiteral("error"), errorText}});
+    sendAndAwait(reply, kReplyWaitMs,
+            [this](QModbusReply *reply, bool timedOut) {
+        if (timedOut || !reply) {
+            emit writeCompleted({{QStringLiteral("ok"), false},
+                                 {QStringLiteral("error"), QStringLiteral("Response timeout")}});
+            return;
+        }
+        emit writeCompleted({{QStringLiteral("ok"), reply->error() == QModbusDevice::NoError},
+                             {QStringLiteral("error"), reply->errorString()}});
+    });
 }
 
 void TesterWorker::doWriteSingle(const QString &registerType, int address,
@@ -210,6 +280,7 @@ void TesterWorker::doWriteSingle(const QString &registerType, int address,
         emit messageSent(QStringLiteral("Error"), QStringLiteral("Not connected."));
         return;
     }
+    if (checkBusy("Write")) return;
 
     const QString reg = ModbusCodec::normalizeRegisterType(registerType);
     if (reg == QStringLiteral("coil")) {
@@ -228,6 +299,7 @@ void TesterWorker::doWriteSingle(const QString &registerType, int address,
 }
 
 void TesterWorker::doWriteCoil(int slaveId, int address, bool value) {
+    if (checkBusy("Write")) return;
     writeCoilInternal(slaveId, address, value);
 }
 
@@ -237,14 +309,15 @@ void TesterWorker::writeCoilInternal(int slaveId, int address, bool value) {
     unit.setValue(0, value ? 1 : 0);
     auto *reply = m_client->sendWriteRequest(unit, slaveId);
     if (!reply) return;
-    if (!ModbusWait::waitForReply(reply, kReplyWaitMs)) {
-        connect(reply, &QModbusReply::finished, reply, &QObject::deleteLater);
-        emit writeCompleted({{QStringLiteral("ok"), false},
-                             {QStringLiteral("error"), QStringLiteral("Response timeout")}});
-        return;
-    }
-    emit writeCompleted({{QStringLiteral("ok"), reply->error() == QModbusDevice::NoError}});
-    reply->deleteLater();
+    sendAndAwait(reply, kReplyWaitMs,
+            [this](QModbusReply *reply, bool timedOut) {
+        if (timedOut || !reply) {
+            emit writeCompleted({{QStringLiteral("ok"), false},
+                                 {QStringLiteral("error"), QStringLiteral("Response timeout")}});
+            return;
+        }
+        emit writeCompleted({{QStringLiteral("ok"), reply->error() == QModbusDevice::NoError}});
+    });
 }
 
 void TesterWorker::doScanSlavesById(int startId, int endId) {
@@ -252,27 +325,31 @@ void TesterWorker::doScanSlavesById(int startId, int endId) {
         emit messageSent(QStringLiteral("Error"), QStringLiteral("Not connected."));
         return;
     }
+    if (checkBusy("Scan")) { emit scanFinished(); return; }
+    m_scanById = true;
     m_scanning = true;
-    const int total = endId - startId + 1;
-    int cur = 0;
-    for (int id = startId; id <= endId && m_scanning; ++id) {
-        ++cur;
-        emit scanProgressUpdated(cur, total);
-        QModbusDataUnit unit(QModbusDataUnit::HoldingRegisters, 0, 1);
-        auto *reply = m_client->sendReadRequest(unit, id);
-        if (!reply) continue;
-        if (!ModbusWait::waitForReply(reply, kReplyWaitMs)) {
-            // Không có slave tại id này (hoặc bus treo) — bỏ qua và dọn reply an toàn.
-            connect(reply, &QModbusReply::finished, reply, &QObject::deleteLater);
-            continue;
-        }
+    m_scanTotal = endId - startId + 1;
+    m_scanCur = 0;
+    m_scanIdCur = startId;
+    m_scanIdEnd = endId;
+    scanIdStep();
+}
+
+void TesterWorker::scanIdStep() {
+    if (!m_scanning || !m_connected || !m_client) { finishScan(); return; }
+    if (m_scanIdCur > m_scanIdEnd) { finishScan(); return; }
+    const int id = m_scanIdCur++;
+    emit scanProgressUpdated(++m_scanCur, m_scanTotal);
+    QModbusDataUnit unit(QModbusDataUnit::HoldingRegisters, 0, 1);
+    auto *reply = m_client->sendReadRequest(unit, id);
+    if (!reply) { scanIdStep(); return; }
+    sendAndAwait(reply, kReplyWaitMs, [this, id](QModbusReply *reply, bool timedOut) {
+        if (timedOut || !reply) { scanIdStep(); return; } // slave vắng/bus treo — bỏ qua
         if (reply->error() == QModbusDevice::NoError)
             emit scanResultEmitted({{QStringLiteral("slave_id"), id},
                                     {QStringLiteral("found"), true}});
-        reply->deleteLater();
-    }
-    m_scanning = false;
-    emit scanFinished();
+        scanIdStep();
+    });
 }
 
 void TesterWorker::doScanSlavesByAddr(int startAddr, int endAddr, int registersPerRead,
@@ -284,55 +361,62 @@ void TesterWorker::doScanSlavesByAddr(int startAddr, int endAddr, int registersP
     }
     if (startAddr > endAddr) {
         emit messageSent(QStringLiteral("Error"),
-                         QStringLiteral("Start address must be \u2264 end address."));
+                          QStringLiteral("Start address must be \u2264 end address."));
         return;
     }
+    if (checkBusy("Scan")) { emit scanFinished(); return; }
 
     const QString reg = ModbusCodec::normalizeRegisterType(registerType);
-    QModbusDataUnit::RegisterType regEnum = ModbusCodec::toRegisterEnum(reg);
 
-    const int step  = qMax(1, registersPerRead);
-    const int total = (endAddr - startAddr) / step + 1;
+    m_scanById = false;
     m_scanning = true;
-    int cur = 0;
+    m_scanStep  = qMax(1, registersPerRead);
+    m_scanTotal = (endAddr - startAddr) / m_scanStep + 1;
+    m_scanCur = 0;
+    m_scanAddrCur = startAddr;
+    m_scanAddrEnd = endAddr;
+    m_scanSlave = slaveId;
+    m_scanRegEnum = ModbusCodec::toRegisterEnum(reg);
+    m_scanDataType = dataType;
+    m_scanDataFormat = dataFormat;
+    scanAddrStep();
+}
 
-    for (int addr = startAddr; addr <= endAddr && m_scanning; addr += step) {
-        ++cur;
-        emit scanProgressUpdated(cur, total);
+void TesterWorker::scanAddrStep() {
+    if (!m_scanning || !m_connected || !m_client) { finishScan(); return; }
+    if (m_scanAddrCur > m_scanAddrEnd) { finishScan(); return; }
+    const int addr = m_scanAddrCur;
+    m_scanAddrCur += m_scanStep;
+    emit scanProgressUpdated(++m_scanCur, m_scanTotal);
 
-        const int count = (regEnum == QModbusDataUnit::Coils
-                        || regEnum == QModbusDataUnit::DiscreteInputs)
-            ? 1 : qMax(1, ModbusCodec::registerCountForDataType(dataType));
+    const int count = (m_scanRegEnum == QModbusDataUnit::Coils
+                    || m_scanRegEnum == QModbusDataUnit::DiscreteInputs)
+        ? 1 : qMax(1, ModbusCodec::registerCountForDataType(m_scanDataType));
 
-        QModbusDataUnit request(regEnum, addr, count);
-        auto *reply = m_client->sendReadRequest(request, slaveId);
-        if (!reply) continue;
+    QModbusDataUnit request(m_scanRegEnum, addr, count);
+    auto *reply = m_client->sendReadRequest(request, m_scanSlave);
+    if (!reply) { scanAddrStep(); return; }
 
-        if (!ModbusWait::waitForReply(reply, kReplyWaitMs)) {
-            connect(reply, &QModbusReply::finished, reply, &QObject::deleteLater);
-            continue;
-        }
-
+    sendAndAwait(reply, kReplyWaitMs, [this, addr](QModbusReply *reply, bool timedOut) {
+        if (timedOut || !reply) { scanAddrStep(); return; }
         if (reply->error() == QModbusDevice::NoError) {
             QModbusDataUnit unit = reply->result();
             double raw = 0;
-            if (regEnum == QModbusDataUnit::Coils || regEnum == QModbusDataUnit::DiscreteInputs) {
+            if (m_scanRegEnum == QModbusDataUnit::Coils || m_scanRegEnum == QModbusDataUnit::DiscreteInputs) {
                 raw = unit.value(0) ? 1.0 : 0.0;
             } else {
                 QVector<quint16> regs;
                 for (uint i = 0; i < unit.valueCount(); ++i)
                     regs << unit.value(i);
-                raw = ModbusCodec::decodeRegisters(regs, dataType, dataFormat);
+                raw = ModbusCodec::decodeRegisters(regs, m_scanDataType, m_scanDataFormat);
             }
-            const QString valStr = formatDecodedValue(raw, dataType);
+            const QString valStr = formatDecodedValue(raw, m_scanDataType);
             emit scanResultEmitted({{QStringLiteral("address"), addr},
                                     {QStringLiteral("value"), valStr}});
             emit scanResultByAddress(addr, valStr);
         }
-        reply->deleteLater();
-    }
-    m_scanning = false;
-    emit scanFinished();
+        scanAddrStep();
+    });
 }
 
 void TesterWorker::doStopScan() {

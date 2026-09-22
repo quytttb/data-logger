@@ -2,12 +2,17 @@
 #include <QObject>
 #include <QString>
 #include <QVariantMap>
+#include <QTimer>
 #include <QModbusRtuSerialClient>
+#include <QModbusReply>
+#include <QModbusDataUnit>
+#include <functional>
 #include <optional>
 #include "utils/modbus/ModbusPortGuard.h"
 
-// Performs all blocking Modbus I/O on a dedicated worker thread so the GUI
-// thread is never blocked by QEventLoop waits inside read/write/scan ops.
+// Performs all Modbus I/O on a dedicated worker thread (Qt 6 async, không
+// QEventLoop lồng): mỗi lúc 1 in-flight, finished/timeout chạy continuation.
+// Op mới khi đang bận → báo Busy thay vì xếp chồng (tránh race reply).
 class TesterWorker : public QObject {
     Q_OBJECT
 public:
@@ -37,6 +42,10 @@ public slots:
                             int slaveId, const QString &dataFormat);
     void doStopScan();
 
+private slots:
+    void onAwaitFinished();
+    void onAwaitTimeout();
+
 signals:
     void connectionResult(bool connected, const QString &statusText);
     void readCompleted(const QVariantMap &result);
@@ -54,10 +63,28 @@ private:
     // connected, tryLock fail hoặc probe mở port fail → báo busy.
     bool acquirePort(const QString &port);
     void releasePort();
+    using ReplyCont = std::function<void(QModbusReply *, bool)>;
+    bool checkBusy(const char *op);
+    void sendAndAwait(QModbusReply *reply, int timeoutMs, ReplyCont cont);
+    void abortAwait();
+    void finishScan();
+    void scanIdStep();
+    void scanAddrStep();
 
     QModbusRtuSerialClient *m_client  = nullptr;
     bool                    m_connected = false;
     bool                    m_scanning  = false;
     // Giữ ModbusPortGuard trong lúc connected (RAII).
     std::optional<ModbusPortGuard::Guard> m_portGuard;
+    // Async await state (1 in-flight tại 1 thời điểm, cùng thread).
+    QTimer                  *m_replyTimer = nullptr;
+    QModbusReply            *m_awaitReply = nullptr;
+    std::function<void(QModbusReply *, bool)> m_awaitCont;
+    // Scan chain state (1 scan tại 1 thời điểm).
+    bool m_scanById = true;
+    int  m_scanCur = 0, m_scanTotal = 0;
+    int  m_scanIdCur = 0, m_scanIdEnd = 0;
+    int  m_scanAddrCur = 0, m_scanAddrEnd = 0, m_scanStep = 1, m_scanSlave = 1;
+    QModbusDataUnit::RegisterType m_scanRegEnum = QModbusDataUnit::HoldingRegisters;
+    QString m_scanDataType, m_scanDataFormat;
 };

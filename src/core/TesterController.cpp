@@ -5,10 +5,6 @@
 #include <QFileInfo>
 #include <QDebug>
 #include <QDir>
-#include <QSemaphore>
-#include <memory>
-#include <QQmlEngine>
-#include <QJSEngine>
 #include <algorithm>
 
 IMPLEMENT_QML_SINGLETON(TesterController)
@@ -59,11 +55,12 @@ TesterController::TesterController(QObject *parent) : QObject(parent)
 }
 
 TesterController::~TesterController() {
-    auto sem = std::make_shared<QSemaphore>();
-    QMetaObject::invokeMethod(m_worker, "doDisconnect", Qt::QueuedConnection);
-    QMetaObject::invokeMethod(m_worker, [sem]() { sem->release(); }, Qt::QueuedConnection);
-    if (!sem->tryAcquire(1, kThreadJoinMs))
-        qWarning() << "TesterController: doDisconnect did not complete within" << kThreadJoinMs << "ms";
+    // Bounded sync teardown CHỈ dùng lúc app quit (event loop sắp chết,
+    // không thể async): post disconnect best-effort rồi quit+wait có
+    // timeout; treo thì abandon (finished→deleteLater dọn sau). Runtime
+    // dùng đường async (connect timeout / doDisconnect slot), không block.
+    if (m_worker)
+        QMetaObject::invokeMethod(m_worker, "doDisconnect", Qt::QueuedConnection);
     if (m_workerThread) {
         m_workerThread->quit();
         if (!m_workerThread->wait(kThreadJoinMs))

@@ -49,7 +49,6 @@ static int diStatusPriority(const QString &label) {
 namespace {
 constexpr int kCpuPollMs       = 10000;  // CPU temperature poll
 constexpr int kWatchdogMs      = 5000;   // worker heartbeat check
-constexpr int kThreadCheckMs   = 50;     // async stop: re-poll thread state
 constexpr int kThreadJoinMs    = 3000;   // graceful worker-thread join timeout
 constexpr int kStopWorkerMs    = 5000;   // bounded wait for worker stop slot (H-1)
 constexpr int kModbusTimeoutSec = 1;     // ModbusWorker::configure expects timeout in seconds
@@ -307,10 +306,14 @@ void MonitorController::startWorkerThreads(const AppConfig &cfg,
     m_modbusThread->start();
 }
 
-void MonitorController::stopPolling() {
+void MonitorController::stopPolling(AfterStop after) {
     cancelRetry();
-    m_retryCount = 0;
+    // Tester handoff (Nothing) reset backoff như cũ; Restart/Retry giữ
+    // nguyên để không phá nhịp backoff/config-refresh hiện tại.
+    if (after == AfterStop::Nothing)
+        m_retryCount = 0;
     if (!m_isPolling || m_isStopping) return;
+    m_afterStop = after;
     m_watchdogTimer->stop();
     m_isStopping = true;
     applyStatus("stopping", StatusIdle);
@@ -324,25 +327,37 @@ void MonitorController::stopPolling() {
     if (m_modbusWorker) QMetaObject::invokeMethod(m_modbusWorker, "stop");
     if (m_dbWorker)     QMetaObject::invokeMethod(m_dbWorker, "stop");
 
-    checkThreadsFinished();
+    // Finished-counter (Qt 6 SingleShotConnection tự hủy sau 1 lần bắn):
+    // đủ 2 workerStopped → finalizeStop ngay, không poll 50ms.
+    m_pendingStops = 0;
+    if (auto *mb = qobject_cast<ModbusWorker *>(m_modbusWorker.data())) {
+        ++m_pendingStops;
+        connect(mb, &ModbusWorker::workerStopped, this, &MonitorController::onWorkerAsyncStopped, Qt::SingleShotConnection);
+    }
+    if (m_dbWorker) {
+        ++m_pendingStops;
+        connect(m_dbWorker, &DatabaseWorker::workerStopped, this, &MonitorController::onWorkerAsyncStopped, Qt::SingleShotConnection);
+    }
+    if (m_pendingStops == 0) { finalizeStop(); return; }
+    // Backstop khi worker kẹt không emit (không bao giờ block): quá hạn thì
+    // finalize cưỡng bức, thread treo tự deleteLater khi finished (abandon).
+    QTimer::singleShot(kStopWorkerMs, this, [this]() {
+        if (!m_isStopping || m_pendingStops <= 0) return;
+        qWarning() << "MonitorController: worker stop hung, force finalize";
+        finalizeStop();
+    });
 }
 
-void MonitorController::checkThreadsFinished() {
-    // Shot cũ còn sót sau khi stopPollingSync đã null pointer (refreshSensors
-    // chạy giữa async stop): cả hai null thì về luôn, tránh finalizeStop giả
-    // bắn pollingChanged/pollingFullyStopped + log "Polling stopped." thừa.
-    if (!m_modbusThread && !m_dbThread) return;
-    bool mb = (!m_modbusThread || !m_modbusThread->isRunning());
-    bool db = (!m_dbThread     || !m_dbThread->isRunning());
-    if (mb && db) { finalizeStop(); return; }
-    // Overload (msec, receiver, member) của Qt 6: receiver làm context nên
-    // shot tự cancel khi MonitorController bị hủy — không treo slot.
-    QTimer::singleShot(kThreadCheckMs, this, &MonitorController::checkThreadsFinished);
+void MonitorController::onWorkerAsyncStopped() {
+    // SingleShotConnection nên mỗi worker chỉ bắn 1 lần cho 1 stopPolling.
+    if (!m_isStopping || m_pendingStops <= 0) return;
+    if (--m_pendingStops == 0) finalizeStop();
 }
 
 void MonitorController::finalizeStop() {
     m_modbusWorker = nullptr;
     m_dbWorker     = nullptr;
+    m_pendingStops = 0;
     // Threads are self-deleting on finished (no parent) — just clear pointers.
     // In normal stopPolling() flow quit() was already called and finished will
     // delete them. If called from elsewhere, deleteLater is safe.
@@ -368,6 +383,14 @@ void MonitorController::finalizeStop() {
     emit pollingFullyStopped();
     m_model->setAllStatus("---");
     qInfo() << "Polling stopped.";
+    // Ý định đã chốt lúc stopPolling: thực hiện đúng 1 lần rồi xóa.
+    const AfterStop after = m_afterStop;
+    m_afterStop = AfterStop::Nothing;
+    if (after == AfterStop::Restart) {
+        QTimer::singleShot(200, this, &MonitorController::startPolling);
+    } else if (after == AfterStop::Retry) {
+        finishRetry();
+    }
 }
 
 void MonitorController::stopPollingSync() {
@@ -396,6 +419,8 @@ void MonitorController::stopPollingSync() {
     // Workers are deleted automatically via thread->finished → deleteLater
     m_modbusWorker = nullptr;
     m_dbWorker     = nullptr;
+    m_pendingStops = 0;
+    m_afterStop = AfterStop::Nothing;
     m_isPolling    = false;
     m_isStopping   = false;
     if (m_mbtcp) m_mbtcp->setLoggerStatus(false, false);
@@ -408,8 +433,8 @@ void MonitorController::refreshSensors() {
         qInfo() << "refreshSensors: auto-restarting monitor for live config update";
         cancelRetry();
         if (retryingBefore) { m_retryCount = 0; emit retryStateChanged(); }
-        stopPollingSync();
-        QTimer::singleShot(200, this, &MonitorController::startPolling);
+        // Async, không block UI: stop xong finalizeStop() tự start lại.
+        stopPolling(AfterStop::Restart);
         return;
     }
     
@@ -437,8 +462,8 @@ void MonitorController::refreshSensorsFromList(const QList<QVariantMap> &maps) {
         qInfo() << "refreshSensorsFromList: auto-restarting monitor for live config update";
         cancelRetry();
         if (retryingBefore) { m_retryCount = 0; emit retryStateChanged(); }
-        stopPollingSync();
-        QTimer::singleShot(200, this, &MonitorController::startPolling);
+        // Async, không block UI: stop xong finalizeStop() tự start lại.
+        stopPolling(AfterStop::Restart);
         return;
     }
     
@@ -648,17 +673,25 @@ void MonitorController::scheduleRetry(const QString &reason) {
 
     qWarning().noquote() << "Monitor error, scheduling retry:" << reason;
 
-    // Clean up current polling state synchronously
-    stopPollingSync();
-    emit pollingChanged();
+    // Async, không block UI: stop xong finalizeStop() gọi finishRetry()
+    // (đánh dấu ERR + khởi động retry timer). Giữ nguyên nhịp backoff.
+    m_retryReason = reason;
+    if (!m_isPolling || m_isStopping) {
+        finishRetry(); // không có gì để stop — vào retry luôn
+        return;
+    }
+    stopPolling(AfterStop::Retry);
+}
 
-    // Mark UI as error state
+void MonitorController::finishRetry() {
+    // finalizeStop() đã bắn pollingChanged — ở đây chỉ đánh dấu ERR và
+    // khởi động retry timer (đúng thứ tự bản sync cũ).
     applyStatus("error_retrying", StatusError);
     m_model->setAllStatus("ERR");
     markReadingsCacheErr();
 
     // Calculate backoff: 5s, 10s, 20s, 40s, 60s max
-    int delayMs = computeRetryDelayMs(m_retryCount);
+    const int delayMs = computeRetryDelayMs(m_retryCount);
     m_retryCount++;
 
     qInfo() << "Retry #" << m_retryCount << "in" << (delayMs / 1000) << "s";
