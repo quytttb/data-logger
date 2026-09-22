@@ -23,6 +23,13 @@ Item {
         return list.filter(function(s) { return root.selectedIds.indexOf(s.id) >= 0 })
     }
 
+    // Có đang lọc (chọn thiếu sensor) — icon filter đổi màu + hiện đếm.
+    readonly property bool isFiltered: {
+        let all = root.allIds().length
+        let sel = root.selectedIds.length
+        return sel > 0 && sel < all
+    }
+
     function allIds() {
         let ids = []
         let list = MonitorController.analogSensors
@@ -74,20 +81,40 @@ Item {
         spacing: 12
         visible: root.hasSensors
 
+        // Nút icon filter (glyph filter_alt trong font Material Symbols
+        // bundle sẵn — không thêm icon vào kit dùng chung).
         Button {
             id: filterButton
             Layout.alignment: Qt.AlignVCenter
-            Layout.preferredWidth: 170
-            Layout.preferredHeight: 44
-            text: {
-                let all = root.allIds().length
-                let sel = root.selectedIds.length
-                if (sel === 0 || sel >= all) return qsTr("All sensors")
-                return qsTr("Filter (%1/%2)").arg(sel).arg(all)
+            Layout.preferredWidth: 48
+            Layout.preferredHeight: 48
+            onClicked: filterPopup.open()
+
+            background: Rectangle {
+                radius: AppTheme.chipRadius
+                color: root.isFiltered ? AppColors.withAlpha(AppColors.primaryColor, 0.25)
+                                       : AppColors.surfaceContainerHigh
+                border.width: root.isFiltered ? 1 : 0
+                border.color: AppColors.primaryColor
             }
+
+            contentItem: Text {
+                text: "\uEF4B" // filter_alt (Material Symbols Outlined)
+                font.family: "Material Symbols Outlined"
+                font.pixelSize: 26
+                color: root.isFiltered ? AppColors.primaryColor : AppColors.onSurfaceVariant
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+            }
+        }
+
+        Text {
+            visible: root.isFiltered
+            Layout.alignment: Qt.AlignVCenter
+            text: qsTr("%1/%2").arg(root.selectedIds.length).arg(root.allIds().length)
+            color: AppColors.primaryColor
             font.pixelSize: AppTypography.bodyMedium.pixelSize
             font.bold: true
-            onClicked: filterPopup.open()
         }
 
         Item {

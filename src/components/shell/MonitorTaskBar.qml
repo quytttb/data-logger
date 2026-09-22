@@ -108,9 +108,26 @@ Item {
             Layout.alignment: Qt.AlignVCenter
             spacing: AppTheme.spacingS
 
+            // Đo mẫu rộng nhất 1 lần để fix cứng width — text thay đổi mỗi
+            // giây (font proportional) không làm pill co dãn, không đẩy
+            // pill FTP chạy qua lại. Mẫu: "8" là chữ số rộng nhất, "MM"
+            // phủ "AM"/"PM", date 10 ký tự mọi format trong Settings.
+            TextMetrics {
+                id: clockDateMetrics
+                font.pixelSize: AppTypography.titleLarge.pixelSize
+                font.bold: true
+                text: "8888-88-88"
+            }
+            TextMetrics {
+                id: clockTimeMetrics
+                font.pixelSize: AppTypography.headlineSmall.pixelSize
+                font.bold: true
+                text: "88:88:88 MM"
+            }
+
             Rectangle {
                 Layout.preferredHeight: 44
-                Layout.preferredWidth: clockDate.implicitWidth + 28
+                Layout.preferredWidth: Math.ceil(clockDateMetrics.advanceWidth) + 28
                 radius: AppTheme.listItemRadius
                 color: AppColors.surfaceContainerHigh
                 border.width: 1
@@ -128,7 +145,7 @@ Item {
 
             Rectangle {
                 Layout.preferredHeight: 44
-                Layout.preferredWidth: clockTime.implicitWidth + 28
+                Layout.preferredWidth: Math.ceil(clockTimeMetrics.advanceWidth) + 28
                 radius: AppTheme.listItemRadius
                 color: AppColors.surfaceContainerHigh
                 border.width: 1
