@@ -6,6 +6,7 @@
 #include <QList>
 #include <QHash>
 #include <QModbusRtuSerialClient>
+#include <atomic>
 #include "utils/system/AppDefaults.h"
 
 // Wraps a QModbusRtuSerialClient and polls configured sensors on a worker thread.
@@ -54,6 +55,9 @@ signals:
     void alarmChanged(QVariantMap info);
     void workerStopped();
     void heartbeat(QString workerName);
+    // Bắn từ stop() để thoát mọi waitReply đang block trong nested loop
+    // trước khi disconnectDevice (tránh reply treo → use-after-free).
+    void abortWaitRequested();
 
 private slots:
     void onPollTimer();
@@ -66,6 +70,10 @@ private:
     // (chỉ delete khi finished thực sự fire) và reset cổng serial bị kẹt.
     bool waitReply(QModbusReply *reply, const QString &timeoutMsg);
     void resetConnectionAfterHang();
+    // Single-owner cổng RS-485 (ModbusPortGuard): giữ guard trong suốt thời
+    // gian connected, thả khi stop()/reset. tryLock fail → báo busy.
+    bool acquirePort();
+    void releasePort();
     void pollSingle(const QVariantMap &sensorCfg);
     void pollAnalog(const QVariantMap &cfg);
     void pollStandaloneDi(const QVariantMap &cfg);
@@ -105,6 +113,11 @@ private:
     bool     m_running = false;
     bool     m_connected = false;
     int      m_backoffMs = kInitialBackoffMs;
+    // Cờ thoát waitReply: stop() set trước khi disconnect để mọi nested
+    // QEventLoop đang chờ reply thoát ngay, không chạm reply/client nữa.
+    std::atomic<bool> m_abortWait{false};
+    // Giữ ModbusPortGuard trong lúc connected.
+    bool     m_portGuardHeld = false;
 
     // Audit M5
     double   m_alarmHysteresis = 0.0;

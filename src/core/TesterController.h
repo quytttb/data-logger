@@ -2,6 +2,7 @@
 #include <QObject>
 #include <QPointer>
 #include <QThread>
+#include <QTimer>
 #include <QString>
 #include <QStringList>
 #include <QVariantMap>
@@ -86,8 +87,7 @@ signals:
     void scanProgress(int current, int total);
 
 private slots:
-    void onConnectionResult(bool connected, const QString &statusText);
-    void onReadCompleted(const QVariantMap &result);
+    void onConnectionResult(bool connected, const QString &statusText);    void onReadCompleted(const QVariantMap &result);
     void onWriteCompleted(const QVariantMap &result);
     void onScanResultEmitted(const QVariantMap &result);
     void onScanResultByAddress(int address, const QString &value);
@@ -95,6 +95,7 @@ private slots:
     void onScanFinished();
     void tryPendingConnect();
     void resumeMonitorIfNeeded();
+    void onConnectTimeout();
 
 private:
     void setScanning(bool v);
@@ -102,8 +103,9 @@ private:
     void setStopping(bool v);
     void setStatus(const QString &s);
 
-    TesterWorker *m_worker       = nullptr;
-    QThread      *m_workerThread = nullptr;
+    // Worker + thread dùng QPointer: thread tự deleteLater khi finished.
+    QPointer<TesterWorker> m_worker;
+    QPointer<QThread>      m_workerThread;
 
     bool    m_connected   = false;
     bool    m_connecting  = false;
@@ -117,6 +119,9 @@ private:
     QPointer<MonitorController> m_monitor;
     bool      m_monitorWasRunning = false;
     bool      m_waitingConnect    = false;
+    // Timeout có context: pollingFullyStopped không tới thì báo Port busy
+    // thay vì treo chờ vô hạn (Qt 6.11 singleShot có context tự cancel).
+    QTimer   *m_connectTimeout = nullptr;
     QString   m_pendingPort;
     int       m_pendingBaudrate = 0;
     int       m_pendingBytesize = 0;

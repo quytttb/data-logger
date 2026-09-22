@@ -1,6 +1,7 @@
 #include "TesterWorker.h"
 #include "utils/modbus/ModbusCodec.h"
 #include "utils/modbus/ModbusWait.h"
+#include "utils/modbus/ModbusPortGuard.h"
 #include <QModbusDataUnit>
 #include <QModbusReply>
 #include <QSerialPort>
@@ -32,6 +33,15 @@ void TesterWorker::doConnect(const QString &port, int baudrate,
             QStringLiteral("No serial port selected."));
         return;
     }
+    // Single-owner: monitor (hoặc tiến trình khác) đang giữ cổng thì báo
+    // busy thay vì mở chồng client lên cùng port (SEGV core 19:13 Pi .15).
+    if (!acquirePort(port)) {
+        emit connectionResult(false,
+            QStringLiteral("Serial port busy: %1").arg(port));
+        emit messageSent(QStringLiteral("Error"),
+            QStringLiteral("Serial port busy: %1. Stop monitoring or try again.").arg(port));
+        return;
+    }
     if (m_client) {
         m_client->disconnectDevice();
         m_client->deleteLater();
@@ -57,11 +67,34 @@ void TesterWorker::doConnect(const QString &port, int baudrate,
     } else {
         m_client->deleteLater();
         m_client = nullptr;
+        releasePort();
         emit connectionResult(false,
             QStringLiteral("Failed to connect: %1").arg(port));
         emit messageSent(QStringLiteral("Error"),
             QStringLiteral("Failed to connect to %1").arg(port));
     }
+}
+
+bool TesterWorker::acquirePort(const QString &port) {
+    if (m_portGuardHeld) return true;
+    if (!ModbusPortGuard::mutex().tryLock()) return false;
+    // Probe: port bị tiến trình ngoài giữ (minicom...) thì cũng báo busy.
+    // Mở + đóng ngay lập tức, vô hại với pty/tty thật.
+    QSerialPort probe;
+    probe.setPortName(port);
+    if (!probe.open(QIODevice::ReadWrite)) {
+        ModbusPortGuard::mutex().unlock();
+        return false;
+    }
+    probe.close();
+    m_portGuardHeld = true;
+    return true;
+}
+
+void TesterWorker::releasePort() {
+    if (!m_portGuardHeld) return;
+    m_portGuardHeld = false;
+    ModbusPortGuard::mutex().unlock();
 }
 
 void TesterWorker::doDisconnect() {
@@ -72,6 +105,7 @@ void TesterWorker::doDisconnect() {
         m_connected = false;
         emit connectionResult(false, QStringLiteral("Disconnected"));
     }
+    releasePort();
 }
 
 void TesterWorker::doReadRegister(int slaveId, int address,

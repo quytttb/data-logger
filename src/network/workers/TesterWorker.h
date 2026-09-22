@@ -48,8 +48,13 @@ signals:
 private:
     QString formatDecodedValue(double raw, const QString &dataType) const;
     void writeCoilInternal(int slaveId, int address, bool value);
+    // Single-owner cổng RS-485 (ModbusPortGuard): giữ guard trong lúc
+    // connected, tryLock fail hoặc probe mở port fail → báo busy.
+    bool acquirePort(const QString &port);
+    void releasePort();
 
     QModbusRtuSerialClient *m_client  = nullptr;
     bool                    m_connected = false;
     bool                    m_scanning  = false;
+    bool                    m_portGuardHeld = false;
 };

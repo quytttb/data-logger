@@ -182,8 +182,10 @@ private:
     // trên object đã hủy (SEGV Tester Connect, core 19:13 Pi .15).
     QPointer<QThread> m_modbusThread;
     QPointer<QThread> m_dbThread;
-    QObject        *m_modbusWorker = nullptr;
-    DatabaseWorker *m_dbWorker     = nullptr;
+    // QPointer: worker tự deleteLater khi thread finished — mọi invokeMethod
+    // check null trước khi post event sang thread đã chết.
+    QPointer<QObject>        m_modbusWorker;
+    QPointer<DatabaseWorker> m_dbWorker;
 
     std::atomic<bool> m_isPolling          {false};
     std::atomic<bool> m_rtuConnected       {false};

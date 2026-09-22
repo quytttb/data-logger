@@ -1,11 +1,14 @@
 #include "ModbusWorker.h"
 #include "utils/modbus/Formula.h"
 #include "utils/modbus/ModbusCodec.h"
-#include "utils/modbus/ModbusWait.h"
+#include "utils/modbus/ModbusPortGuard.h"
 #include <QModbusDataUnit>
 #include <QModbusReply>
 #include <QSerialPort>
 #include <QDateTime>
+#include <QEventLoop>
+#include <QTimer>
+#include <QMetaObject>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QThread>
@@ -83,6 +86,7 @@ void ModbusWorker::setDigitalIos(const QHash<int, QList<QVariantMap>> &ioMap) {
 
 void ModbusWorker::start() {
     m_running = true;
+    m_abortWait = false;
 
     m_client = new QModbusRtuSerialClient(this);
 
@@ -106,15 +110,40 @@ void ModbusWorker::start() {
 
 void ModbusWorker::stop() {
     m_running = false;
+    // Thoát mọi waitReply đang block TRƯỚC khi disconnect: emit này chạy
+    // đồng bộ trên worker thread, quit nested loop ngay lập tức.
+    m_abortWait = true;
+    emit abortWaitRequested();
     if (m_pollTimer)      m_pollTimer->stop();
     if (m_heartbeatTimer) m_heartbeatTimer->stop();
     if (m_client)         m_client->disconnectDevice();
+    releasePort();
     emit workerStopped();
+}
+
+bool ModbusWorker::acquirePort() {
+    if (m_portGuardHeld) return true;
+    if (!ModbusPortGuard::mutex().tryLock()) return false;
+    m_portGuardHeld = true;
+    return true;
+}
+
+void ModbusWorker::releasePort() {
+    if (!m_portGuardHeld) return;
+    m_portGuardHeld = false;
+    ModbusPortGuard::mutex().unlock();
 }
 
 bool ModbusWorker::connectToPort() {
     if (!m_client)
         m_client = new QModbusRtuSerialClient(this); // recreate after timeout reset
+
+    // Single-owner: Tester đang giữ cổng thì báo busy, thử lại sau (backoff).
+    if (!acquirePort()) {
+        m_connected = false;
+        emit modbusError(QStringLiteral("Serial port busy, retrying %1").arg(m_port));
+        return false;
+    }
 
     m_client->setConnectionParameter(QModbusDevice::SerialPortNameParameter, m_port);
     m_client->setConnectionParameter(QModbusDevice::SerialBaudRateParameter, m_baudrate);
@@ -201,7 +230,33 @@ void ModbusWorker::onHeartbeatTimer() {
 }
 
 bool ModbusWorker::waitReply(QModbusReply *reply, const QString &timeoutMsg) {
-    if (ModbusWait::waitForReply(reply, replyWaitMs()))
+    if (!reply) return false;
+    if (reply->isFinished()) return true;
+
+    // Loop cục bộ (thay ModbusWait) để gắn thêm abort từ stop(): stop()
+    // chạy đồng bộ trên cùng worker thread nên quit nested loop ngay.
+    QEventLoop loop;
+    const QMetaObject::Connection cFinished =
+        connect(reply, &QModbusReply::finished, &loop, &QEventLoop::quit);
+    const QMetaObject::Connection cAbort =
+        connect(this, &ModbusWorker::abortWaitRequested, &loop, &QEventLoop::quit);
+    QTimer timer;
+    timer.setSingleShot(true);
+    const QMetaObject::Connection cTimeout =
+        connect(&timer, &QTimer::timeout, &loop, &QEventLoop::quit);
+    timer.start(replyWaitMs());
+    loop.exec();
+    disconnect(cFinished);
+    disconnect(cAbort);
+    disconnect(cTimeout);
+
+    if (m_abortWait.load()) {
+        // stop() đang teardown — không chạm reply/client nữa, caller return
+        // ngay theo các guard m_running/m_client hiện có.
+        connect(reply, &QModbusReply::finished, reply, &QObject::deleteLater);
+        return false;
+    }
+    if (reply->isFinished())
         return true;
     // Timeout: never touch the reply again; free it whenever it finally
     // finishes, and reset the possibly-hung serial connection (auto-reconnect).
@@ -220,6 +275,7 @@ void ModbusWorker::resetConnectionAfterHang() {
         m_client->deleteLater();
         m_client = nullptr; // connectToPort() recreates it via backoff
     }
+    releasePort(); // cổng thực sự rảnh — Tester có thể lấy trong lúc backoff
     emit connectionChanged(false);
     m_backoffMs = 1000;
     if (m_running)

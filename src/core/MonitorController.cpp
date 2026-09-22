@@ -292,6 +292,9 @@ void MonitorController::startWorkerThreads(const AppConfig &cfg,
     connect(m_modbusThread, &QThread::started,          mbWorker, &ModbusWorker::start);
     connect(m_modbusThread, &QThread::finished,         mbWorker, &QObject::deleteLater);
     connect(m_modbusThread, &QThread::finished,         m_modbusThread, &QObject::deleteLater);
+    // Thread chỉ quit khi stop() đã chạy xong (đồng nhất với DatabaseWorker):
+    // quit() trực tiếp sẽ loại bỏ event stop queued chưa dispatch.
+    connect(mbWorker, &ModbusWorker::workerStopped,     m_modbusThread, &QThread::quit);
     connect(mbWorker, &ModbusWorker::workerStopped,     this, &MonitorController::onModbusStopped);
     connect(mbWorker, &ModbusWorker::dataReady,         this, &MonitorController::onDataReady);
     connect(mbWorker, &ModbusWorker::modbusError,       this, &MonitorController::onModbusError);

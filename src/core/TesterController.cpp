@@ -49,6 +49,13 @@ TesterController::TesterController(QObject *parent) : QObject(parent)
 
     m_workerThread->start();
     refresh_ports();
+
+    // Timeout cho connect-with-monitor-pause: pollingFullyStopped không tới
+    // trong hạn thì báo Port busy thay vì treo chờ vô hạn.
+    m_connectTimeout = new QTimer(this);
+    m_connectTimeout->setSingleShot(true);
+    m_connectTimeout->setInterval(6000);
+    connect(m_connectTimeout, &QTimer::timeout, this, &TesterController::onConnectTimeout);
 }
 
 TesterController::~TesterController() {
@@ -139,7 +146,13 @@ void TesterController::connectWithMonitorPause(MonitorController *monitor,
                                                const QString &port, int baudrate,
                                                int bytesize, const QString &parity,
                                                int stopbits) {
+    // Dọn kết nối của lần bấm Connect trước (bấm 2 lần liên tiếp) để không
+    // duplicate slot khi monitor đã stopping từ lần trước.
+    if (m_monitor)
+        disconnect(m_monitor, nullptr, this, nullptr);
     m_monitor = monitor;
+    m_waitingConnect = false;
+    if (m_connectTimeout) m_connectTimeout->stop();
     if (!monitor || (!monitor->isPolling() && !monitor->isRetrying())) {
         connectSerial(port, baudrate, bytesize, parity, stopbits);
         return;
@@ -164,10 +177,23 @@ void TesterController::connectWithMonitorPause(MonitorController *monitor,
     connect(monitor, &MonitorController::retryStateChanged,
             this, &TesterController::tryPendingConnect, Qt::UniqueConnection);
     // Signal chính: chỉ connect khi worker stop() xong + thread chết hẳn
-    // (cổng đã giải phóng). Hai signal trên giữ lại làm backstop.
+    // (cổng đã giải phóng). pollingChanged giữ lại làm backstop log-only
+    // (tryPendingConnect vẫn gate bằng cờ).
     connect(monitor, &MonitorController::pollingFullyStopped,
             this, &TesterController::tryPendingConnect, Qt::UniqueConnection);
+    if (m_connectTimeout) m_connectTimeout->start();
     tryPendingConnect(); // in case stopPolling finished synchronously
+}
+
+void TesterController::onConnectTimeout()
+{
+    if (!m_waitingConnect)
+        return;
+    m_waitingConnect = false;
+    setConnecting(false);
+    emit messageSent(QStringLiteral("Error"),
+        QStringLiteral("Serial port is busy. Try Connect again."));
+    qWarning() << "TesterController: pollingFullyStopped did not arrive within timeout";
 }
 
 void TesterController::tryPendingConnect()
@@ -177,6 +203,7 @@ void TesterController::tryPendingConnect()
     if (m_monitor->isPolling() || m_monitor->isRetrying() || m_monitor->isStopping())
         return; // monitor still shutting down — keep waiting
     m_waitingConnect = false;
+    if (m_connectTimeout) m_connectTimeout->stop();
     connectSerial(m_pendingPort, m_pendingBaudrate, m_pendingBytesize,
                   m_pendingParity, m_pendingStopbits);
 }
@@ -271,6 +298,7 @@ void TesterController::onConnectionResult(bool connected, const QString &statusT
     m_connected = connected;
     setStatus(statusText);
     setConnecting(false);
+    if (m_connectTimeout) m_connectTimeout->stop();
     emit connectionChanged();
     // Disconnected (user action) or the fall-in connect failed: the RS-485
     // port is free again — hand it back to monitoring if the tester paused it.
