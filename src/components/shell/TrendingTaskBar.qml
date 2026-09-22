@@ -214,8 +214,8 @@ Item {
                     required property var modelData
 
                     Rectangle {
-                        width: 14
-                        height: 14
+                        implicitWidth: 14
+                        implicitHeight: 14
                         radius: width / 2
                         color: checkRow.modelData.color
                         Layout.alignment: Qt.AlignVCenter
