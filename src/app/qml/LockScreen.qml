@@ -20,20 +20,27 @@ ApplicationWindow {
 
     ColumnLayout {
         anchors.centerIn: parent
+        width: Math.min(parent.width * 0.85, 400)
         spacing: AppTheme.spacingSM
 
         EmptyStatePlaceholder {
-            Layout.preferredWidth: Math.min(parent.width * 0.85, 400)
+            // Chiều cao lấy từ implicitHeight của placeholder (forward từ
+            // nội dung bên trong) nên xếp chồng tự nhiên, không tràn/đè.
+            Layout.fillWidth: true
             iconName: "warning"
             iconSize: 64
-            message: "This device is not authorized.\nPlease contact your supplier."
+            message: qsTr("This device is not authorized.\nPlease contact your supplier.")
         }
 
         Label {
-            Layout.alignment: Qt.AlignHCenter
+            Layout.fillWidth: true
+            Layout.topMargin: AppTheme.spacingS
             // qmllint disable unqualified
             text: qsTr("Device ID: ") + deviceStationCode
             // qmllint enable unqualified
+            horizontalAlignment: Text.AlignHCenter
+            wrapMode: Text.NoWrap
+            elide: Text.ElideMiddle
             font: AppTypography.labelSmall
             color: AppColors.textSoft
         }
