@@ -105,10 +105,16 @@ ElevatedPane {
             RowLayout {
                 spacing: AppTheme.spacingS; Layout.fillWidth: true
                 visible: !root.isTesterMode && root.isAnalog
-                Text { text: qsTr("Poll interval (s):"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize; Layout.preferredWidth: 145; elide: Text.ElideRight }
-                SpinBox { id: dPollInterval; from: 1; to: 3600; value: 3; Layout.fillWidth: true }
-                Text { text: qsTr("Report column:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize; Layout.preferredWidth: 110; elide: Text.ElideRight }
-                SpinBox { id: dReportIdx; from: 0; to: 99; value: 0; Layout.fillWidth: true }
+                ColumnLayout {
+                    Layout.fillWidth: true; spacing: 8
+                    Text { text: qsTr("Poll interval (s):"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize; elide: Text.ElideRight }
+                    SpinBox { id: dPollInterval; from: 1; to: 3600; value: 3; Layout.fillWidth: true }
+                }
+                ColumnLayout {
+                    Layout.fillWidth: true; spacing: 8
+                    Text { text: qsTr("Report column index:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize; elide: Text.ElideRight }
+                    SpinBox { id: dReportIdx; from: 0; to: 99; value: 0; Layout.fillWidth: true }
+                }
             }
         }
 
