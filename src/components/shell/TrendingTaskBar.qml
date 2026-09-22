@@ -87,7 +87,7 @@ Item {
         AppButton {
             id: filterButton
             Layout.alignment: Qt.AlignVCenter
-            kind: root.isFiltered ? AppButton.Tonal : AppButton.Neutral
+            kind: root.isFiltered ? AppButton.Primary : AppButton.Tonal
             iconName: "filterAlt"
             iconOnly: true
             iconSide: 24
