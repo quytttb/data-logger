@@ -12,6 +12,18 @@ Rectangle {
     id: monitorRoot
     color: "transparent"
 
+    // ── Local readability scale (kiosk 7" 1024×600) ──
+    // Cố ý không sửa token AppTypography trong kit (submodule dùng chung
+    // với central_logger) — mọi cỡ chữ phóng to nằm cục bộ ở màn này.
+    readonly property int fsName: 28        // tên sensor (grid + list)
+    readonly property int fsValueList: 32   // value cột list
+    readonly property int fsUnit: 24        // đơn vị (grid + list)
+    readonly property int fsBadge: 20       // badge status/alarm
+    readonly property int fsPill: 18        // pill DI/DO
+    readonly property int fsValueGrid: 48   // value analog giữa card grid
+    readonly property int rowHList: 92      // chiều cao dòng list
+    readonly property int cardHGrid: 180    // chiều cao card grid
+
     ColumnLayout {
         anchors.fill: parent
         spacing: AppTheme.spacingSM
@@ -39,7 +51,7 @@ Rectangle {
             readonly property int minCellWidth: 240
             readonly property int columns: Math.max(1, Math.floor((width - 2 * outerMargin) / minCellWidth))
             cellWidth: Math.floor((width - 2 * outerMargin) / columns)
-            cellHeight: 150
+            cellHeight: monitorRoot.cardHGrid
 
             delegate: Item {
                 id: card
@@ -116,19 +128,19 @@ Rectangle {
 
                             Rectangle {
                                 visible: !card.isAnalog
-                                implicitWidth: 36; implicitHeight: 18; radius: AppTheme.radiusTiny
+                                implicitWidth: 44; implicitHeight: 26; radius: AppTheme.radiusTiny
                                 color: card.isDI ? IoColors.diStrong : IoColors.doStrong
                                 Text {
                                     anchors.centerIn: parent
                                     text: card.isDI ? qsTr("DI") : qsTr("DO")
-                                    color: AppColors.onPrimary; font.bold: true; font.pixelSize: AppTypography.labelSmall.pixelSize
+                                    color: AppColors.onPrimary; font.bold: true; font.pixelSize: monitorRoot.fsPill
                                 }
                             }
 
                             Text {
                                 text: card.displayName
                                 color: AppColors.accentColor
-                                font.pixelSize: AppTypography.titleSmall.pixelSize; font.bold: true
+                                font.pixelSize: monitorRoot.fsName; font.bold: true
                                 elide: Text.ElideRight
                                 Layout.fillWidth: true
                             }
@@ -137,7 +149,7 @@ Rectangle {
                                 visible: card.isAnalog
                                 text: card.unit
                                 color: AppColors.onSurfaceVariant
-                                font.pixelSize: AppTypography.titleSmall.pixelSize; font.bold: true
+                                font.pixelSize: monitorRoot.fsUnit; font.bold: true
                                 horizontalAlignment: Text.AlignRight
                                 wrapMode: Text.NoWrap
                                 maximumLineCount: 1
@@ -157,7 +169,7 @@ Rectangle {
                                 text: card.value
                                 color: card.isAlarm ? AppColors.error
                                      : (card.status === "ERR" ? AppColors.error : AppColors.primaryText)
-                                font.pixelSize: AppTypography.displaySmall.pixelSize
+                                font.pixelSize: monitorRoot.fsValueGrid
                                 font.family: AppTypography.monoFamily
                                 font.bold: true
                             }
@@ -167,7 +179,7 @@ Rectangle {
                                 anchors.centerIn: parent
                                 spacing: 4
                                 Rectangle {
-                                    implicitWidth: 48; implicitHeight: 48; radius: width / 2
+                                    implicitWidth: 56; implicitHeight: 56; radius: width / 2
                                     anchors.horizontalCenter: parent.horizontalCenter
                                     color: card.value === "1" ? IoColors.diOnBg : IoColors.ioInactive
                                     border.color: card.value === "1" ? IoColors.diActive : IoColors.ioInactiveBorder
@@ -175,14 +187,14 @@ Rectangle {
                                     Text {
                                         anchors.centerIn: parent
                                         text: card.value === "1" ? qsTr("ON") : qsTr("OFF")
-                                        color: AppColors.onPrimary; font.pixelSize: AppTypography.titleSmall.pixelSize; font.bold: true
+                                        color: AppColors.onPrimary; font.pixelSize: 24; font.bold: true
                                     }
                                 }
                                 Text {
                                     anchors.horizontalCenter: parent.horizontalCenter
                                     text: card.value === "1" ? qsTr("INPUT ON") : qsTr("INPUT OFF")
                                     color: card.value === "1" ? IoColors.diActive : AppColors.onSurfaceVariant
-                                    font.pixelSize: AppTypography.bodyMedium.pixelSize; font.bold: true
+                                    font.pixelSize: 22; font.bold: true
                                 }
                             }
 
@@ -191,7 +203,7 @@ Rectangle {
                                 anchors.centerIn: parent
                                 spacing: 4
                                 Rectangle {
-                                    implicitWidth: 48; implicitHeight: 48; radius: width / 2
+                                    implicitWidth: 56; implicitHeight: 56; radius: width / 2
                                     anchors.horizontalCenter: parent.horizontalCenter
                                     color: card.value === "1" ? IoColors.doStrong : IoColors.ioInactive
                                     border.color: card.value === "1" ? IoColors.doActive : IoColors.ioInactiveBorder
@@ -199,14 +211,14 @@ Rectangle {
                                     Text {
                                         anchors.centerIn: parent
                                         text: card.value === "1" ? qsTr("ON") : qsTr("OFF")
-                                        color: AppColors.onPrimary; font.pixelSize: AppTypography.titleSmall.pixelSize; font.bold: true
+                                        color: AppColors.onPrimary; font.pixelSize: 24; font.bold: true
                                     }
                                 }
                                 Text {
                                     anchors.horizontalCenter: parent.horizontalCenter
                                     text: card.value === "1" ? qsTr("RELAY ON") : qsTr("RELAY OFF")
                                     color: card.value === "1" ? IoColors.doActive : AppColors.onSurfaceVariant
-                                    font.pixelSize: AppTypography.bodyMedium.pixelSize; font.bold: true
+                                    font.pixelSize: 22; font.bold: true
                                 }
                             }
                         }
@@ -231,7 +243,7 @@ Rectangle {
                                     anchors.centerIn: parent
                                     text: card.hasStatus ? card.topStatus.label : ""
                                     color: card.hasStatus ? card.topStatus.color : "transparent"
-                                    font.pixelSize: AppTypography.labelMedium.pixelSize
+                                    font.pixelSize: monitorRoot.fsBadge
                                     font.bold: true
                                 }
                             }
@@ -253,7 +265,7 @@ Rectangle {
                                     text: card.alarmType === "min" ? qsTr("▼ MIN")
                                         : (card.alarmType === "max" ? qsTr("▲ MAX") : qsTr("ALARM"))
                                     color: AppColors.error
-                                    font.pixelSize: AppTypography.labelMedium.pixelSize; font.bold: true
+                                    font.pixelSize: monitorRoot.fsBadge; font.bold: true
                                 }
                             }
                         }
@@ -313,7 +325,7 @@ Rectangle {
                     return AppColors.outlineVariant
                 }
 
-                implicitHeight: 64
+                implicitHeight: monitorRoot.rowHList
                 color: "transparent"
 
                 TableCellBackground { cellHovered: false }
@@ -329,7 +341,7 @@ Rectangle {
                     spacing: 8
                     Rectangle {
                         visible: !monCell.isAnalog
-                        width: 32; height: 20; radius: AppTheme.radiusTiny
+                        width: 40; height: 26; radius: AppTheme.radiusTiny
                         anchors.verticalCenter: parent.verticalCenter
                         color: monCell.isDI ? IoColors.diStrong : IoColors.doStrong
                         Label {
@@ -337,16 +349,16 @@ Rectangle {
                             text: monCell.isDI ? qsTr("DI") : qsTr("DO")
                             color: AppColors.onPrimary
                             font.bold: true
-                            font.pixelSize: AppTypography.labelSmall.pixelSize
+                            font.pixelSize: monitorRoot.fsPill
                         }
                     }
                     Label {
-                        width: parent.width - (monCell.isAnalog ? 0 : 40) - 24
+                        width: parent.width - (monCell.isAnalog ? 0 : 48) - 24
                         anchors.verticalCenter: parent.verticalCenter
                         text: monCell.displayName
                         color: AppColors.accentColor
                         font.family: AppTypography.titleSmall.family
-                        font.pixelSize: AppTypography.titleSmall.pixelSize
+                        font.pixelSize: monitorRoot.fsName
                         font.bold: true
                         elide: Text.ElideRight
                     }
@@ -363,7 +375,7 @@ Rectangle {
                     text: monCell.isAnalog ? monCell.value : (monCell.isOn ? qsTr("ON") : qsTr("OFF"))
                     color: monCell.isAlarm ? AppColors.error : AppColors.primaryText
                     font.family: monCell.isAnalog ? AppTypography.monoFamily : AppTypography.titleSmall.family
-                    font.pixelSize: AppTypography.titleMedium.pixelSize
+                    font.pixelSize: monitorRoot.fsValueList
                     font.bold: true
                     horizontalAlignment: Text.AlignRight
                     elide: Text.ElideRight
@@ -379,7 +391,7 @@ Rectangle {
                     anchors.verticalCenter: parent.verticalCenter
                     text: monCell.isAnalog ? monCell.unit : ""
                     color: AppColors.onSurfaceVariant
-                    font.pixelSize: AppTypography.titleSmall.pixelSize
+                    font.pixelSize: monitorRoot.fsUnit
                     font.bold: true
                     horizontalAlignment: Text.AlignHCenter
                     elide: Text.ElideRight
@@ -392,7 +404,7 @@ Rectangle {
                     spacing: 4
                     Rectangle {
                         implicitWidth: Math.min(statusLabel.implicitWidth + 16, 150)
-                        implicitHeight: 28
+                        implicitHeight: 36
                         radius: AppTheme.radiusTiny
                         color: monCell.isAlarm ? AppColors.error : AppColors.withAlpha(monCell.stateColor, 0.2)
                         Label {
@@ -402,7 +414,7 @@ Rectangle {
                             text: (monCell.isAnalog && monCell.hasStatus) ? monCell.topStatus.label
                                 : ((monCell.isDI || monCell.isDO) ? (monCell.isOn ? qsTr("Active") : qsTr("Inactive")) : qsTr("No status"))
                             color: monCell.isAlarm ? AppColors.onPrimary : monCell.stateColor
-                            font.pixelSize: AppTypography.labelMedium.pixelSize
+                            font.pixelSize: monitorRoot.fsBadge
                             font.bold: true
                             horizontalAlignment: Text.AlignHCenter
                             elide: Text.ElideRight
@@ -411,7 +423,7 @@ Rectangle {
                     Rectangle {
                         visible: monCell.isAnalog && monCell.isAlarm
                         implicitWidth: Math.min(triggerLabel.implicitWidth + 16, 150)
-                        implicitHeight: 28
+                        implicitHeight: 36
                         radius: AppTheme.radiusTiny
                         color: AppColors.error
                         Label {
@@ -420,7 +432,7 @@ Rectangle {
                             width: parent.width - 8
                             text: monCell.alarmType === "min" ? qsTr("MIN alarm") : qsTr("MAX alarm")
                             color: AppColors.onPrimary
-                            font.pixelSize: AppTypography.labelMedium.pixelSize
+                            font.pixelSize: monitorRoot.fsBadge
                             font.bold: true
                             horizontalAlignment: Text.AlignHCenter
                             elide: Text.ElideRight
