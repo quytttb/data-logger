@@ -1,5 +1,7 @@
 #pragma once
 #include <QMutex>
+#include <QProcess>
+#include <QDebug>
 #include <optional>
 
 // Single-owner vật lý cho cổng RS-485 dùng chung giữa ModbusWorker
@@ -65,5 +67,28 @@ public:
 private:
     bool m_locked = false;
 };
+
+// Nhận diện lỗi kernel exclusive kẹt (TIOCEXCL do QSerialPort set lúc open,
+// không xóa khi app crash mà socat còn giữ fd): mọi open sau EBUSY vĩnh viễn
+// cho tới khi cặp pty được tạo lại. Chỉ match "busy", không match lỗi khác
+// (cáp rút, baud sai) để tránh restart simulator vô ích.
+inline bool isStuckExclusiveError(const QString &errorString)
+{
+    return errorString.toLower().contains(QStringLiteral("busy"));
+}
+
+// Fire-and-forget restart simulator để tạo lại cặp pty sạch (xóa exclusive
+// kẹt). Non-blocking (startDetached), kiosk không cần auth nhờ polkit rule
+// 49-datalogger-modbus-simulator.rules. Gọi sau N lần EBUSY liên tiếp +
+// cooldown, không gọi mỗi retry.
+inline void restartSimulatorForStuckPty()
+{
+    qWarning().noquote()
+        << QStringLiteral("ModbusPortGuard: PTY busy — restarting modbus-simulator "
+                          "to recreate pty pair");
+    QProcess::startDetached(QStringLiteral("/usr/bin/systemctl"),
+                            {QStringLiteral("restart"),
+                             QStringLiteral("modbus-simulator")});
+}
 
 } // namespace ModbusPortGuard

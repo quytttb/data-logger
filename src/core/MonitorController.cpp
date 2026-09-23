@@ -601,7 +601,8 @@ void MonitorController::onConnectionChanged(bool connected) {
 }
 
 void MonitorController::onModbusStopped() {
-    if (m_modbusThread) m_modbusThread->quit();
+    // Thread quit đã do workerStopped→quit trực tiếp (startWorkerThreads);
+    // ở đây chỉ xử lý unexpected exit. Không quit() thủ công lần nữa.
     if (m_isStopping) return;
     if (m_isPolling) {
         scheduleRetry(QStringLiteral("ModbusWorker exited unexpectedly"));

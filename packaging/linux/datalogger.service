@@ -3,6 +3,9 @@ Description=Data Logger (Qt EGLFS kiosk)
 # Take over the primary console: stop the login prompt so the app owns tty1/DRM.
 After=systemd-user-sessions.service getty@tty1.service network-online.target
 Wants=network-online.target
+# Simulator tạo cặp pty cho cổng RS-485 ảo. Wants (không Requires) để app
+# vẫn chạy khi sim lỗi; app tự restart sim khi phát hiện exclusive kẹt.
+Wants=modbus-simulator.service
 Conflicts=getty@tty1.service
 
 [Service]

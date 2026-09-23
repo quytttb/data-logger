@@ -72,11 +72,28 @@ void TesterWorker::doConnect(const QString &port, int baudrate,
     } else {
         m_client->deleteLater();
         m_client = nullptr;
+        // Guard đã giữ (loại trừ double-open in-process) mà vẫn fail →
+        // probe OS: EBUSY kernel (exclusive kẹt) thì heal ngay để user bấm
+        // lại là được; lỗi khác chỉ báo, không restart vô ích.
+        bool healed = false;
+        {
+            QSerialPort probe;
+            probe.setPortName(port);
+            if (!probe.open(QIODevice::ReadWrite)
+                    && ModbusPortGuard::isStuckExclusiveError(probe.errorString())
+                    && (!m_healCooldown.isValid() || m_healCooldown.hasExpired(kHealCooldownMs))) {
+                m_healCooldown.restart();
+                ModbusPortGuard::restartSimulatorForStuckPty();
+                healed = true;
+            }
+        }
         releasePort();
         emit connectionResult(false,
-            QStringLiteral("Failed to connect: %1").arg(port));
-        emit messageSent(QStringLiteral("Error"),
-            QStringLiteral("Failed to connect to %1").arg(port));
+            healed ? QStringLiteral("Serial port was busy — simulator restarting, try Connect again in a few seconds.")
+                   : QStringLiteral("Failed to connect: %1").arg(port));
+        if (!healed)
+            emit messageSent(QStringLiteral("Error"),
+                QStringLiteral("Failed to connect to %1").arg(port));
     }
 }
 

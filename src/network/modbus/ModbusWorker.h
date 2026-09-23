@@ -7,6 +7,8 @@
 #include <QHash>
 #include <QModbusRtuSerialClient>
 #include <QModbusReply>
+#include <QModbusDevice>
+#include <QElapsedTimer>
 #include <functional>
 #include <optional>
 #include "utils/system/AppDefaults.h"
@@ -99,6 +101,9 @@ private:
     // gian connected, thả khi stop()/reset. tryLock fail → báo busy.
     bool acquirePort();
     void releasePort();
+    // Probe OS-level: mở thử bằng QSerialPort để phân biệt EBUSY kernel
+    // (exclusive kẹt) với lỗi khác. Mở fail là vô hại, không giữ fd.
+    bool probePortBusy() const;
 
     QModbusRtuSerialClient  *m_client = nullptr;
     QTimer                  *m_pollTimer = nullptr;
@@ -136,6 +141,12 @@ private:
     // qua các chain step, không dùng member để tránh state treo).
     // Giữ ModbusPortGuard trong lúc connected (RAII: reset() là unlock).
     std::optional<ModbusPortGuard::Guard> m_portGuard;
+    // Auto-heal exclusive kẹt: EBUSY liên tiếp đủ ngưỡng + hết cooldown thì
+    // restart simulator (tạo lại cặp pty). Không phải mọi "Cannot connect".
+    int          m_consecutiveBusy = 0;
+    QElapsedTimer m_healCooldown;
+    static constexpr int kBusyHealThreshold = 3;
+    static constexpr qint64 kHealCooldownMs = 60000;
 
     // Audit M5
     double   m_alarmHysteresis = 0.0;
