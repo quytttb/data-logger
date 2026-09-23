@@ -119,7 +119,6 @@ install(FILES ${CMAKE_SOURCE_DIR}/packaging/linux/datalogger.service
 install(FILES
         ${CMAKE_SOURCE_DIR}/packaging/linux/polkit/49-datalogger-reboot.rules
         ${CMAKE_SOURCE_DIR}/packaging/linux/polkit/49-datalogger-timedate.rules
-        ${CMAKE_SOURCE_DIR}/packaging/linux/polkit/49-datalogger-modbus-simulator.rules
     DESTINATION share/polkit-1/rules.d
 )
 

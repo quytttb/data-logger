@@ -6,8 +6,6 @@
 #include <QModbusRtuSerialClient>
 #include <QModbusReply>
 #include <QModbusDataUnit>
-#include <QSerialPort>
-#include <QElapsedTimer>
 #include <functional>
 #include <optional>
 #include "utils/modbus/ModbusPortGuard.h"
@@ -78,10 +76,6 @@ private:
     bool                    m_scanning  = false;
     // Giữ ModbusPortGuard trong lúc connected (RAII).
     std::optional<ModbusPortGuard::Guard> m_portGuard;
-    // Auto-heal exclusive kẹt: Tester tương tác trực tiếp nên heal ngay lần
-    // EBUSY kernel đầu tiên (cooldown chống spam), user bấm lại là được.
-    QElapsedTimer m_healCooldown;
-    static constexpr qint64 kHealCooldownMs = 60000;
     // Async await state (1 in-flight tại 1 thời điểm, cùng thread).
     QTimer                  *m_replyTimer = nullptr;
     QModbusReply            *m_awaitReply = nullptr;

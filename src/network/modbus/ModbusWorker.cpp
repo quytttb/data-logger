@@ -245,7 +245,6 @@ bool ModbusWorker::connectToPort() {
     if (m_client->connectDevice()) {
         m_connected = true;
         m_backoffMs = 1000;
-        m_consecutiveBusy = 0; // heal xong / hết kẹt — reset ngưỡng
         emit connectionChanged(true);
         qInfo() << "ModbusWorker: connected to" << m_port;
         // Audit M5: fail-safe policy is configurable. Default (true) forces a
@@ -272,32 +271,8 @@ bool ModbusWorker::connectToPort() {
 
     m_connected = false;
     emit connectionChanged(false);
-    // Phân biệt EBUSY kernel (exclusive kẹt — heal được bằng restart
-    // simulator) với lỗi khác (cáp rút, baud sai, mất device — chỉ retry).
-    // QModbusDevice chỉ báo ConnectionError chung chung nên probe trực tiếp
-    // bằng QSerialPort để lấy lỗi OS chính xác (mở fail là vô hại).
-    if (probePortBusy()) {
-        ++m_consecutiveBusy;
-        emit modbusError(QStringLiteral("Serial port busy (PTY exclusive stuck): %1").arg(m_port));
-        if (m_consecutiveBusy >= kBusyHealThreshold
-                && (!m_healCooldown.isValid() || m_healCooldown.hasExpired(kHealCooldownMs))) {
-            m_healCooldown.restart();
-            m_consecutiveBusy = 0;
-            ModbusPortGuard::restartSimulatorForStuckPty();
-        }
-    } else {
-        m_consecutiveBusy = 0;
-        emit modbusError(QStringLiteral("Cannot connect to %1").arg(m_port));
-    }
+    emit modbusError(QStringLiteral("Cannot connect to %1").arg(m_port));
     return false;
-}
-
-bool ModbusWorker::probePortBusy() const {
-    QSerialPort probe;
-    probe.setPortName(m_port);
-    if (probe.open(QIODevice::ReadWrite))
-        return false; // mở được → không kẹt exclusive
-    return ModbusPortGuard::isStuckExclusiveError(probe.errorString());
 }
 
 void ModbusWorker::tryReconnect() {
