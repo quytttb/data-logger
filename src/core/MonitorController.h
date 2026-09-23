@@ -85,6 +85,10 @@ public:
     int trendTickCount() const { return kTrendTickCount; }
     QVariantList trendingSelectedIds() const;
 
+    // Bản có intent cho C++ nội bộ (refresh/retry). Không phải slot để
+    // qmllint không báo unresolved-type với enum AfterStop (QML không gọi).
+    void stopPollingWithIntent(AfterStop after);
+
     // Axis window for the realtime chart (also the QML trim horizon).
     static constexpr qint64 kTrendWindowMs = 5 * 60 * 1000;
     // Major tick COUNT on the time axis (NOT milliseconds).
@@ -109,10 +113,11 @@ public:
 
 public slots:
     void startPolling();
-    // Async: trả về ngay, hoàn tất trong finalizeStop() rồi thực hiện
-    // after (Restart/Retry). stopPollingSync() chỉ dùng lúc app quit
-    // (event loop sắp chết, không thể async).
-    void stopPolling(AfterStop after = AfterStop::Nothing);
+    // Async: trả về ngay, hoàn tất trong finalizeStop(). stopPollingSync()
+    // chỉ dùng lúc app quit (event loop sắp chết, không thể async).
+    // (Slot không tham số để qmllint không báo unresolved-type; bản có
+    // intent là hàm C++ thường vì QML không gọi stopPolling.)
+    void stopPolling();
     void stopPollingSync();
     void refreshSensors();
     // Overload: accepts pre-built sensor maps from SensorListModel to skip

@@ -306,7 +306,11 @@ void MonitorController::startWorkerThreads(const AppConfig &cfg,
     m_modbusThread->start();
 }
 
-void MonitorController::stopPolling(AfterStop after) {
+void MonitorController::stopPolling() {
+    stopPollingWithIntent(AfterStop::Nothing);
+}
+
+void MonitorController::stopPollingWithIntent(AfterStop after) {
     cancelRetry();
     // Tester handoff (Nothing) reset backoff như cũ; Restart/Retry giữ
     // nguyên để không phá nhịp backoff/config-refresh hiện tại.
@@ -434,7 +438,7 @@ void MonitorController::refreshSensors() {
         cancelRetry();
         if (retryingBefore) { m_retryCount = 0; emit retryStateChanged(); }
         // Async, không block UI: stop xong finalizeStop() tự start lại.
-        stopPolling(AfterStop::Restart);
+        stopPollingWithIntent(AfterStop::Restart);
         return;
     }
     
@@ -463,7 +467,7 @@ void MonitorController::refreshSensorsFromList(const QList<QVariantMap> &maps) {
         cancelRetry();
         if (retryingBefore) { m_retryCount = 0; emit retryStateChanged(); }
         // Async, không block UI: stop xong finalizeStop() tự start lại.
-        stopPolling(AfterStop::Restart);
+        stopPollingWithIntent(AfterStop::Restart);
         return;
     }
     
@@ -680,10 +684,13 @@ void MonitorController::scheduleRetry(const QString &reason) {
         finishRetry(); // không có gì để stop — vào retry luôn
         return;
     }
-    stopPolling(AfterStop::Retry);
+    stopPollingWithIntent(AfterStop::Retry);
 }
 
 void MonitorController::finishRetry() {
+    // Guard chống double-retry: scheduleRetry path !isPolling gọi trực tiếp,
+    // trong khi async stop đang bay cũng có thể finalizeStop → finishRetry.
+    if (m_retryTimer && m_retryTimer->isActive()) return;
     // finalizeStop() đã bắn pollingChanged — ở đây chỉ đánh dấu ERR và
     // khởi động retry timer (đúng thứ tự bản sync cũ).
     applyStatus("error_retrying", StatusError);
