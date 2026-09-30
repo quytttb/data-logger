@@ -41,14 +41,15 @@ Rectangle {
             // Padding lives on the scroll content (Flickable margins): it only
             // appears before the first row / after the last row, and scrolls with
             // the content — no rigid dead-band around the viewport.
-            // Ngang giữ 16 để card không dính viền; dọc giảm còn 8 để 9 card
-            // (3 hàng x 180) vừa khít kiosk 1024x600 không phải kéo.
+            // Ngang giữ 16 để card không dính viền; dọc thu gọn (trên 4,
+            // dưới 8) để 9 card (3 hàng x 180) lọt kiosk 1024x600.
             readonly property int hMargin: AppTheme.spacingM
-            readonly property int vMargin: AppTheme.spacingS
+            readonly property int vTopMargin: AppTheme.spacingXS
+            readonly property int vBottomMargin: AppTheme.spacingS
             leftMargin: hMargin
             rightMargin: hMargin
-            topMargin: vMargin
-            bottomMargin: vMargin
+            topMargin: vTopMargin
+            bottomMargin: vBottomMargin
 
             // Responsive grid: stretch cells to fill the available width (no centering gap).
             readonly property int minCellWidth: 240
