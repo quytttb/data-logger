@@ -37,7 +37,6 @@ Item {
     property alias registerType: basicTab.dRegType
     property alias dataType: basicTab.dDataType
     property alias dataFormat: basicTab.dDataFmt
-    property alias pollInterval: basicTab.dPollInterval
     property alias reportIndex: basicTab.dReportIdx
     property alias activeSwitch: basicTab.dActive
     property alias scalingMode: scalingTab.dScalingMode
@@ -86,7 +85,7 @@ Item {
         scalingTab.dLinearA.text = "1"; scalingTab.dLinearB.text = "0"
         scalingTab.dRawMin.text = "4000"; scalingTab.dRawMax.text = "20000"; scalingTab.dScaleMin.text = "4"; scalingTab.dScaleMax.text = "20"
         scalingTab.dCoeffJson.text = "{}"
-        basicTab.dPollInterval.value = 3; basicTab.dReportIdx.value = 0; basicTab.dActive.checked = true
+        basicTab.dReportIdx.value = 0; basicTab.dActive.checked = true
         scalingTab.dMinThreshold.text = ""; scalingTab.dMaxThreshold.text = ""
         scalingTab.dDecimals.value = 4
     }
@@ -113,7 +112,6 @@ Item {
         scalingTab.dScaleMax.text = uiState.scaleMax !== undefined ? String(uiState.scaleMax) : "20"
         scalingTab.dCoeffJson.text = uiState.legacyJson !== undefined ? String(uiState.legacyJson) : "{}"
 
-        basicTab.dPollInterval.value = s.pollInterval || 3
         basicTab.dReportIdx.value = s.reportIndex; basicTab.dActive.checked = s.active
         scalingTab.dMinThreshold.text = s.minThreshold !== undefined && s.minThreshold !== "" ? String(s.minThreshold) : ""
         scalingTab.dMaxThreshold.text = s.maxThreshold !== undefined && s.maxThreshold !== "" ? String(s.maxThreshold) : ""
@@ -146,7 +144,6 @@ Item {
             scaleMin: scalingTab.dScaleMin.text,
             scaleMax: scalingTab.dScaleMax.text,
             coeffJson: scalingTab.dCoeffJson.text,
-            pollInterval: basicTab.dPollInterval.value,
             reportIndex: isAnalog ? basicTab.dReportIdx.value : 0,
             active: basicTab.dActive.checked,
             minThreshold: isAnalog ? scalingTab.dMinThreshold.text : qsTr(""),

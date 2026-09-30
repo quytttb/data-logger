@@ -26,7 +26,6 @@ Sensor SensorDao::rowToSensor(const QSqlRecord &r) {
         s.minThreshold = r.value("min_threshold").toDouble();
     if (!r.value("max_threshold").isNull())
         s.maxThreshold = r.value("max_threshold").toDouble();
-    s.pollInterval    = r.value("poll_interval").toInt();
     s.reportIndex     = r.value("report_index").toInt();
     s.decimals        = r.value("decimals").toInt();
     s.transmitEnabled = r.contains(QStringLiteral("transmit_enabled"))
@@ -78,18 +77,18 @@ bool SensorDao::save(Sensor &s) {
         q.prepare(R"(INSERT INTO sensor
             (sensor_type, name, sensor_symbol, unit, slave_id, register_address,
              register_type, data_type, data_format, coefficient,
-             min_threshold, max_threshold, poll_interval, report_index,
+             min_threshold, max_threshold, report_index,
              decimals, transmit_enabled, di_type, active)
             VALUES (:st, :nm, :sym, :un, :sid, :ra,
                     :rt, :dt, :df, :co,
-                    :mn, :mx, :pi, :ri,
+                    :mn, :mx, :ri,
                     :dec, :tx, :dit, :act))");
     } else {
         q.prepare(R"(UPDATE sensor SET
             sensor_type=:st, name=:nm, sensor_symbol=:sym, unit=:un, slave_id=:sid,
             register_address=:ra, register_type=:rt, data_type=:dt,
             data_format=:df, coefficient=:co, min_threshold=:mn,
-            max_threshold=:mx, poll_interval=:pi, report_index=:ri,
+            max_threshold=:mx, report_index=:ri,
             decimals=:dec, transmit_enabled=:tx, di_type=:dit, active=:act WHERE id=:id)");
         q.bindValue(":id", s.id);
     }
@@ -106,7 +105,6 @@ bool SensorDao::save(Sensor &s) {
     q.bindValue(":co",  s.coefficient);
     q.bindValue(":mn",  s.minThreshold.has_value() ? QVariant(*s.minThreshold) : QVariant());
     q.bindValue(":mx",  s.maxThreshold.has_value() ? QVariant(*s.maxThreshold) : QVariant());
-    q.bindValue(":pi",  s.pollInterval);
     q.bindValue(":ri",  s.reportIndex);
     q.bindValue(":dec", s.decimals);
     q.bindValue(":tx",  s.transmitEnabled ? 1 : 0);

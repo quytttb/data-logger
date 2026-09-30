@@ -198,7 +198,6 @@ bool Database::createTables(QSqlDatabase &db) {
             coefficient TEXT DEFAULT '{}',
             min_threshold REAL DEFAULT NULL,
             max_threshold REAL DEFAULT NULL,
-            poll_interval INTEGER NOT NULL DEFAULT 3,
             report_index INTEGER NOT NULL DEFAULT 0,
             decimals INTEGER NOT NULL DEFAULT 4,
             sensor_symbol TEXT NOT NULL DEFAULT '',
@@ -380,6 +379,10 @@ bool Database::migrate(QSqlDatabase &db) {
 
     // The "auto sync time" (NTP toggle) feature was removed; drop its column.
     if (!dropColumnIfExists(db, "app_config", "auto_sync_time"))
+        return false;
+
+    // Per-sensor poll_interval removed — all sensors now share AppConfig.pollInterval.
+    if (!dropColumnIfExists(db, "sensor", "poll_interval"))
         return false;
 
     return true;

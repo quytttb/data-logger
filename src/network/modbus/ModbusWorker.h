@@ -146,5 +146,4 @@ private:
     QHash<int, bool>             m_alarmStates;
     QHash<int, QString>          m_alarmTypes;  // sensor_id -> current alarm type ("min"/"max"/...)
     QHash<int, bool>             m_doStates;
-    QHash<int, qint64>           m_nextPollMs; // sensor_id -> epoch ms of next poll
 };

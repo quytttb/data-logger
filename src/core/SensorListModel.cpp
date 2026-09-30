@@ -15,7 +15,6 @@
 
 namespace {
 
-constexpr int kDefaultPollIntervalSec = 3;  // sensor poll interval default (seconds)
 constexpr int kDefaultReportIndex     = 0;  // "no report" sentinel
 
 bool thresholdVariantEnabled(const QVariant &v)
@@ -48,7 +47,6 @@ QHash<int, QByteArray> SensorListModel::roleNames() const {
         {CoefficientRole,      "coefficient"},
         {MinThresholdRole,     "minThreshold"},
         {MaxThresholdRole,     "maxThreshold"},
-        {PollIntervalRole,     "pollInterval"},
         {ReportIndexRole,      "reportIndex"},
         {DecimalsRole,         "decimals"},
         {SensorTypeRole,       "sensorType"},
@@ -75,7 +73,6 @@ QVariant SensorListModel::data(const QModelIndex &index, int role) const {
     case CoefficientRole:     return s.coefficient;
     case MinThresholdRole:    return s.minThreshold.has_value() ? QVariant(*s.minThreshold) : QVariant();
     case MaxThresholdRole:    return s.maxThreshold.has_value() ? QVariant(*s.maxThreshold) : QVariant();
-    case PollIntervalRole:    return s.pollInterval;
     case ReportIndexRole:     return s.reportIndex;
     case DecimalsRole:        return s.decimals;
     case SensorTypeRole:      return sensorTypeToString(s.sensorType);
@@ -103,7 +100,6 @@ QVariantMap SensorListModel::sensorToVariant(const Sensor &s) const {
     m["coefficient"]     = s.coefficient;
     m["minThreshold"]    = s.minThreshold.has_value() ? QVariant(*s.minThreshold) : QVariant();
     m["maxThreshold"]    = s.maxThreshold.has_value() ? QVariant(*s.maxThreshold) : QVariant();
-    m["pollInterval"]    = s.pollInterval;
     m["reportIndex"]     = s.reportIndex;
     m["decimals"]        = s.decimals;
     m["sensorType"]      = sensorTypeToString(s.sensorType);
@@ -166,7 +162,6 @@ Sensor SensorListModel::variantToSensor(const QVariantMap &p, int existingId) co
     if (thresholdVariantEnabled(minV)) s.minThreshold = minV.toDouble();
     auto maxV = p.value("maxThreshold");
     if (thresholdVariantEnabled(maxV)) s.maxThreshold = maxV.toDouble();
-    s.pollInterval   = p.value("pollInterval", kDefaultPollIntervalSec).toInt();
     s.reportIndex    = p.value("reportIndex", kDefaultReportIndex).toInt();
     s.decimals       = p.value("decimals", 4).toInt();
     s.sensorType     = sensorTypeFromString(p.value("sensorType", "ANALOG").toString());
@@ -298,9 +293,6 @@ QString SensorListModel::validateSensorProps(const QVariantMap &props)
     const int addr = props.value(QStringLiteral("registerAddress"), -1).toInt();
     if (addr < 0 || addr > 65535)
         return QStringLiteral("Register address must be between 0 and 65535.");
-    const int poll = props.value(QStringLiteral("pollInterval"), 0).toInt();
-    if (poll < 1)
-        return QStringLiteral("Poll interval must be at least 1 second.");
     const int decimals = props.value(QStringLiteral("decimals"), 4).toInt();
     if (decimals < 0 || decimals > 6)
         return QStringLiteral("Decimals must be between 0 and 6.");

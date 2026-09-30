@@ -72,9 +72,6 @@ void ModbusWorker::configure(const QString &port, int baudrate, int bytesize,
 
 void ModbusWorker::setSensors(const QList<QVariantMap> &sensors) {
     m_sensors = sensors;
-    qint64 now = QDateTime::currentMSecsSinceEpoch();
-    for (const auto &s : sensors)
-        m_nextPollMs[s["id"].toInt()] = now;
 }
 
 void ModbusWorker::setDigitalIos(const QHash<int, QList<QVariantMap>> &ioMap) {
@@ -300,18 +297,8 @@ void ModbusWorker::onPollTimer() {
     // không bao giờ có 2 in-flight (bản block cũ serialize bằng block).
     if (m_pumpActive || !m_opQueue.isEmpty()) return;
 
-    const qint64 now = QDateTime::currentMSecsSinceEpoch();
-    QList<QVariantMap> due;
-    for (const auto &cfg : std::as_const(m_sensors)) {
-        const int sid = cfg["id"].toInt();
-        if (now >= m_nextPollMs.value(sid, 0)) {
-            due.append(cfg);
-            const int interval = cfg.value("poll_interval", 3).toInt() * 1000;
-            m_nextPollMs[sid] = now + interval;
-        }
-    }
-    if (due.isEmpty()) return;
-    enqueueOp([this, due]() { pollSensorAt(0, due); });
+    // Tất cả sensor poll cùng lúc — m_defaultPollInterval là tần suất duy nhất.
+    enqueueOp([this]() { pollSensorAt(0, m_sensors); });
 }
 
 void ModbusWorker::pollSensorAt(int idx, const QList<QVariantMap> &due) {

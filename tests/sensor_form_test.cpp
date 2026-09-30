@@ -17,7 +17,6 @@ private slots:
             {QStringLiteral("name"), QStringLiteral("Temp")},
             {QStringLiteral("slaveId"), 1},
             {QStringLiteral("registerAddress"), 0},
-            {QStringLiteral("pollInterval"), 3},
         };
         QCOMPARE(SensorListModel::validateSensorProps(form), QString());
     }
@@ -28,7 +27,6 @@ private slots:
             {QStringLiteral("name"), QStringLiteral("  ")},
             {QStringLiteral("slaveId"), 1},
             {QStringLiteral("registerAddress"), 0},
-            {QStringLiteral("pollInterval"), 3},
         };
         QVERIFY(!SensorListModel::validateSensorProps(blankName).isEmpty());
 
@@ -36,7 +34,6 @@ private slots:
             {QStringLiteral("name"), QStringLiteral("T")},
             {QStringLiteral("slaveId"), 248},
             {QStringLiteral("registerAddress"), 0},
-            {QStringLiteral("pollInterval"), 3},
         };
         QVERIFY(!SensorListModel::validateSensorProps(badSlave).isEmpty());
 
@@ -44,23 +41,13 @@ private slots:
             {QStringLiteral("name"), QStringLiteral("T")},
             {QStringLiteral("slaveId"), 1},
             {QStringLiteral("registerAddress"), 70000},
-            {QStringLiteral("pollInterval"), 3},
         };
         QVERIFY(!SensorListModel::validateSensorProps(badAddr).isEmpty());
-
-        QVariantMap badPoll{
-            {QStringLiteral("name"), QStringLiteral("T")},
-            {QStringLiteral("slaveId"), 1},
-            {QStringLiteral("registerAddress"), 0},
-            {QStringLiteral("pollInterval"), 0},
-        };
-        QVERIFY(!SensorListModel::validateSensorProps(badPoll).isEmpty());
 
         QVariantMap badDecimals{
             {QStringLiteral("name"), QStringLiteral("T")},
             {QStringLiteral("slaveId"), 1},
             {QStringLiteral("registerAddress"), 0},
-            {QStringLiteral("pollInterval"), 3},
             {QStringLiteral("decimals"), 7},
         };
         QVERIFY(!SensorListModel::validateSensorProps(badDecimals).isEmpty());

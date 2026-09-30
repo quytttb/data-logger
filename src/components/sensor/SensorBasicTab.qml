@@ -30,7 +30,6 @@ ElevatedPane {
     property alias dName: dName
     property alias dSensorSymbol: dSensorSymbol
     property alias dUnit: dUnit
-    property alias dPollInterval: dPollInterval
     property alias dReportIdx: dReportIdx
     property alias dSlave: dSlave
     property alias dAddr: dAddr
@@ -105,11 +104,6 @@ ElevatedPane {
             RowLayout {
                 spacing: AppTheme.spacingS; Layout.fillWidth: true
                 visible: !root.isTesterMode && root.isAnalog
-                ColumnLayout {
-                    Layout.fillWidth: true; spacing: 8
-                    Text { text: qsTr("Poll interval (s):"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize; elide: Text.ElideRight }
-                    SpinBox { id: dPollInterval; from: 1; to: 3600; value: 3; Layout.fillWidth: true }
-                }
                 ColumnLayout {
                     Layout.fillWidth: true; spacing: 8
                     Text { text: qsTr("Report column index:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize; elide: Text.ElideRight }

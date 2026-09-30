@@ -29,7 +29,6 @@ public:
         CoefficientRole,
         MinThresholdRole,
         MaxThresholdRole,
-        PollIntervalRole,
         ReportIndexRole,
         DecimalsRole,
         SensorTypeRole,

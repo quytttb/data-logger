@@ -33,7 +33,6 @@ struct Sensor {
     QString coefficient = "{}";        // JSON: {"a": 1.0, "b": 0.0}
     std::optional<double> minThreshold;
     std::optional<double> maxThreshold;
-    int pollInterval = 3;              // seconds
     int reportIndex = 0;
     int decimals = 4;
     bool transmitEnabled = false;

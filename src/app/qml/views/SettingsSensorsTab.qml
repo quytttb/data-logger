@@ -56,7 +56,6 @@ import LoggerKit.Components
                 root._regTypeShort(s.registerType),
                 isBool ? "" : s.dataType,
                 isBool ? "" : s.dataFormat,
-                isBool ? "" : (s.pollInterval + "s"),
                 thr,
                 s.active ? "1" : "0"
             ])
@@ -64,7 +63,7 @@ import LoggerKit.Components
         // qmllint disable unqualified
         sensorTableModel.setHeaders([
             "Sensor", "Unit", "Slave", "Addr", "Reg",
-            "Data type", "Format", "Poll", "Threshold", "Active"])
+            "Data type", "Format", "Threshold", "Active"])
         sensorTableModel.setRows(rows)
         // qmllint enable unqualified
     }
@@ -86,8 +85,8 @@ import LoggerKit.Components
             model: sensorTableModel
             // qmllint enable unqualified
             hasData: SensorListModel.count > 0
-            colWeights: [0.17, 0.08, 0.07, 0.07, 0.08, 0.10, 0.09, 0.07, 0.22, 0.05]
-            colMinimums: [120, 50, 45, 45, 50, 65, 55, 45, 100, 50]
+            colWeights: [0.18, 0.09, 0.07, 0.07, 0.08, 0.11, 0.10, 0.25, 0.05]
+            colMinimums: [120, 50, 45, 45, 50, 65, 55, 100, 50]
             headerAlignCenter: function(col) { return col >= 2 }
             emptyMessage: qsTr("No sensors yet.\nClick [+ Add sensor] to create one.")
             emptyIconName: "chip"
@@ -126,7 +125,7 @@ import LoggerKit.Components
 
                 Text {
                     id: cellText
-                    visible: cell.column !== 9
+                    visible: cell.column !== 8
                     anchors {
                         left: parent.left
                         leftMargin: cell.column === 0 ? AppTheme.spacingM : AppTheme.spacingS
@@ -134,20 +133,20 @@ import LoggerKit.Components
                         rightMargin: AppTheme.spacingS
                         verticalCenter: parent.verticalCenter
                     }
-                    text: cell.column === 9 ? "" : String(cell.display)
+                    text: cell.column === 8 ? "" : String(cell.display)
                     color: cell.column === 0 ? AppColors.primaryText : AppColors.tableCellMuted
                     font.pixelSize: AppTypography.bodyMedium.pixelSize
                     font.family: (cell.column === 2 || cell.column === 3) ? AppTypography.monoFamily
                                : AppTypography.bodyMedium.family
                     font.weight: cell.column === 0 ? Font.DemiBold : Font.Normal
-                    horizontalAlignment: (cell.column >= 2 && cell.column <= 8) ? Text.AlignHCenter : Text.AlignLeft
+                    horizontalAlignment: (cell.column >= 2 && cell.column <= 7) ? Text.AlignHCenter : Text.AlignLeft
                     verticalAlignment: Text.AlignVCenter
                     elide: Text.ElideRight
                 }
 
                 // Active indicator dot (column 9).
                 Rectangle {
-                    visible: cell.column === 9
+                    visible: cell.column === 8
                     width: 12; height: 12; radius: width / 2
                     anchors.centerIn: parent
                     color: (cell.display === "1" || cell.display === true)
