@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 import QtGraphs
 import DataLogger.Core
@@ -48,13 +49,30 @@ Rectangle {
 
                 property var seriesMap: ({})
 
-                // Axis ranges are computed in C++ (MonitorController trend
-                // properties) — QML only applies them to the axes here.
+                // live = realtime 5 phút (MonitorController), history = query
+                // khoảng đã chọn (TrendingHistoryViewModel, đã downsample).
+                readonly property bool showHistory: TrendingHistoryViewModel.hasHistory
+
+                // Axis ranges are computed in C++ — QML only applies them here.
                 function applyTrendAxes() {
-                    xAxis.min = new Date(MonitorController.trendXMin)
-                    xAxis.max = new Date(MonitorController.trendXMax)
-                    yAxis.min = MonitorController.trendYMin
-                    yAxis.max = MonitorController.trendYMax
+                    if (chartHolder.showHistory) {
+                        xAxis.min = new Date(TrendingHistoryViewModel.historyXMin)
+                        xAxis.max = new Date(TrendingHistoryViewModel.historyXMax)
+                        yAxis.min = TrendingHistoryViewModel.historyYMin
+                        yAxis.max = TrendingHistoryViewModel.historyYMax
+                        // Nhãn trục X theo độ dài khoảng: ≤1h giây, ≤1d giờ,
+                        // dài hơn thì ngày + giờ.
+                        const range = TrendingHistoryViewModel.historyXMax
+                                    - TrendingHistoryViewModel.historyXMin
+                        xAxis.labelFormat = range <= 3600000 ? "HH:mm:ss"
+                            : (range <= 86400000 ? "HH:mm" : "dd/MM HH:mm")
+                    } else {
+                        xAxis.min = new Date(MonitorController.trendXMin)
+                        xAxis.max = new Date(MonitorController.trendXMax)
+                        yAxis.min = MonitorController.trendYMin
+                        yAxis.max = MonitorController.trendYMax
+                        xAxis.labelFormat = "HH:mm:ss"
+                    }
                 }
 
                 function clearAllSeries() {
@@ -71,10 +89,14 @@ Rectangle {
                     if (!sensors || sensors.length === 0)
                         return
 
-                    // Multi-select filter (rỗng = tất cả). Trục Y đã được C++
-                    // adapt theo đúng tập này (updateTrendAxes + filter).
+                    // Multi-select filter (rỗng = tất cả). Live: trục Y đã được
+                    // C++ adapt theo đúng tập này; history: query đúng tập này.
                     let sel = MonitorController.trendingSelectedIds
                     let useFilter = sel && sel.length > 0
+
+                    // History: buffer bulk đã downsample (~800 điểm), nạp 1 lần.
+                    let histPoints = chartHolder.showHistory
+                                     ? TrendingHistoryViewModel.seriesPoints : null
 
                     for (let i = 0; i < sensors.length; i++) {
                         let s = sensors[i]
@@ -83,7 +105,8 @@ Rectangle {
                         let label = s.unit && s.unit.length > 0
                                     ? (s.name + " (" + s.unit + ")")
                                     : s.name
-                        let buf = MonitorController.getTrendBuffer(s.id)
+                        let buf = histPoints ? (histPoints[String(s.id)] || [])
+                                             : MonitorController.getTrendBuffer(s.id)
                         let series = lineSeriesComponent.createObject(graphsView, {
                             seriesName: label,
                             seriesColor: s.color,
@@ -97,6 +120,9 @@ Rectangle {
                 }
 
                 function appendPoint(sid, x, y) {
+                    // History mode: điểm live không vẽ (đang xem quá khứ).
+                    if (chartHolder.showHistory)
+                        return
                     // Bỏ điểm của sensor đã bị filter-out (buffer C++ vẫn giữ).
                     let sel = MonitorController.trendingSelectedIds
                     if (sel && sel.length > 0 && sel.indexOf(sid) < 0)
@@ -123,8 +149,15 @@ Rectangle {
                     target: MonitorController
                     function onAnalogSensorsListChanged() { chartHolder.rebuildSeries() }
                     function onNewDataPoint(sid, ts, val) { chartHolder.appendPoint(sid, ts, val) }
-                    function onTrendAxesChanged() { chartHolder.applyTrendAxes() }
+                    function onTrendAxesChanged() {
+                        if (!chartHolder.showHistory) chartHolder.applyTrendAxes()
+                    }
                     function onTrendingFilterChanged() { chartHolder.rebuildSeries() }
+                }
+
+                Connections {
+                    target: TrendingHistoryViewModel
+                    function onHistoryChanged() { chartHolder.rebuildSeries() }
                 }
 
                 ChartGraphsView {
@@ -150,6 +183,13 @@ Rectangle {
                     visible: !graphsView.visible
                     message: qsTr("No active sensors.\nStart monitoring to see live trends.")
                     iconName: "showChart"
+                }
+
+                // Overlay khi đang query lịch sử (worker thread).
+                BusyIndicator {
+                    anchors.centerIn: parent
+                    running: visible
+                    visible: TrendingHistoryViewModel.loading
                 }
             }
         }

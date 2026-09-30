@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### Trending lịch sử + downsampling
+- Thêm `Downsampler` min-max bucket (`src/utils`, k=400 → ~800 điểm):
+  giữ envelope/đỉnh, neo điểm alarm, luôn giữ đầu/cuối (kèm test)
+- Thêm `SensorDataDao::queryRangeForChart` (ASC, forward-only, trần 200k dòng)
+- Thêm `TrendingHistoryViewModel` (QtConcurrent + downsample, singleton QML)
+- `TrendingFilterDialog` mới (kit `Dialog`): SpinBox số 1-365 (nhập tay được)
+  + ComboBox Phút/Giờ/Ngày + chọn cảm biến; nút Trực tiếp về realtime
+- `TrendingView`: mode live/history, nhãn trục X theo khoảng, overlay loading
+- Kit: `DateField`/`DatePickerPopup` bỏ `MouseArea` → `TapHandler`/`HoverHandler`,
+  popup 320x380 → 340x400 cho kiosk touch
+
 ## 2.6.0 — 2026-09-22
 
 ### Unify bảng + touch-only

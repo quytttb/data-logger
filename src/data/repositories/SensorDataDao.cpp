@@ -86,6 +86,43 @@ QList<SensorData> SensorDataDao::query(int sensorId,
     return result;
 }
 
+SensorDataDao::ChartSeries SensorDataDao::queryRangeForChart(int sensorId,
+                                                               const QDateTime &from,
+                                                               const QDateTime &to,
+                                                               int maxRows) {
+    ChartSeries series;
+    series.sensorId = sensorId;
+    if (sensorId <= 0 || maxRows <= 0)
+        return series;
+
+    QSqlQuery q(m_db);
+    // ASC để downsampler nhận đúng thứ tự thời gian; LIMIT chỉ là van an
+    // toàn chống tràn RAM (downsampler mới quyết định số điểm hiển thị).
+    // setForwardOnly để stream từng dòng, không cache toàn bộ result set.
+    q.setForwardOnly(true);
+    q.prepare(R"(SELECT value, recorded_at, is_alarm FROM sensor_data
+        WHERE sensor_id=:sid AND recorded_at BETWEEN :f AND :t
+        ORDER BY recorded_at ASC LIMIT :lim)");
+    q.bindValue(":sid", sensorId);
+    q.bindValue(":f",   from.toString(Qt::ISODate));
+    q.bindValue(":t",   to.toString(Qt::ISODate));
+    q.bindValue(":lim", maxRows);
+    if (!q.exec()) {
+        qWarning() << "SensorDataDao::queryRangeForChart failed:" << q.lastError().text();
+        return series;
+    }
+    while (q.next()) {
+        if (q.value(0).isNull() || q.value(1).isNull())
+            continue; // bỏ điểm không có giá trị/thời gian
+        const QDateTime dt = QDateTime::fromString(q.value(1).toString(), Qt::ISODate);
+        if (!dt.isValid())
+            continue;
+        series.points.append({double(dt.toMSecsSinceEpoch()), q.value(0).toDouble()});
+        series.isAlarm.append(q.value(2).toBool() ? 1 : 0);
+    }
+    return series;
+}
+
 SensorDataDao::WindowAggregate SensorDataDao::aggregateWindow(int sensorId,
                                                               const QDateTime &from,
                                                               const QDateTime &to) {

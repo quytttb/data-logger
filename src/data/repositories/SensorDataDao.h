@@ -1,7 +1,9 @@
 #pragma once
 #include "data/models/SensorData.h"
+#include "utils/chart/Downsampler.h"
 #include <QSqlDatabase>
 #include <QList>
+#include <QVector>
 #include <QDateTime>
 #include <optional>
 
@@ -16,6 +18,18 @@ public:
     QList<SensorData> query(int sensorId,
                             const QDateTime &from, const QDateTime &to,
                             int limit = 2000);
+
+    // Chuỗi điểm cho trending graph lịch sử: ASC theo recorded_at, không
+    // LIMIT theo số dòng hiển thị (downsampler mới là limiter) — chỉ chặn
+    // trần maxRows để chống tràn RAM khi cửa sổ quá lớn.
+    struct ChartSeries {
+        int sensorId = 0;
+        QVector<TrendPoint> points; // ASC theo recorded_at
+        QVector<char> isAlarm;      // song song với points (1 = báo động)
+    };
+    ChartSeries queryRangeForChart(int sensorId,
+                                   const QDateTime &from, const QDateTime &to,
+                                   int maxRows = 200000);
 
     // Aggregate một cửa sổ thời gian hoàn toàn trong SQL (SUM/COUNT) —
     // đúng kết quả với mọi số mẫu, không bị cap như tải N dòng về RAM.

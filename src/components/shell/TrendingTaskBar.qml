@@ -92,7 +92,7 @@ Item {
             iconOnly: true
             iconSide: 24
             tooltipText: qsTr("Filter sensors")
-            onClicked: filterPopup.open()
+            onClicked: filterDialog.open()
         }
 
         Text {
@@ -172,93 +172,11 @@ Item {
         }
     }
 
-    // Popup checklist multi-select (kiosk touch: mỗi hàng cao 48).
-    Popup {
-        id: filterPopup
+    // Dialog lọc kit (chọn cảm biến + khoảng lịch sử) — thay Popup custom cũ.
+    TrendingFilterDialog {
+        id: filterDialog
         parent: Overlay.overlay
-        anchors.centerIn: parent
-        width: 360
-        padding: 16
-        modal: true
-        focus: true
-
-        background: Rectangle {
-            color: AppColors.surfaceContainerHigh
-            radius: AppTheme.cardRadius
-            border.width: 1
-            border.color: AppColors.elevatedBorder
-        }
-
-        ColumnLayout {
-            anchors.fill: parent
-            spacing: 4
-
-            RowLayout {
-                Layout.fillWidth: true
-                Text {
-                    text: qsTr("Show sensors")
-                    color: AppColors.primaryText
-                    font.pixelSize: AppTypography.titleSmall.pixelSize
-                    font.bold: true
-                    Layout.fillWidth: true
-                }
-                AppButton {
-                    kind: AppButton.Secondary
-                    text: qsTr("All")
-                    Layout.alignment: Qt.AlignVCenter
-                    onClicked: root.selectAll()
-                }
-            }
-
-            Text {
-                text: qsTr("Uncheck all = show all. At least one stays on.")
-                color: AppColors.onSurfaceVariant
-                font.pixelSize: AppTypography.bodySmall.pixelSize
-                wrapMode: Text.WordWrap
-                Layout.fillWidth: true
-            }
-
-            Repeater {
-                model: MonitorController.analogSensors
-
-                delegate: RowLayout {
-                    id: checkRow
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 48
-                    spacing: 10
-                    required property var modelData
-
-                    Rectangle {
-                        implicitWidth: 14
-                        implicitHeight: 14
-                        radius: width / 2
-                        color: checkRow.modelData.color
-                        Layout.alignment: Qt.AlignVCenter
-                    }
-
-                    CheckBox {
-                        Layout.fillWidth: true
-                        Layout.alignment: Qt.AlignVCenter
-                        text: checkRow.modelData.unit && checkRow.modelData.unit.length > 0
-                              ? (checkRow.modelData.name + " (" + checkRow.modelData.unit + ")")
-                              : checkRow.modelData.name
-                        font.pixelSize: AppTypography.bodyMedium.pixelSize
-                        checked: root.selectedIds.length === 0
-                                 || root.selectedIds.indexOf(checkRow.modelData.id) >= 0
-                        onToggled: root.setChecked(checkRow.modelData.id, checked)
-                    }
-                }
-            }
-
-            AppButton {
-                kind: AppButton.Primary
-                text: qsTr("Done")
-                Layout.fillWidth: true
-                Layout.preferredHeight: 48
-                Layout.topMargin: 8
-                onClicked: filterPopup.close()
-            }
-        }
+        taskBar: root
     }
 
     Text {

@@ -15,6 +15,8 @@ qt_add_qml_module(datalogger_core
         history/HistoryViewModel.h
         history/HistoryTableModel.cpp
         history/HistoryTableModel.h
+        history/TrendingHistoryViewModel.cpp
+        history/TrendingHistoryViewModel.h
         table/JsonTableModel.cpp
         table/JsonTableModel.h
         TesterController.cpp

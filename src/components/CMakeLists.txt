@@ -11,6 +11,7 @@ qt_add_qml_module(datalogger_components
         shell/HistoryTaskBar.qml
         shell/SettingsTaskBar.qml
         shell/TrendingTaskBar.qml
+        shell/TrendingFilterDialog.qml
         shell/ModbusTesterTaskBar.qml
         shell/ThemedTabButton.qml
         layout/MessagePopup.qml

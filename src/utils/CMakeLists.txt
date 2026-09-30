@@ -30,6 +30,10 @@ qt_add_library(utils STATIC
     provision/ProvisionQr.h
     provision/third_party/qrcodegen.cpp
 
+    # chart — trending downsampling (pure, testable)
+    chart/Downsampler.cpp
+    chart/Downsampler.h
+
     # TT10 compliance helpers
     tt10/ReportNaming.cpp
     tt10/ReportNaming.h

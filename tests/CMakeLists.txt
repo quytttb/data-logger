@@ -217,6 +217,16 @@ target_link_libraries(retention_test PRIVATE
 )
 add_test(NAME retention_test COMMAND retention_test)
 
+# QTest: Downsampler min-max bucket — giữ đỉnh/alarm, chặn output ~800.
+add_executable(downsampler_test downsampler_test.cpp)
+target_include_directories(downsampler_test PRIVATE ${CMAKE_SOURCE_DIR}/src)
+target_link_libraries(downsampler_test PRIVATE
+    Qt6::Core
+    Qt6::Test
+    utils
+)
+add_test(NAME downsampler_test COMMAND downsampler_test)
+
 # QTest: ModbusPortGuard RAII — single-owner cổng RS-485 (chống SEGV Tester Connect).
 add_executable(port_guard_test port_guard_test.cpp)
 target_include_directories(port_guard_test PRIVATE ${CMAKE_SOURCE_DIR}/src)

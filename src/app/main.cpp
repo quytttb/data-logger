@@ -24,6 +24,7 @@
 #include "core/SettingsController.h"
 #include "core/MonitorController.h"
 #include "core/history/HistoryViewModel.h"
+#include "core/history/TrendingHistoryViewModel.h"
 #include "core/TesterController.h"
 #include "core/ReportController.h"
 #include "core/tt10/SensorSymbols.h"
@@ -166,6 +167,7 @@ int main(int argc, char *argv[]) {
     auto *settingsCtrl  = new SettingsController(&app);
     auto *monitorCtrl   = new MonitorController(monitorModel, modbusTcp, &app);
     auto *historyVm      = new HistoryViewModel(&app);
+    auto *trendHistVm    = new TrendingHistoryViewModel(&app);
     auto *testerCtrl    = new TesterController(&app);
     auto *reportCtrl    = new ReportController(&app);
     auto *sensorSymbols = new SensorSymbols(&app);
@@ -195,6 +197,7 @@ int main(int argc, char *argv[]) {
     SettingsController::setInstance(settingsCtrl);
     MonitorController::setInstance(monitorCtrl);
     HistoryViewModel::setInstance(historyVm);
+    TrendingHistoryViewModel::setInstance(trendHistVm);
     TesterController::setInstance(testerCtrl);
     ReportController::setInstance(reportCtrl);
     SensorSymbols::setInstance(sensorSymbols);
