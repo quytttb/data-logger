@@ -41,16 +41,19 @@ Rectangle {
             // Padding lives on the scroll content (Flickable margins): it only
             // appears before the first row / after the last row, and scrolls with
             // the content — no rigid dead-band around the viewport.
-            readonly property int outerMargin: AppTheme.spacingM
-            leftMargin: outerMargin
-            rightMargin: outerMargin
-            topMargin: outerMargin
-            bottomMargin: outerMargin
+            // Ngang giữ 16 để card không dính viền; dọc giảm còn 8 để 9 card
+            // (3 hàng x 180) vừa khít kiosk 1024x600 không phải kéo.
+            readonly property int hMargin: AppTheme.spacingM
+            readonly property int vMargin: AppTheme.spacingS
+            leftMargin: hMargin
+            rightMargin: hMargin
+            topMargin: vMargin
+            bottomMargin: vMargin
 
             // Responsive grid: stretch cells to fill the available width (no centering gap).
             readonly property int minCellWidth: 240
-            readonly property int columns: Math.max(1, Math.floor((width - 2 * outerMargin) / minCellWidth))
-            cellWidth: Math.floor((width - 2 * outerMargin) / columns)
+            readonly property int columns: Math.max(1, Math.floor((width - 2 * hMargin) / minCellWidth))
+            cellWidth: Math.floor((width - 2 * hMargin) / columns)
             cellHeight: monitorRoot.cardHGrid
 
             delegate: Item {

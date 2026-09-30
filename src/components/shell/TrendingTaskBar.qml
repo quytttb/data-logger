@@ -116,7 +116,7 @@ Item {
                 anchors.right: parent.right
                 anchors.verticalCenter: parent.verticalCenter
                 height: Math.min(implicitHeight, 48)
-                spacing: 24
+                spacing: 8
 
                 Repeater {
                     id: legendRepeater
