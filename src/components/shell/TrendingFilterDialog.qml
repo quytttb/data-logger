@@ -14,7 +14,9 @@ Dialog {
     id: root
 
     // TrendingTaskBar nguồn selectedIds/setChecked/selectAll/allIds.
-    property Item taskBar: null
+    // Để var (dynamic) — qmllint không resolve member của Item, còn type
+    // cụ thể gây incompatible-type do tham chiếu vòng cùng module.
+    property var taskBar: null
 
     title: qsTr("Trending filter")
     modal: true
