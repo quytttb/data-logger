@@ -16,7 +16,7 @@ Dialog {
     // TrendingTaskBar nguồn selectedIds/setChecked/selectAll/allIds.
     property Item taskBar: null
 
-    title: qsTr("Bộ lọc Trending")
+    title: qsTr("Trending filter")
     modal: true
     focus: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
@@ -65,7 +65,7 @@ Dialog {
             spacing: 8
 
             Text {
-                text: qsTr("Xem lại:")
+                text: qsTr("Show last:")
                 color: AppColors.primaryText
                 font.pixelSize: AppTypography.bodyMedium.pixelSize
             }
@@ -83,7 +83,7 @@ Dialog {
 
             ComboBox {
                 id: unitBox
-                model: [qsTr("Phút"), qsTr("Giờ"), qsTr("Ngày")]
+                model: [qsTr("Minutes"), qsTr("Hours"), qsTr("Days")]
                 currentIndex: 1
                 Layout.fillWidth: true
                 Layout.preferredHeight: 48
@@ -170,21 +170,21 @@ Dialog {
 
         AppButton {
             kind: AppButton.Text
-            text: qsTr("Trực tiếp")
+            text: qsTr("Live")
             DialogButtonBox.buttonRole: DialogButtonBox.ResetRole
             onClicked: root.backToLive()
         }
 
         AppButton {
             kind: AppButton.Tonal
-            text: qsTr("Hủy")
+            text: qsTr("Cancel")
             DialogButtonBox.buttonRole: DialogButtonBox.RejectRole
             onClicked: root.close()
         }
 
         AppButton {
             kind: AppButton.Primary
-            text: qsTr("Áp dụng")
+            text: qsTr("Apply")
             DialogButtonBox.buttonRole: DialogButtonBox.AcceptRole
             onClicked: root.applyHistory()
         }

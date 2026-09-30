@@ -42,12 +42,12 @@ void TrendingHistoryViewModel::query(const QVariantList &sensorIds,
             ids.append(id);
     }
     if (ids.isEmpty()) {
-        setError(QStringLiteral("Chọn ít nhất một cảm biến."));
+        setError(QStringLiteral("Select at least one sensor."));
         emit messageSent(QStringLiteral("Trending"), m_lastError);
         return;
     }
     if (!from.isValid() || !to.isValid() || from >= to) {
-        setError(QStringLiteral("Khoảng thời gian không hợp lệ."));
+        setError(QStringLiteral("Invalid time range."));
         emit messageSent(QStringLiteral("Trending"), m_lastError);
         return;
     }
@@ -126,7 +126,7 @@ void TrendingHistoryViewModel::onQueryFinished()
     m_hasHistory = !m_seriesPoints.isEmpty();
     if (!m_hasHistory)
         emit messageSent(QStringLiteral("Trending"),
-                         QStringLiteral("Không có dữ liệu trong khoảng đã chọn."));
+                         QStringLiteral("No data in the selected range."));
     emit historyChanged();
 }
 
