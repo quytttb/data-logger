@@ -22,7 +22,8 @@ Rectangle {
     readonly property int fsPill: 18        // pill DI/DO
     readonly property int fsValueGrid: 42   // value analog giữa card grid
     readonly property int rowHList: 92      // chiều cao dòng list
-    readonly property int cardHGrid: 180    // chiều cao card grid
+    readonly property int cardHGrid: 172    // chiều cao card grid (3 hàng = 516,
+                                            // vừa viewport kiosk ~535 cùng margins)
 
     ColumnLayout {
         anchors.fill: parent
@@ -42,10 +43,10 @@ Rectangle {
             // appears before the first row / after the last row, and scrolls with
             // the content — no rigid dead-band around the viewport.
             // Ngang giữ 16 để card không dính viền; dọc thu gọn (trên 4,
-            // dưới 8) để 9 card (3 hàng x 180) lọt kiosk 1024x600.
+            // dưới 12) để 9 card lọt kiosk 1024x600, đáy thoáng không chạm viền.
             readonly property int hMargin: AppTheme.spacingM
             readonly property int vTopMargin: AppTheme.spacingXS
-            readonly property int vBottomMargin: AppTheme.spacingS
+            readonly property int vBottomMargin: AppTheme.spacingSM
             leftMargin: hMargin
             rightMargin: hMargin
             topMargin: vTopMargin
