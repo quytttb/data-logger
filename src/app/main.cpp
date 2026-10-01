@@ -275,6 +275,8 @@ int main(int argc, char *argv[]) {
         else
             restApi->stop();
         reportCtrl->applyServerConfig();
+        // Restart polling nếu đang chạy để áp dụng poll interval / serial config mới.
+        monitorCtrl->refreshSensors();
     };
     QObject::connect(settingsCtrl, &SettingsController::configSaved, &app, applyConfig);
     // Nếu user tắt serverActive ngay trong Settings (trước khi Save), vẫn stop upload
