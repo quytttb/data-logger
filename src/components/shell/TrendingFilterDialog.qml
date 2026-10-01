@@ -58,17 +58,29 @@ Dialog {
         root.close()
     }
 
-    contentItem: ColumnLayout {
-        spacing: 8
+    contentItem: RowLayout {
+        spacing: 0
 
-        // ── Khoảng thời gian lịch sử ──
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 8
+        // ════════════════════════════════════════════════════════════════
+        // Cột trái: Time-range controls + ghi chú
+        // ════════════════════════════════════════════════════════════════
+        ColumnLayout {
+            Layout.preferredWidth: 280
+            Layout.minimumWidth: 240
+            Layout.fillHeight: true
+            Layout.rightMargin: AppTheme.spacingM
+            spacing: AppTheme.spacingSM
+
+            Text {
+                text: qsTr("Time range")
+                color: AppColors.primaryText
+                font.pixelSize: AppTypography.titleSmall.pixelSize
+                font.bold: true
+            }
 
             Text {
                 text: qsTr("Show last:")
-                color: AppColors.primaryText
+                color: AppColors.onSurfaceVariant
                 font.pixelSize: AppTypography.bodyMedium.pixelSize
             }
 
@@ -80,6 +92,7 @@ Dialog {
                 editable: true
                 inputMethodHints: Qt.ImhDigitsOnly
                 validator: IntValidator { bottom: 1; top: 365 }
+                Layout.fillWidth: true
                 Layout.preferredHeight: 48
             }
 
@@ -90,75 +103,95 @@ Dialog {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 48
             }
-        }
 
-        Text {
-            text: qsTr("Uncheck all = show all. At least one stays on.")
-            color: AppColors.onSurfaceVariant
-            font.pixelSize: AppTypography.bodySmall.pixelSize
-            wrapMode: Text.WordWrap
-            Layout.fillWidth: true
-        }
+            // Spacer đẩy ghi chú xuống đáy cột trái
+            Item { Layout.fillHeight: true }
 
-        RowLayout {
-            Layout.fillWidth: true
             Text {
-                text: qsTr("Show sensors")
-                color: AppColors.primaryText
-                font.pixelSize: AppTypography.titleSmall.pixelSize
-                font.bold: true
+                text: qsTr("Uncheck all = show all.\nAt least one stays on.")
+                color: AppColors.onSurfaceVariant
+                font.pixelSize: AppTypography.bodySmall.pixelSize
+                wrapMode: Text.WordWrap
                 Layout.fillWidth: true
             }
-            AppButton {
-                kind: AppButton.Secondary
-                text: qsTr("All")
-                Layout.alignment: Qt.AlignVCenter
-                onClicked: root.taskBar ? root.taskBar.selectAll() : undefined
-            }
         }
 
-        ScrollView {
-            id: sensorScroll
+        // ── Divider dọc ──
+        Rectangle {
+            Layout.fillHeight: true
+            Layout.preferredWidth: 1
+            color: AppColors.outlineVariant
+        }
+
+        // ════════════════════════════════════════════════════════════════
+        // Cột phải: Sensor checkboxes
+        // ════════════════════════════════════════════════════════════════
+        ColumnLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: Math.min(288, sensorList.implicitHeight + 8)
-            Layout.minimumHeight: 48
-            clip: true
+            Layout.fillHeight: true
+            Layout.leftMargin: AppTheme.spacingM
+            spacing: AppTheme.spacingS
 
-            ColumnLayout {
-                id: sensorList
-                width: sensorScroll.availableWidth
-                spacing: 4
+            RowLayout {
+                Layout.fillWidth: true
+                Text {
+                    text: qsTr("Sensors")
+                    color: AppColors.primaryText
+                    font.pixelSize: AppTypography.titleSmall.pixelSize
+                    font.bold: true
+                    Layout.fillWidth: true
+                }
+                AppButton {
+                    kind: AppButton.Secondary
+                    text: qsTr("All")
+                    Layout.alignment: Qt.AlignVCenter
+                    onClicked: root.taskBar ? root.taskBar.selectAll() : undefined
+                }
+            }
 
-                Repeater {
-                    model: MonitorController.analogSensors
+            ScrollView {
+                id: sensorScroll
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                Layout.minimumHeight: 48
+                clip: true
 
-                    delegate: RowLayout {
-                        id: checkRow
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 48
-                        spacing: 10
-                        required property var modelData
+                ColumnLayout {
+                    id: sensorList
+                    width: sensorScroll.availableWidth
+                    spacing: 2
 
-                        Rectangle {
-                            implicitWidth: 14
-                            implicitHeight: 14
-                            radius: width / 2
-                            color: checkRow.modelData.color
-                            Layout.alignment: Qt.AlignVCenter
-                        }
+                    Repeater {
+                        model: MonitorController.analogSensors
 
-                        CheckBox {
+                        delegate: RowLayout {
+                            id: checkRow
                             Layout.fillWidth: true
-                            Layout.alignment: Qt.AlignVCenter
-                            text: checkRow.modelData.unit && checkRow.modelData.unit.length > 0
-                                  ? (checkRow.modelData.name + " (" + checkRow.modelData.unit + ")")
-                                  : checkRow.modelData.name
-                            font.pixelSize: AppTypography.bodyMedium.pixelSize
-                            checked: !root.taskBar || root.taskBar.selectedIds.length === 0
-                                     || root.taskBar.selectedIds.indexOf(checkRow.modelData.id) >= 0
-                            onToggled: {
-                                if (root.taskBar)
-                                    root.taskBar.setChecked(checkRow.modelData.id, checked)
+                            Layout.preferredHeight: 44
+                            spacing: 8
+                            required property var modelData
+
+                            Rectangle {
+                                implicitWidth: 12
+                                implicitHeight: 12
+                                radius: width / 2
+                                color: checkRow.modelData.color
+                                Layout.alignment: Qt.AlignVCenter
+                            }
+
+                            CheckBox {
+                                Layout.fillWidth: true
+                                Layout.alignment: Qt.AlignVCenter
+                                text: checkRow.modelData.unit && checkRow.modelData.unit.length > 0
+                                      ? (checkRow.modelData.name + " (" + checkRow.modelData.unit + ")")
+                                      : checkRow.modelData.name
+                                font.pixelSize: AppTypography.bodyMedium.pixelSize
+                                checked: !root.taskBar || root.taskBar.selectedIds.length === 0
+                                         || root.taskBar.selectedIds.indexOf(checkRow.modelData.id) >= 0
+                                onToggled: {
+                                    if (root.taskBar)
+                                        root.taskBar.setChecked(checkRow.modelData.id, checked)
+                                }
                             }
                         }
                     }
