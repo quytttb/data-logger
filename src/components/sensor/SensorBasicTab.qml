@@ -40,6 +40,10 @@ ElevatedPane {
     // Dropdown-only: no free-text typing. A previously-saved value that is not
     // in the standard list is merged into the model so it stays visible.
     readonly property var symbolBase: SensorSymbols.symbols.slice(0)
+    // "None" đứng đầu combo symbol — mặc định khi add, chọn nó thì chỉ lưu
+    // Name, không có symbol (DB lưu "", hiển thị tên trần).
+    readonly property string noneSymbolLabel: qsTr("None")
+    readonly property var symbolModel: [root.noneSymbolLabel].concat(root.symbolBase)
     readonly property var unitBase: [
         "°C", "°F", "%", "%RH",
         "pH", "mg/L", "µg/L", "NTU",
@@ -52,10 +56,11 @@ ElevatedPane {
     ]
 
     function setSymbolValue(v) {
-        let list = root.symbolBase.slice(0)
+        let list = root.symbolModel.slice(0)
         if (v && list.indexOf(v) < 0) list.push(v)
         dSensorSymbol.model = list
-        dSensorSymbol.currentIndex = v ? list.indexOf(v) : -1
+        // Rỗng/null → "None" (index 0); có giá trị → đúng symbol đó.
+        dSensorSymbol.currentIndex = v ? list.indexOf(v) : 0
     }
 
     function setUnitValue(v) {
@@ -65,7 +70,8 @@ ElevatedPane {
         dUnit.currentIndex = v ? list.indexOf(v) : -1
     }
 
-    readonly property string currentSymbol: dSensorSymbol.currentText || ""
+    // "None" (index 0) → "" để DB lưu chuỗi rỗng, hiển thị chỉ Name.
+    readonly property string currentSymbol: (dSensorSymbol.currentIndex > 0 ? dSensorSymbol.currentText : "") || ""
     readonly property string currentUnit: dUnit.currentText || ""
 
     RowLayout {
@@ -89,7 +95,7 @@ ElevatedPane {
                 id: dSensorSymbol
                 Layout.fillWidth: true
                 visible: root.isAnalog
-                model: root.symbolBase
+                model: root.symbolModel
             }
 
             Text { text: qsTr("Name:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize }
