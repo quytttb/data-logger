@@ -98,7 +98,7 @@ Rectangle {
                     anchors.fill: parent
                     anchors.margins: 6
                     radius: AppTheme.cardRadius
-                    color: AppColors.surfaceContainerLow
+                    color: AppColors.surfaceContainer
                     border.color: {
                         // Analog: viền theo màu DI status đang active (đã sort theo ưu tiên),
                         // hạ sáng ~35% để đỡ chói trên kiosk.
