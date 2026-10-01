@@ -49,6 +49,12 @@ Rectangle {
 
                 property var seriesMap: ({})
 
+                // Series đã gỡ khỏi graph, chờ hủy ở lần rebuild sau.
+                // KHÔNG destroy() ngay sau removeSeries: QGraphsView còn
+                // polish pending trỏ tới series cũ → use-after-free (SEGV
+                // trong PointRenderer::afterPolish, core 18:54 Pi).
+                property var deadSeries: []
+
                 // live = realtime 5 phút (MonitorController), history = query
                 // khoảng đã chọn (TrendingHistoryViewModel, đã downsample).
                 readonly property bool showHistory: TrendingHistoryViewModel.hasHistory
@@ -76,6 +82,13 @@ Rectangle {
                 }
 
                 function clearAllSeries() {
+                    // Hủy đợt trước (đã detach từ rebuild trước, không còn
+                    // polish nào chạm tới nên an toàn).
+                    for (let i = 0; i < chartHolder.deadSeries.length; ++i) {
+                        let d = chartHolder.deadSeries[i]
+                        if (d) d.destroy()
+                    }
+                    chartHolder.deadSeries = []
                     // Duyệt seriesMap do mình quản lý (không dùng
                     // graphsView.seriesList — có thể chứa entry undefined).
                     for (let key in chartHolder.seriesMap) {
@@ -83,9 +96,7 @@ Rectangle {
                         if (!s)
                             continue
                         graphsView.removeSeries(s)
-                        // removeSeries chỉ gỡ khỏi graph — destroy để không leak
-                        // LineSeries (createObject parent graphsView) khi rebuild.
-                        s.destroy()
+                        chartHolder.deadSeries.push(s)
                     }
                     chartHolder.seriesMap = ({})
                 }
