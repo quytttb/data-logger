@@ -65,8 +65,8 @@ Dialog {
         // Cột trái: Time-range controls + ghi chú
         // ════════════════════════════════════════════════════════════════
         ColumnLayout {
-            Layout.preferredWidth: 280
-            Layout.minimumWidth: 240
+            Layout.preferredWidth: 200
+            Layout.minimumWidth: 180
             Layout.fillHeight: true
             Layout.rightMargin: AppTheme.spacingM
             spacing: AppTheme.spacingSM
