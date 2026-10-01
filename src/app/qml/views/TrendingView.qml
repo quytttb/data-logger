@@ -76,12 +76,16 @@ Rectangle {
                 }
 
                 function clearAllSeries() {
-                    let list = graphsView.seriesList
-                    for (let i = list.length - 1; i >= 0; --i) {
-                        graphsView.removeSeries(list[i])
+                    // Duyệt seriesMap do mình quản lý (không dùng
+                    // graphsView.seriesList — có thể chứa entry undefined).
+                    for (let key in chartHolder.seriesMap) {
+                        let s = chartHolder.seriesMap[key]
+                        if (!s)
+                            continue
+                        graphsView.removeSeries(s)
                         // removeSeries chỉ gỡ khỏi graph — destroy để không leak
                         // LineSeries (createObject parent graphsView) khi rebuild.
-                        list[i].destroy()
+                        s.destroy()
                     }
                     chartHolder.seriesMap = ({})
                 }
