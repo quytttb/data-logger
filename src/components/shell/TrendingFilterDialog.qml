@@ -72,11 +72,6 @@ Dialog {
         root.close()
     }
 
-    function backToLive() {
-        TrendingHistoryViewModel.clear()
-        root.close()
-    }
-
     contentItem: RowLayout {
         spacing: 0
 
@@ -223,13 +218,6 @@ Dialog {
 
     footer: DialogButtonBox {
         spacing: 8
-
-        AppButton {
-            kind: AppButton.Text
-            text: qsTr("Live")
-            DialogButtonBox.buttonRole: DialogButtonBox.ResetRole
-            onClicked: root.backToLive()
-        }
 
         AppButton {
             kind: AppButton.Tonal
