@@ -104,17 +104,6 @@ Item {
             font.bold: true
         }
 
-        // Chỉ hiện khi đang xem lịch sử — bấm để về realtime.
-        AppButton {
-            visible: TrendingHistoryViewModel.hasHistory
-            Layout.alignment: Qt.AlignVCenter
-            kind: AppButton.Tonal
-            iconName: "playArrow"
-            text: qsTr("Live")
-            tooltipText: qsTr("Back to live")
-            onClicked: TrendingHistoryViewModel.clear()
-        }
-
         Item {
             id: legendArea
             Layout.fillWidth: true

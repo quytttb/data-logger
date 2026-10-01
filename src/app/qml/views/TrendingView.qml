@@ -12,6 +12,13 @@ Rectangle {
     id: trendRoot
     color: "transparent"
 
+    // Trending luôn realtime: rời tab thì xóa history (nếu có) để lần sau
+    // vào lại là realtime, không kẹt ở chế độ xem lại.
+    onVisibleChanged: {
+        if (!visible)
+            TrendingHistoryViewModel.clear()
+    }
+
     Component {
         id: lineSeriesComponent
         LineSeries {
