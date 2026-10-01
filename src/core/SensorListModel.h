@@ -84,6 +84,9 @@ public:
                                         QString *error);
     // Field validation ("": ok). Static so unit tests need no DB.
     static QString validateSensorProps(const QVariantMap &props);
+    // QML có thể đưa null QString (combo chưa chọn) — ép về "" để không
+    // vi phạm NOT NULL của sensor_symbol/unit khi bind vào DAO.
+    static QString nonNullString(const QVariant &v, const QString &fallback = QString());
 
 signals:
     void countChanged();

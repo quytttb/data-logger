@@ -29,7 +29,6 @@ private slots:
             {QStringLiteral("registerAddress"), 0},
         };
         QVERIFY(!SensorListModel::validateSensorProps(blankName).isEmpty());
-
         QVariantMap badSlave{
             {QStringLiteral("name"), QStringLiteral("T")},
             {QStringLiteral("slaveId"), 248},
@@ -95,6 +94,22 @@ private slots:
 
         const QVariantMap blank = SensorListModel::coefficientUiState(QStringLiteral("{}"));
         QCOMPARE(blank.value(QStringLiteral("mode")).toInt(), 0);
+    }
+
+    void nullStringsCoerced()
+    {
+        // Combo chưa chọn đưa null QString (QML undefined) — phải ép về ""
+        // nếu không DAO bind NULL và vi phạm NOT NULL của sensor_symbol/unit.
+        const QString nullStr;
+        QVERIFY(nullStr.isNull());
+        QCOMPARE(SensorListModel::nonNullString(QVariant()), QStringLiteral(""));
+        QCOMPARE(SensorListModel::nonNullString(QVariant(nullStr)), QStringLiteral(""));
+        QCOMPARE(SensorListModel::nonNullString(QVariant(QStringLiteral("CO"))),
+                 QStringLiteral("CO"));
+        QCOMPARE(SensorListModel::nonNullString(QVariant(), QStringLiteral("holding")),
+                 QStringLiteral("holding"));
+        // Giá trị rỗng thường (không null) giữ nguyên.
+        QVERIFY(!SensorListModel::nonNullString(QVariant(QStringLiteral(""))).isNull());
     }
 };
 

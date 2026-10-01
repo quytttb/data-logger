@@ -65,8 +65,8 @@ ElevatedPane {
         dUnit.currentIndex = v ? list.indexOf(v) : -1
     }
 
-    readonly property string currentSymbol: dSensorSymbol.currentText
-    readonly property string currentUnit: dUnit.currentText
+    readonly property string currentSymbol: dSensorSymbol.currentText || ""
+    readonly property string currentUnit: dUnit.currentText || ""
 
     RowLayout {
         Layout.fillWidth: true

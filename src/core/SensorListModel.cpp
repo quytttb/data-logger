@@ -146,18 +146,26 @@ void SensorListModel::loadFromDb() {
     emit countChanged();
 }
 
+QString SensorListModel::nonNullString(const QVariant &v, const QString &fallback)
+{
+    if (v.isNull())
+        return fallback;
+    const QString s = v.toString();
+    return s.isNull() ? fallback : s;
+}
+
 Sensor SensorListModel::variantToSensor(const QVariantMap &p, int existingId) const {
     Sensor s;
     s.id             = existingId;
-    s.name           = p.value("name").toString();
-    s.sensorSymbol   = p.value("sensorSymbol").toString();
-    s.unit           = p.value("unit").toString();
+    s.name           = nonNullString(p.value("name"));
+    s.sensorSymbol   = nonNullString(p.value("sensorSymbol"));
+    s.unit           = nonNullString(p.value("unit"));
     s.slaveId        = p.value("slaveId", 1).toInt();
     s.registerAddress= p.value("registerAddress", 0).toInt();
-    s.registerType   = p.value("registerType", "holding").toString();
-    s.dataType       = p.value("dataType", "int16").toString();
-    s.dataFormat     = p.value("dataFormat", "AB").toString();
-    s.coefficient    = p.value("coefficient", "{}").toString();
+    s.registerType   = nonNullString(p.value("registerType"), QStringLiteral("holding"));
+    s.dataType       = nonNullString(p.value("dataType"), QStringLiteral("int16"));
+    s.dataFormat     = nonNullString(p.value("dataFormat"), QStringLiteral("AB"));
+    s.coefficient    = nonNullString(p.value("coefficient"), QStringLiteral("{}"));
     auto minV = p.value("minThreshold");
     if (thresholdVariantEnabled(minV)) s.minThreshold = minV.toDouble();
     auto maxV = p.value("maxThreshold");
