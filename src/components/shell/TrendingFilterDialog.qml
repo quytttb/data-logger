@@ -18,6 +18,22 @@ Dialog {
     // cụ thể gây incompatible-type do tham chiếu vòng cùng module.
     property var taskBar: null
 
+    // Bàn phím ảo (InputPanel z:999) vẫn nằm DƯỚI layer Overlay.overlay nên
+    // dialog đè lên bàn phím. Khi gõ số: nhích dialog lên + ẩn tạm cột
+    // sensor (đang gõ không cần nhìn list) để SpinBox không bị che.
+    // qmllint disable missing-property
+    // Qt.inputMethod là QObject với qmllint (không resolve visible/
+    // keyboardRectangle) nhưng đúng runtime với QtVirtualKeyboard.
+    readonly property bool kbVisible: Qt.inputMethod.visible
+    readonly property real kbHeight: Qt.inputMethod.keyboardRectangle.height
+    // qmllint enable missing-property
+    property real kbShift: (root.kbVisible && root.kbHeight > 0)
+                           ? Math.min(root.kbHeight, 240) / 2
+                           : (root.kbVisible ? 100 : 0)
+    Behavior on kbShift {
+        NumberAnimation { duration: 200; easing.type: Easing.InOutQuad }
+    }
+
     title: qsTr("Trending filter")
     modal: true
     focus: true
@@ -27,7 +43,10 @@ Dialog {
     width: parent
         ? Math.min(parent.width - 48, AppTheme.dialogMaxWidth)
         : AppTheme.dialogMaxWidth
-    anchors.centerIn: parent
+    // Căn giữa thủ công (Popup/Dialog không có verticalCenterOffset):
+    // trừ kbShift để nhường chỗ bàn phím ảo dưới Overlay.
+    x: parent ? Math.round((parent.width - width) / 2) : 0
+    y: parent ? Math.round((parent.height - height) / 2) - kbShift : 0
 
     Material.roundedScale: Material.ExtraLargeScale
 
@@ -65,7 +84,7 @@ Dialog {
         // Cột trái: Time-range controls + ghi chú
         // ════════════════════════════════════════════════════════════════
         ColumnLayout {
-            Layout.preferredWidth: 200
+            Layout.preferredWidth: root.kbVisible ? 320 : 200
             Layout.minimumWidth: 180
             Layout.fillHeight: true
             Layout.rightMargin: AppTheme.spacingM
@@ -116,17 +135,19 @@ Dialog {
             }
         }
 
-        // ── Divider dọc ──
+        // ── Divider dọc (ẩn cùng cột sensor khi gõ số) ──
         Rectangle {
+            visible: !root.kbVisible
             Layout.fillHeight: true
             Layout.preferredWidth: 1
             color: AppColors.outlineVariant
         }
 
         // ════════════════════════════════════════════════════════════════
-        // Cột phải: Sensor checkboxes
+        // Cột phải: Sensor checkboxes (ẩn tạm khi bàn phím hiện)
         // ════════════════════════════════════════════════════════════════
         ColumnLayout {
+            visible: !root.kbVisible
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.leftMargin: AppTheme.spacingM
