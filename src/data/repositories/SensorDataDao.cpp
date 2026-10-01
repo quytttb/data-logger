@@ -96,8 +96,8 @@ SensorDataDao::ChartSeries SensorDataDao::queryRangeForChart(int sensorId,
         return series;
 
     QSqlQuery q(m_db);
-    // ASC để downsampler nhận đúng thứ tự thời gian; LIMIT chỉ là van an
-    // toàn chống tràn RAM (downsampler mới quyết định số điểm hiển thị).
+    // ASC để downsampler nhận đúng thứ tự thời gian; LIMIT maxRows+1 để
+    // phát hiện cắt bớt (đọc thừa 1 dòng rẻ hơn COUNT(*) riêng).
     // setForwardOnly để stream từng dòng, không cache toàn bộ result set.
     q.setForwardOnly(true);
     q.prepare(R"(SELECT value, recorded_at, is_alarm FROM sensor_data
@@ -106,7 +106,7 @@ SensorDataDao::ChartSeries SensorDataDao::queryRangeForChart(int sensorId,
     q.bindValue(":sid", sensorId);
     q.bindValue(":f",   from.toString(Qt::ISODate));
     q.bindValue(":t",   to.toString(Qt::ISODate));
-    q.bindValue(":lim", maxRows);
+    q.bindValue(":lim", maxRows + 1);
     if (!q.exec()) {
         qWarning() << "SensorDataDao::queryRangeForChart failed:" << q.lastError().text();
         return series;
@@ -119,6 +119,12 @@ SensorDataDao::ChartSeries SensorDataDao::queryRangeForChart(int sensorId,
             continue;
         series.points.append({double(dt.toMSecsSinceEpoch()), q.value(0).toDouble()});
         series.isAlarm.append(q.value(2).toBool() ? 1 : 0);
+    }
+    if (series.points.size() > maxRows) {
+        // Vượt trần: giữ maxRows điểm cũ nhất, báo truncated để UI cảnh báo.
+        series.points.resize(maxRows);
+        series.isAlarm.resize(maxRows);
+        series.truncated = true;
     }
     return series;
 }

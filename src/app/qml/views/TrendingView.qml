@@ -77,8 +77,12 @@ Rectangle {
 
                 function clearAllSeries() {
                     let list = graphsView.seriesList
-                    for (let i = list.length - 1; i >= 0; --i)
+                    for (let i = list.length - 1; i >= 0; --i) {
                         graphsView.removeSeries(list[i])
+                        // removeSeries chỉ gỡ khỏi graph — destroy để không leak
+                        // LineSeries (createObject parent graphsView) khi rebuild.
+                        list[i].destroy()
+                    }
                     chartHolder.seriesMap = ({})
                 }
 
@@ -190,6 +194,26 @@ Rectangle {
                     anchors.centerIn: parent
                     running: visible
                     visible: TrendingHistoryViewModel.loading
+                }
+
+                // Banner khi cửa sổ vượt trần dòng — graph chỉ hiện điểm cũ nhất.
+                Rectangle {
+                    anchors.left: parent.left
+                    anchors.top: parent.top
+                    anchors.margins: 8
+                    visible: chartHolder.showHistory && TrendingHistoryViewModel.historyTruncated
+                    radius: 4
+                    color: AppColors.warningContainer
+                    width: warnText.implicitWidth + 16
+                    height: warnText.implicitHeight + 8
+
+                    Text {
+                        id: warnText
+                        anchors.centerIn: parent
+                        text: qsTr("Range too large — oldest points only")
+                        color: AppColors.primaryText
+                        font.pixelSize: AppTypography.labelSmall.pixelSize
+                    }
                 }
             }
         }

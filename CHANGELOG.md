@@ -12,6 +12,12 @@
 - `TrendingView`: mode live/history, nhãn trục X theo khoảng, overlay loading
 - Kit: `DateField`/`DatePickerPopup` bỏ `MouseArea` → `TapHandler`/`HoverHandler`,
   popup 320x380 → 340x400 cho kiosk touch
+- Fix review: DAO báo `truncated` khi vượt 200k dòng (banner + toast),
+  query mới hủy query cũ qua cancel token, `clear()` hủy worker,
+  `removeSeries` kèm `destroy()`, Downsampler giữ alarm khi maxPoints<4,
+  Apply disable khi loading, nối `messageSent` Trending vào Main
+- Kit DatePicker: floor popup 340, tap cả icon, pressed visual, clamp overlay,
+  `isToday` chỉ tháng hiện tại, `Accessible.Button` + phím Enter/Space
 
 ## 2.6.0 — 2026-09-22
 

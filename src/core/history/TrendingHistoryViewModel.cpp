@@ -14,6 +14,7 @@ TrendingHistoryViewModel::TrendingHistoryViewModel(QObject *parent) : QObject(pa
     m_watcher = new QFutureWatcher<HistoryTrendResult>(this);
     connect(m_watcher, &QFutureWatcher<HistoryTrendResult>::finished,
             this, &TrendingHistoryViewModel::onQueryFinished);
+    m_cancel = std::make_shared<std::atomic<bool>>(false);
 }
 
 TrendingHistoryViewModel::~TrendingHistoryViewModel() = default;
@@ -51,14 +52,19 @@ void TrendingHistoryViewModel::query(const QVariantList &sensorIds,
         emit messageSent(QStringLiteral("Trending"), m_lastError);
         return;
     }
-    if (m_watcher->isRunning())
-        return; // query đang chạy — bỏ qua bấm trùng, tránh dồn worker
+
+    // Query mới thay thế query cũ: hủy token cũ (worker dừng ở biên sensor
+    // tiếp theo) rồi chạy query mới — không drop lặng lẽ khi bấm Apply nhanh.
+    if (m_cancel)
+        m_cancel->store(true);
+    m_cancel = std::make_shared<std::atomic<bool>>(false);
 
     setError({});
     setLoading(true);
     m_gen++;
     const int gen = m_gen;
-    m_watcher->setFuture(QtConcurrent::run([ids, from, to, gen]() -> HistoryTrendResult {
+    const auto cancel = m_cancel;
+    m_watcher->setFuture(QtConcurrent::run([ids, from, to, gen, cancel]() -> HistoryTrendResult {
         HistoryTrendResult result;
         result.generation = gen;
         result.xMin = double(from.toMSecsSinceEpoch());
@@ -75,9 +81,13 @@ void TrendingHistoryViewModel::query(const QVariantList &sensorIds,
         }
         SensorDataDao dao(db);
         for (int id : ids) {
+            if (cancel->load())
+                return result; // đã bị query/clear mới hơn hủy
             const auto series = dao.queryRangeForChart(id, from, to);
             if (series.points.isEmpty())
                 continue;
+            if (series.truncated)
+                result.truncated = true;
             const auto dec = Downsampler::minMax(series.points,
                                                  Downsampler::kDefaultMaxPoints,
                                                  series.isAlarm);
@@ -123,17 +133,26 @@ void TrendingHistoryViewModel::onQueryFinished()
     m_xMax = result.xMax;
     m_yMin = result.yMin;
     m_yMax = result.yMax;
+    m_truncated = result.truncated;
     m_hasHistory = !m_seriesPoints.isEmpty();
     if (!m_hasHistory)
         emit messageSent(QStringLiteral("Trending"),
                          QStringLiteral("No data in the selected range."));
+    else if (m_truncated)
+        emit messageSent(QStringLiteral("Trending"),
+                         QStringLiteral("Range too large — showing oldest 200,000 points only. Narrow the range."));
     emit historyChanged();
 }
 
 void TrendingHistoryViewModel::clear()
 {
     m_gen++; // hủy kết quả query đang bay (nếu có)
+    if (m_cancel)
+        m_cancel->store(true); // worker dừng ở biên sensor tiếp theo
+    m_cancel = std::make_shared<std::atomic<bool>>(false);
     m_seriesPoints.clear();
     m_hasHistory = false;
+    m_truncated = false;
+    setError({});
     emit historyChanged();
 }

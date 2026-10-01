@@ -224,6 +224,10 @@ ApplicationWindow {
         function onMessageSent(t, m) { root.notifyMessage(t, m) }
     }
     Connections {
+        target: TrendingHistoryViewModel
+        function onMessageSent(t, m) { root.notifyMessage(t, m) }
+    }
+    Connections {
         target: SettingsController
         function onMessageSent(t, m) { root.notifyMessage(t, m) }
     }

@@ -20,7 +20,8 @@ inline constexpr int kDefaultMaxPoints = 800;
 // Thu gọn `in` (đã sắp theo x tăng dần) về tối đa ~maxPoints điểm.
 // - n <= maxPoints: trả nguyên, không downsample.
 // - isAlarm[i] == true: điểm đó luôn được giữ (neo alarm), tính thêm
-//   ngoài maxPoints (alarm thường thưa nên không đáng kể).
+//   ngoài maxPoints (alarm thường thưa nên không đáng kể). Kể cả khi
+//   maxPoints < 4 (chỉ còn đầu + cuối + alarm).
 // - Trả về rỗng nếu in rỗng.
 QVector<TrendPoint> minMax(const QVector<TrendPoint> &in, int maxPoints = kDefaultMaxPoints,
                            const QVector<char> &isAlarm = {});

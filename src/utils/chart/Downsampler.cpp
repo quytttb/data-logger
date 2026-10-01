@@ -10,10 +10,22 @@ QVector<TrendPoint> minMax(const QVector<TrendPoint> &in, int maxPoints,
     if (n == 0)
         return {};
     if (maxPoints < 4) {
-        // Ngưỡng quá nhỏ: chỉ giữ đầu + cuối để chart vẫn có biên.
+        // Ngưỡng quá nhỏ: giữ đầu + cuối + neo alarm (không drop alarm).
         if (n <= 2)
             return in;
-        return {in.first(), in.last()};
+        QVector<int> tiny{0, n - 1};
+        const int m = qMin(isAlarm.size(), n);
+        for (int i = 0; i < m; ++i) {
+            if (isAlarm[i])
+                tiny.append(i);
+        }
+        std::sort(tiny.begin(), tiny.end());
+        tiny.erase(std::unique(tiny.begin(), tiny.end()), tiny.end());
+        QVector<TrendPoint> out;
+        out.reserve(tiny.size());
+        for (int idx : tiny)
+            out.append(in[idx]);
+        return out;
     }
     if (n <= maxPoints)
         return in;

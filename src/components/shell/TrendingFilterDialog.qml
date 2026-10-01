@@ -187,6 +187,7 @@ Dialog {
         AppButton {
             kind: AppButton.Primary
             text: qsTr("Apply")
+            enabled: !TrendingHistoryViewModel.loading
             DialogButtonBox.buttonRole: DialogButtonBox.AcceptRole
             onClicked: root.applyHistory()
         }

@@ -21,11 +21,13 @@ public:
 
     // Chuỗi điểm cho trending graph lịch sử: ASC theo recorded_at, không
     // LIMIT theo số dòng hiển thị (downsampler mới là limiter) — chỉ chặn
-    // trần maxRows để chống tràn RAM khi cửa sổ quá lớn.
+    // trần maxRows để chống tràn RAM khi cửa sổ quá lớn. Vượt trần thì
+    // truncated = true (giữ maxRows điểm CŨ nhất), caller phải báo UI.
     struct ChartSeries {
         int sensorId = 0;
         QVector<TrendPoint> points; // ASC theo recorded_at
         QVector<char> isAlarm;      // song song với points (1 = báo động)
+        bool truncated = false;     // true = cửa sổ vượt maxRows, đã cắt bớt
     };
     ChartSeries queryRangeForChart(int sensorId,
                                    const QDateTime &from, const QDateTime &to,

@@ -93,6 +93,29 @@ private slots:
         QCOMPARE(lo, -50.0);
         QVERIFY(hi > 14.0); // đỉnh sine ~15 phải còn
     }
+
+    void tinyMaxKeepsFirstLastAndAlarms()
+    {
+        // Nhánh maxPoints < 4: đầu + cuối + alarm, vẫn sắp thời gian.
+        QVector<TrendPoint> in;
+        QVector<char> alarm;
+        for (int i = 0; i < 100; ++i) {
+            in.append({double(i * 1000), 20.0});
+            alarm.append((i == 30 || i == 70) ? 1 : 0);
+        }
+        const auto out = Downsampler::minMax(in, 2, alarm);
+        QCOMPARE(out.size(), 4);
+        QCOMPARE(out.first().x, 0.0);
+        QCOMPARE(out.last().x, 99000.0);
+        bool a30 = false, a70 = false;
+        for (int i = 1; i < out.size(); ++i)
+            QVERIFY(out[i].x > out[i - 1].x);
+        for (const auto &p : out) {
+            if (qFuzzyCompare(p.x, 30000.0)) a30 = true;
+            if (qFuzzyCompare(p.x, 70000.0)) a70 = true;
+        }
+        QVERIFY(a30 && a70);
+    }
 };
 
 QTEST_MAIN(TestDownsampler)
