@@ -48,7 +48,17 @@ verify_pi() {
         fi
         sleep 5
     done
-    [[ -n "$polled" ]] || die "quá ${VERIFY_TIMEOUT}s chưa thấy 'Polling started' — kiểm tra log trên Pi."
+    [[ -n "$polled" ]] || {
+        # Pi mới chưa cấu hình sensor thì app không poll (đúng thiết kế:
+        # MonitorController báo "No active sensors" và return). Miễn service
+        # process còn sống và log sạch thì vẫn coi như cài thành công.
+        if pi_ssh 'pgrep -x DataLogger >/dev/null'; then
+            echo "Chú ý: quá ${VERIFY_TIMEOUT}s chưa thấy 'Polling started' —"
+            echo "có thể Pi chưa cấu hình sensor (mở Settings trên kiosk để thêm)."
+        else
+            die "quá ${VERIFY_TIMEOUT}s chưa thấy 'Polling started' và process đã chết — kiểm tra log trên Pi."
+        fi
+    }
 
     badlog="$(pi_ssh 'journalctl -u datalogger.service --since "5 min ago" --no-pager' 2>/dev/null \
         | grep -E "SEGV|TypeError|NOT NULL|SensorDao::save error" | head -5 || true)"
