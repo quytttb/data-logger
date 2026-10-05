@@ -69,34 +69,37 @@ SSH_OPTS=(-o StrictHostKeyChecking=no -o ConnectTimeout=10 -o BatchMode=no)
 # shellcheck disable=SC1091
 source "${ROOT}/packaging/linux/pi-common.sh"
 
-# Trả về "status/conclusion/runId" của Dev Build cho SHA, hoặc chuỗi rỗng.
+# Trả về "status/conclusion runId" của Dev Build cho SHA (dòng đầu),
+# hoặc chuỗi rỗng. LƯU Ý: không gọi die trong hàm này vì nó chạy trong $(...).
 find_run() {
     gh run list --workflow="$WORKFLOW" --branch=main --limit=20 \
         --json headSha,status,conclusion,databaseId \
-        --jq ".[] | select(.headSha | startswith(\"${SHA}\")) | \"\(.status)/\(.conclusion) \(.databaseId)\"" 2>/dev/null | head -1
+        --jq "[.[] | select(.headSha | startswith(\"${SHA}\")) | \"\(.status)/\(.conclusion) \(.databaseId)\"] | .[0] // empty" 2>/dev/null
 }
 
-# 1 lần check nhanh: in trạng thái, trả về runId nếu completed/success.
+# 1 lần check nhanh, kết quả vào CHECK_STATUS / CHECK_RUNID:
+# "NOTFOUND" (chưa có run), "GHERROR" (lỗi gh), hoặc "status/conclusion" + runId.
 quick_check() {
-    local line run_status run_id
-    line="$(find_run)"
-    [[ -n "$line" ]] || { echo "NOTFOUND"; return 0; }
-    run_status="${line%% *}"
-    run_id="${line##* }"
-    echo "$run_status $run_id"
+    local line
+    if ! line="$(find_run)"; then
+        CHECK_STATUS="GHERROR"; CHECK_RUNID=""
+    elif [[ -z "$line" ]]; then
+        CHECK_STATUS="NOTFOUND"; CHECK_RUNID=""
+    else
+        CHECK_STATUS="${line%% *}"; CHECK_RUNID="${line##* }"
+    fi
 }
 
+# Đợi build tối đa WAIT_LIMIT. Gọi trực tiếp (KHÔNG trong $(...)).
+# Trả về: 0=success (RUN_ID đã set), 1=hết giờ, 2=không thấy run / lỗi gh, 3=build fail.
 wait_for_build() {
-    local deadline=$((SECONDS + WAIT_LIMIT)) res status run_id
+    local deadline=$((SECONDS + WAIT_LIMIT))
     while (( SECONDS < deadline )); do
-        res="$(quick_check)"
-        if [[ "$res" == "NOTFOUND" ]]; then
-            die "không tìm thấy Dev Build cho $SHORT_SHA (CI chưa chạy?)."
-        fi
-        status="${res% *}"; run_id="${res#* }"
-        case "$status" in
-            completed/success) echo "$run_id"; return 0 ;;
-            completed/*) die "Dev Build $SHORT_SHA thất bại ($status) — không cài." ;;
+        quick_check
+        case "$CHECK_STATUS" in
+            NOTFOUND|GHERROR) WAIT_MSG="$CHECK_STATUS"; return 2 ;;
+            completed/success) RUN_ID="$CHECK_RUNID"; return 0 ;;
+            completed/*) WAIT_MSG="$CHECK_STATUS"; return 3 ;;
         esac
         sleep "$POLL_INTERVAL"
     done
@@ -105,30 +108,39 @@ wait_for_build() {
 
 # Đợi tối đa 15 phút; hết giờ thì hỏi user check thủ công từng lần.
 RUN_ID=""
-if res_line="$(quick_check)" && [[ "$res_line" != "NOTFOUND" ]] \
-    && [[ "${res_line% *}" == "completed/success" ]]; then
-    RUN_ID="${res_line#* }"
+quick_check
+if [[ "$CHECK_STATUS" == "completed/success" ]]; then
+    RUN_ID="$CHECK_RUNID"
+elif [[ "$CHECK_STATUS" == "NOTFOUND" ]]; then
+    die "không tìm thấy Dev Build cho $SHORT_SHA (CI chưa chạy?)."
+elif [[ "$CHECK_STATUS" == "GHERROR" ]]; then
+    die "không lấy được trạng thái CI (lỗi gh) — thử lại sau."
 else
-    info "Dev Build chưa xong — chờ tối đa 15 phút (poll ${POLL_INTERVAL}s)..."
-    if RUN_ID="$(wait_for_build)"; then
-        : # xong trong 15 phút
-    else
-        # Hết 15 phút: check thủ công lặp lại theo ý user.
-        while true; do
-            echo ""
-            echo "Hết 15 phút mà Dev Build $SHORT_SHA chưa xong (build mới không cache có thể >1 giờ)."
-            read -rp "Nhấn Enter để check nhanh 1 lần, q để thoát: " ans
-            [[ "${ans,,}" == "q" ]] && die "dừng theo yêu cầu user."
-            res_line="$(quick_check)"
-            [[ "$res_line" == "NOTFOUND" ]] && die "không tìm thấy Dev Build cho $SHORT_SHA."
-            status="${res_line% *}"; RUN_ID="${res_line#* }"
-            case "$status" in
-                completed/success) break ;;
-                completed/*) die "Dev Build $SHORT_SHA thất bại ($status) — không cài." ;;
-                *) echo "Trạng thái hiện tại: $status — chưa xong." ;;
-            esac
-        done
-    fi
+    info "Dev Build chưa xong ($CHECK_STATUS) — chờ tối đa 15 phút (poll ${POLL_INTERVAL}s)..."
+    wait_for_build
+    case $? in
+        0) : ;; # xong trong 15 phút
+        2) die "không lấy được Dev Build cho $SHORT_SHA ($WAIT_MSG)." ;;
+        3) die "Dev Build $SHORT_SHA thất bại ($WAIT_MSG) — không cài." ;;
+        *)
+            # Hết 15 phút: check thủ công lặp lại theo ý user.
+            [[ -t 0 ]] || die "hết 15 phút mà build chưa xong — chạy lại script sau (build xong sẽ cài ngay)."
+            while true; do
+                echo ""
+                echo "Hết 15 phút mà Dev Build $SHORT_SHA chưa xong (build mới không cache có thể >1 giờ)."
+                read -rp "Nhấn Enter để check nhanh 1 lần, q để thoát: " ans
+                [[ "${ans,,}" == "q" ]] && die "dừng theo yêu cầu user."
+                quick_check
+                case "$CHECK_STATUS" in
+                    completed/success) RUN_ID="$CHECK_RUNID"; break ;;
+                    completed/*) die "Dev Build $SHORT_SHA thất bại ($CHECK_STATUS) — không cài." ;;
+                    NOTFOUND) die "không tìm thấy Dev Build cho $SHORT_SHA." ;;
+                    GHERROR) echo "Lỗi gh thoáng qua — Enter để check lại." ;;
+                    *) echo "Trạng thái hiện tại: $CHECK_STATUS — chưa xong." ;;
+                esac
+            done
+            ;;
+    esac
 fi
 info "Dev Build success, run $RUN_ID."
 
