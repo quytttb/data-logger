@@ -12,7 +12,6 @@ cd "${ROOT}"
 
 PI_HOST="${PI_HOST:-100.113.72.90}"
 PI_USER="${PI_USER:-pi}"
-WORKFLOW="dev-build.yml"
 POLL_INTERVAL=30
 WAIT_LIMIT=900   # 15 phút: build cache ~3-4 phút; build mới không cache >1 giờ
 VERIFY_TIMEOUT=60
@@ -72,9 +71,9 @@ source "${ROOT}/packaging/linux/pi-common.sh"
 # Trả về "status/conclusion runId" của Dev Build cho SHA (dòng đầu),
 # hoặc chuỗi rỗng. LƯU Ý: không gọi die trong hàm này vì nó chạy trong $(...).
 find_run() {
-    gh run list --workflow="$WORKFLOW" --branch=main --limit=20 \
-        --json headSha,status,conclusion,databaseId \
-        --jq "[.[] | select(.headSha | startswith(\"${SHA}\")) | \"\(.status)/\(.conclusion) \(.databaseId)\"] | .[0] // empty" 2>/dev/null
+    gh run list --limit=30 \
+        --json name,headBranch,headSha,status,conclusion,databaseId \
+        --jq "[.[] | select(.name == \"Dev Build\" and .headBranch == \"main\" and (.headSha | startswith(\"${SHA}\"))) | \"\(.status)/\(.conclusion) \(.databaseId)\"] | .[0] // empty" 2>/dev/null
 }
 
 # 1 lần check nhanh, kết quả vào CHECK_STATUS / CHECK_RUNID:
@@ -145,9 +144,9 @@ fi
 info "Dev Build success, run $RUN_ID."
 
 # Cảnh báo nếu CI đỏ (dù Dev Build xanh vẫn cài được nhưng nên biết).
-CI_STATUS="$(gh run list --workflow=ci.yml --branch=main --limit=20 \
-    --json headSha,status,conclusion \
-    --jq ".[] | select(.headSha | startswith(\"${SHA}\")) | \"\(.status)/\(.conclusion)\"" 2>/dev/null | head -1)"
+CI_STATUS="$(gh run list --limit=30 \
+    --json name,headBranch,headSha,status,conclusion \
+    --jq "[.[] | select(.name == \"CI\" and .headBranch == \"main\" and (.headSha | startswith(\"${SHA}\"))) | \"\(.status)/\(.conclusion)\"] | .[0] // empty" 2>/dev/null)"
 if [[ -n "$CI_STATUS" && "$CI_STATUS" != "completed/success" ]]; then
     echo "Cảnh báo: CI của $SHORT_SHA đang ở trạng thái $CI_STATUS."
     if (( ! ASSUME_YES )); then
