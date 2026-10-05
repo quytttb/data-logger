@@ -65,8 +65,9 @@ if ! git merge-base --is-ancestor "$SHA" origin/main 2>/dev/null; then
 fi
 
 SSH_OPTS=(-o StrictHostKeyChecking=no -o ConnectTimeout=10 -o BatchMode=no)
-pi_ssh() { sshpass -e ssh "${SSH_OPTS[@]}" "${PI_USER}@${PI_HOST}" "$@"; }
-pi_scp() { sshpass -e scp -o StrictHostKeyChecking=no -o ConnectTimeout=10 "$1" "${PI_USER}@${PI_HOST}:/tmp/"; }
+
+# shellcheck disable=SC1091
+source "${ROOT}/packaging/linux/pi-common.sh"
 
 # Trả về "status/conclusion/runId" của Dev Build cho SHA, hoặc chuỗi rỗng.
 find_run() {
@@ -156,42 +157,8 @@ if (( ! ASSUME_YES )); then
     [[ "${ans,,}" == "y" ]] || die "dừng theo yêu cầu user."
 fi
 
-info "Chép lên Pi..."
-pi_scp "$DEB" || die "scp thất bại — kiểm tra Pi có online và PI_PASSWORD đúng không."
-DEB_NAME="$(basename "$DEB")"
-
-info "Cài đặt (dpkg -i)..."
-MD5_BEFORE="$(pi_ssh 'md5sum /usr/bin/DataLogger' 2>/dev/null | cut -d' ' -f1 || true)"
-pi_ssh "echo '$PI_PASSWORD' | sudo -S dpkg -i /tmp/${DEB_NAME}" | tail -3
-MD5_AFTER="$(pi_ssh 'md5sum /usr/bin/DataLogger' | cut -d' ' -f1)"
-if [[ -n "$MD5_BEFORE" && "$MD5_BEFORE" == "$MD5_AFTER" ]]; then
-    die "md5 binary không đổi sau khi cài ($MD5_AFTER) — kiểm tra lại gói."
-fi
-info "Binary mới: $MD5_AFTER."
-
-# Verify full: service active + đợi Polling started + quét lỗi.
-info "Verify service..."
-ACTIVE="$(pi_ssh 'systemctl is-active datalogger.service')"
-[[ "$ACTIVE" == "active" ]] || die "service không active (đang: $ACTIVE)."
-deadline=$((SECONDS + VERIFY_TIMEOUT))
-POLLED=""
-while (( SECONDS < deadline )); do
-    if pi_ssh 'journalctl -u datalogger.service --since "5 min ago" --no-pager' \
-        2>/dev/null | grep -q "Polling started"; then
-        POLLED=1
-        break
-    fi
-    sleep 5
-done
-[[ -n "$POLLED" ]] || die "quá ${VERIFY_TIMEOUT}s chưa thấy 'Polling started' — kiểm tra log trên Pi."
-
-BADLOG="$(pi_ssh 'journalctl -u datalogger.service --since "5 min ago" --no-pager' 2>/dev/null \
-    | grep -E "SEGV|TypeError|NOT NULL|SensorDao::save error" | head -5 || true)"
-if [[ -n "$BADLOG" ]]; then
-    echo "Phát hiện lỗi sau update:"
-    echo "$BADLOG"
-    die "verify thất bại — xem log đầy đủ trên Pi."
-fi
+deploy_deb_to_pi "$DEB"
+verify_pi
 
 echo ""
 echo "Hoàn tất: ${SHORT_SHA} đã lên ${PI_HOST} và chạy ổn định."
