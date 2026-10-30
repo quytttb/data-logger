@@ -6,6 +6,9 @@ qt_add_library(data STATIC
     models/SensorData.h
     models/AnalogDigitalLink.h
     models/ReportLog.h
+    models/UserAccount.h
+    models/AuditLogEntry.h
+    models/CalibrationSession.h
     repositories/AppConfigDao.cpp
     repositories/AppConfigDao.h
     repositories/SensorDao.cpp
@@ -14,6 +17,12 @@ qt_add_library(data STATIC
     repositories/SensorDataDao.h
     repositories/ReportLogDao.cpp
     repositories/ReportLogDao.h
+    repositories/UserAccountDao.cpp
+    repositories/UserAccountDao.h
+    repositories/AuditLogDao.cpp
+    repositories/AuditLogDao.h
+    repositories/CalibrationDao.cpp
+    repositories/CalibrationDao.h
 )
 
 target_include_directories(data PUBLIC ${CMAKE_SOURCE_DIR}/src)

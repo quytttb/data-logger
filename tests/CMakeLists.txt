@@ -237,3 +237,37 @@ target_link_libraries(port_guard_test PRIVATE
 )
 add_test(NAME port_guard_test COMMAND port_guard_test)
 
+
+# QTest: KDF PBKDF2-HMAC-SHA256 (Slice 0 RBAC) — vector chuẩn + định dạng lưu.
+add_executable(password_hasher_test password_hasher_test.cpp)
+target_include_directories(password_hasher_test PRIVATE ${CMAKE_SOURCE_DIR}/src)
+target_link_libraries(password_hasher_test PRIVATE
+    Qt6::Core
+    Qt6::Test
+    utils
+)
+add_test(NAME password_hasher_test COMMAND password_hasher_test)
+
+# QTest: schema version + user_account/audit_log DAO (Slice 0).
+add_executable(auth_data_test auth_data_test.cpp)
+target_include_directories(auth_data_test PRIVATE ${CMAKE_SOURCE_DIR}/src)
+target_link_libraries(auth_data_test PRIVATE
+    Qt6::Core
+    Qt6::Sql
+    Qt6::Test
+    data
+    utils
+)
+add_test(NAME auth_data_test COMMAND auth_data_test)
+
+# QTest: calibration_session/point DAO + transaction chung + cascade.
+add_executable(calibration_dao_test calibration_dao_test.cpp)
+target_include_directories(calibration_dao_test PRIVATE ${CMAKE_SOURCE_DIR}/src)
+target_link_libraries(calibration_dao_test PRIVATE
+    Qt6::Core
+    Qt6::Sql
+    Qt6::Test
+    data
+    utils
+)
+add_test(NAME calibration_dao_test COMMAND calibration_dao_test)

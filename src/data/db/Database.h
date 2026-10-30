@@ -8,9 +8,15 @@
 // Database initialisation and connection management (SQLite WAL).
 class Database {
 public:
+    // Phiên bản schema hiện tại, lưu trong PRAGMA user_version. Khi thêm bước
+    // migration mới: tăng số này VÀ thêm bước tương ứng vào migrate() trước
+    // khi stamp — nếu không DB cũ sẽ được đánh dấu là đã nâng cấp.
+    static constexpr int kSchemaVersion = 1;
+
     // Initialise the engine, create all tables and run in-place migrations.
     // Must be called once before any DAO access.
     static bool init(const QString &dbPath);
+
 
     // Open a new connection on the calling thread (Qt requires one QSqlDatabase
     // per thread). Reuses a thread-local named connection. Log đầy đủ nếu
@@ -26,6 +32,8 @@ public:
 
 private:
     static bool createTables(QSqlDatabase &db);
+    // Đọc/ghi PRAGMA user_version; từ chối DB mới hơn app (downgrade).
+    static bool ensureSchemaVersion(QSqlDatabase &db);
     // Trả false nếu required pragma (FK, busy_timeout, WAL) không áp dụng được.
     static bool applyPragmas(QSqlDatabase &db);
     static bool addColumnIfMissing(QSqlDatabase &db, const QString &table,

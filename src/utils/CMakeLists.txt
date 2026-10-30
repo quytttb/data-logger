@@ -19,6 +19,10 @@ qt_add_library(utils STATIC
     crypto/Crypto.cpp
     crypto/Crypto.h
 
+    # security — password KDF (PBKDF2-HMAC-SHA256)
+    security/PasswordHasher.cpp
+    security/PasswordHasher.h
+
     # modbus — register codec and sensor formula helpers
     modbus/Formula.cpp
     modbus/Formula.h

@@ -27,6 +27,7 @@ bool Database::init(const QString &dbPath) {
 
     if (!createTables(db)) return false;
     if (!migrate(db))      return false;
+    if (!ensureSchemaVersion(db)) return false;
 
     return true;
 }
@@ -246,12 +247,83 @@ bool Database::createTables(QSqlDatabase &db) {
             bound_at TEXT NOT NULL DEFAULT (datetime('now'))
         ))",
 
+        // RBAC: tài khoản kiosk. password_hash là PBKDF2 (không bao giờ plaintext).
+        // username UNIQUE COLLATE NOCASE để "Admin" và "admin" không trùng.
+        R"(CREATE TABLE IF NOT EXISTS user_account (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL COLLATE NOCASE UNIQUE,
+            display_name TEXT NOT NULL DEFAULT '',
+            role TEXT NOT NULL CHECK (role IN ('viewer','operator','admin')),
+            password_hash TEXT NOT NULL,
+            active INTEGER NOT NULL DEFAULT 1,
+            must_change_password INTEGER NOT NULL DEFAULT 0,
+            failed_attempts INTEGER NOT NULL DEFAULT 0,
+            locked_until TEXT DEFAULT NULL,
+            last_login_at TEXT DEFAULT NULL,
+            created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+            updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+        ))",
+
+        // Audit: giữ snapshot username/display_name để log còn đọc được khi
+        // tài khoản bị đổi tên hoặc xóa. actor_user_id ON DELETE SET NULL.
+        R"(CREATE TABLE IF NOT EXISTS audit_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            occurred_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+            actor_kind TEXT NOT NULL DEFAULT 'system'
+                CHECK (actor_kind IN ('local','system','remote_device')),
+            actor_user_id INTEGER DEFAULT NULL,
+            actor_username TEXT NOT NULL DEFAULT '',
+            actor_display_name TEXT NOT NULL DEFAULT '',
+            action TEXT NOT NULL,
+            entity TEXT NOT NULL DEFAULT '',
+            entity_id TEXT NOT NULL DEFAULT '',
+            result TEXT NOT NULL DEFAULT 'ok'
+                CHECK (result IN ('ok','denied','failed')),
+            detail_json TEXT NOT NULL DEFAULT '{}',
+            FOREIGN KEY (actor_user_id) REFERENCES user_account(id) ON DELETE SET NULL
+        ))",
+
+        // Hiệu chuẩn: mỗi lần áp dụng là một phiên (giữ lịch sử), điểm lưu riêng.
+        // sensor.coefficient vẫn là nguồn runtime; bảng này không thay thế nó.
+        R"(CREATE TABLE IF NOT EXISTS calibration_session (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sensor_id INTEGER NOT NULL,
+            method TEXT NOT NULL DEFAULT 'linear',
+            point_count INTEGER NOT NULL,
+            a REAL NOT NULL,
+            b REAL NOT NULL,
+            r2 REAL DEFAULT NULL,
+            max_residual REAL DEFAULT NULL,
+            note TEXT NOT NULL DEFAULT '',
+            created_by INTEGER DEFAULT NULL,
+            created_by_username TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+            FOREIGN KEY (sensor_id) REFERENCES sensor(id) ON DELETE CASCADE,
+            FOREIGN KEY (created_by) REFERENCES user_account(id) ON DELETE SET NULL
+        ))",
+
+        R"(CREATE TABLE IF NOT EXISTS calibration_point (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id INTEGER NOT NULL,
+            raw_value REAL NOT NULL,
+            reference_value REAL NOT NULL,
+            note TEXT NOT NULL DEFAULT '',
+            FOREIGN KEY (session_id) REFERENCES calibration_session(id) ON DELETE CASCADE
+        ))",
+
         // Indices for frequent queries
         "CREATE INDEX IF NOT EXISTS idx_sensor_data_sensor_id ON sensor_data(sensor_id)",
         "CREATE INDEX IF NOT EXISTS idx_sensor_data_recorded_at ON sensor_data(recorded_at)",
         // M-3: composite index for the hot range query
         // "WHERE sensor_id=? AND recorded_at BETWEEN ? AND ?".
         "CREATE INDEX IF NOT EXISTS idx_sensor_data_sensor_recorded ON sensor_data(sensor_id, recorded_at)",
+        // Audit: lọc theo thời gian (màn tra cứu/retention) và theo actor/hành động.
+        "CREATE INDEX IF NOT EXISTS idx_audit_log_occurred_at ON audit_log(occurred_at)",
+        "CREATE INDEX IF NOT EXISTS idx_audit_log_action ON audit_log(action)",
+        "CREATE INDEX IF NOT EXISTS idx_audit_log_actor ON audit_log(actor_user_id)",
+        // Hiệu chuẩn: lấy lịch sử mới nhất của một cảm biến + điểm theo phiên.
+        "CREATE INDEX IF NOT EXISTS idx_calibration_session_sensor ON calibration_session(sensor_id, id)",
+        "CREATE INDEX IF NOT EXISTS idx_calibration_point_session ON calibration_point(session_id)",
     };
 
     for (const QString &stmt : stmts) {
@@ -385,6 +457,36 @@ bool Database::migrate(QSqlDatabase &db) {
     if (!dropColumnIfExists(db, "sensor", "poll_interval"))
         return false;
 
+    return true;
+}
+
+bool Database::ensureSchemaVersion(QSqlDatabase &db) {
+    QSqlQuery read(db);
+    if (!read.exec(QStringLiteral("PRAGMA user_version")) || !read.next()) {
+        qCritical() << "Database::ensureSchemaVersion: không đọc được user_version:"
+                    << read.lastError().text();
+        return false;
+    }
+    const int version = read.value(0).toInt();
+
+    if (version > kSchemaVersion) {
+        qCritical() << "Database::ensureSchemaVersion: DB schema" << version
+                    << "mới hơn app" << kSchemaVersion
+                    << "— từ chối chạy để tránh hỏng dữ liệu (xóa DB nếu đang thử nghiệm)";
+        return false;
+    }
+    if (version == kSchemaVersion)
+        return true;
+
+    // createTables() + migrate() đã chạy trước đó, nên schema đã ở bản hiện tại.
+    // Khi thêm migration mới: viết bước nâng cấp trong migrate() TRƯỚC khi stamp.
+    QSqlQuery stamp(db);
+    if (!stamp.exec(QStringLiteral("PRAGMA user_version = %1").arg(kSchemaVersion))) {
+        qCritical() << "Database::ensureSchemaVersion: không ghi được user_version:"
+                    << stamp.lastError().text();
+        return false;
+    }
+    qInfo() << "Database: schema version" << version << "->" << kSchemaVersion;
     return true;
 }
 
