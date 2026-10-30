@@ -45,6 +45,7 @@ QHash<int, QByteArray> MonitorTableModel::roleNames() const
         {IsAlarmRole,      "isAlarm"},
         {AlarmTypeRole,    "alarmType"},
         {DiStatesRole,     "diStates"},
+        {SensorIdRole,     "sensorId"},
     };
 }
 
@@ -61,6 +62,7 @@ QVariant MonitorTableModel::data(const QModelIndex &index, int role) const
     case IsAlarmRole:     return r.value(QStringLiteral("isAlarm"));
     case AlarmTypeRole:   return r.value(QStringLiteral("alarmType"));
     case DiStatesRole:    return r.value(QStringLiteral("diStates"));
+    case SensorIdRole:    return r.value(QStringLiteral("sensorId"));
     default:              return {};
     }
 }
@@ -103,6 +105,7 @@ QVariantMap MonitorTableModel::readRow(int srcRow) const
     const int rIsAlarm     = byName.value("isAlarm", -1);
     const int rAlarmType   = byName.value("alarmType", -1);
     const int rDiStates    = byName.value("diStates", -1);
+    const int rSensorId    = byName.value("sensorId", -1);
     const QModelIndex idx = m_source->index(srcRow, 0);
     const QString sensorType = (rSensorType >= 0)
         ? m_source->data(idx, rSensorType).toString() : QString();
@@ -119,6 +122,8 @@ QVariantMap MonitorTableModel::readRow(int srcRow) const
                rAlarmType >= 0 ? m_source->data(idx, rAlarmType) : QVariant());
     row.insert(QStringLiteral("diStates"),
                rDiStates >= 0 ? m_source->data(idx, rDiStates) : QVariantList());
+    row.insert(QStringLiteral("sensorId"),
+               rSensorId >= 0 ? m_source->data(idx, rSensorId) : QVariant(0));
     return row;
 }
 

@@ -54,5 +54,7 @@ bool appendStandalone(const AuditLogEntry &entry);
 QJsonObject changes(std::initializer_list<Change> items);
 // {"<field>": ...} cho sự kiện tạo/xóa hoặc ngữ cảnh kèm theo.
 QJsonObject snapshot(std::initializer_list<std::pair<QString, QVariant>> fields);
+// JSON tùy ý có thể chứa bí mật: chỉ cho phép hệ số số a/b vào audit.
+QString safeCoefficient(const QString &json);
 
 } // namespace AuditTrail

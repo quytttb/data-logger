@@ -237,6 +237,10 @@ ApplicationWindow {
         function onMessageSent(t, m) { root.notifyMessage(t, m) }
     }
     Connections {
+        target: CalibrationController
+        function onMessageSent(t, m) { root.notifyMessage(t, m) }
+    }
+    Connections {
         target: TesterController
         function onMessageSent(t, m) { root.notifyMessage(t, m) }
     }

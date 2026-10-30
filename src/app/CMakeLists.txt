@@ -30,6 +30,7 @@ qt_add_qml_module(app
         qml/OnScreenKeyboard.qml
         qml/MainTabContent.qml
         qml/views/MonitorView.qml
+        qml/views/CalibrationDialog.qml
         qml/views/HistoryView.qml
         qml/views/TrendingView.qml
         qml/views/SettingsView.qml

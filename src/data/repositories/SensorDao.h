@@ -11,6 +11,7 @@ public:
     QList<Sensor> loadAll(bool activeOnly = false);
     Sensor loadById(int id);
     bool save(Sensor &sensor);   // sets sensor.id on insert
+    // Caller bọc transaction để xóa các bản ghi phụ thuộc và audit nguyên tử.
     bool remove(int id);
 
     QList<AnalogDigitalLink> loadAllLinks();

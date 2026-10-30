@@ -31,6 +31,7 @@ public:
         IsAlarmRole,
         AlarmTypeRole,
         DiStatesRole,
+        SensorIdRole,
     };
 
     explicit MonitorTableModel(QObject *parent = nullptr);

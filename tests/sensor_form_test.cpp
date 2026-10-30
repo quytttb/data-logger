@@ -1,4 +1,5 @@
 #include "core/SensorListModel.h"
+#include "utils/calc/CalibrationMath.h"
 
 #include <QtTest>
 #include <QCoreApplication>
@@ -55,32 +56,25 @@ private slots:
     void coefficientModes()
     {
         QString error;
-        QCOMPARE(SensorListModel::buildCoefficientJson(0, {}, {}, {}, {}, {}, &error),
+        QCOMPARE(SensorListModel::buildCoefficientJson(0, {}, {}, {}, &error),
                  QStringLiteral("{}"));
 
         const QString linear = SensorListModel::buildCoefficientJson(
-            1, {}, QStringLiteral("2"), QStringLiteral("0.5"), {}, {}, &error);
+            1, {}, QStringLiteral("2"), QStringLiteral("0.5"), &error);
         QVERIFY(error.isEmpty());
         QCOMPARE(linear, QStringLiteral("{\"a\":2,\"b\":0.5}"));
 
         const QString bad = SensorListModel::buildCoefficientJson(
-            1, {}, QStringLiteral("abc"), {}, {}, {}, &error);
+            1, {}, QStringLiteral("abc"), {}, &error);
         QVERIFY(bad.isEmpty());
         QVERIFY(!error.isEmpty());
 
-        error.clear();
-        const QString scaled = SensorListModel::buildCoefficientJson(
-            2, {}, QStringLiteral("4000"), QStringLiteral("20000"),
-            QStringLiteral("4"), QStringLiteral("20"), &error);
-        QVERIFY(error.isEmpty());
-        QVERIFY(scaled.startsWith(QStringLiteral("{\"a\":")));
-
-        const QString legacy = SensorListModel::buildCoefficientJson(
-            3, QStringLiteral("{\"k\":1}"), {}, {}, {}, {}, &error);
-        QCOMPARE(legacy, QStringLiteral("{\"k\":1}"));
+        const QString advanced = SensorListModel::buildCoefficientJson(
+            2, QStringLiteral("{\"k\":1}"), {}, {}, &error);
+        QCOMPARE(advanced, QStringLiteral("{\"k\":1}"));
 
         const QString badJson = SensorListModel::buildCoefficientJson(
-            3, QStringLiteral("{nope"), {}, {}, {}, {}, &error);
+            2, QStringLiteral("{nope"), {}, {}, &error);
         QVERIFY(badJson.isEmpty());
         QVERIFY(!error.isEmpty());
     }
@@ -94,6 +88,38 @@ private slots:
 
         const QVariantMap blank = SensorListModel::coefficientUiState(QStringLiteral("{}"));
         QCOMPARE(blank.value(QStringLiteral("mode")).toInt(), 0);
+
+        // JSON legacy/không hiểu rõ giữ nguyên ở Advanced, không mất dữ liệu.
+        const QVariantMap legacy = SensorListModel::coefficientUiState(
+            QStringLiteral("{\"coeffs\":[1,2]}"));
+        QCOMPARE(legacy.value(QStringLiteral("mode")).toInt(), 2);
+        QCOMPARE(legacy.value(QStringLiteral("legacyJson")).toString(),
+                 QStringLiteral("{\"coeffs\":[1,2]}"));
+
+        const QVariantMap broken = SensorListModel::coefficientUiState(QStringLiteral("{nope"));
+        QCOMPARE(broken.value(QStringLiteral("mode")).toInt(), 2);
+        QCOMPARE(broken.value(QStringLiteral("legacyJson")).toString(),
+                 QStringLiteral("{nope"));
+
+        const QString extended = QStringLiteral("{\"a\":2,\"b\":3,\"metadata\":\"keep\"}");
+        const QVariantMap extra = SensorListModel::coefficientUiState(extended);
+        QCOMPARE(extra.value(QStringLiteral("mode")).toInt(), 2);
+        QCOMPARE(extra.value(QStringLiteral("legacyJson")).toString(), extended);
+        QCOMPARE(SensorListModel::coefficientUiState(QStringLiteral("{\"a\":2}"))
+                     .value(QStringLiteral("mode")).toInt(), 2);
+
+        const QString precise = QStringLiteral("{\"a\":0.12345678901234566,\"b\":-9876.543210987654}");
+        const QVariantMap uiPrecise = SensorListModel::coefficientUiState(precise);
+        QString error;
+        const QString saved = SensorListModel::buildCoefficientJson(
+            uiPrecise.value(QStringLiteral("mode")).toInt(), {},
+            uiPrecise.value(QStringLiteral("linearA")).toString(),
+            uiPrecise.value(QStringLiteral("linearB")).toString(), &error);
+        double beforeA, beforeB, afterA, afterB;
+        QVERIFY(CalibrationMath::parseCoefficient(precise, &beforeA, &beforeB));
+        QVERIFY(CalibrationMath::parseCoefficient(saved, &afterA, &afterB));
+        QCOMPARE(beforeA, afterA);
+        QCOMPARE(beforeB, afterB);
     }
 
     void nullStringsCoerced()

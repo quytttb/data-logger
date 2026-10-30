@@ -42,10 +42,6 @@ Item {
     property alias scalingMode: scalingTab.dScalingMode
     property alias linearA: scalingTab.dLinearA
     property alias linearB: scalingTab.dLinearB
-    property alias rawMin: scalingTab.dRawMin
-    property alias rawMax: scalingTab.dRawMax
-    property alias scaleMin: scalingTab.dScaleMin
-    property alias scaleMax: scalingTab.dScaleMax
     property alias coeffJson: scalingTab.dCoeffJson
     property alias minThreshold: scalingTab.dMinThreshold
     property alias maxThreshold: scalingTab.dMaxThreshold
@@ -83,7 +79,6 @@ Item {
         basicTab.dRegType.currentIndex = 0; basicTab.dDataType.currentIndex = 0; basicTab.dDataFmt.currentIndex = 0
         scalingTab.dScalingMode.currentIndex = 0
         scalingTab.dLinearA.text = "1"; scalingTab.dLinearB.text = "0"
-        scalingTab.dRawMin.text = "4000"; scalingTab.dRawMax.text = "20000"; scalingTab.dScaleMin.text = "4"; scalingTab.dScaleMax.text = "20"
         scalingTab.dCoeffJson.text = "{}"
         basicTab.dReportIdx.value = 0; basicTab.dActive.checked = true
         scalingTab.dMinThreshold.text = ""; scalingTab.dMaxThreshold.text = ""
@@ -106,10 +101,6 @@ Item {
         scalingTab.dScalingMode.currentIndex = Math.min(uiState.mode, scalingTab.dScalingMode.count - 1)
         scalingTab.dLinearA.text = uiState.linearA !== undefined ? String(uiState.linearA) : "1"
         scalingTab.dLinearB.text = uiState.linearB !== undefined ? String(uiState.linearB) : "0"
-        scalingTab.dRawMin.text = uiState.rawMin !== undefined ? String(uiState.rawMin) : "4000"
-        scalingTab.dRawMax.text = uiState.rawMax !== undefined ? String(uiState.rawMax) : "20000"
-        scalingTab.dScaleMin.text = uiState.scaleMin !== undefined ? String(uiState.scaleMin) : "4"
-        scalingTab.dScaleMax.text = uiState.scaleMax !== undefined ? String(uiState.scaleMax) : "20"
         scalingTab.dCoeffJson.text = uiState.legacyJson !== undefined ? String(uiState.legacyJson) : "{}"
 
         basicTab.dReportIdx.value = s.reportIndex; basicTab.dActive.checked = s.active
@@ -139,10 +130,6 @@ Item {
             scalingModeIndex: isAnalog ? scalingTab.dScalingMode.currentIndex : 0,
             linearA: scalingTab.dLinearA.text,
             linearB: scalingTab.dLinearB.text,
-            rawMin: scalingTab.dRawMin.text,
-            rawMax: scalingTab.dRawMax.text,
-            scaleMin: scalingTab.dScaleMin.text,
-            scaleMax: scalingTab.dScaleMax.text,
             coeffJson: scalingTab.dCoeffJson.text,
             reportIndex: isAnalog ? basicTab.dReportIdx.value : 0,
             active: basicTab.dActive.checked,

@@ -11,6 +11,10 @@ import LoggerKit.Components
 Rectangle {
     id: monitorRoot
     color: "transparent"
+    onVisibleChanged: {
+        if (!visible)
+            calibrationDialog.closePanel()
+    }
 
     // ── Local readability scale (kiosk 7" 1024×600) ──
     // Cố ý không sửa token AppTypography trong kit (submodule dùng chung
@@ -81,6 +85,7 @@ Rectangle {
                 required property string alarmType
                 required property string sensorType
                 required property string displayName
+                required property int    sensorId
                 required property var    diStates  // QVariantList of {label, color}
 
                 readonly property bool isAnalog: card.sensorType === "ANALOG"
@@ -255,6 +260,17 @@ Rectangle {
 
                             Item { Layout.fillWidth: true }
 
+                            // Hiệu chuẩn đa điểm: chỉ operator/admin, và chỉ analog.
+                            AppButton {
+                                visible: card.isAnalog && AuthService.canCalibrate
+                                text: qsTr("Calibrate")
+                                kind: AppButton.Neutral
+                                font.pixelSize: 16
+                                onClicked: calibrationDialog.open(card.sensorId,
+                                                                  card.displayName,
+                                                                  card.unit)
+                            }
+
                             // MAX/MIN alarm badge — màu khớp dạng List: nền error trong suốt + text error
                             Rectangle {
                                 visible: card.isAlarm && card.isAnalog
@@ -309,6 +325,7 @@ Rectangle {
                 required property string value
                 required property string unit
                 required property string sensorType
+                required property int sensorId
                 required property bool isAlarm
                 required property string alarmType
                 required property var diStates
@@ -358,7 +375,8 @@ Rectangle {
                         }
                     }
                     Label {
-                        width: parent.width - (monCell.isAnalog ? 0 : 48) - 24
+                        width: Math.max(0, parent.width - (monCell.isAnalog ? 0 : 48)
+                                        - (monCell.isAnalog && AuthService.canCalibrate ? 56 : 0) - 24)
                         anchors.verticalCenter: parent.verticalCenter
                         text: monCell.displayName
                         color: AppColors.primaryText
@@ -366,6 +384,17 @@ Rectangle {
                         font.pixelSize: monitorRoot.fsName
                         font.bold: true
                         elide: Text.ElideRight
+                    }
+                    AppButton {
+                        visible: monCell.isAnalog && AuthService.canCalibrate
+                        iconName: "pencil"
+                        iconOnly: true
+                        tooltipText: qsTr("Calibrate")
+                        Accessible.name: qsTr("Calibrate %1").arg(monCell.displayName)
+                        anchors.verticalCenter: parent.verticalCenter
+                        onClicked: calibrationDialog.open(monCell.sensorId,
+                                                          monCell.displayName,
+                                                          monCell.unit)
                     }
                 }
 
@@ -454,5 +483,10 @@ Rectangle {
             message: "No active sensors.\nOpen Settings to add sensors, then press Start monitoring."
             iconName: "chip"
         }
+    }
+
+    // Overlay hiệu chuẩn 2..N điểm (operator/admin) — mở từ nút trên thẻ analog.
+    CalibrationDialog {
+        id: calibrationDialog
     }
 }

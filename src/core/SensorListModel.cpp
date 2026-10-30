@@ -6,6 +6,7 @@
 #include "data/models/AnalogDigitalLink.h"
 #include "tt10/SensorSymbols.h"
 #include "utils/modbus/ModbusCodec.h"
+#include "utils/calc/CalibrationMath.h"
 #include <cmath>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -217,7 +218,7 @@ bool SensorListModel::commitSensorWrite(
         if (began) {
             ok = op(dao, cfgDao, payload);
             if (ok)
-                cfgDao.bumpRevision();
+                ok = cfgDao.bumpRevision() >= 0;
             if (ok) {
                 AuditLogEntry entry = AuditTrail::entry(
                     AuditTrail::localActor(), action, QStringLiteral("sensor"),
@@ -266,7 +267,7 @@ bool SensorListModel::addSensor(const QVariantMap &props) {
             {QStringLiteral("registerType"), s.registerType},
             {QStringLiteral("dataType"), s.dataType},
             {QStringLiteral("dataFormat"), s.dataFormat},
-            {QStringLiteral("coefficient"), s.coefficient},
+            {QStringLiteral("coefficient"), AuditTrail::safeCoefficient(s.coefficient)},
             {QStringLiteral("active"), s.active},
         });
         return true;
@@ -300,7 +301,8 @@ bool SensorListModel::updateSensor(int id, const QVariantMap &props) {
             {QStringLiteral("registerType"), existing.registerType, s.registerType},
             {QStringLiteral("dataType"), existing.dataType, s.dataType},
             {QStringLiteral("dataFormat"), existing.dataFormat, s.dataFormat},
-            {QStringLiteral("coefficient"), existing.coefficient, s.coefficient},
+            {QStringLiteral("coefficient"), AuditTrail::safeCoefficient(existing.coefficient),
+             AuditTrail::safeCoefficient(s.coefficient)},
             {QStringLiteral("minThreshold"), optionalDoubleToVariant(existing.minThreshold),
              optionalDoubleToVariant(s.minThreshold)},
             {QStringLiteral("maxThreshold"), optionalDoubleToVariant(existing.maxThreshold),
@@ -313,6 +315,8 @@ bool SensorListModel::updateSensor(int id, const QVariantMap &props) {
             {QStringLiteral("diType"), existing.diType, s.diType},
             {QStringLiteral("transmitEnabled"), existing.transmitEnabled, s.transmitEnabled},
         });
+        if (existing.coefficient != s.coefficient)
+            payload.detail.insert(QStringLiteral("coefficientChanged"), true);
         return true;
     });
 }
@@ -454,13 +458,8 @@ bool SensorListModel::saveSensorForm(const QVariantMap &form, bool isAddMode, in
     QString coeffError;
     const QString coeff = buildCoefficientJson(
         mode, form.value(QStringLiteral("coeffJson")).toString(),
-        mode == 1 ? form.value(QStringLiteral("linearA")).toString()
-                  : form.value(QStringLiteral("rawMin")).toString(),
-        mode == 1 ? form.value(QStringLiteral("linearB")).toString()
-                  : form.value(QStringLiteral("rawMax")).toString(),
-        form.value(QStringLiteral("scaleMin")).toString(),
-        form.value(QStringLiteral("scaleMax")).toString(),
-        &coeffError);
+        form.value(QStringLiteral("linearA")).toString(),
+        form.value(QStringLiteral("linearB")).toString(), &coeffError);
     if (coeff.isEmpty()) {
         emit messageSent(QStringLiteral("Validation error"),
                          coeffError.isEmpty() ? QStringLiteral("Invalid coefficient.")
@@ -476,33 +475,31 @@ bool SensorListModel::saveSensorForm(const QVariantMap &form, bool isAddMode, in
 
 QVariantMap SensorListModel::coefficientUiState(const QString &coeffJson) {
     QVariantMap blank {
-        {"mode", 0}, {"linearA", "1"}, {"linearB", "0"},
-        {"rawMin", "4000"}, {"rawMax", "20000"},
-        {"scaleMin", "4"}, {"scaleMax", "20"}, {"legacyJson", "{}"}
+        {"mode", 0}, {"linearA", "1"}, {"linearB", "0"}, {"legacyJson", "{}"}
     };
 
     QString raw = coeffJson.trimmed().isEmpty() ? "{}" : coeffJson.trimmed();
     QJsonParseError err;
     QJsonDocument doc = QJsonDocument::fromJson(raw.toUtf8(), &err);
     if (err.error != QJsonParseError::NoError || !doc.isObject()) {
-        blank["mode"] = 3; blank["legacyJson"] = raw; return blank;
+        blank["mode"] = 2; blank["legacyJson"] = raw; return blank;
     }
     QJsonObject obj = doc.object();
     if (obj.isEmpty()) return blank;
-    if (obj.contains("coeffs")) { blank["mode"] = 3; blank["legacyJson"] = raw; return blank; }
-    if (obj.contains("a")) {
-        double a = obj["a"].toDouble(1.0), b = obj["b"].toDouble(0.0);
-        if (!std::isfinite(a) || !std::isfinite(b)) { blank["mode"] = 3; blank["legacyJson"] = raw; return blank; }
-        return {{"mode", 1}, {"linearA", QString::number(a)}, {"linearB", QString::number(b)},
-                {"rawMin", "4000"}, {"rawMax", "20000"}, {"scaleMin", "4"}, {"scaleMax", "20"}, {"legacyJson", "{}"}};
+    // Chỉ chuyển sang form a/b khi JSON gồm đúng hai số. JSON thừa key,
+    // thiếu key hoặc legacy giữ nguyên ở Advanced khi mở/lưu form.
+    double a = 0.0, b = 0.0;
+    if (obj.size() == 2 && CalibrationMath::parseCoefficient(raw, &a, &b)) {
+        return {{"mode", 1}, {"linearA", QString::number(a, 'g', 17)},
+                {"linearB", QString::number(b, 'g', 17)},
+                {"legacyJson", "{}"}};
     }
-    blank["mode"] = 3; blank["legacyJson"] = raw; return blank;
+    blank["mode"] = 2; blank["legacyJson"] = raw; return blank;
 }
 
 QString SensorListModel::buildCoefficientJson(int mode, const QString &legacyJson,
-                                                   const QString &s0, const QString &s1,
-                                                   const QString &s2, const QString &s3,
-                                                   QString *error) {
+                                              const QString &linearA, const QString &linearB,
+                                              QString *error) {
     auto fail = [&](const QString &msg) {
         if (error)
             *error = msg;
@@ -518,25 +515,13 @@ QString SensorListModel::buildCoefficientJson(int mode, const QString &legacyJso
 
     if (mode == 0) return "{}";
     if (mode == 1) {
-        auto [a, ea] = parseDouble("Gain (a)", s0);
-        auto [b, eb] = parseDouble("Offset (b)", s1);
+        auto [a, ea] = parseDouble("Gain (a)", linearA);
+        auto [b, eb] = parseDouble("Offset (b)", linearB);
         if (!ea.isEmpty()) return fail(ea);
         if (!eb.isEmpty()) return fail(eb);
-        return QStringLiteral("{\"a\":%1,\"b\":%2}").arg(a).arg(b);
+        return CalibrationMath::coefficientJson(a, b);
     }
     if (mode == 2) {
-        auto [r0, e0] = parseDouble("Raw Min", s0);
-        auto [r1, e1] = parseDouble("Raw Max", s1);
-        auto [y0, e2] = parseDouble("Scale Min", s2);
-        auto [y1, e3] = parseDouble("Scale Max", s3);
-        for (const auto &e : {e0, e1, e2, e3})
-            if (!e.isEmpty()) return fail(e);
-        double denom = r1 - r0;
-        if (denom == 0) return fail("Raw Max must differ from Raw Min.");
-        double a = (y1 - y0) / denom, b = y0 - a * r0;
-        return QStringLiteral("{\"a\":%1,\"b\":%2}").arg(a).arg(b);
-    }
-    if (mode == 3) {
         QString t = legacyJson.trimmed().isEmpty() ? "{}" : legacyJson.trimmed();
         QJsonParseError err;
         QJsonDocument::fromJson(t.toUtf8(), &err);

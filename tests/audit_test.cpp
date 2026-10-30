@@ -160,6 +160,32 @@ private slots:
         QVERIFY(dao.loadAll().isEmpty());
     }
 
+    void advancedCoefficientIsNotCopiedToAudit()
+    {
+        UserAccount admin = makeUser(QStringLiteral("admin"), UserRole::Admin);
+        QVERIFY(insertUser(admin) > 0);
+        AuthService auth;
+        AuthService::setInstance(&auth);
+        QVERIFY(login(auth, QStringLiteral("admin"), QStringLiteral("test-password")));
+
+        SensorListModel model(nullptr);
+        QVariantMap props = analogSensorProps();
+        props[QStringLiteral("coefficient")] = QStringLiteral("{\"token\":\"secret-one\"}");
+        QVERIFY(model.addSensor(props));
+        const int id = model.sensorAt(0).value(QStringLiteral("sensorId")).toInt();
+        props[QStringLiteral("coefficient")] = QStringLiteral("{\"password\":\"secret-two\"}");
+        QVERIFY(model.updateSensor(id, props));
+
+        const auto creates = auditEntries(QStringLiteral("sensor.add"));
+        const auto updates = auditEntries(QStringLiteral("sensor.update"));
+        QCOMPARE(creates.size(), 1);
+        QCOMPARE(updates.size(), 1);
+        QVERIFY(!creates.first().detailJson.contains(QStringLiteral("secret-one")));
+        QVERIFY(!updates.first().detailJson.contains(QStringLiteral("secret-one")));
+        QVERIFY(!updates.first().detailJson.contains(QStringLiteral("secret-two")));
+        QVERIFY(updates.first().detailJson.contains(QStringLiteral("coefficientChanged")));
+    }
+
     void failedWriteLeavesNoAudit()
     {
         UserAccount admin = makeUser(QStringLiteral("admin"), UserRole::Admin);

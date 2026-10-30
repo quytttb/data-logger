@@ -14,6 +14,7 @@ public:
     bool save(const AppConfig &cfg);
 
     // Increment config_revision and return the new value.
+    // Trả revision mới, hoặc -1 khi ghi/đọc thất bại hay không có đúng một row.
     int bumpRevision();
 
     // Generate and persist a random REST API token.

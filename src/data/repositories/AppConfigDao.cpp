@@ -212,10 +212,17 @@ bool AppConfigDao::save(const AppConfig &c) {
 
 int AppConfigDao::bumpRevision() {
     QSqlQuery q(m_db);
-    q.exec("UPDATE app_config SET config_revision = config_revision + 1");
-    q.exec("SELECT config_revision FROM app_config LIMIT 1");
-    if (q.next()) return q.value(0).toInt();
-    return 1;
+    q.prepare(QStringLiteral("UPDATE app_config SET config_revision = config_revision + 1"));
+    if (!q.exec() || q.numRowsAffected() != 1) {
+        qWarning() << "AppConfigDao::bumpRevision update failed:" << q.lastError().text();
+        return -1;
+    }
+    q.prepare(QStringLiteral("SELECT config_revision FROM app_config LIMIT 1"));
+    if (!q.exec() || !q.next()) {
+        qWarning() << "AppConfigDao::bumpRevision read failed:" << q.lastError().text();
+        return -1;
+    }
+    return q.value(0).toInt();
 }
 
 QString AppConfigDao::generateAndSaveToken() {

@@ -38,6 +38,10 @@ qt_add_library(utils STATIC
     chart/Downsampler.cpp
     chart/Downsampler.h
 
+    # calibration — least-squares linear fit (pure, testable)
+    calc/CalibrationMath.cpp
+    calc/CalibrationMath.h
+
     # TT10 compliance helpers
     tt10/ReportNaming.cpp
     tt10/ReportNaming.h

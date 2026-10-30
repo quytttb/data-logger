@@ -11,6 +11,8 @@ qt_add_qml_module(datalogger_core
         AuditController.h
         AuditTrail.cpp
         AuditTrail.h
+        CalibrationController.cpp
+        CalibrationController.h
         AuthService.cpp
         AuthService.h
         SettingsController.cpp

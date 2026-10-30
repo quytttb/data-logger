@@ -84,4 +84,18 @@ QJsonObject snapshot(std::initializer_list<std::pair<QString, QVariant>> fields)
     return out;
 }
 
+QString safeCoefficient(const QString &json)
+{
+    const QJsonDocument doc = QJsonDocument::fromJson(json.toUtf8());
+    if (!doc.isObject())
+        return QStringLiteral("[advanced JSON omitted]");
+    const QJsonObject obj = doc.object();
+    for (auto it = obj.constBegin(); it != obj.constEnd(); ++it) {
+        if ((it.key() != QLatin1String("a") && it.key() != QLatin1String("b"))
+            || !it.value().isDouble())
+            return QStringLiteral("[advanced JSON omitted]");
+    }
+    return QString::fromUtf8(doc.toJson(QJsonDocument::Compact));
+}
+
 } // namespace AuditTrail

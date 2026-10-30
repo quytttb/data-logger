@@ -48,6 +48,8 @@ void MonitorTableModelTest::headersAndMirror()
              QString("DI1"));
     QCOMPARE(m.data(m.index(0, 0), MonitorTableModel::SensorTypeRole).toString(),
              QString("ANALOG"));
+    QCOMPARE(m.data(m.index(0, 0), MonitorTableModel::SensorIdRole).toInt(), 1);
+    QCOMPARE(m.data(m.index(1, 0), MonitorTableModel::SensorIdRole).toInt(), 2);
     QCOMPARE(m.data(m.index(1, 0), MonitorTableModel::SensorTypeRole).toString(),
              QString("DI"));
     // Chưa poll: value mặc định "---".

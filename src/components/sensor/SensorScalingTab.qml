@@ -7,6 +7,9 @@ import LoggerKit.Theme
 import LoggerKit.Components
 
 // TAB 1: Scaling & Alarms
+//
+// Hiệu chuẩn đa điểm nằm ở màn Monitor (nút Calibrate trên thẻ cảm biến) —
+// tab này chỉ giữ nhập hệ số thủ công (a, b) cho admin và lối JSON nâng cao.
 ElevatedPane {
     id: root
     padding: 20
@@ -19,10 +22,6 @@ ElevatedPane {
     property alias dScalingMode: dScalingMode
     property alias dLinearA: dLinearA
     property alias dLinearB: dLinearB
-    property alias dRawMin: dRawMin
-    property alias dRawMax: dRawMax
-    property alias dScaleMin: dScaleMin
-    property alias dScaleMax: dScaleMax
     property alias dCoeffJson: dCoeffJson
 
     ColumnLayout {
@@ -50,34 +49,25 @@ ElevatedPane {
         Text { text: qsTr("Scaling mode:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize }
         ComboBox {
             id: dScalingMode; Layout.fillWidth: true; Layout.maximumWidth: 400
-            model: ["No scaling (raw value)", "Linear (y = ax + b)", "Two-point mapping", "Advanced (JSON)"]
+            model: ["No scaling (raw value)", "Linear (y = a·x + b)", "Advanced (JSON)"]
         }
 
         StackLayout {
             Layout.fillWidth: true; currentIndex: dScalingMode.currentIndex
             Item { implicitHeight: 0 }
-            RowLayout {
-                spacing: 8
-                Text { text: qsTr("a:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize }
-                TextField { id: dLinearA; Layout.fillWidth: true; text: qsTr("1"); inputMethodHints: Qt.ImhFormattedNumbersOnly; EnterKeyAction.actionId: EnterKeyAction.None; EnterKeyAction.label: qsTr("OK") }
-                Text { text: qsTr("b:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize }
-                TextField { id: dLinearB; Layout.fillWidth: true; text: qsTr("0"); inputMethodHints: Qt.ImhFormattedNumbersOnly; EnterKeyAction.actionId: EnterKeyAction.None; EnterKeyAction.label: qsTr("OK") }
-            }
             ColumnLayout {
-                spacing: AppTheme.spacingS
+                spacing: 4
                 RowLayout {
                     spacing: 8
-                    Text { text: qsTr("RawMin:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize; Layout.preferredWidth: 60 }
-                    TextField { id: dRawMin; text: qsTr("4000"); Layout.fillWidth: true; inputMethodHints: Qt.ImhFormattedNumbersOnly; EnterKeyAction.actionId: EnterKeyAction.None; EnterKeyAction.label: qsTr("OK") }
-                    Text { text: qsTr("Max:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize }
-                    TextField { id: dRawMax; text: qsTr("20000"); Layout.fillWidth: true; inputMethodHints: Qt.ImhFormattedNumbersOnly; EnterKeyAction.actionId: EnterKeyAction.None; EnterKeyAction.label: qsTr("OK") }
+                    Text { text: qsTr("a:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize }
+                    TextField { id: dLinearA; Layout.fillWidth: true; text: qsTr("1"); inputMethodHints: Qt.ImhFormattedNumbersOnly; EnterKeyAction.actionId: EnterKeyAction.None; EnterKeyAction.label: qsTr("OK") }
+                    Text { text: qsTr("b:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize }
+                    TextField { id: dLinearB; Layout.fillWidth: true; text: qsTr("0"); inputMethodHints: Qt.ImhFormattedNumbersOnly; EnterKeyAction.actionId: EnterKeyAction.None; EnterKeyAction.label: qsTr("OK") }
                 }
-                RowLayout {
-                    spacing: 8
-                    Text { text: qsTr("ScaleMin:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize; Layout.preferredWidth: 60 }
-                    TextField { id: dScaleMin; text: qsTr("4"); Layout.fillWidth: true; inputMethodHints: Qt.ImhFormattedNumbersOnly; EnterKeyAction.actionId: EnterKeyAction.None; EnterKeyAction.label: qsTr("OK") }
-                    Text { text: qsTr("Max:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize }
-                    TextField { id: dScaleMax; text: qsTr("20"); Layout.fillWidth: true; inputMethodHints: Qt.ImhFormattedNumbersOnly; EnterKeyAction.actionId: EnterKeyAction.None; EnterKeyAction.label: qsTr("OK") }
+                Text {
+                    text: qsTr("For 2..N point calibration, use Calibrate on the Monitor screen.")
+                    color: AppColors.textFaint
+                    font.pixelSize: AppTypography.bodySmall.pixelSize
                 }
             }
             TextField { id: dCoeffJson; text: qsTr("{}"); Layout.fillWidth: true; EnterKeyAction.actionId: EnterKeyAction.None; EnterKeyAction.label: qsTr("OK") }

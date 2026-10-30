@@ -300,3 +300,15 @@ target_link_libraries(audit_test PRIVATE
     datalogger_core
 )
 add_test(NAME audit_test COMMAND audit_test)
+
+# QTest: hồi quy đa điểm, áp dụng nguyên tử, RBAC, audit và cascade.
+add_executable(calibration_test calibration_test.cpp)
+target_include_directories(calibration_test PRIVATE ${CMAKE_SOURCE_DIR}/src)
+target_link_libraries(calibration_test PRIVATE
+    Qt6::Core
+    Qt6::Sql
+    Qt6::Test
+    datalogger_core
+    utils
+)
+add_test(NAME calibration_test COMMAND calibration_test)

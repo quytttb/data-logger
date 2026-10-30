@@ -80,9 +80,9 @@ public:
     // Pure helpers (static so unit tests need no DB). Coefficient codec moved
     // here from SettingsController — it is sensor-domain logic.
     Q_INVOKABLE static QVariantMap coefficientUiState(const QString &coeffJson);
+    // mode: 0 = no scaling, 1 = linear a/b, 2 = Advanced JSON.
     static QString buildCoefficientJson(int mode, const QString &legacyJson,
-                                        const QString &s0, const QString &s1,
-                                        const QString &s2, const QString &s3,
+                                        const QString &linearA, const QString &linearB,
                                         QString *error);
     // Field validation ("": ok). Static so unit tests need no DB.
     static QString validateSensorProps(const QVariantMap &props);

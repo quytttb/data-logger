@@ -23,6 +23,7 @@
 #include "core/SensorListModel.h"
 #include "core/AuthService.h"
 #include "core/AuditController.h"
+#include "core/CalibrationController.h"
 #include "core/SettingsController.h"
 #include "core/MonitorController.h"
 #include "core/history/HistoryViewModel.h"
@@ -167,6 +168,7 @@ int main(int argc, char *argv[]) {
     auto *sensorList    = new SensorListModel(&app);
     auto *authService   = new AuthService(&app);
     auto *auditCtrl     = new AuditController(&app);
+    auto *calibrationCtrl = new CalibrationController(&app);
 
     auto *settingsCtrl  = new SettingsController(&app);
     auto *monitorCtrl   = new MonitorController(monitorModel, modbusTcp, &app);
@@ -200,6 +202,7 @@ int main(int argc, char *argv[]) {
     SensorListModel::setInstance(sensorList);
     AuthService::setInstance(authService);
     AuditController::setInstance(auditCtrl);
+    CalibrationController::setInstance(calibrationCtrl);
     SettingsController::setInstance(settingsCtrl);
     MonitorController::setInstance(monitorCtrl);
     HistoryViewModel::setInstance(historyVm);
