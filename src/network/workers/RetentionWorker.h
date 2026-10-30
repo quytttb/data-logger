@@ -44,6 +44,8 @@ private:
     static constexpr int kSensorDataKeepDays = 30;
     static constexpr int kReportKeepDays     = 30;  // báo cáo đã upload: giữ local 30 ngày
     static constexpr int kLogKeepDays        = 14;
+    // Nhật ký thao tác giữ 1 năm để còn đối chiếu khi khiếu nại/vận hành.
+    static constexpr int kAuditKeepDays      = 365;
     static constexpr int kPurgeChunk         = 50000;
     static constexpr qint64 kLowDiskBytes    = 100LL * 1024 * 1024; // cảnh báo dưới 100MB
 

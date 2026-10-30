@@ -286,3 +286,17 @@ target_link_libraries(auth_service_test PRIVATE
     datalogger_core
 )
 add_test(NAME auth_service_test COMMAND auth_service_test)
+
+# QTest: audit log — transaction nghiệp vụ, chặn quyền xem, không lộ secret.
+add_executable(audit_test audit_test.cpp)
+target_include_directories(audit_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/src
+    ${CMAKE_SOURCE_DIR}/src/core
+)
+target_link_libraries(audit_test PRIVATE
+    Qt6::Core
+    Qt6::Sql
+    Qt6::Test
+    datalogger_core
+)
+add_test(NAME audit_test COMMAND audit_test)

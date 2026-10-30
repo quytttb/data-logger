@@ -40,11 +40,11 @@ Item {
         spacing: 8
 
         TabBar {
-            visible: root.settingsTabIndex < 5
+            visible: root.settingsTabIndex < 6
             Layout.alignment: Qt.AlignLeft
             currentIndex: root.settingsTabIndex
             onCurrentIndexChanged: {
-                if (root.settingsTabIndex !== currentIndex && currentIndex < 5)
+                if (root.settingsTabIndex !== currentIndex && currentIndex < 6)
                     root.tabSelected(currentIndex)
             }
             background: Rectangle { color: "transparent" }
@@ -57,10 +57,15 @@ Item {
                 width: implicitWidth + 40
                 visible: AuthService.canManageUsers
             }
+            ThemedTabButton {
+                text: qsTr("Audit")
+                width: implicitWidth + 40
+                visible: AuthService.canViewAudit
+            }
         }
 
         RowLayout {
-            visible: root.settingsTabIndex === 5
+            visible: root.settingsTabIndex === 6
             spacing: AppTheme.spacingS
 
             TabBar {
@@ -131,9 +136,9 @@ Item {
             }
         }
 
-        // Sensor Form actions (Tab 5)
+        // Sensor Form actions (Tab 6)
         RowLayout {
-            visible: root.settingsTabIndex === 5
+            visible: root.settingsTabIndex === 6
             spacing: 8
 
             AppButton {

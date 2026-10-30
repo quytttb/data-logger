@@ -147,6 +147,34 @@ int AuditLogDao::count(const AuditLogQuery &filter) const
     return query.next() ? query.value(0).toInt() : -1;
 }
 
+QStringList AuditLogDao::distinctActions() const
+{
+    QStringList out;
+    QSqlQuery query(m_db);
+    if (!query.exec(QStringLiteral(
+            "SELECT DISTINCT action FROM audit_log ORDER BY action ASC"))) {
+        qWarning() << "AuditLogDao::distinctActions:" << query.lastError().text();
+        return out;
+    }
+    while (query.next())
+        out.append(query.value(0).toString());
+    return out;
+}
+
+QStringList AuditLogDao::distinctEntities() const
+{
+    QStringList out;
+    QSqlQuery query(m_db);
+    if (!query.exec(QStringLiteral(
+            "SELECT DISTINCT entity FROM audit_log WHERE entity <> '' ORDER BY entity ASC"))) {
+        qWarning() << "AuditLogDao::distinctEntities:" << query.lastError().text();
+        return out;
+    }
+    while (query.next())
+        out.append(query.value(0).toString());
+    return out;
+}
+
 int AuditLogDao::purgeBefore(const QDateTime &cutoff)
 {
     if (!cutoff.isValid())

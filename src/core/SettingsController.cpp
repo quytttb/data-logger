@@ -1,4 +1,5 @@
 #include "SettingsController.h"
+#include "AuditTrail.h"
 #include "AuthService.h"
 #include "data/db/Database.h"
 #include "data/repositories/AppConfigDao.h"
@@ -19,9 +20,96 @@ const QString kDefaultTheme    = AppDefaults::theme;
 const QString kBindAnyIPv4     = AppDefaults::bindAnyIPv4;
 const QString kBindAnyIPv6     = QStringLiteral("::");
 const QString kProvisionSchema = QStringLiteral("central-logger-provision/v1");
+
+// Lưu app_config + ghi audit trong cùng transaction: nếu audit lỗi thì cấu
+// hình rollback, không báo thành công khi thiếu dấu vết.
+bool saveConfigWithAudit(AppConfigDao &dao, QSqlDatabase &db, const AppConfig &cfg,
+                         const QString &action, const QJsonObject &detail)
+{
+    if (!db.transaction())
+        return false;
+
+    bool ok = dao.save(cfg);
+    if (ok) {
+        AuditLogEntry entry = AuditTrail::entry(
+            AuditTrail::localActor(), action, QStringLiteral("app_config"),
+            QString::number(cfg.id), AuditResult::Ok, detail);
+        ok = AuditTrail::append(db, entry);
+    }
+    if (ok)
+        ok = db.commit();
+    if (!ok)
+        db.rollback();
+    return ok;
+}
 }
 
 SettingsController::SettingsController(QObject *parent) : QObject(parent) {}
+
+QJsonObject SettingsController::auditChanges(const AppConfig &before, const AppConfig &after)
+{
+    // Whitelist trường cần truy vết. KHÔNG đưa ftpPassword / restApiToken vào
+    // đây — audit chỉ lưu tên trường và giá trị không nhạy cảm.
+    return AuditTrail::changes({
+        {QStringLiteral("stationCode"), before.stationCode, after.stationCode},
+        {QStringLiteral("stationName"), before.stationName, after.stationName},
+        {QStringLiteral("timeFormat"), before.timeFormat, after.timeFormat},
+        {QStringLiteral("dateFormat"), before.dateFormat, after.dateFormat},
+        {QStringLiteral("timezone"), before.timezone, after.timezone},
+        {QStringLiteral("buzzerEnable"), before.buzzerEnable, after.buzzerEnable},
+        {QStringLiteral("ftpAddress"), before.ftpAddress, after.ftpAddress},
+        {QStringLiteral("ftpPort"), before.ftpPort, after.ftpPort},
+        {QStringLiteral("ftpUsername"), before.ftpUsername, after.ftpUsername},
+        {QStringLiteral("ftpRemotePath"), before.ftpRemotePath, after.ftpRemotePath},
+        {QStringLiteral("filePrefix"), before.filePrefix, after.filePrefix},
+        {QStringLiteral("ftpProtocol"), before.ftpProtocol, after.ftpProtocol},
+        {QStringLiteral("serverActive"), before.serverActive, after.serverActive},
+        {QStringLiteral("serverDeviceType"), before.serverDeviceType, after.serverDeviceType},
+        {QStringLiteral("serverName"), before.serverName, after.serverName},
+        {QStringLiteral("serverSendInterval"), before.serverSendInterval, after.serverSendInterval},
+        {QStringLiteral("autoAddTransmit"), before.autoAddTransmit, after.autoAddTransmit},
+        {QStringLiteral("serverStartTime"), before.serverStartTime, after.serverStartTime},
+        {QStringLiteral("serverBaseFolder"), before.serverBaseFolder, after.serverBaseFolder},
+        {QStringLiteral("serverTimeFolder"), before.serverTimeFolder, after.serverTimeFolder},
+        {QStringLiteral("fileSuffix"), before.fileSuffix, after.fileSuffix},
+        {QStringLiteral("pollInterval"), before.pollInterval, after.pollInterval},
+        {QStringLiteral("monitorViewMode"), before.monitorViewMode, after.monitorViewMode},
+        {QStringLiteral("monitorShowDigitalIO"), before.monitorShowDigitalIO,
+         after.monitorShowDigitalIO},
+        {QStringLiteral("alarmHysteresis"), before.alarmHysteresis, after.alarmHysteresis},
+        {QStringLiteral("doFailSafeOnReconnect"), before.doFailSafeOnReconnect,
+         after.doFailSafeOnReconnect},
+        {QStringLiteral("serialPort"), before.serialPort, after.serialPort},
+        {QStringLiteral("serialBaudrate"), before.serialBaudrate, after.serialBaudrate},
+        {QStringLiteral("serialBytesize"), before.serialBytesize, after.serialBytesize},
+        {QStringLiteral("serialParity"), before.serialParity, after.serialParity},
+        {QStringLiteral("serialStopbits"), before.serialStopbits, after.serialStopbits},
+        {QStringLiteral("modbusTcpEnabled"), before.modbusTcpEnabled, after.modbusTcpEnabled},
+        {QStringLiteral("modbusTcpPort"), before.modbusTcpPort, after.modbusTcpPort},
+        {QStringLiteral("modbusTcpBind"), before.modbusTcpBind, after.modbusTcpBind},
+        {QStringLiteral("modbusTcpUnitId"), before.modbusTcpUnitId, after.modbusTcpUnitId},
+        {QStringLiteral("restApiEnabled"), before.restApiEnabled, after.restApiEnabled},
+        {QStringLiteral("restApiPort"), before.restApiPort, after.restApiPort},
+        {QStringLiteral("restApiBind"), before.restApiBind, after.restApiBind},
+        {QStringLiteral("uiLocale"), before.uiLocale, after.uiLocale},
+        {QStringLiteral("theme"), before.theme, after.theme},
+    });
+}
+
+bool SettingsController::checkPermission(Permission permission, const QString &action,
+                                         const QString &deniedMessage)
+{
+    if (AuthService::authorize(permission))
+        return true;
+
+    AuditLogEntry entry = AuditTrail::entry(
+        AuditTrail::localActor(), action, QStringLiteral("app_config"), QString(),
+        AuditResult::Denied,
+        AuditTrail::snapshot({{QStringLiteral("reason"), deniedMessage}}));
+    AuditTrail::appendStandalone(entry);
+    emit messageSent(QStringLiteral("Permission denied"), deniedMessage);
+    return false;
+}
 
 QString SettingsController::ftpPassword() const {
     if (m_cfg.ftpPassword.isEmpty()) return {};
@@ -47,15 +135,24 @@ void SettingsController::setTheme(const QString &v) {
 }
 
 bool SettingsController::saveTheme(const QString &value) {
-    if (!AuthService::authorize(Permission::ConfigureSystem)) {
-        emit messageSent(QStringLiteral("Permission denied"),
-                         QStringLiteral("Only administrators can change system settings."));
+    if (!checkPermission(Permission::ConfigureSystem, QStringLiteral("settings.theme"),
+                         QStringLiteral("Only administrators can change system settings.")))
         return false;
-    }
+
+    const QString previous = m_cfg.theme;
     setTheme(value);
-    ScopedDbConnection db;
-    AppConfigDao dao(db);
-    return dao.save(m_cfg);
+    if (previous == m_cfg.theme)
+        return true;
+
+    bool ok;
+    {
+        ScopedDbConnection db;
+        AppConfigDao dao(db);
+        ok = saveConfigWithAudit(
+            dao, db.get(), m_cfg, QStringLiteral("settings.theme"),
+            AuditTrail::changes({{QStringLiteral("theme"), previous, m_cfg.theme}}));
+    }
+    return ok;
 }
 
 void SettingsController::loadConfig() {
@@ -71,11 +168,9 @@ void SettingsController::loadConfig() {
 }
 
 void SettingsController::saveConfig() {
-    if (!AuthService::authorize(Permission::ConfigureSystem)) {
-        emit messageSent(QStringLiteral("Permission denied"),
-                         QStringLiteral("Only administrators can change system settings."));
+    if (!checkPermission(Permission::ConfigureSystem, QStringLiteral("settings.save"),
+                         QStringLiteral("Only administrators can change system settings.")))
         return;
-    }
     QStringList errors = validate();
     if (!errors.isEmpty()) {
         emit messageSent("Validation error", errors.join('\n'));
@@ -86,12 +181,14 @@ void SettingsController::saveConfig() {
     {
         ScopedDbConnection db;
         AppConfigDao dao(db);
+        const AppConfig before = dao.load();
 
         // Auto-generate REST token on first enable
         if (m_cfg.restApiEnabled && m_cfg.restApiToken.trimmed().isEmpty())
             m_cfg.restApiToken = QUuid::createUuid().toString(QUuid::WithoutBraces).remove('-');
 
-        ok = dao.save(m_cfg);
+        ok = saveConfigWithAudit(dao, db.get(), m_cfg, QStringLiteral("settings.save"),
+                                 auditChanges(before, m_cfg));
     }
 
     if (ok) {
@@ -163,35 +260,63 @@ void SettingsController::syncSystemTime()
 
 void SettingsController::saveSerialConfig(const QString &port, int baudrate,
                                            int bytesize, const QString &parity, int stopbits) {
-    if (!AuthService::authorize(Permission::ConfigureSystem)) {
-        emit messageSent(QStringLiteral("Permission denied"),
-                         QStringLiteral("Only administrators can change connection settings."));
+    if (!checkPermission(Permission::ConfigureSystem, QStringLiteral("settings.serial"),
+                         QStringLiteral("Only administrators can change connection settings.")))
         return;
-    }
-    m_cfg.serialPort     = port;
-    m_cfg.serialBaudrate = baudrate;
-    m_cfg.serialBytesize = bytesize;
-    m_cfg.serialParity   = parity;
-    m_cfg.serialStopbits = stopbits;
 
+    bool ok;
     {
         ScopedDbConnection db;
         AppConfigDao dao(db);
-        dao.save(m_cfg);
+        const AppConfig before = dao.load();
+
+        m_cfg.serialPort     = port;
+        m_cfg.serialBaudrate = baudrate;
+        m_cfg.serialBytesize = bytesize;
+        m_cfg.serialParity   = parity;
+        m_cfg.serialStopbits = stopbits;
+
+        ok = saveConfigWithAudit(dao, db.get(), m_cfg, QStringLiteral("settings.serial"),
+                                 auditChanges(before, m_cfg));
+    }
+    if (!ok) {
+        emit messageSent(QStringLiteral("Error"),
+                         QStringLiteral("Failed to save connection settings."));
+        loadConfig(); // RAM phải khớp DB sau khi rollback
+        return;
     }
     emit configLoaded();
 }
 
 void SettingsController::regenerateRestToken() {
-    if (!AuthService::authorize(Permission::ConfigureSystem)) {
-        emit messageSent(QStringLiteral("Permission denied"),
-                         QStringLiteral("Only administrators can change the REST token."));
+    if (!checkPermission(Permission::ConfigureSystem,
+                         QStringLiteral("settings.rest_token.regenerate"),
+                         QStringLiteral("Only administrators can change the REST token.")))
         return;
-    }
+
+    bool ok;
     {
         ScopedDbConnection db;
         AppConfigDao dao(db);
-        m_cfg.restApiToken = dao.generateAndSaveToken();
+        QSqlDatabase &sql = db.get();
+        ok = sql.transaction();
+        if (ok) {
+            // Token mới chỉ lưu trong DB/RAM; audit không bao giờ chứa token.
+            m_cfg.restApiToken = dao.generateAndSaveToken();
+            AuditLogEntry entry = AuditTrail::entry(
+                AuditTrail::localActor(), QStringLiteral("settings.rest_token.regenerate"),
+                QStringLiteral("app_config"), QString::number(m_cfg.id));
+            ok = AuditTrail::append(sql, entry);
+            if (ok)
+                ok = sql.commit();
+            if (!ok)
+                sql.rollback();
+        }
+    }
+    if (!ok) {
+        emit messageSent(QStringLiteral("Error"),
+                         QStringLiteral("Failed to change the REST token."));
+        return;
     }
     emit configLoaded();
     emit configSaved();
@@ -200,15 +325,20 @@ void SettingsController::regenerateRestToken() {
 }
 
 void SettingsController::rebootSystem() {
-    if (!AuthService::authorize(Permission::ConfigureSystem)) {
-        emit messageSent(QStringLiteral("Permission denied"),
-                         QStringLiteral("Only administrators can reboot the device."));
+    if (!checkPermission(Permission::ConfigureSystem, QStringLiteral("system.reboot"),
+                         QStringLiteral("Only administrators can reboot the device.")))
         return;
-    }
     qInfo() << "[SettingsController] System reboot requested";
     // `systemctl reboot` routes through logind; the unprivileged kiosk user is
     // authorised by the polkit rule shipped with the package.
-    if (!QProcess::startDetached(QStringLiteral("systemctl"), {QStringLiteral("reboot")})) {
+    const bool ok = QProcess::startDetached(QStringLiteral("systemctl"),
+                                            {QStringLiteral("reboot")});
+    AuditLogEntry entry = AuditTrail::entry(
+        AuditTrail::localActor(), QStringLiteral("system.reboot"), QStringLiteral("system"),
+        QString(), ok ? AuditResult::Ok : AuditResult::Failed);
+    AuditTrail::appendStandalone(entry);
+
+    if (!ok) {
         qWarning() << "[SettingsController] Failed to invoke 'systemctl reboot'";
         emit messageSent(QStringLiteral("Error"),
                          QStringLiteral("Failed to reboot the system."));

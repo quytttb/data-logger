@@ -37,6 +37,7 @@ qt_add_qml_module(app
         qml/views/SettingsConnectionTab.qml
         qml/views/SettingsSensorsTab.qml
         qml/views/SettingsUsersTab.qml
+        qml/views/SettingsAuditTab.qml
         qml/views/SettingsServerTab.qml
         qml/views/SettingsTransmissionTab.qml
         qml/views/TesterView.qml

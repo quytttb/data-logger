@@ -1,10 +1,13 @@
 #pragma once
+#include <QJsonObject>
 #include <QObject>
 #include <QString>
 #include <QtQmlIntegration/qqmlintegration.h>
 #include "data/models/AppConfig.h"
 #include "utils/qml/QmlSingleton.h"
 #include "utils/system/DeviceId.h"
+
+enum class Permission;
 
 // Exposes AppConfig to QML and handles save/load.
 class SettingsController : public QObject {
@@ -79,6 +82,10 @@ public:
     explicit SettingsController(QObject *parent);
 
     DECLARE_QML_SINGLETON(SettingsController)
+
+    // Whitelist thay đổi cấu hình được ghi audit. TUYỆT ĐỐI không chứa
+    // ftpPassword hay restApiToken. Public static để unit test kiểm tra.
+    static QJsonObject auditChanges(const AppConfig &before, const AppConfig &after);
 
     // Property getters
     QString deviceId()      const { return DeviceId::stationCode(); }
@@ -200,6 +207,10 @@ signals:
     void messageSent(QString title, QString body);
 
 private:
+    // Guard backend + ghi audit lần bị từ chối. Trả true nếu được phép.
+    bool checkPermission(Permission permission, const QString &action,
+                         const QString &deniedMessage);
+
     QString buildProvisionJson() const;
     QString provisionHost() const;
 

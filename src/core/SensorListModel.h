@@ -1,5 +1,6 @@
 #pragma once
 #include <QAbstractListModel>
+#include <QJsonObject>
 #include <QList>
 #include <functional>
 #include <QtQmlIntegration/qqmlintegration.h>
@@ -97,16 +98,31 @@ signals:
     void linksChanged();
 
 private:
+    // Dữ liệu audit do thân thao tác ghi lại: id đối tượng (với insert chỉ biết
+    // sau khi lưu) và các thay đổi whitelist.
+    struct AuditPayload {
+        QString entityId;
+        QJsonObject detail;
+    };
+
     // Guard backend: QML chỉ ẩn nút, mọi write path vẫn kiểm tra tại đây.
-    bool checkPermission(Permission permission, const QString &deniedMessage);
+    // Lần bị từ chối được ghi audit (action/entity) để còn dấu vết.
+    bool checkPermission(Permission permission, const QString &action,
+                         const QString &entity, const QString &deniedMessage);
     void loadFromDb();
     Sensor variantToSensor(const QVariantMap &props, int existingId = 0) const;
     QVariantMap sensorToVariant(const Sensor &s) const;
     const Sensor *findSensorById(int id) const;
-    // Runs a sensor-table write + config-revision bump + reload + toast in one
-    // place so no mutating path can forget the revision bump.
-    bool commitSensorWrite(const QString &okMsg, const QString &failMsg,
-                           const std::function<bool(SensorDao &, AppConfigDao &)> &op);
+    // Runs a sensor-table write + config-revision bump + audit in one
+    // transaction, then reloads and toasts — no mutating path can forget the
+    // revision bump, and a failed audit rolls the change back.
+    bool commitSensorWrite(const QString &action, const QString &okMsg, const QString &failMsg,
+                           const std::function<bool(SensorDao &, AppConfigDao &, AuditPayload &)> &op);
+    // DI/DO link writes: same transaction + audit policy, no revision bump
+    // (link edits already notify observers via linksChanged()).
+    bool commitLinkWrite(const QString &action, const QString &okMsg,
+                         const QString &failMsg,
+                         const std::function<bool(SensorDao &, AuditPayload &)> &op);
 
     QList<Sensor> m_sensors;
 };

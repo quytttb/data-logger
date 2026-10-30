@@ -70,6 +70,7 @@ public:
     bool firstRun() const { return m_firstRun; }
     bool busy() const { return m_busy; }
     int userCount() const { return m_userCount; }
+    int currentUserId() const { return m_currentUser.id; }
     QString currentUsername() const { return m_currentUser.username; }
     QString currentDisplayName() const { return m_currentUser.displayName; }
     QString currentRole() const { return userRoleToString(m_currentUser.role); }

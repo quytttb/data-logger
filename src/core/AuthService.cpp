@@ -1,5 +1,6 @@
 #include "AuthService.h"
 
+#include "AuditTrail.h"
 #include "data/db/Database.h"
 #include "data/db/TimeCodec.h"
 #include "data/repositories/UserAccountDao.h"
@@ -43,6 +44,64 @@ QString attemptText(int attempts)
 {
     return QStringLiteral("%1 attempt(s) left.")
         .arg(qMax(0, AuthService::kMaxFailedAttemptsBeforeLock - attempts));
+}
+
+// Ghi audit cho một lần xác thực (đăng nhập/mở khóa/đổi mật khẩu). Không có
+// thay đổi dữ liệu nghiệp vụ đi kèm nên dùng chung connection của caller.
+// Lưu ý: KHÔNG mở ScopedDbConnection lồng nhau — cùng thread dùng chung một
+// connection, object lồng sẽ đóng connection của caller khi hủy.
+void writeAuthAudit(QSqlDatabase &db, const AuditTrail::Actor &actor, const QString &action,
+                    const QString &entityId, AuditResult result, const QString &reason)
+{
+    QJsonObject detail;
+    if (!reason.isEmpty())
+        detail = AuditTrail::snapshot({{QStringLiteral("reason"), reason}});
+    AuditLogEntry entry = AuditTrail::entry(actor, action, QStringLiteral("user"), entityId,
+                                            result, detail);
+    AuditTrail::append(db, entry);
+}
+
+// Chạy thay đổi dữ liệu + ghi audit trong CÙNG transaction. Trả false nếu thay
+// đổi hoặc audit lỗi — khi đó toàn bộ rollback để không bao giờ báo thành công
+// mà thiếu dấu vết.
+bool runWithAudit(QSqlDatabase &db, const std::function<bool(AuditLogEntry &)> &body)
+{
+    if (!db.transaction())
+        return false;
+
+    AuditLogEntry audit;
+    if (!body(audit) || !AuditTrail::append(db, audit)) {
+        db.rollback();
+        return false;
+    }
+    if (!db.commit()) {
+        db.rollback();
+        return false;
+    }
+    return true;
+}
+
+AuditLogEntry deniedEntry(const QString &action, const QString &entity, const QString &reason)
+{
+    return AuditTrail::entry(AuditTrail::localActor(), action, entity, QString(),
+                             AuditResult::Denied,
+                             AuditTrail::snapshot({{QStringLiteral("reason"), reason}}));
+}
+
+// Bị từ chối quyền, chưa có connection: tự mở và ghi ngay.
+void auditDenied(const QString &action, const QString &entity, const QString &reason)
+{
+    AuditLogEntry entry = deniedEntry(action, entity, reason);
+    AuditTrail::appendStandalone(entry);
+}
+
+// Bị từ chối quyền trong lúc caller đang giữ connection: dùng chung connection,
+// không mở lồng (xem ghi chú ở writeAuthAudit).
+void auditDenied(QSqlDatabase &db, const QString &action, const QString &entity,
+                 const QString &reason)
+{
+    AuditLogEntry entry = deniedEntry(action, entity, reason);
+    AuditTrail::append(db, entry);
 }
 
 } // namespace
@@ -230,6 +289,11 @@ void AuthService::lock()
 {
     if (!m_authenticated || m_locked)
         return;
+    const AuditTrail::Actor actor = AuditTrail::localActor();
+    AuditLogEntry lockEntry = AuditTrail::entry(actor, QStringLiteral("auth.lock"),
+                                                QStringLiteral("user"),
+                                                QString::number(m_currentUser.id));
+    AuditTrail::appendStandalone(lockEntry);
     m_locked = true;
     m_idleTimer.stop();
     emit sessionChanged();
@@ -237,6 +301,13 @@ void AuthService::lock()
 
 void AuthService::logout()
 {
+    if (!m_authenticated)
+        return;
+    const AuditTrail::Actor actor = AuditTrail::localActor();
+    AuditLogEntry logoutEntry = AuditTrail::entry(actor, QStringLiteral("auth.logout"),
+                                                  QStringLiteral("user"),
+                                                  QString::number(m_currentUser.id));
+    AuditTrail::appendStandalone(logoutEntry);
     endSession();
 }
 
@@ -326,17 +397,37 @@ void AuthService::login(const QString &username, const QString &password)
         ScopedDbConnection db;
         UserAccountDao dao(db);
         auto user = dao.findByUsername(name);
+
+        // Actor = người vừa nhập username. Với tài khoản đã biết, lấy tên chuẩn
+        // trong DB để log không phụ thuộc chữ hoa/thường lúc gõ.
+        AuditTrail::Actor actor;
+        actor.kind = AuditActorKind::Local;
+        actor.username = name;
+        QString entityId;
+        if (user) {
+            actor.userId = user->id;
+            actor.username = user->username;
+            actor.displayName = user->displayName;
+            entityId = QString::number(user->id);
+        }
+
         if (!user) {
+            writeAuthAudit(db.get(), actor, QStringLiteral("auth.login"), QString(), AuditResult::Failed,
+                           QStringLiteral("unknown_user"));
             result.error = QStringLiteral("Wrong username or password.");
             return result;
         }
         if (!user->active) {
+            writeAuthAudit(db.get(), actor, QStringLiteral("auth.login"), entityId, AuditResult::Denied,
+                           QStringLiteral("account_disabled"));
             result.error = QStringLiteral("This account is disabled.");
             return result;
         }
 
         const QDateTime now = QDateTime::currentDateTimeUtc();
         if (user->lockedUntil.isValid() && user->lockedUntil > now) {
+            writeAuthAudit(db.get(), actor, QStringLiteral("auth.login"), entityId, AuditResult::Denied,
+                           QStringLiteral("account_locked"));
             result.error = QStringLiteral("Too many failed attempts. Try again in %1.")
                                .arg(remainingLockText(user->lockedUntil));
             return result;
@@ -350,6 +441,8 @@ void AuthService::login(const QString &username, const QString &password)
             if (lockSeconds > 0)
                 lockedUntil = now.addSecs(lockSeconds);
             dao.updateLoginState(user->id, attempts, lockedUntil);
+            writeAuthAudit(db.get(), actor, QStringLiteral("auth.login"), entityId, AuditResult::Failed,
+                           QStringLiteral("wrong_password"));
 
             if (lockSeconds > 0) {
                 result.error = QStringLiteral("Wrong password. Account locked for %1 seconds.")
@@ -365,6 +458,7 @@ void AuthService::login(const QString &username, const QString &password)
             dao.updatePasswordHash(user->id, PasswordHasher::hash(password),
                                    user->mustChangePassword);
         dao.recordLoginSuccess(user->id);
+        writeAuthAudit(db.get(), actor, QStringLiteral("auth.login"), entityId, AuditResult::Ok, QString());
 
         user->failedAttempts = 0;
         user->lockedUntil = {};
@@ -385,24 +479,32 @@ void AuthService::unlock(const QString &password)
         return;
     }
 
-    runTask([id = m_currentUser.id, password]() {
+    const AuditTrail::Actor actor = AuditTrail::localActor();
+    runTask([id = m_currentUser.id, password, actor]() {
         TaskResult result;
         result.kind = TaskResult::Kind::Unlock;
+        const QString entityId = QString::number(id);
 
         ScopedDbConnection db;
         UserAccountDao dao(db);
         auto user = dao.findById(id);
         if (!user) {
+            writeAuthAudit(db.get(), actor, QStringLiteral("auth.unlock"), entityId,
+                           AuditResult::Failed, QStringLiteral("account_missing"));
             result.error = QStringLiteral("Session expired. Sign in again.");
             return result;
         }
         if (!user->active) {
+            writeAuthAudit(db.get(), actor, QStringLiteral("auth.unlock"), entityId,
+                           AuditResult::Denied, QStringLiteral("account_disabled"));
             result.error = QStringLiteral("This account is disabled.");
             return result;
         }
 
         const QDateTime now = QDateTime::currentDateTimeUtc();
         if (user->lockedUntil.isValid() && user->lockedUntil > now) {
+            writeAuthAudit(db.get(), actor, QStringLiteral("auth.unlock"), entityId,
+                           AuditResult::Denied, QStringLiteral("account_locked"));
             result.error = QStringLiteral("Too many failed attempts. Try again in %1.")
                                .arg(remainingLockText(user->lockedUntil));
             return result;
@@ -413,6 +515,8 @@ void AuthService::unlock(const QString &password)
             const int lockSeconds = lockSecondsFor(attempts);
             dao.updateLoginState(user->id, attempts,
                                  lockSeconds > 0 ? now.addSecs(lockSeconds) : QDateTime());
+            writeAuthAudit(db.get(), actor, QStringLiteral("auth.unlock"), entityId,
+                           AuditResult::Failed, QStringLiteral("wrong_password"));
             result.error = lockSeconds > 0
                 ? QStringLiteral("Wrong password. Account locked for %1 seconds.").arg(lockSeconds)
                 : QStringLiteral("Wrong password. %1").arg(attemptText(attempts));
@@ -420,6 +524,8 @@ void AuthService::unlock(const QString &password)
         }
 
         dao.recordLoginSuccess(user->id);
+        writeAuthAudit(db.get(), actor, QStringLiteral("auth.unlock"), entityId,
+                       AuditResult::Ok, QString());
         user->failedAttempts = 0;
         user->lockedUntil = {};
         result.ok = true;
@@ -470,8 +576,30 @@ void AuthService::createFirstAdmin(const QString &username, const QString &displ
         admin.displayName = displayName.trimmed().isEmpty() ? name : displayName.trimmed();
         admin.role = UserRole::Admin;
         admin.active = true;
+        // Băm trước khi mở transaction để không giữ write lock suốt 600k vòng.
         admin.passwordHash = PasswordHasher::hash(password);
-        if (!dao.insert(admin)) {
+        if (admin.passwordHash.isEmpty()) {
+            result.error = QStringLiteral("Could not create the administrator account.");
+            return result;
+        }
+
+        const bool ok = runWithAudit(db.get(), [&](AuditLogEntry &audit) {
+            if (!dao.insert(admin))
+                return false;
+            AuditTrail::Actor actor;
+            actor.kind = AuditActorKind::Local;
+            actor.userId = admin.id;
+            actor.username = admin.username;
+            actor.displayName = admin.displayName;
+            audit = AuditTrail::entry(
+                actor, QStringLiteral("user.create"), QStringLiteral("user"),
+                QString::number(admin.id), AuditResult::Ok,
+                AuditTrail::snapshot({{QStringLiteral("username"), admin.username},
+                                      {QStringLiteral("role"), QStringLiteral("admin")},
+                                      {QStringLiteral("bootstrap"), true}}));
+            return true;
+        });
+        if (!ok) {
             result.error = QStringLiteral("Could not create the administrator account.");
             return result;
         }
@@ -498,24 +626,43 @@ void AuthService::changePassword(const QString &oldPassword, const QString &newP
         return;
     }
 
-    runTask([id = m_currentUser.id, oldPassword, newPassword]() {
+    const AuditTrail::Actor actor = AuditTrail::localActor();
+    runTask([id = m_currentUser.id, oldPassword, newPassword, actor]() {
         TaskResult result;
         result.kind = TaskResult::Kind::ChangePassword;
+        const QString entityId = QString::number(id);
 
         ScopedDbConnection db;
         UserAccountDao dao(db);
         auto user = dao.findById(id);
         if (!user) {
+            writeAuthAudit(db.get(), actor, QStringLiteral("auth.password.change"), entityId,
+                           AuditResult::Failed, QStringLiteral("account_missing"));
             result.error = QStringLiteral("Account not found.");
             return result;
         }
         if (!PasswordHasher::verify(oldPassword, user->passwordHash)) {
+            writeAuthAudit(db.get(), actor, QStringLiteral("auth.password.change"), entityId,
+                           AuditResult::Failed, QStringLiteral("wrong_password"));
             result.error = QStringLiteral("Current password is wrong.");
             return result;
         }
 
+        // Băm trước transaction để write lock không bị giữ suốt quá trình KDF.
         const QString hash = PasswordHasher::hash(newPassword);
-        if (hash.isEmpty() || !dao.updatePasswordHash(user->id, hash, false)) {
+        if (hash.isEmpty()) {
+            result.error = QStringLiteral("Could not change the password.");
+            return result;
+        }
+
+        const bool ok = runWithAudit(db.get(), [&](AuditLogEntry &audit) {
+            if (!dao.updatePasswordHash(user->id, hash, false))
+                return false;
+            audit = AuditTrail::entry(actor, QStringLiteral("auth.password.change"),
+                                      QStringLiteral("user"), entityId, AuditResult::Ok);
+            return true;
+        });
+        if (!ok) {
             result.error = QStringLiteral("Could not change the password.");
             return result;
         }
@@ -531,6 +678,8 @@ void AuthService::createUser(const QString &username, const QString &displayName
                              const QString &confirm)
 {
     if (!authorize(Permission::ManageUsers)) {
+        auditDenied(QStringLiteral("user.create"), QStringLiteral("user"),
+                    QStringLiteral("missing_permission"));
         emit messageSent(QStringLiteral("Permission denied"),
                          QStringLiteral("Only administrators can manage accounts."));
         return;
@@ -554,7 +703,8 @@ void AuthService::createUser(const QString &username, const QString &displayName
         return;
     }
 
-    runTask([name, displayName, role, password]() {
+    const AuditTrail::Actor actor = AuditTrail::localActor();
+    runTask([name, displayName, role, password, actor]() {
         TaskResult result;
         result.kind = TaskResult::Kind::CreateUser;
 
@@ -571,8 +721,26 @@ void AuthService::createUser(const QString &username, const QString &displayName
         user.role = userRoleFromString(role);
         user.active = true;
         user.mustChangePassword = true;
+        // Băm trước transaction để write lock không bị giữ suốt quá trình KDF.
         user.passwordHash = PasswordHasher::hash(password);
-        if (!dao.insert(user)) {
+        if (user.passwordHash.isEmpty()) {
+            result.error = QStringLiteral("Could not create the account.");
+            return result;
+        }
+
+        const bool ok = runWithAudit(db.get(), [&](AuditLogEntry &audit) {
+            if (!dao.insert(user))
+                return false;
+            audit = AuditTrail::entry(
+                actor, QStringLiteral("user.create"), QStringLiteral("user"),
+                QString::number(user.id), AuditResult::Ok,
+                AuditTrail::snapshot({{QStringLiteral("username"), user.username},
+                                      {QStringLiteral("displayName"), user.displayName},
+                                      {QStringLiteral("role"), userRoleToString(user.role)},
+                                      {QStringLiteral("mustChangePassword"), true}}));
+            return true;
+        });
+        if (!ok) {
             result.error = QStringLiteral("Could not create the account.");
             return result;
         }
@@ -587,6 +755,8 @@ void AuthService::createUser(const QString &username, const QString &displayName
 void AuthService::resetPassword(int userId, const QString &newPassword, const QString &confirm)
 {
     if (!authorize(Permission::ManageUsers)) {
+        auditDenied(QStringLiteral("user.reset_password"), QStringLiteral("user"),
+                    QStringLiteral("missing_permission"));
         emit messageSent(QStringLiteral("Permission denied"),
                          QStringLiteral("Only administrators can reset passwords."));
         return;
@@ -601,7 +771,8 @@ void AuthService::resetPassword(int userId, const QString &newPassword, const QS
         return;
     }
 
-    runTask([userId, newPassword]() {
+    const AuditTrail::Actor actor = AuditTrail::localActor();
+    runTask([userId, newPassword, actor]() {
         TaskResult result;
         result.kind = TaskResult::Kind::ResetPassword;
 
@@ -619,7 +790,22 @@ void AuthService::resetPassword(int userId, const QString &newPassword, const QS
         }
 
         const QString hash = PasswordHasher::hash(newPassword);
-        if (hash.isEmpty() || !dao.updatePasswordHash(userId, hash, true)) {
+        if (hash.isEmpty()) {
+            result.error = QStringLiteral("Could not reset the password.");
+            return result;
+        }
+
+        const QString entityId = QString::number(userId);
+        const bool ok = runWithAudit(db.get(), [&](AuditLogEntry &audit) {
+            if (!dao.updatePasswordHash(userId, hash, true))
+                return false;
+            audit = AuditTrail::entry(
+                actor, QStringLiteral("user.reset_password"), QStringLiteral("user"),
+                entityId, AuditResult::Ok,
+                AuditTrail::snapshot({{QStringLiteral("mustChangePassword"), true}}));
+            return true;
+        });
+        if (!ok) {
             result.error = QStringLiteral("Could not reset the password.");
             return result;
         }
@@ -633,11 +819,15 @@ void AuthService::resetPassword(int userId, const QString &newPassword, const QS
 bool AuthService::setUserActive(int userId, bool active)
 {
     if (!authorize(Permission::ManageUsers)) {
+        auditDenied(QStringLiteral("user.update"), QStringLiteral("user"),
+                    QStringLiteral("missing_permission"));
         emit messageSent(QStringLiteral("Permission denied"),
                          QStringLiteral("Only administrators can manage accounts."));
         return false;
     }
     if (userId == m_currentUser.id && !active) {
+        auditDenied(QStringLiteral("user.disable"), QStringLiteral("user"),
+                    QStringLiteral("self"));
         emit messageSent(QStringLiteral("Accounts"),
                          QStringLiteral("You cannot disable your own account."));
         return false;
@@ -652,11 +842,28 @@ bool AuthService::setUserActive(int userId, bool active)
     }
     if (!active && target->role == UserRole::Admin && target->active
         && dao.countActiveAdmins() <= 1) {
+        auditDenied(db.get(), QStringLiteral("user.disable"), QStringLiteral("user"),
+                    QStringLiteral("last_admin"));
         emit messageSent(QStringLiteral("Accounts"),
                          QStringLiteral("Cannot disable the last administrator."));
         return false;
     }
-    if (!dao.setActive(userId, active)) {
+
+    const QString action = active ? QStringLiteral("user.enable")
+                                  : QStringLiteral("user.disable");
+    const QString entityId = QString::number(userId);
+    const QString username = target->username;
+    const bool ok = runWithAudit(db.get(), [&](AuditLogEntry &audit) {
+        if (!dao.setActive(userId, active))
+            return false;
+        audit = AuditTrail::entry(
+            AuditTrail::localActor(), action, QStringLiteral("user"), entityId,
+            AuditResult::Ok,
+            AuditTrail::snapshot({{QStringLiteral("username"), username},
+                                  {QStringLiteral("active"), active}}));
+        return true;
+    });
+    if (!ok) {
         emit messageSent(QStringLiteral("Accounts"),
                          QStringLiteral("Could not update the account."));
         return false;
@@ -669,6 +876,8 @@ bool AuthService::setUserActive(int userId, bool active)
 bool AuthService::setUserRole(int userId, const QString &role)
 {
     if (!authorize(Permission::ManageUsers)) {
+        auditDenied(QStringLiteral("user.role_change"), QStringLiteral("user"),
+                    QStringLiteral("missing_permission"));
         emit messageSent(QStringLiteral("Permission denied"),
                          QStringLiteral("Only administrators can manage accounts."));
         return false;
@@ -678,6 +887,8 @@ bool AuthService::setUserRole(int userId, const QString &role)
         return false;
     }
     if (userId == m_currentUser.id) {
+        auditDenied(QStringLiteral("user.role_change"), QStringLiteral("user"),
+                    QStringLiteral("self"));
         emit messageSent(QStringLiteral("Accounts"),
                          QStringLiteral("You cannot change your own role."));
         return false;
@@ -693,11 +904,28 @@ bool AuthService::setUserRole(int userId, const QString &role)
     }
     if (target->role == UserRole::Admin && target->active && newRole != UserRole::Admin
         && dao.countActiveAdmins() <= 1) {
+        auditDenied(db.get(), QStringLiteral("user.role_change"), QStringLiteral("user"),
+                    QStringLiteral("last_admin"));
         emit messageSent(QStringLiteral("Accounts"),
                          QStringLiteral("Cannot demote the last administrator."));
         return false;
     }
-    if (!dao.setRole(userId, newRole)) {
+
+    const QString previousRole = userRoleToString(target->role);
+    const QString username = target->username;
+    const QString entityId = QString::number(userId);
+    const bool ok = runWithAudit(db.get(), [&](AuditLogEntry &audit) {
+        if (!dao.setRole(userId, newRole))
+            return false;
+        QJsonObject detail = AuditTrail::changes(
+            {{QStringLiteral("role"), previousRole, userRoleToString(newRole)}});
+        detail.insert(QStringLiteral("username"), username);
+        audit = AuditTrail::entry(AuditTrail::localActor(),
+                                  QStringLiteral("user.role_change"),
+                                  QStringLiteral("user"), entityId, AuditResult::Ok, detail);
+        return true;
+    });
+    if (!ok) {
         emit messageSent(QStringLiteral("Accounts"),
                          QStringLiteral("Could not update the role."));
         return false;

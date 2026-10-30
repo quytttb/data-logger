@@ -57,7 +57,7 @@ Rectangle {
         returnMainTab = -1
         sensorSubTabIndex = 0
         sensorForm.resetForm()
-        settingsTabIndex = 5
+        settingsTabIndex = 6
     }
 
     // Pre-fill Add Sensor form with data from Modbus Tester
@@ -82,7 +82,7 @@ Rectangle {
         }
 
         sensorSubTabIndex = 0
-        settingsTabIndex = 5
+        settingsTabIndex = 6
     }
 
     function editSelectedSensor() {
@@ -103,7 +103,7 @@ Rectangle {
                 SensorListModel.list_do_sensors(editSensorId))
         }
         sensorSubTabIndex = 0
-        settingsTabIndex = 5
+        settingsTabIndex = 6
     }
 
     function deleteSelectedSensor() {
@@ -213,7 +213,12 @@ Rectangle {
                 Layout.fillWidth: true; Layout.fillHeight: true
             }
 
-            // ── Tab 5: Add/Edit Sensor Form ──
+            // ── Tab 5: Audit log (admin) ──
+            SettingsAuditTab {
+                Layout.fillWidth: true; Layout.fillHeight: true
+            }
+
+            // ── Tab 6: Add/Edit Sensor Form ──
             SensorConfigForm {
                 id: sensorForm
                 Layout.fillWidth: true; Layout.fillHeight: true

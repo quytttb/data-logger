@@ -48,7 +48,7 @@ int insertUser(UserAccount &user)
 // có thể chậm hơn máy dev, nhưng vẫn phải fail nếu treo.
 bool waitIdle(AuthService &auth)
 {
-    return QTest::qWaitFor([&auth]() { return !auth.busy; }, 20000);
+    return QTest::qWaitFor([&auth]() { return !auth.busy(); }, 20000);
 }
 
 } // namespace

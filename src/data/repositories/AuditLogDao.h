@@ -2,6 +2,7 @@
 #include "data/models/AuditLogEntry.h"
 #include <QList>
 #include <QSqlDatabase>
+#include <QStringList>
 
 // Ghi và truy vấn audit_log.
 //
@@ -17,6 +18,10 @@ public:
 
     QList<AuditLogEntry> query(const AuditLogQuery &filter) const;
     int count(const AuditLogQuery &filter) const;
+
+    // Giá trị phân biệt cho bộ lọc UI (sắp xếp tăng dần).
+    QStringList distinctActions() const;
+    QStringList distinctEntities() const;
 
     // Xóa log cũ hơn cutoff (retention). Trả số dòng đã xóa, -1 nếu lỗi.
     int purgeBefore(const QDateTime &cutoff);

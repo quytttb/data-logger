@@ -7,6 +7,10 @@ qt_add_qml_module(datalogger_core
     SOURCES
         AppDefaults.cpp
         AppDefaults.h
+        AuditController.cpp
+        AuditController.h
+        AuditTrail.cpp
+        AuditTrail.h
         AuthService.cpp
         AuthService.h
         SettingsController.cpp

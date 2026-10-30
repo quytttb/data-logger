@@ -1,4 +1,5 @@
 #include "SensorListModel.h"
+#include "AuditTrail.h"
 #include "data/db/Database.h"
 #include "data/repositories/SensorDao.h"
 #include "data/repositories/AppConfigDao.h"
@@ -6,6 +7,7 @@
 #include "tt10/SensorSymbols.h"
 #include "utils/modbus/ModbusCodec.h"
 #include <cmath>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QSet>
@@ -22,14 +24,24 @@ bool thresholdVariantEnabled(const QVariant &v)
     return !v.isNull() && !v.toString().trimmed().isEmpty();
 }
 
+QVariant optionalDoubleToVariant(const std::optional<double> &value)
+{
+    return value.has_value() ? QVariant(*value) : QVariant();
+}
+
 } // namespace
 
 IMPLEMENT_QML_SINGLETON(SensorListModel)
 
-bool SensorListModel::checkPermission(Permission permission, const QString &deniedMessage)
+bool SensorListModel::checkPermission(Permission permission, const QString &action,
+                                      const QString &entity, const QString &deniedMessage)
 {
     if (AuthService::authorize(permission))
         return true;
+    AuditLogEntry entry = AuditTrail::entry(
+        AuditTrail::localActor(), action, entity, QString(), AuditResult::Denied,
+        AuditTrail::snapshot({{QStringLiteral("reason"), deniedMessage}}));
+    AuditTrail::appendStandalone(entry);
     emit messageSent(QStringLiteral("Permission denied"), deniedMessage);
     return false;
 }
@@ -188,17 +200,35 @@ Sensor SensorListModel::variantToSensor(const QVariantMap &p, int existingId) co
     return s;
 }
 
-bool SensorListModel::commitSensorWrite(const QString &okMsg, const QString &failMsg,
-                                           const std::function<bool(SensorDao &, AppConfigDao &)> &op)
+bool SensorListModel::commitSensorWrite(
+    const QString &action, const QString &okMsg, const QString &failMsg,
+    const std::function<bool(SensorDao &, AppConfigDao &, AuditPayload &)> &op)
 {
-    bool ok;
+    bool ok = false;
     {
         ScopedDbConnection db;
         SensorDao dao(db);
         AppConfigDao cfgDao(db);
-        ok = op(dao, cfgDao);
-        if (ok)
-            cfgDao.bumpRevision();
+        QSqlDatabase &sql = db.get();
+        AuditPayload payload;
+
+        const bool began = sql.transaction();
+        ok = began;
+        if (began) {
+            ok = op(dao, cfgDao, payload);
+            if (ok)
+                cfgDao.bumpRevision();
+            if (ok) {
+                AuditLogEntry entry = AuditTrail::entry(
+                    AuditTrail::localActor(), action, QStringLiteral("sensor"),
+                    payload.entityId, AuditResult::Ok, payload.detail);
+                ok = AuditTrail::append(sql, entry);
+            }
+            if (ok)
+                ok = sql.commit();
+            if (!ok)
+                sql.rollback();
+        }
     }
     if (ok) {
         loadFromDb();
@@ -210,45 +240,105 @@ bool SensorListModel::commitSensorWrite(const QString &okMsg, const QString &fai
 }
 
 bool SensorListModel::addSensor(const QVariantMap &props) {
-    if (!checkPermission(Permission::ConfigureSensors,
+    if (!checkPermission(Permission::ConfigureSensors, QStringLiteral("sensor.add"),
+                         QStringLiteral("sensor"),
                          QStringLiteral("Only administrators can add sensors.")))
         return false;
     Sensor s = variantToSensor(props);
-    return commitSensorWrite(QStringLiteral("Sensor added."),
+    return commitSensorWrite(QStringLiteral("sensor.add"),
+                             QStringLiteral("Sensor added."),
                              QStringLiteral("Failed to add sensor."),
-                             [&](SensorDao &dao, AppConfigDao &cfgDao) {
+                             [&](SensorDao &dao, AppConfigDao &cfgDao, AuditPayload &payload) {
         if (s.sensorType == SensorType::Analog) {
             const AppConfig cfg = cfgDao.load();
             if (cfg.autoAddTransmit)
                 s.transmitEnabled = true;
         }
-        return dao.save(s);
+        if (!dao.save(s))
+            return false;
+        payload.entityId = QString::number(s.id);
+        payload.detail = AuditTrail::snapshot({
+            {QStringLiteral("name"), s.name},
+            {QStringLiteral("sensorSymbol"), s.sensorSymbol},
+            {QStringLiteral("sensorType"), sensorTypeToString(s.sensorType)},
+            {QStringLiteral("slaveId"), s.slaveId},
+            {QStringLiteral("registerAddress"), s.registerAddress},
+            {QStringLiteral("registerType"), s.registerType},
+            {QStringLiteral("dataType"), s.dataType},
+            {QStringLiteral("dataFormat"), s.dataFormat},
+            {QStringLiteral("coefficient"), s.coefficient},
+            {QStringLiteral("active"), s.active},
+        });
+        return true;
     });
 }
 
 bool SensorListModel::updateSensor(int id, const QVariantMap &props) {
-    if (!checkPermission(Permission::ConfigureSensors,
+    if (!checkPermission(Permission::ConfigureSensors, QStringLiteral("sensor.update"),
+                         QStringLiteral("sensor"),
                          QStringLiteral("Only administrators can edit sensors.")))
         return false;
     Sensor s = variantToSensor(props, id);
-    return commitSensorWrite(QStringLiteral("Sensor updated."),
+    return commitSensorWrite(QStringLiteral("sensor.update"),
+                             QStringLiteral("Sensor updated."),
                              QStringLiteral("Failed to update sensor."),
-                             [&](SensorDao &dao, AppConfigDao &) {
+                             [&](SensorDao &dao, AppConfigDao &, AuditPayload &payload) {
         const Sensor existing = dao.loadById(id);
-        if (existing.id != 0 && !props.contains(QStringLiteral("transmitEnabled")))
+        if (existing.id == 0)
+            return false;
+        if (!props.contains(QStringLiteral("transmitEnabled")))
             s.transmitEnabled = existing.transmitEnabled;
-        return dao.save(s);
+        if (!dao.save(s))
+            return false;
+        payload.entityId = QString::number(id);
+        payload.detail = AuditTrail::changes({
+            {QStringLiteral("name"), existing.name, s.name},
+            {QStringLiteral("sensorSymbol"), existing.sensorSymbol, s.sensorSymbol},
+            {QStringLiteral("unit"), existing.unit, s.unit},
+            {QStringLiteral("slaveId"), existing.slaveId, s.slaveId},
+            {QStringLiteral("registerAddress"), existing.registerAddress, s.registerAddress},
+            {QStringLiteral("registerType"), existing.registerType, s.registerType},
+            {QStringLiteral("dataType"), existing.dataType, s.dataType},
+            {QStringLiteral("dataFormat"), existing.dataFormat, s.dataFormat},
+            {QStringLiteral("coefficient"), existing.coefficient, s.coefficient},
+            {QStringLiteral("minThreshold"), optionalDoubleToVariant(existing.minThreshold),
+             optionalDoubleToVariant(s.minThreshold)},
+            {QStringLiteral("maxThreshold"), optionalDoubleToVariant(existing.maxThreshold),
+             optionalDoubleToVariant(s.maxThreshold)},
+            {QStringLiteral("reportIndex"), existing.reportIndex, s.reportIndex},
+            {QStringLiteral("decimals"), existing.decimals, s.decimals},
+            {QStringLiteral("sensorType"), sensorTypeToString(existing.sensorType),
+             sensorTypeToString(s.sensorType)},
+            {QStringLiteral("active"), existing.active, s.active},
+            {QStringLiteral("diType"), existing.diType, s.diType},
+            {QStringLiteral("transmitEnabled"), existing.transmitEnabled, s.transmitEnabled},
+        });
+        return true;
     });
 }
 
 bool SensorListModel::removeSensor(int id) {
-    if (!checkPermission(Permission::ConfigureSensors,
+    if (!checkPermission(Permission::ConfigureSensors, QStringLiteral("sensor.delete"),
+                         QStringLiteral("sensor"),
                          QStringLiteral("Only administrators can delete sensors.")))
         return false;
-    return commitSensorWrite(QStringLiteral("Sensor deleted."),
+    return commitSensorWrite(QStringLiteral("sensor.delete"),
+                             QStringLiteral("Sensor deleted."),
                              QStringLiteral("Failed to delete sensor."),
-                             [&](SensorDao &dao, AppConfigDao &) {
-        return dao.remove(id);
+                             [&](SensorDao &dao, AppConfigDao &, AuditPayload &payload) {
+        const Sensor existing = dao.loadById(id);
+        if (existing.id == 0)
+            return false;
+        if (!dao.remove(id))
+            return false;
+        payload.entityId = QString::number(id);
+        payload.detail = AuditTrail::snapshot({
+            {QStringLiteral("name"), existing.name},
+            {QStringLiteral("sensorSymbol"), existing.sensorSymbol},
+            {QStringLiteral("slaveId"), existing.slaveId},
+            {QStringLiteral("registerAddress"), existing.registerAddress},
+        });
+        return true;
     });
 }
 
@@ -292,21 +382,30 @@ QVariantList SensorListModel::transmissionRows() const
 bool SensorListModel::applyTransmission(const QVariantList &rows)
 {
     if (!checkPermission(Permission::ConfigureSensors,
+                         QStringLiteral("sensor.transmission"),
+                         QStringLiteral("sensor"),
                          QStringLiteral("Only administrators can change transmission settings.")))
         return false;
-    return commitSensorWrite(QStringLiteral("Transmission settings saved."),
+    return commitSensorWrite(QStringLiteral("sensor.transmission"),
+                             QStringLiteral("Transmission settings saved."),
                              QStringLiteral("Failed to save transmission settings."),
-                             [&](SensorDao &dao, AppConfigDao &) {
+                             [&](SensorDao &dao, AppConfigDao &, AuditPayload &payload) {
+        QJsonArray changes;
         for (const auto &item : rows) {
             const QVariantMap row = item.toMap();
             const int id = row.value(QStringLiteral("sensorId")).toInt();
             if (id <= 0)
                 continue;
+            const bool enabled = row.value(QStringLiteral("transmitEnabled")).toBool();
             if (!dao.updateTransmission(id,
                                         row.value(QStringLiteral("sensorSymbol")).toString(),
-                                        row.value(QStringLiteral("transmitEnabled")).toBool()))
+                                        enabled))
                 return false;
+            changes.append(QJsonObject{{QStringLiteral("sensorId"), id},
+                                       {QStringLiteral("transmitEnabled"), enabled}});
         }
+        payload.detail = QJsonObject{{QStringLiteral("sensors"), changes},
+                                     {QStringLiteral("count"), changes.size()}};
         return true;
     });
 }
@@ -342,7 +441,8 @@ QString SensorListModel::validateSensorProps(const QVariantMap &props)
 
 bool SensorListModel::saveSensorForm(const QVariantMap &form, bool isAddMode, int editSensorId)
 {
-    if (!checkPermission(Permission::ConfigureSensors,
+    if (!checkPermission(Permission::ConfigureSensors, QStringLiteral("sensor.save"),
+                         QStringLiteral("sensor"),
                          QStringLiteral("Only administrators can edit sensor configuration.")))
         return false;
     const QString fieldError = validateSensorProps(form);
@@ -508,9 +608,46 @@ QVariantList SensorListModel::list_do_sensors(int analogSensorId) const
     return out;
 }
 
+bool SensorListModel::commitLinkWrite(const QString &action, const QString &okMsg,
+                                      const QString &failMsg,
+                                      const std::function<bool(SensorDao &, AuditPayload &)> &op)
+{
+    bool ok = false;
+    {
+        ScopedDbConnection db;
+        SensorDao dao(db);
+        QSqlDatabase &sql = db.get();
+        AuditPayload payload;
+
+        const bool began = sql.transaction();
+        ok = began;
+        if (began) {
+            ok = op(dao, payload);
+            if (ok) {
+                AuditLogEntry entry = AuditTrail::entry(
+                    AuditTrail::localActor(), action, QStringLiteral("sensor_link"),
+                    payload.entityId, AuditResult::Ok, payload.detail);
+                ok = AuditTrail::append(sql, entry);
+            }
+            if (ok)
+                ok = sql.commit();
+            if (!ok)
+                sql.rollback();
+        }
+    }
+    if (ok) {
+        emit messageSent(QStringLiteral("Success"), okMsg);
+        emit linksChanged();
+    } else {
+        emit messageSent(QStringLiteral("Error"), failMsg);
+    }
+    return ok;
+}
+
 bool SensorListModel::attach_di(int analogSensorId, int diSensorId, const QString &diType)
 {
-    if (!checkPermission(Permission::ConfigureSensors,
+    if (!checkPermission(Permission::ConfigureSensors, QStringLiteral("sensor_link.attach"),
+                         QStringLiteral("sensor_link"),
                          QStringLiteral("Only administrators can change digital links.")))
         return false;
     AnalogDigitalLink link;
@@ -520,24 +657,27 @@ bool SensorListModel::attach_di(int analogSensorId, int diSensorId, const QStrin
     link.triggerOnMax    = false;
     link.triggerOnMin    = false;
 
-    bool ok;
-    {
-        ScopedDbConnection db;
-        SensorDao dao(db);
-        ok = dao.saveLink(link);
-    }
-    if (ok) {
-        emit messageSent(QStringLiteral("Success"), QStringLiteral("DI link attached."));
-        emit linksChanged();
-    } else {
-        emit messageSent(QStringLiteral("Error"), QStringLiteral("Failed to attach DI."));
-    }
-    return ok;
+    return commitLinkWrite(QStringLiteral("sensor_link.attach_di"),
+                           QStringLiteral("DI link attached."),
+                           QStringLiteral("Failed to attach DI."),
+                           [&](SensorDao &dao, AuditPayload &payload) {
+        if (!dao.saveLink(link))
+            return false;
+        payload.entityId = QString::number(link.id);
+        payload.detail = AuditTrail::snapshot({
+            {QStringLiteral("analogSensorId"), link.analogSensorId},
+            {QStringLiteral("digitalSensorId"), link.digitalSensorId},
+            {QStringLiteral("ioType"), QStringLiteral("DI")},
+            {QStringLiteral("diType"), link.diType},
+        });
+        return true;
+    });
 }
 
 bool SensorListModel::attach_do(int analogSensorId, int doSensorId, bool trigMax, bool trigMin)
 {
-    if (!checkPermission(Permission::ConfigureSensors,
+    if (!checkPermission(Permission::ConfigureSensors, QStringLiteral("sensor_link.attach"),
+                         QStringLiteral("sensor_link"),
                          QStringLiteral("Only administrators can change digital links.")))
         return false;
     AnalogDigitalLink link;
@@ -546,90 +686,92 @@ bool SensorListModel::attach_do(int analogSensorId, int doSensorId, bool trigMax
     link.triggerOnMax    = trigMax;
     link.triggerOnMin    = trigMin;
 
-    bool ok;
-    {
-        ScopedDbConnection db;
-        SensorDao dao(db);
-        ok = dao.saveLink(link);
-    }
-    if (ok) {
-        emit messageSent(QStringLiteral("Success"), QStringLiteral("DO link attached."));
-        emit linksChanged();
-    } else {
-        emit messageSent(QStringLiteral("Error"), QStringLiteral("Failed to attach DO."));
-    }
-    return ok;
+    return commitLinkWrite(QStringLiteral("sensor_link.attach_do"),
+                           QStringLiteral("DO link attached."),
+                           QStringLiteral("Failed to attach DO."),
+                           [&](SensorDao &dao, AuditPayload &payload) {
+        if (!dao.saveLink(link))
+            return false;
+        payload.entityId = QString::number(link.id);
+        payload.detail = AuditTrail::snapshot({
+            {QStringLiteral("analogSensorId"), link.analogSensorId},
+            {QStringLiteral("digitalSensorId"), link.digitalSensorId},
+            {QStringLiteral("ioType"), QStringLiteral("DO")},
+            {QStringLiteral("triggerOnMax"), link.triggerOnMax},
+            {QStringLiteral("triggerOnMin"), link.triggerOnMin},
+        });
+        return true;
+    });
 }
 
 bool SensorListModel::detach_link(int linkId)
 {
-    if (!checkPermission(Permission::ConfigureSensors,
+    if (!checkPermission(Permission::ConfigureSensors, QStringLiteral("sensor_link.detach"),
+                         QStringLiteral("sensor_link"),
                          QStringLiteral("Only administrators can change digital links.")))
         return false;
-    bool ok;
-    {
-        ScopedDbConnection db;
-        SensorDao dao(db);
-        ok = dao.removeLink(linkId);
-    }
-    if (ok) {
-        emit messageSent(QStringLiteral("Success"), QStringLiteral("Link removed."));
-        emit linksChanged();
-    } else {
-        emit messageSent(QStringLiteral("Error"), QStringLiteral("Failed to remove link."));
-    }
-    return ok;
+    return commitLinkWrite(QStringLiteral("sensor_link.detach"),
+                           QStringLiteral("Link removed."),
+                           QStringLiteral("Failed to remove link."),
+                           [&](SensorDao &dao, AuditPayload &payload) {
+        if (!dao.removeLink(linkId))
+            return false;
+        payload.entityId = QString::number(linkId);
+        return true;
+    });
 }
 
 bool SensorListModel::update_link_di_type(int linkId, const QString &diType)
 {
-    if (!checkPermission(Permission::ConfigureSensors,
+    if (!checkPermission(Permission::ConfigureSensors, QStringLiteral("sensor_link.update"),
+                         QStringLiteral("sensor_link"),
                          QStringLiteral("Only administrators can change digital links.")))
         return false;
-    bool ok = false;
-    {
-        ScopedDbConnection db;
-        SensorDao dao(db);
+    return commitLinkWrite(QStringLiteral("sensor_link.update_di_type"),
+                           QStringLiteral("DI status updated."),
+                           QStringLiteral("Failed to update DI link."),
+                           [&](SensorDao &dao, AuditPayload &payload) {
         for (auto &l : dao.loadAllLinks()) {
-            if (l.id == linkId) {
-                l.diType = diType;
-                ok = dao.saveLink(l);
-                break;
-            }
+            if (l.id != linkId)
+                continue;
+            const QString previous = l.diType;
+            l.diType = diType;
+            if (!dao.saveLink(l))
+                return false;
+            payload.entityId = QString::number(linkId);
+            payload.detail = AuditTrail::changes(
+                {{QStringLiteral("diType"), previous, diType}});
+            return true;
         }
-    }
-    if (ok) {
-        emit messageSent(QStringLiteral("Success"), QStringLiteral("DI status updated."));
-        emit linksChanged();
-    } else {
-        emit messageSent(QStringLiteral("Error"), QStringLiteral("Failed to update DI link."));
-    }
-    return ok;
+        return false;
+    });
 }
 
 bool SensorListModel::update_link_do_triggers(int linkId, bool trigMax, bool trigMin)
 {
-    if (!checkPermission(Permission::ConfigureSensors,
+    if (!checkPermission(Permission::ConfigureSensors, QStringLiteral("sensor_link.update"),
+                         QStringLiteral("sensor_link"),
                          QStringLiteral("Only administrators can change digital links.")))
         return false;
-    bool ok = false;
-    {
-        ScopedDbConnection db;
-        SensorDao dao(db);
+    return commitLinkWrite(QStringLiteral("sensor_link.update_do_triggers"),
+                           QStringLiteral("DO triggers updated."),
+                           QStringLiteral("Failed to update DO link."),
+                           [&](SensorDao &dao, AuditPayload &payload) {
         for (auto &l : dao.loadAllLinks()) {
-            if (l.id == linkId) {
-                l.triggerOnMax = trigMax;
-                l.triggerOnMin = trigMin;
-                ok = dao.saveLink(l);
-                break;
-            }
+            if (l.id != linkId)
+                continue;
+            const bool previousMax = l.triggerOnMax;
+            const bool previousMin = l.triggerOnMin;
+            l.triggerOnMax = trigMax;
+            l.triggerOnMin = trigMin;
+            if (!dao.saveLink(l))
+                return false;
+            payload.entityId = QString::number(linkId);
+            payload.detail = AuditTrail::changes(
+                {{QStringLiteral("triggerOnMax"), previousMax, trigMax},
+                 {QStringLiteral("triggerOnMin"), previousMin, trigMin}});
+            return true;
         }
-    }
-    if (ok) {
-        emit messageSent(QStringLiteral("Success"), QStringLiteral("DO triggers updated."));
-        emit linksChanged();
-    } else {
-        emit messageSent(QStringLiteral("Error"), QStringLiteral("Failed to update DO link."));
-    }
-    return ok;
+        return false;
+    });
 }

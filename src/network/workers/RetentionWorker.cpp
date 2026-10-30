@@ -1,5 +1,6 @@
 #include "RetentionWorker.h"
 #include "data/db/Database.h"
+#include "data/repositories/AuditLogDao.h"
 #include "data/repositories/SensorDataDao.h"
 #include "data/repositories/ReportLogDao.h"
 #include "utils/system/AppPaths.h"
@@ -34,6 +35,7 @@ void RetentionWorker::purge() {
 
     int sensorRows = 0;
     int reports = 0;
+    int auditRows = 0;
     {
         ScopedDbConnection db;
         if (db.get().isOpen()) {
@@ -41,6 +43,8 @@ void RetentionWorker::purge() {
             sensorRows = purgeSensorData(sdDao, now.addDays(-kSensorDataKeepDays));
             ReportLogDao rDao(db);
             reports = purgeReportLogs(rDao, now.addDays(-kReportKeepDays));
+            AuditLogDao aDao(db);
+            auditRows = aDao.purgeBefore(now.addDays(-kAuditKeepDays));
             // Co file DB sau khi xóa số lượng lớn (WAL không tự co).
             QSqlQuery q(db);
             q.exec("PRAGMA wal_checkpoint(TRUNCATE);");
@@ -50,9 +54,9 @@ void RetentionWorker::purge() {
     pruneLogFiles(now.addDays(-kLogKeepDays));
     checkDiskSpace();
 
-    if (sensorRows > 0 || reports > 0)
+    if (sensorRows > 0 || reports > 0 || auditRows > 0)
         qInfo() << "RetentionWorker: purged" << sensorRows << "sensor rows,"
-                << reports << "report logs";
+                << reports << "report logs," << auditRows << "audit rows";
     emit purgeCompleted(sensorRows, reports);
 }
 
