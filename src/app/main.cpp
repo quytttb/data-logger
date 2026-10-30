@@ -297,11 +297,14 @@ int main(int argc, char *argv[]) {
     });
 
     // Also react to config changes coming from the REST API so that the
-    // in-memory SettingsController stays in sync with the DB.
-    // Queued: REST POST handler phải trả response trước khi restart server/bind port.
+    // in-memory SettingsController stays in sync with the DB. REST v1 cannot
+    // change REST/Modbus TCP settings, so do not restart those listeners here;
+    // restarting REST from inside its own request path can tear down the
+    // in-flight response/connection.
     QObject::connect(restApi, &RestApiService::configApplied, &app, [&](int /*revision*/) {
         settingsCtrl->loadConfig();
-        applyConfig();
+        reportCtrl->applyServerConfig();
+        monitorCtrl->refreshSensors();
     }, Qt::QueuedConnection);
 
     QObject::connect(&app, &QGuiApplication::aboutToQuit, [&]() {
