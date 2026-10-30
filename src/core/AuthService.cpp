@@ -7,7 +7,7 @@
 #include "utils/security/PasswordHasher.h"
 
 #include <QEvent>
-#include <QGuiApplication>
+#include <QCoreApplication>
 #include <QtConcurrent/QtConcurrentRun>
 #include <QtDebug>
 
@@ -113,14 +113,14 @@ AuthService::AuthService(QObject *parent) : QObject(parent)
     connect(&m_idleTimer, &QTimer::timeout, this, &AuthService::lock);
 
     updateUserCount();
-    if (qApp)
-        qApp->installEventFilter(this);
+    if (auto *application = QCoreApplication::instance())
+        application->installEventFilter(this);
 }
 
 AuthService::~AuthService()
 {
-    if (qApp)
-        qApp->removeEventFilter(this);
+    if (auto *application = QCoreApplication::instance())
+        application->removeEventFilter(this);
 }
 
 QString AuthService::validatePassword(const QString &username, const QString &password)
@@ -321,7 +321,7 @@ void AuthService::runTask(std::function<TaskResult()> work)
 
     setBusy(true);
     QPointer<AuthService> self(this);
-    QtConcurrent::run([self, work = std::move(work)]() {
+    (void)QtConcurrent::run([self, work = std::move(work)]() {
         const TaskResult result = work();
         if (!self)
             return;
@@ -614,7 +614,7 @@ void AuthService::createFirstAdmin(const QString &username, const QString &displ
 void AuthService::changePassword(const QString &oldPassword, const QString &newPassword,
                                  const QString &confirm)
 {
-    if (!m_authenticated)
+    if (!m_authenticated || m_locked)
         return;
     if (newPassword != confirm) {
         emit messageSent(QStringLiteral("Change password"), QStringLiteral("Passwords do not match."));

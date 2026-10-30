@@ -1,12 +1,18 @@
 # Kế hoạch: phân quyền, audit log và hiệu chuẩn đa điểm
 
-> Trạng thái: **đề xuất để chốt trước khi triển khai**. Tài liệu này không đồng nghĩa đã phê duyệt thay đổi contract hoặc triển khai tính năng.
+> Trạng thái: **đã triển khai mã và test các phase 0–4; chưa build/chạy test
+> trên Raspberry Pi**. Kiểm thử phần cứng và vận hành dưới đây vẫn bắt buộc;
+> tài liệu này không phê duyệt thay đổi contract chia sẻ.
 
 ## Mục tiêu và phạm vi
 
 Bổ sung cho Data Logger giám sát **khí thải nhà máy nhiệt điện** ba ý tưởng từ firmware tham khảo: phân quyền người dùng trên kiosk, nhật ký thao tác và hiệu chuẩn tuyến tính đa điểm. Không chuyển các phần dành cho nước thải (sampler, cân, driver hiệu chuẩn riêng), không port nguyên UI/DB Qt5.
 
-Hiện tại repo chưa có tài khoản/role/audit; màn `LockScreen.qml` là màn **khóa thiết bị theo license**, không phải màn đăng nhập. `SensorScalingTab.qml` có `No scaling`, `Linear`, `Two-point mapping`, `Advanced JSON`; hai cách nhập tuyến tính đều lưu hệ số `sensor.coefficient={"a":...,"b":...}`. `Formula::applyFormula` áp dụng `a*raw+b`. Không có dữ liệu điểm hiệu chuẩn để khôi phục từ hệ số cũ.
+Trước triển khai repo chưa có tài khoản/role/audit; `LockScreen.qml` là màn
+**khóa thiết bị theo license**, không phải màn đăng nhập. Trước đây các mode
+`Linear`/`Two-point mapping` đều lưu `sensor.coefficient={"a":...,"b":...}`;
+`Formula::applyFormula` áp dụng `a*raw+b`. Không thể khôi phục điểm hiệu chuẩn
+từ hệ số cũ.
 
 ## 1. Phân quyền người dùng (RBAC)
 
@@ -39,11 +45,19 @@ Hiện tại repo chưa có tài khoản/role/audit; màn `LockScreen.qml` là m
 4. **Hiệu chuẩn:** thuật toán hồi quy, DAO/metadata, thay form cũ bằng luồng 2..N điểm, nối audit và runtime `a,b`; test tính tương đương N=2, N>2, dữ liệu sai, mở/lưu cấu hình cũ.
 5. **Tích hợp:** Qt Test + CTest, kiểm thử kiosk/Pi (restart/mất điện giữa ghi), xác nhận báo cáo TT10/FTP, REST/QR v1 và Modbus map v1 **không đổi**; cập nhật README/CHANGELOG/tài liệu vận hành khi triển khai.
 
-## Cần chốt trước khi code
+## Quyết định và xác minh còn lại
 
-1. Operator được hiệu chuẩn và áp dụng hệ số hay chỉ nhập điểm chờ admin duyệt? Ai được xem audit?
-2. Cách nhập `a,b` thủ công sau khi bỏ mode Linear riêng; có cần quy trình duyệt hiệu chuẩn hoặc lưu lịch sử nhiều phiên không?
-3. Chính sách tạo/reset admin, thời gian tự khóa và giới hạn đăng nhập thất bại trên kiosk.
-4. Thời gian lưu audit, quyền export và có cần cơ chế chống sửa/xuất log ra ngoài thiết bị không?
+- Operator được áp dụng hiệu chuẩn trực tiếp; chỉ admin xem audit. Không có
+  bước duyệt riêng. Lưu nhiều phiên; nhập `a,b` thủ công ở form cảm biến của
+  admin, không tạo điểm giả từ hệ số.
+- Tạo admin lần đầu trên kiosk; mật khẩu PBKDF2-HMAC-SHA256 600.000 vòng,
+  tối thiểu 8 ký tự có chữ và số; khóa phiên sau 5 phút không hoạt động.
+  Năm lần đăng nhập sai khóa 60 giây và tăng dần tới tối đa 15 phút.
+- Giữ audit 365 ngày, chưa hỗ trợ export hay chống sửa bởi admin hệ điều hành;
+  không ghi token/mật khẩu/ghi chú tự do hoặc JSON hệ số tùy ý vào audit.
+- Đã thêm test Qt Test/CTest và kiểm tra cú pháp/lint; **chưa chạy build/test**.
+  Cần thực hiện trên Pi: test tự động, hiệu chuẩn khi polling, khởi động lại và
+  ngắt điện giữa transaction, độ trễ KDF, kiểm tra TT10/FTP và Central. Chỉ
+  xác nhận tương thích thực tế sau khi các bước này thành công.
 
 **Ranh giới contract:** mọi thay đổi Provision QR v1, REST `/api/v1/config` + `/api/v1/readings` hoặc Modbus TCP map v1 cần người dùng đồng ý rõ ràng và cập nhật cả tài liệu edge/Central; kế hoạch hiện tại không thay đổi các contract này.

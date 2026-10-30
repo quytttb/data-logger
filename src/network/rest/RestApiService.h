@@ -42,7 +42,7 @@ public:
     // Health snapshot (uptime, modbus_connected, ...) — gọi từ main.cpp.
     void setHealthProvider(std::function<QVariantMap()> provider);
 
-public slots:
+    // Chỉ cấu hình từ C++ sau khi lưu settings có kiểm tra quyền.
     void start(const QString &bind, int port, const QString &token);
     void stop();
 

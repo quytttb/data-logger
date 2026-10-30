@@ -111,7 +111,8 @@ public:
 
     Q_INVOKABLE QVariantList getTrendBuffer(int sensorId) const;
 
-public slots:
+    // Luồng hệ thống (boot/retry/Tester) gọi trực tiếp C++, không phơi lệnh
+    // dừng polling hay ghi DO qua QML cho người chỉ có quyền xem.
     void startPolling();
     // Async: trả về ngay, hoàn tất trong finalizeStop(). stopPollingSync()
     // chỉ dùng lúc app quit (event loop sắp chết, không thể async).
@@ -125,6 +126,8 @@ public slots:
     void refreshSensorsFromList(const QList<QVariantMap> &maps);
     void registerHeartbeat(const QString &workerName);
     void writeDo(int sensorId, bool value);
+
+public slots:
     void setTrendingSelectedIds(const QVariantList &ids);
 
 signals:

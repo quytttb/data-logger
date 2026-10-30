@@ -312,3 +312,14 @@ target_link_libraries(calibration_test PRIVATE
     utils
 )
 add_test(NAME calibration_test COMMAND calibration_test)
+
+# QTest: REST v1 config + actor thiết bị từ xa + rollback khi audit lỗi.
+add_executable(rest_config_test rest_config_test.cpp)
+target_include_directories(rest_config_test PRIVATE ${CMAKE_SOURCE_DIR}/src)
+target_link_libraries(rest_config_test PRIVATE
+    Qt6::Core
+    Qt6::Sql
+    Qt6::Test
+    datalogger_network
+)
+add_test(NAME rest_config_test COMMAND rest_config_test)

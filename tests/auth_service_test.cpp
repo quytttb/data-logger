@@ -48,7 +48,7 @@ int insertUser(UserAccount &user)
 // có thể chậm hơn máy dev, nhưng vẫn phải fail nếu treo.
 bool waitIdle(AuthService &auth)
 {
-    return QTest::qWaitFor([&auth]() { return !auth.busy(); }, 20000);
+    return QTest::qWaitFor([&auth]() { return !auth.busy(); }, 90000);
 }
 
 } // namespace
@@ -226,6 +226,10 @@ private slots:
         QVERIFY(auth.locked());
         QVERIFY(!auth.canViewData());
         QVERIFY(!AuthService::authorize(Permission::ViewData));
+        // Không thể gọi đổi mật khẩu trực tiếp khi phiên đang khóa.
+        auth.changePassword(QStringLiteral("test-password"), QStringLiteral("changed123"),
+                            QStringLiteral("changed123"));
+        QVERIFY(!auth.busy());
 
         auth.unlock(QStringLiteral("wrong-password"));
         QVERIFY(waitIdle(auth));

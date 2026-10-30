@@ -2,12 +2,17 @@
 #include "core/AuthService.h"
 #include "core/SensorListModel.h"
 #include "core/SettingsController.h"
+#include "core/MonitorController.h"
+#include "core/ReportController.h"
 #include "data/db/Database.h"
 #include "data/models/AppConfig.h"
 #include "data/repositories/AuditLogDao.h"
+#include "data/repositories/AppConfigDao.h"
 #include "data/repositories/SensorDao.h"
 #include "data/repositories/UserAccountDao.h"
 #include "utils/security/PasswordHasher.h"
+#include "network/modbus/ModbusTcpServerService.h"
+#include "network/rest/RestApiService.h"
 
 #include <QFile>
 #include <QJsonDocument>
@@ -52,7 +57,7 @@ int insertUser(UserAccount &user)
 
 bool waitIdle(AuthService &auth)
 {
-    return QTest::qWaitFor([&auth]() { return !auth.busy(); }, 20000);
+    return QTest::qWaitFor([&auth]() { return !auth.busy(); }, 90000);
 }
 
 bool login(AuthService &auth, const QString &username, const QString &password)
@@ -292,6 +297,114 @@ private slots:
 
         // Không thay đổi gì thì không có "changes" rỗng trong log.
         QVERIFY(SettingsController::auditChanges(before, before).isEmpty());
+    }
+
+    void viewerCannotChangeDraftOrReadCredentials()
+    {
+        UserAccount viewer = makeUser(QStringLiteral("viewer"), UserRole::Viewer);
+        QVERIFY(insertUser(viewer) > 0);
+        {
+            ScopedDbConnection db;
+            AppConfigDao dao(db);
+            AppConfig config = dao.load();
+            config.serverActive = true;
+            config.restApiEnabled = true;
+            config.restApiToken = QStringLiteral("device-token-secret");
+            config.ftpPassword = QStringLiteral("encrypted-ftp-secret");
+            QVERIFY(dao.save(config));
+        }
+        AuthService auth;
+        AuthService::setInstance(&auth);
+        QVERIFY(login(auth, QStringLiteral("viewer"), QStringLiteral("test-password")));
+        SettingsController settings(nullptr);
+        settings.loadConfig();
+        const AppConfig before = settings.config();
+        settings.setStationName(QStringLiteral("not allowed"));
+        settings.setServerActive(false);
+        settings.setFtpPassword(QStringLiteral("not allowed"));
+        settings.setRestApiEnabled(false);
+        QCOMPARE(settings.config().stationName, before.stationName);
+        QCOMPARE(settings.config().serverActive, before.serverActive);
+        QCOMPARE(settings.config().ftpPassword, before.ftpPassword);
+        QCOMPARE(settings.config().restApiEnabled, before.restApiEnabled);
+        QVERIFY(settings.restApiToken().isEmpty());
+        QVERIFY(settings.ftpPassword().isEmpty());
+        QVERIFY(!settings.provisionQrAvailable());
+        QVERIFY(settings.get_provision_qr_base64().isEmpty());
+    }
+
+    void settingsRevisionDoesNotMoveBackwards()
+    {
+        UserAccount admin = makeUser(QStringLiteral("admin"), UserRole::Admin);
+        QVERIFY(insertUser(admin) > 0);
+        AuthService auth;
+        AuthService::setInstance(&auth);
+        QVERIFY(login(auth, QStringLiteral("admin"), QStringLiteral("test-password")));
+        SettingsController settings(nullptr);
+        settings.loadConfig();
+        int revision = 0;
+        {
+            ScopedDbConnection db;
+            revision = AppConfigDao(db).bumpRevision();
+            QVERIFY(revision >= 0);
+        }
+        const QString theme = settings.theme() == QStringLiteral("dark")
+            ? QStringLiteral("light") : QStringLiteral("dark");
+        QVERIFY(settings.saveTheme(theme));
+        {
+            ScopedDbConnection db;
+            QCOMPARE(AppConfigDao(db).load().configRevision, revision + 1);
+        }
+        QCOMPARE(settings.configRevision(), revision + 1);
+    }
+
+    void tokenRegenerationRollsBackOnStorageFailure()
+    {
+        UserAccount admin = makeUser(QStringLiteral("admin"), UserRole::Admin);
+        QVERIFY(insertUser(admin) > 0);
+        {
+            ScopedDbConnection db;
+            AppConfigDao dao(db);
+            AppConfig cfg = dao.load();
+            cfg.restApiToken = QStringLiteral("original-token");
+            QVERIFY(dao.save(cfg));
+        }
+        AuthService auth;
+        AuthService::setInstance(&auth);
+        QVERIFY(login(auth, QStringLiteral("admin"), QStringLiteral("test-password")));
+        SettingsController settings(nullptr);
+        settings.loadConfig();
+        const int revision = settings.configRevision();
+        {
+            ScopedDbConnection db;
+            QSqlQuery query(db);
+            QVERIFY(query.exec(QStringLiteral("CREATE TRIGGER reject_token BEFORE UPDATE OF rest_api_token "
+                                              "ON app_config BEGIN SELECT RAISE(ABORT, 'test'); END")));
+        }
+        settings.regenerateRestToken();
+        QCOMPARE(settings.restApiToken(), QStringLiteral("original-token"));
+        QCOMPARE(settings.configRevision(), revision);
+        {
+            ScopedDbConnection db;
+            QCOMPARE(AppConfigDao(db).load().restApiToken, QStringLiteral("original-token"));
+            QSqlQuery query(db);
+            QVERIFY(query.exec(QStringLiteral("DROP TRIGGER reject_token")));
+        }
+        QVERIFY(auditEntries(QStringLiteral("settings.rest_token.regenerate")).isEmpty());
+        settings.regenerateRestToken();
+        QVERIFY(settings.restApiToken() != QStringLiteral("original-token"));
+        QCOMPARE(settings.configRevision(), revision + 1);
+        QCOMPARE(auditEntries(QStringLiteral("settings.rest_token.regenerate")).size(), 1);
+    }
+
+    void systemOnlyOperationsAreNotQmlSlots()
+    {
+        QCOMPARE(SettingsController::staticMetaObject.indexOfMethod("syncSystemTime()"), -1);
+        QCOMPARE(MonitorController::staticMetaObject.indexOfMethod("stopPolling()"), -1);
+        QCOMPARE(MonitorController::staticMetaObject.indexOfMethod("writeDo(int,bool)"), -1);
+        QCOMPARE(ReportController::staticMetaObject.indexOfMethod("applyServerConfig()"), -1);
+        QCOMPARE(RestApiService::staticMetaObject.indexOfMethod("stop()"), -1);
+        QCOMPARE(ModbusTcpServerService::staticMetaObject.indexOfMethod("stop()"), -1);
     }
 
 private:

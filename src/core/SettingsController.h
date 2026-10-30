@@ -126,59 +126,63 @@ public:
     bool   restApiEnabled()     const { return m_cfg.restApiEnabled; }
     int    restApiPort()        const { return m_cfg.restApiPort; }
     QString restApiBind()       const { return m_cfg.restApiBind; }
-    QString restApiToken()      const { return m_cfg.restApiToken; }
+    QString restApiToken()      const;
     int    configRevision()     const { return m_cfg.configRevision; }
     QString theme()             const { return m_cfg.theme; }
     bool   provisionQrAvailable() const;
     bool   provisionQrStale()     const;
 
     // Property setters
-    void setStationCode(const QString &v)   { m_cfg.stationCode = v; }
-    void setStationName(const QString &v)   { m_cfg.stationName = v; }
-    void setTimeFormat(const QString &v)    { m_cfg.timeFormat = v; }
-    void setDateFormat(const QString &v)    { m_cfg.dateFormat = v; }
-    void setTimezone(const QString &v)      { m_cfg.timezone = v; }
-    void setUiLocale(const QString &v)      { m_cfg.uiLocale = v; }
-    void setBuzzerEnable(bool v)            { m_cfg.buzzerEnable = v; }
-    void setFtpAddress(const QString &v)    { m_cfg.ftpAddress = v; }
-    void setFtpPort(int v)                  { m_cfg.ftpPort = v; }
-    void setFtpUsername(const QString &v)   { m_cfg.ftpUsername = v; }
+    void setStationCode(const QString &v)   { if (canEditSystem()) m_cfg.stationCode = v; }
+    void setStationName(const QString &v)   { if (canEditSystem()) m_cfg.stationName = v; }
+    void setTimeFormat(const QString &v)    { if (canEditSystem()) m_cfg.timeFormat = v; }
+    void setDateFormat(const QString &v)    { if (canEditSystem()) m_cfg.dateFormat = v; }
+    void setTimezone(const QString &v)      { if (canEditSystem()) m_cfg.timezone = v; }
+    void setUiLocale(const QString &v)      { if (canEditSystem()) m_cfg.uiLocale = v; }
+    void setBuzzerEnable(bool v)            { if (canEditSystem()) m_cfg.buzzerEnable = v; }
+    void setFtpAddress(const QString &v)    { if (canEditSystem()) m_cfg.ftpAddress = v; }
+    void setFtpPort(int v)                  { if (canEditSystem()) m_cfg.ftpPort = v; }
+    void setFtpUsername(const QString &v)   { if (canEditSystem()) m_cfg.ftpUsername = v; }
     void setFtpPassword(const QString &v);  // encrypts before storing
-    void setFtpRemotePath(const QString &v) { m_cfg.ftpRemotePath = v; }
-    void setFilePrefix(const QString &v)    { m_cfg.filePrefix = v; }
-    void setPollInterval(int v)             { m_cfg.pollInterval = v; }
+    void setFtpRemotePath(const QString &v) { if (canEditSystem()) m_cfg.ftpRemotePath = v; }
+    void setFilePrefix(const QString &v)    { if (canEditSystem()) m_cfg.filePrefix = v; }
+    void setPollInterval(int v)             { if (canEditSystem()) m_cfg.pollInterval = v; }
     void setMonitorViewMode(const QString &v) {
-        if (m_cfg.monitorViewMode == v)
+        if (!canEditSystem() || m_cfg.monitorViewMode == v)
             return;
         m_cfg.monitorViewMode = v;
         emit monitorViewModeChanged();
     }
-    void setMonitorShowDigitalIO(bool v)    { m_cfg.monitorShowDigitalIO = v; }
-    void setSerialPort(const QString &v)    { m_cfg.serialPort = v; }
-    void setSerialBaudrate(int v)           { m_cfg.serialBaudrate = v; }
-    void setSerialBytesize(int v)           { m_cfg.serialBytesize = v; }
-    void setSerialParity(const QString &v)  { m_cfg.serialParity = v; }
-    void setSerialStopbits(int v)           { m_cfg.serialStopbits = v; }
+    void setMonitorShowDigitalIO(bool v)    { if (canEditSystem()) m_cfg.monitorShowDigitalIO = v; }
+    void setSerialPort(const QString &v)    { if (canEditSystem()) m_cfg.serialPort = v; }
+    void setSerialBaudrate(int v)           { if (canEditSystem()) m_cfg.serialBaudrate = v; }
+    void setSerialBytesize(int v)           { if (canEditSystem()) m_cfg.serialBytesize = v; }
+    void setSerialParity(const QString &v)  { if (canEditSystem()) m_cfg.serialParity = v; }
+    void setSerialStopbits(int v)           { if (canEditSystem()) m_cfg.serialStopbits = v; }
     void setServerActive(bool v);
-    void setServerDeviceType(const QString &v) { m_cfg.serverDeviceType = v; }
-    void setServerName(const QString &v)    { m_cfg.serverName = v; }
-    void setServerSendInterval(int v)       { m_cfg.serverSendInterval = v; }
-    void setServerStartTime(const QString &v)  { m_cfg.serverStartTime = v; }
-    void setServerBaseFolder(const QString &v) { m_cfg.serverBaseFolder = v; }
-    void setServerTimeFolder(const QString &v) { m_cfg.serverTimeFolder = v; }
-    void setFileSuffix(const QString &v)       { m_cfg.fileSuffix = v; }
-    void setAutoAddTransmit(bool v)            { m_cfg.autoAddTransmit = v; }
-    void setModbusTcpEnabled(bool v)        { m_cfg.modbusTcpEnabled = v; }
-    void setModbusTcpPort(int v)            { m_cfg.modbusTcpPort = v; }
-    void setModbusTcpBind(const QString &v) { m_cfg.modbusTcpBind = v; }
-    void setModbusTcpUnitId(int v)          { m_cfg.modbusTcpUnitId = v; }
-    void setRestApiEnabled(bool v)          { m_cfg.restApiEnabled = v; }
-    void setRestApiPort(int v)              { m_cfg.restApiPort = v; }
-    void setRestApiBind(const QString &v)   { m_cfg.restApiBind = v; }
+    void setServerDeviceType(const QString &v) { if (canEditSystem()) m_cfg.serverDeviceType = v; }
+    void setServerName(const QString &v)    { if (canEditSystem()) m_cfg.serverName = v; }
+    void setServerSendInterval(int v)       { if (canEditSystem()) m_cfg.serverSendInterval = v; }
+    void setServerStartTime(const QString &v)  { if (canEditSystem()) m_cfg.serverStartTime = v; }
+    void setServerBaseFolder(const QString &v) { if (canEditSystem()) m_cfg.serverBaseFolder = v; }
+    void setServerTimeFolder(const QString &v) { if (canEditSystem()) m_cfg.serverTimeFolder = v; }
+    void setFileSuffix(const QString &v)       { if (canEditSystem()) m_cfg.fileSuffix = v; }
+    void setAutoAddTransmit(bool v)            { if (canEditSystem()) m_cfg.autoAddTransmit = v; }
+    void setModbusTcpEnabled(bool v)        { if (canEditSystem()) m_cfg.modbusTcpEnabled = v; }
+    void setModbusTcpPort(int v)            { if (canEditSystem()) m_cfg.modbusTcpPort = v; }
+    void setModbusTcpBind(const QString &v) { if (canEditSystem()) m_cfg.modbusTcpBind = v; }
+    void setModbusTcpUnitId(int v)          { if (canEditSystem()) m_cfg.modbusTcpUnitId = v; }
+    void setRestApiEnabled(bool v)          { if (canEditSystem()) m_cfg.restApiEnabled = v; }
+    void setRestApiPort(int v)              { if (canEditSystem()) m_cfg.restApiPort = v; }
+    void setRestApiBind(const QString &v)   { if (canEditSystem()) m_cfg.restApiBind = v; }
     void setTheme(const QString &v);
 
     // Access the loaded config struct (read-only, for MonitorController startup)
     const AppConfig &config() const { return m_cfg; }
+
+    // Chỉ gọi nội bộ lúc boot; không phơi lệnh đổi timezone ra QML.
+    void syncSystemTime();
+    void notifySessionChanged();
 
 public slots:
     void loadConfig();
@@ -192,11 +196,6 @@ public slots:
     // shipped in the package so the unprivileged kiosk user may reboot.
     Q_INVOKABLE void rebootSystem();
 
-    // Boot-time system date/time sync (kiosk has no OS settings UI):
-    // defaults the zone to Asia/Ho_Chi_Minh (Vietnam) and pushes timezone +
-    // NTP to the OS. Called from main.cpp after config load.
-    Q_INVOKABLE void syncSystemTime();
-
 signals:
     void configLoaded();
     void configSaved();
@@ -207,6 +206,7 @@ signals:
     void messageSent(QString title, QString body);
 
 private:
+    bool canEditSystem() const;
     // Guard backend + ghi audit lần bị từ chối. Trả true nếu được phép.
     bool checkPermission(Permission permission, const QString &action,
                          const QString &deniedMessage);

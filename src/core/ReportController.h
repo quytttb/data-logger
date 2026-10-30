@@ -38,13 +38,14 @@ public:
     void setFtpWorker(FtpWorker *worker);
     void setSettingsController(SettingsController *settings);
 
-public slots:
-    Q_INVOKABLE void generateReport(const QDateTime &from, const QDateTime &to);
+    // Sinh/gửi tự động là luồng hệ thống, không mở write path qua QML.
+    void generateReport(const QDateTime &from, const QDateTime &to);
     // Live "dir + file" preview for Settings (reads the in-memory config so
     // keystrokes reflect immediately, before Save).
-    Q_INVOKABLE QString previewRemotePath() const;
     void refreshStatus();
     void applyServerConfig();
+
+    Q_INVOKABLE QString previewRemotePath() const;
 
 signals:
     void messageSent(QString title, QString body);

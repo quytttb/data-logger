@@ -204,6 +204,8 @@ int main(int argc, char *argv[]) {
     AuditController::setInstance(auditCtrl);
     CalibrationController::setInstance(calibrationCtrl);
     SettingsController::setInstance(settingsCtrl);
+    QObject::connect(authService, &AuthService::sessionChanged,
+                     settingsCtrl, &SettingsController::notifySessionChanged);
     MonitorController::setInstance(monitorCtrl);
     HistoryViewModel::setInstance(historyVm);
     TrendingHistoryViewModel::setInstance(trendHistVm);

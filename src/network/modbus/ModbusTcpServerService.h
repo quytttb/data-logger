@@ -46,7 +46,7 @@ public:
     void updateDo(int sensorId, bool state);
     void setLoggerStatus(bool polling, bool rtuConnected);
 
-public slots:
+    // Vòng đời server do C++ quản lý, không điều khiển trực tiếp từ QML.
     void start(const QString &bind, int port, int unitId);
     void stop();
 

@@ -212,7 +212,8 @@ bool AppConfigDao::save(const AppConfig &c) {
 
 int AppConfigDao::bumpRevision() {
     QSqlQuery q(m_db);
-    q.prepare(QStringLiteral("UPDATE app_config SET config_revision = config_revision + 1"));
+    q.prepare(QStringLiteral("UPDATE app_config SET config_revision = config_revision + 1 "
+                             "WHERE config_revision < 2147483647"));
     if (!q.exec() || q.numRowsAffected() != 1) {
         qWarning() << "AppConfigDao::bumpRevision update failed:" << q.lastError().text();
         return -1;
@@ -230,6 +231,9 @@ QString AppConfigDao::generateAndSaveToken() {
     QSqlQuery q(m_db);
     q.prepare("UPDATE app_config SET rest_api_token = :t");
     q.bindValue(":t", token);
-    q.exec();
+    if (!q.exec() || q.numRowsAffected() != 1) {
+        qWarning() << "AppConfigDao::generateAndSaveToken failed:" << q.lastError().text();
+        return {};
+    }
     return token;
 }

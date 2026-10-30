@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+### Tài khoản, audit và hiệu chuẩn đa điểm
+- Thêm tài khoản kiosk viewer/operator/admin, khởi tạo admin lần đầu, PBKDF2
+  có salt riêng, đổi/reset mật khẩu, khóa tạm sau nhiều lần sai và tự khóa phiên.
+- Thêm audit có lọc/phân trang, retention 365 ngày và ghi nguyên tử cùng thay
+  đổi cấu hình/hiệu chuẩn; REST config được ghi với actor thiết bị từ xa, không
+  ghi secret hay JSON nâng cao vào audit.
+- Thay hai điểm riêng bằng hồi quy tuyến tính 2..N điểm; lưu phiên/điểm, xem
+  sai số và R², xác nhận trước áp dụng. Giữ hệ số thủ công và JSON legacy;
+  runtime tiếp tục áp dụng `a*x+b` và nạp lại khi hệ số đổi.
+- Sửa transaction xóa cảm biến/cascade, không để revision lùi hoặc báo thành
+  công khi cập nhật revision/token/audit thất bại; bổ sung test CTest cho RBAC,
+  audit, rollback, hồi quy và REST config.
+- Chưa chạy build/test trên Raspberry Pi; cần kiểm thử kiosk, ngắt điện, TT10,
+  FTP và kết nối Central trước khi triển khai vận hành.
+
 ### Trending lịch sử + downsampling
 - Thêm `Downsampler` min-max bucket (`src/utils`, k=400 → ~800 điểm):
   giữ envelope/đỉnh, neo điểm alarm, luôn giữ đầu/cuối (kèm test)

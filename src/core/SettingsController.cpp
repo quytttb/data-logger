@@ -12,6 +12,7 @@
 #include <QUuid>
 #include <QProcess>
 #include <QDebug>
+#include <limits>
 
 IMPLEMENT_QML_SINGLETON(SettingsController)
 
@@ -23,13 +24,22 @@ const QString kProvisionSchema = QStringLiteral("central-logger-provision/v1");
 
 // Lưu app_config + ghi audit trong cùng transaction: nếu audit lỗi thì cấu
 // hình rollback, không báo thành công khi thiếu dấu vết.
-bool saveConfigWithAudit(AppConfigDao &dao, QSqlDatabase &db, const AppConfig &cfg,
+bool saveConfigWithAudit(AppConfigDao &dao, QSqlDatabase &db, AppConfig &cfg,
                          const QString &action, const QJsonObject &detail)
 {
     if (!db.transaction())
         return false;
 
-    bool ok = dao.save(cfg);
+    // m_cfg có thể cũ hơn DB sau khi hiệu chuẩn/REST cập nhật revision.
+    // Đọc trong transaction, không ghi đè revision mới bằng snapshot cũ.
+    const AppConfig current = dao.load();
+    const int previousRevision = cfg.configRevision;
+    bool ok = current.id > 0 && current.configRevision < std::numeric_limits<int>::max();
+    if (ok) {
+        cfg.id = current.id;
+        cfg.configRevision = current.configRevision + 1;
+        ok = dao.save(cfg);
+    }
     if (ok) {
         AuditLogEntry entry = AuditTrail::entry(
             AuditTrail::localActor(), action, QStringLiteral("app_config"),
@@ -38,8 +48,10 @@ bool saveConfigWithAudit(AppConfigDao &dao, QSqlDatabase &db, const AppConfig &c
     }
     if (ok)
         ok = db.commit();
-    if (!ok)
+    if (!ok) {
         db.rollback();
+        cfg.configRevision = previousRevision;
+    }
     return ok;
 }
 }
@@ -111,15 +123,31 @@ bool SettingsController::checkPermission(Permission permission, const QString &a
     return false;
 }
 
+bool SettingsController::canEditSystem() const {
+    return AuthService::authorize(Permission::ConfigureSystem);
+}
+
+void SettingsController::notifySessionChanged() {
+    emit configLoaded();
+    emit provisionQrChanged();
+}
+
 QString SettingsController::ftpPassword() const {
+    if (!canEditSystem()) return {};
     if (m_cfg.ftpPassword.isEmpty()) return {};
     return Crypto::decrypt(m_cfg.ftpPassword);
 }
 void SettingsController::setFtpPassword(const QString &v) {
+    if (!canEditSystem()) return;
     m_cfg.ftpPassword = v.isEmpty() ? QString() : Crypto::encrypt(v);
 }
 
+QString SettingsController::restApiToken() const {
+    return canEditSystem() ? m_cfg.restApiToken : QString();
+}
+
 void SettingsController::setServerActive(bool v) {
+    if (!canEditSystem()) return;
     if (m_cfg.serverActive != v) {
         m_cfg.serverActive = v;
         emit serverActiveChanged();
@@ -127,6 +155,7 @@ void SettingsController::setServerActive(bool v) {
 }
 
 void SettingsController::setTheme(const QString &v) {
+    if (!canEditSystem()) return;
     const QString normalized = v.isEmpty() ? kDefaultTheme : v;
     if (m_cfg.theme == normalized)
         return;
@@ -152,6 +181,8 @@ bool SettingsController::saveTheme(const QString &value) {
             dao, db.get(), m_cfg, QStringLiteral("settings.theme"),
             AuditTrail::changes({{QStringLiteral("theme"), previous, m_cfg.theme}}));
     }
+    if (!ok)
+        loadConfig();
     return ok;
 }
 
@@ -206,6 +237,7 @@ void SettingsController::saveConfig() {
                              QStringLiteral("Configuration saved, but the system timezone "
                                             "could not be applied to the OS."));
     } else {
+        loadConfig();
         emit messageSent("Error", "Failed to save configuration.");
     }
 }
@@ -295,6 +327,8 @@ void SettingsController::regenerateRestToken() {
         return;
 
     bool ok;
+    QString newToken;
+    int newRevision = -1;
     {
         ScopedDbConnection db;
         AppConfigDao dao(db);
@@ -302,11 +336,17 @@ void SettingsController::regenerateRestToken() {
         ok = sql.transaction();
         if (ok) {
             // Token mới chỉ lưu trong DB/RAM; audit không bao giờ chứa token.
-            m_cfg.restApiToken = dao.generateAndSaveToken();
+            newToken = dao.generateAndSaveToken();
+            ok = !newToken.isEmpty();
+            if (ok) {
+                newRevision = dao.bumpRevision();
+                ok = newRevision >= 0;
+            }
             AuditLogEntry entry = AuditTrail::entry(
                 AuditTrail::localActor(), QStringLiteral("settings.rest_token.regenerate"),
                 QStringLiteral("app_config"), QString::number(m_cfg.id));
-            ok = AuditTrail::append(sql, entry);
+            if (ok)
+                ok = AuditTrail::append(sql, entry);
             if (ok)
                 ok = sql.commit();
             if (!ok)
@@ -318,6 +358,8 @@ void SettingsController::regenerateRestToken() {
                          QStringLiteral("Failed to change the REST token."));
         return;
     }
+    m_cfg.restApiToken = newToken;
+    m_cfg.configRevision = newRevision;
     emit configLoaded();
     emit configSaved();
     emit provisionQrChanged();
@@ -347,7 +389,7 @@ void SettingsController::rebootSystem() {
 
 bool SettingsController::provisionQrAvailable() const
 {
-    return m_cfg.restApiEnabled && !m_cfg.restApiToken.trimmed().isEmpty();
+    return canEditSystem() && m_cfg.restApiEnabled && !m_cfg.restApiToken.trimmed().isEmpty();
 }
 
 bool SettingsController::provisionQrStale() const
@@ -384,6 +426,9 @@ QString SettingsController::buildProvisionJson() const
 
 QString SettingsController::get_provision_qr_base64()
 {
+    if (!checkPermission(Permission::ConfigureSystem, QStringLiteral("settings.provision_qr"),
+                         QStringLiteral("Only administrators can view the provisioning QR.")))
+        return {};
     if (!provisionQrAvailable()) {
         emit messageSent(QStringLiteral("REST API"),
                          QStringLiteral("Enable REST API and save a token before generating QR."));

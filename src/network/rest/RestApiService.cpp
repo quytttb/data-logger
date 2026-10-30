@@ -1,15 +1,14 @@
 #include "RestApiService.h"
+#include "RestConfigUpdater.h"
 #include "utils/network/LanIp.h"
 #include "data/db/Database.h"
 #include "data/repositories/AppConfigDao.h"
 #include "data/repositories/SensorDao.h"
-#include "utils/modbus/ModbusCodec.h"
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QHostAddress>
 #include <QMutexLocker>
-#include <QRegularExpression>
 #include <QDateTime>
 #include <QDebug>
 #include <QQmlEngine>
@@ -29,13 +28,6 @@ bool timingSafeEquals(const QByteArray &a, const QByteArray &b) {
     for (int i = 0; i < a.size(); ++i)
         diff |= static_cast<unsigned char>(a.at(i) ^ b.at(i));
     return diff == 0;
-}
-
-bool isValidSerialPort(const QString &port) {
-    // Whitelist: only /dev/tty* device paths (USB/AMA/ttyS0). An empty value
-    // keeps the current config untouched (field is optional on POST).
-    static const QRegularExpression re(QStringLiteral("^/dev/tty[A-Za-z0-9_.-]{1,64}$"));
-    return re.match(port).hasMatch();
 }
 
 } // namespace
@@ -235,59 +227,25 @@ void RestApiService::setupRoutes() {
                 return QHttpServerResponse(R"({"error":"Invalid JSON"})",
                                            QHttpServerResponse::StatusCode::BadRequest);
 
-            ScopedDbConnection db;
-            AppConfigDao dao(db);
-            auto cfg = dao.load();
-            QJsonObject body = doc.object();
-
-            // Validate writable fields before applying — a malformed value must
-            // never brick the device (poll_interval=0 ⇒ busy-loop, arbitrary
-            // serial_port path ⇒ injection of unknown devices).
-            if (body.contains("poll_interval")) {
-                const int pi = body["poll_interval"].toInt(-1);
-                if (pi < 1 || pi > 3600)
-                    return QHttpServerResponse(R"({"error":"poll_interval must be 1..3600 seconds"})",
-                                               QHttpServerResponse::StatusCode::BadRequest);
-                cfg.pollInterval = pi;
-            }
-            if (body.contains("serial_baudrate")) {
-                const int br = body["serial_baudrate"].toInt(-1);
-                if (!ModbusCodec::isSupportedBaudrate(br))
-                    return QHttpServerResponse(R"({"error":"serial_baudrate is not supported"})",
-                                               QHttpServerResponse::StatusCode::BadRequest);
-                cfg.serialBaudrate = br;
+            RestConfigUpdater::Result result;
+            {
+                ScopedDbConnection db;
+                result = RestConfigUpdater::apply(db.get(), doc.object(),
+                                                   req.remoteAddress().toString());
+            } // Đóng connection trước signal: subscriber có thể mở DB cùng thread.
+            if (result.status != RestConfigUpdater::Status::Ok) {
+                const auto status = result.status == RestConfigUpdater::Status::BadRequest
+                    ? QHttpServerResponse::StatusCode::BadRequest
+                    : QHttpServerResponse::StatusCode::InternalServerError;
+                return QHttpServerResponse(QJsonObject{{QStringLiteral("error"), result.error}}, status);
             }
 
-            // Apply remaining writable fields
-            if (body.contains("station_name")) cfg.stationName = body["station_name"].toString();
-            if (body.contains("serial_port")) {
-                const QString sp = body["serial_port"].toString().trimmed();
-                if (!isValidSerialPort(sp))
-                    return QHttpServerResponse(R"({"error":"serial_port must be a /dev/tty* device path"})",
-                                               QHttpServerResponse::StatusCode::BadRequest);
-                cfg.serialPort = sp;
-            }
-
-            // station_code is a required identifier — reject the request if the caller
-            // attempts to set it to an empty string.
-            if (body.contains("station_code")) {
-                QString sc = body["station_code"].toString().trimmed();
-                if (sc.isEmpty())
-                    return QHttpServerResponse(R"({"error":"station_code must not be empty"})",
-                                               QHttpServerResponse::StatusCode::BadRequest);
-                cfg.stationCode = sc;
-            }
-
-            cfg.configRevision++;
-            dao.save(cfg);
-            int rev = cfg.configRevision;
-
-            emit configApplied(rev);
+            emit configApplied(result.revision);
 
             QJsonObject resp;
             resp["ok"]       = true;
             // "revision" matches the Contract v1 field name expected by Central Logger.
-            resp["revision"] = rev;
+            resp["revision"] = result.revision;
             return QHttpServerResponse("application/json",
                                        QJsonDocument(resp).toJson(QJsonDocument::Compact));
         });

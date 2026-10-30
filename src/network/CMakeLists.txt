@@ -44,6 +44,8 @@ qt_add_qml_module(datalogger_network
         modbus/ModbusTcpServerService.h
         rest/RestApiService.cpp
         rest/RestApiService.h
+        rest/RestConfigUpdater.cpp
+        rest/RestConfigUpdater.h
 )
 
 target_include_directories(datalogger_network

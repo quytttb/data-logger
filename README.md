@@ -208,6 +208,80 @@ Khóa join với dữ liệu Modbus của edge:
 
 ---
 
+## Tài khoản kiosk, audit và hiệu chuẩn
+
+### Đăng nhập và quyền
+
+- Lần đầu với DB chưa có tài khoản, màn hình yêu cầu tạo **admin**; không có
+  mật khẩu mặc định. Đây là màn đăng nhập kiosk, tách biệt màn khóa thiết bị
+  theo license. Sau khởi động lại phải đăng nhập lại; polling nền vẫn tự chạy.
+- **Viewer** xem dữ liệu; **operator** xem, dùng Modbus Tester và hiệu chuẩn;
+  **admin** có thêm quyền cấu hình cảm biến/hệ thống, quản lý tài khoản và xem
+  audit. Quyền áp dụng ở backend, không chỉ ẩn nút.
+- Admin quản lý tài khoản tại **Settings → Users**; có thể tạo, đổi vai trò,
+  tắt/bật và đặt lại mật khẩu. Tài khoản mới hoặc vừa reset phải tự đổi mật
+  khẩu khi đăng nhập. Không thể tự tắt/giáng quyền tài khoản đang dùng hoặc
+  vô hiệu hóa admin cuối cùng.
+- Mật khẩu 8–128 ký tự, có ít nhất một chữ và một chữ số, khác username; lưu
+  bằng PBKDF2-HMAC-SHA256, 600.000 vòng và salt riêng, không lưu plaintext.
+  Sau 5 lần sai liên tiếp tài khoản tạm khóa 60 giây; các đợt sai tiếp theo
+  tăng dần, tối đa 15 phút. Kiosk tự khóa sau 5 phút không thao tác.
+- Không có cơ chế khôi phục admin qua mạng. Với thiết bị thử nghiệm, việc tạo
+  lại DB là thao tác **mất toàn bộ dữ liệu và cấu hình**; chỉ làm khi đã được
+  cho phép. Với thiết bị vận hành cần quy trình khôi phục riêng được phê duyệt.
+
+### Audit
+
+- **Settings → Audit** chỉ dành cho admin, có bộ lọc và phân trang; log gồm
+  đăng nhập, quản lý tài khoản, cấu hình và áp dụng hiệu chuẩn. Ghi cấu hình từ
+  REST dùng actor `remote_device` và địa chỉ nguồn, **không** giả làm người dùng
+  kiosk. Bearer token vẫn là credential thiết bị như contract v1.
+- Audit chỉ ghi các trường được chọn, không ghi mật khẩu, hash, REST token,
+  mật khẩu FTP, JSON hệ số nâng cao hoặc ghi chú hiệu chuẩn tự do. Thay đổi
+  cấu hình/hiệu chuẩn và audit liên quan được commit cùng transaction; lỗi ghi
+  audit làm rollback thao tác. Các sự kiện độc lập như đăng nhập/đăng xuất được
+  ghi best-effort và cảnh báo nếu DB không sẵn sàng.
+- Retention audit là **365 ngày**, dọn định kỳ; chưa có chức năng export hay
+  endpoint REST audit. Log không bất biến/chống sửa tuyệt đối: người có quyền
+  hệ điều hành và truy cập DB vẫn có thể thay đổi nó.
+
+### Hiệu chuẩn đa điểm
+
+1. Đăng nhập operator/admin, mở **Monitor** và bấm **Calibrate** trên thẻ
+   analog hoặc nút bút chì trong chế độ danh sách.
+2. Nhập ít nhất hai cặp giá trị thô và giá trị chuẩn; thêm/xóa điểm tùy nhu
+   cầu. Kiểm tra hệ số `a`, `b`, R² và sai số từng điểm, thêm ghi chú nếu cần,
+   rồi xác nhận **Apply calibration**. R² chỉ thể hiện độ khớp, **không phải
+   chứng nhận đạt chuẩn**.
+3. Phiên và điểm được lưu để tra cứu. Lịch sử chỉ được nạp lại khi người dùng
+   chọn; một phiên cũ có thể không còn tương ứng hệ số hiện hành nếu admin đã
+   sửa thủ công. Hệ số đang áp dụng được lưu dạng `{"a":...,"b":...}`; khi
+   monitoring đang chạy, polling được khởi động lại để nạp hệ số mới.
+
+Admin vẫn có thể nhập `a`, `b` thủ công tại **Settings → Sensors → Scaling &
+Alarms**, hoặc chỉnh JSON nâng cao. Hệ số cũ không tự sinh điểm hiệu chuẩn;
+JSON chưa hiểu rõ, kể cả `coeffs` legacy, được giữ ở chế độ Advanced. Việc xóa
+cảm biến cũng xóa lịch sử hiệu chuẩn của cảm biến đó theo khóa ngoại.
+
+### Kiểm thử trên Raspberry Pi
+
+Các test mới được đăng ký với CTest (`password_hasher_test`, `auth_data_test`,
+`auth_service_test`, `audit_test`, `calibration_dao_test`, `calibration_test`,
+`sensor_form_test`, `rest_config_test`). Trên Pi có bộ công cụ Qt 6.11 phù hợp:
+
+```bash
+cmake --build build-release --target password_hasher_test auth_data_test auth_service_test audit_test calibration_dao_test calibration_test sensor_form_test rest_config_test monitor_table_model_test tt10_test
+cd build-release
+QT_QPA_PLATFORM=offscreen ctest --output-on-failure -R '^(password_hasher_test|auth_data_test|auth_service_test|audit_test|calibration_dao_test|calibration_test|sensor_form_test|rest_config_test|monitor_table_model_test|tt10_test)$'
+```
+
+Trước khi đưa vào vận hành cần kiểm tra trên chính Pi/màn hình: tốc độ đăng
+nhập, khóa/mở phiên, hiệu chuẩn khi đang polling, khởi động lại và mất điện giữa
+lần ghi; sau đó kiểm tra lại TT10/FTP và kết nối Central qua REST/QR/Modbus.
+Không coi kiểm tra cú pháp trên máy phát triển là thay thế các thử nghiệm này.
+
+---
+
 ## Log
 
 ```bash
