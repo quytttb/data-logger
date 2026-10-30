@@ -70,7 +70,7 @@ ApplicationWindow {
                 onSelectTab: function (i) {
                     // If leaving Settings while Add/Edit form is open, cancel it
                     if (root.currentTab === 3 && i !== 3) {
-                        if (tabContent.settingsTabIndex() === 4) {
+                        if (tabContent.settingsTabIndex() === 5) {
                             tabContent.closeSettingsSensorForm()
                         }
                     }

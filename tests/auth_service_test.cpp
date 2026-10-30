@@ -320,6 +320,55 @@ private slots:
         QCOMPARE(dao.countActiveAdmins(), 1);
     }
 
+    void adminManagesOtherAccounts()
+    {
+        UserAccount admin = makeUser(QStringLiteral("admin"), UserRole::Admin);
+        UserAccount target = makeUser(QStringLiteral("target"), UserRole::Viewer);
+        QVERIFY(insertUser(admin) > 0);
+        QVERIFY(insertUser(target) > 0);
+
+        AuthService auth;
+        AuthService::setInstance(&auth);
+        auth.login(QStringLiteral("admin"), QStringLiteral("test-password"));
+        QVERIFY(waitIdle(auth));
+        QVERIFY(auth.authenticated());
+
+        const QVariantList users = auth.users();
+        QCOMPARE(int(users.size()), 2);
+        for (const QVariant &item : users) {
+            const QVariantMap user = item.toMap();
+            QVERIFY(!user.contains(QStringLiteral("passwordHash")));
+            QVERIFY(!user.contains(QStringLiteral("password")));
+        }
+
+        QVERIFY(auth.setUserActive(target.id, false));
+        {
+            ScopedDbConnection db;
+            UserAccountDao dao(db);
+            const auto stored = dao.findById(target.id);
+            QVERIFY(stored.has_value());
+            QVERIFY(!stored->active);
+        }
+
+        QVERIFY(auth.setUserRole(target.id, QStringLiteral("operator")));
+        {
+            ScopedDbConnection db;
+            UserAccountDao dao(db);
+            const auto stored = dao.findById(target.id);
+            QVERIFY(stored.has_value());
+            QCOMPARE(userRoleToString(stored->role), QStringLiteral("operator"));
+        }
+
+        QVERIFY(auth.setUserActive(target.id, true));
+        {
+            ScopedDbConnection db;
+            UserAccountDao dao(db);
+            const auto stored = dao.findById(target.id);
+            QVERIFY(stored.has_value());
+            QVERIFY(stored->active);
+        }
+    }
+
 private:
     QTemporaryDir m_tempDir;
     QString m_dbPath;

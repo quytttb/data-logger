@@ -40,11 +40,11 @@ Item {
         spacing: 8
 
         TabBar {
-            visible: root.settingsTabIndex < 4
+            visible: root.settingsTabIndex < 5
             Layout.alignment: Qt.AlignLeft
             currentIndex: root.settingsTabIndex
             onCurrentIndexChanged: {
-                if (root.settingsTabIndex !== currentIndex && currentIndex < 4)
+                if (root.settingsTabIndex !== currentIndex && currentIndex < 5)
                     root.tabSelected(currentIndex)
             }
             background: Rectangle { color: "transparent" }
@@ -52,10 +52,15 @@ Item {
             ThemedTabButton { text: qsTr("Connection"); iconName: "link";   width: implicitWidth + 40 }
             ThemedTabButton { text: qsTr("Server");     iconName: "download"; width: implicitWidth + 40 }
             ThemedTabButton { text: qsTr("Sensors");    iconName: "chip";     width: implicitWidth + 40 }
+            ThemedTabButton {
+                text: qsTr("Users")
+                width: implicitWidth + 40
+                visible: AuthService.canManageUsers
+            }
         }
 
         RowLayout {
-            visible: root.settingsTabIndex === 4
+            visible: root.settingsTabIndex === 5
             spacing: AppTheme.spacingS
 
             TabBar {
@@ -126,9 +131,9 @@ Item {
             }
         }
 
-        // Sensor Form actions (Tab 4)
+        // Sensor Form actions (Tab 5)
         RowLayout {
-            visible: root.settingsTabIndex === 4
+            visible: root.settingsTabIndex === 5
             spacing: 8
 
             AppButton {
