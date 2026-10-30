@@ -50,14 +50,13 @@ void RestApiService::setHealthProvider(std::function<QVariantMap()> provider) {
 }
 
 void RestApiService::start(const QString &bind, int port, const QString &token) {
+    // Dừng server cũ đồng bộ trước khi bind lại, tránh TIME_WAIT/address-in-use
+    // khi REST config thay đổi bind/port (đặc biệt sau POST /api/v1/config).
     if (isListening()) stop();
 
     m_bind  = bind.isEmpty() ? kDefaultBind : bind;
     m_port  = port;
     setToken(token);
-
-    if (m_tcpServer) { delete m_tcpServer; m_tcpServer = nullptr; }
-    if (m_server)    { delete m_server;    m_server    = nullptr; }
 
     m_tcpServer = new QTcpServer(this);
     QHostAddress addr = (m_bind == kDefaultBind) ? QHostAddress::Any : QHostAddress(m_bind);
@@ -76,8 +75,9 @@ void RestApiService::start(const QString &bind, int port, const QString &token) 
 }
 
 void RestApiService::stop() {
-    if (m_server)    { m_server->deleteLater();    m_server    = nullptr; }
-    if (m_tcpServer) { m_tcpServer->deleteLater(); m_tcpServer = nullptr; }
+    // Xóa đồng bộ (không deleteLater) để socket đóng ngay và port có thể bind lại.
+    if (m_server)    { delete m_server;    m_server    = nullptr; }
+    if (m_tcpServer) { m_tcpServer->close(); delete m_tcpServer; m_tcpServer = nullptr; }
     setState(STATE_STOPPED);
 }
 

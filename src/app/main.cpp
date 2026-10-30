@@ -298,10 +298,11 @@ int main(int argc, char *argv[]) {
 
     // Also react to config changes coming from the REST API so that the
     // in-memory SettingsController stays in sync with the DB.
+    // Queued: REST POST handler phải trả response trước khi restart server/bind port.
     QObject::connect(restApi, &RestApiService::configApplied, &app, [&](int /*revision*/) {
         settingsCtrl->loadConfig();
         applyConfig();
-    });
+    }, Qt::QueuedConnection);
 
     QObject::connect(&app, &QGuiApplication::aboutToQuit, [&]() {
         stopWorkerOnQuit(retentionWorker, retentionThread);
