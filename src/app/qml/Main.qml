@@ -185,7 +185,8 @@ ApplicationWindow {
     function notifyMessage(title, body) {
         const t = (title || "").toLowerCase()
         const semantic = (t === "success" || t === "ok") ? "success"
-                         : (t === "error" || t === "validation error") ? "error"
+                         : (t === "error" || t === "validation error"
+                            || t === "permission denied") ? "error"
                          : (t === "warning") ? "warning" : "info"
         AppNotifier.show(body || title, semantic, { detailTitle: title, detailText: body })
     }
@@ -242,6 +243,39 @@ ApplicationWindow {
     Connections {
         target: ReportController
         function onMessageSent(t, m) { root.notifyMessage(t, m) }
+    }
+
+    // Đổi người dùng/role: đưa về tab mà role hiện tại được phép xem. Nếu để
+    // nguyên tab cũ, viewer có thể rơi vào Settings sau khi admin đăng xuất.
+    Connections {
+        target: AuthService
+        function onSessionChanged() {
+            if (!AuthService.authenticated) {
+                root.currentTab = 0
+                return
+            }
+            // Khóa phiên chỉ phủ overlay, không đổi tab đang xem.
+            if (AuthService.locked)
+                return
+            if (!AuthService.canRunTester && root.currentTab === 4)
+                root.currentTab = 0
+            if (!AuthService.canConfigureSensors && root.currentTab === 3)
+                root.currentTab = 0
+        }
+    }
+
+    // Login/lock overlay. z 900: trên nội dung kiosk, dưới bàn phím ảo (999)
+    // và splash khởi động (1000).
+    LoginScreen {
+        id: loginScreen
+        anchors.fill: parent
+        z: 900
+        keyboardHeight: inputPanel && inputPanel.active ? inputPanel.height : 0
+    }
+
+    Connections {
+        target: loginScreen
+        function onMessageForwarded(title, body) { root.notifyMessage(title, body) }
     }
 
     // On-screen keyboard for touch input. Slides up from the bottom on focus.

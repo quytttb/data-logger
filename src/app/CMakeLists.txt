@@ -26,6 +26,7 @@ qt_add_qml_module(app
     QML_FILES
         qml/Main.qml
         qml/Splash.qml
+        qml/LoginScreen.qml
         qml/OnScreenKeyboard.qml
         qml/MainTabContent.qml
         qml/views/MonitorView.qml

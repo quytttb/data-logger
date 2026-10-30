@@ -40,6 +40,16 @@ QList<UserAccount> UserAccountDao::loadAll()
     return users;
 }
 
+int UserAccountDao::count() const
+{
+    QSqlQuery query(m_db);
+    if (!query.exec(QStringLiteral("SELECT COUNT(*) FROM user_account"))) {
+        qWarning() << "UserAccountDao::count:" << query.lastError().text();
+        return -1;
+    }
+    return query.next() ? query.value(0).toInt() : -1;
+}
+
 std::optional<UserAccount> UserAccountDao::findById(int id) const
 {
     QSqlQuery query(m_db);
@@ -186,6 +196,25 @@ bool UserAccountDao::setActive(int id, bool active)
 
     if (!query.exec()) {
         qWarning() << "UserAccountDao::setActive:" << query.lastError().text();
+        return false;
+    }
+    return query.numRowsAffected() > 0;
+}
+
+bool UserAccountDao::setRole(int id, UserRole role)
+{
+    if (!isKnownUserRole(userRoleToString(role)))
+        return false;
+
+    QSqlQuery query(m_db);
+    query.prepare(QStringLiteral(
+        "UPDATE user_account SET role = :role, updated_at = :updated_at WHERE id = :id"));
+    query.bindValue(QStringLiteral(":role"), userRoleToString(role));
+    query.bindValue(QStringLiteral(":updated_at"), TimeCodec::toDb(QDateTime::currentDateTimeUtc()));
+    query.bindValue(QStringLiteral(":id"), id);
+
+    if (!query.exec()) {
+        qWarning() << "UserAccountDao::setRole:" << query.lastError().text();
         return false;
     }
     return query.numRowsAffected() > 0;

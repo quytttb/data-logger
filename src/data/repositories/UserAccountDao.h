@@ -11,6 +11,7 @@ public:
     explicit UserAccountDao(QSqlDatabase db);
 
     QList<UserAccount> loadAll();
+    int count() const;
     std::optional<UserAccount> findById(int id) const;
     std::optional<UserAccount> findByUsername(const QString &username) const;
 
@@ -22,6 +23,7 @@ public:
     bool update(const UserAccount &user);
     bool updatePasswordHash(int id, const QString &hash, bool mustChangePassword);
     bool setActive(int id, bool active);
+    bool setRole(int id, UserRole role);
 
     // Ghi kết quả đăng nhập. AuthService quyết định ngưỡng/khóa, DAO chỉ lưu.
     bool updateLoginState(int id, int failedAttempts, const QDateTime &lockedUntil);

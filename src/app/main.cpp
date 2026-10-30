@@ -21,6 +21,7 @@
 #include "network/workers/RetentionWorker.h"
 #include "core/MonitorModel.h"
 #include "core/SensorListModel.h"
+#include "core/AuthService.h"
 #include "core/SettingsController.h"
 #include "core/MonitorController.h"
 #include "core/history/HistoryViewModel.h"
@@ -163,6 +164,7 @@ int main(int argc, char *argv[]) {
 
     auto *monitorModel  = new MonitorModel(&app);
     auto *sensorList    = new SensorListModel(&app);
+    auto *authService   = new AuthService(&app);
 
     auto *settingsCtrl  = new SettingsController(&app);
     auto *monitorCtrl   = new MonitorController(monitorModel, modbusTcp, &app);
@@ -194,6 +196,7 @@ int main(int argc, char *argv[]) {
     RestApiService::setInstance(restApi);
     MonitorModel::setInstance(monitorModel);
     SensorListModel::setInstance(sensorList);
+    AuthService::setInstance(authService);
     SettingsController::setInstance(settingsCtrl);
     MonitorController::setInstance(monitorCtrl);
     HistoryViewModel::setInstance(historyVm);

@@ -3,12 +3,16 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import DataLogger.Core
 import LoggerKit.Theme
 import LoggerKit.Components
 
 Item {
     id: root
     implicitHeight: 64
+
+    // Chỉ admin được sửa cấu hình; nút bị vô hiệu hóa nếu role khác lọt vào.
+    enabled: AuthService.canConfigureSensors
 
     property int settingsTabIndex: 0
     property bool isConfigChanged: false

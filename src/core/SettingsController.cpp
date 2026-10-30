@@ -1,4 +1,5 @@
 #include "SettingsController.h"
+#include "AuthService.h"
 #include "data/db/Database.h"
 #include "data/repositories/AppConfigDao.h"
 #include "utils/crypto/Crypto.h"
@@ -46,6 +47,11 @@ void SettingsController::setTheme(const QString &v) {
 }
 
 bool SettingsController::saveTheme(const QString &value) {
+    if (!AuthService::authorize(Permission::ConfigureSystem)) {
+        emit messageSent(QStringLiteral("Permission denied"),
+                         QStringLiteral("Only administrators can change system settings."));
+        return false;
+    }
     setTheme(value);
     ScopedDbConnection db;
     AppConfigDao dao(db);
@@ -65,6 +71,11 @@ void SettingsController::loadConfig() {
 }
 
 void SettingsController::saveConfig() {
+    if (!AuthService::authorize(Permission::ConfigureSystem)) {
+        emit messageSent(QStringLiteral("Permission denied"),
+                         QStringLiteral("Only administrators can change system settings."));
+        return;
+    }
     QStringList errors = validate();
     if (!errors.isEmpty()) {
         emit messageSent("Validation error", errors.join('\n'));
@@ -152,6 +163,11 @@ void SettingsController::syncSystemTime()
 
 void SettingsController::saveSerialConfig(const QString &port, int baudrate,
                                            int bytesize, const QString &parity, int stopbits) {
+    if (!AuthService::authorize(Permission::ConfigureSystem)) {
+        emit messageSent(QStringLiteral("Permission denied"),
+                         QStringLiteral("Only administrators can change connection settings."));
+        return;
+    }
     m_cfg.serialPort     = port;
     m_cfg.serialBaudrate = baudrate;
     m_cfg.serialBytesize = bytesize;
@@ -167,6 +183,11 @@ void SettingsController::saveSerialConfig(const QString &port, int baudrate,
 }
 
 void SettingsController::regenerateRestToken() {
+    if (!AuthService::authorize(Permission::ConfigureSystem)) {
+        emit messageSent(QStringLiteral("Permission denied"),
+                         QStringLiteral("Only administrators can change the REST token."));
+        return;
+    }
     {
         ScopedDbConnection db;
         AppConfigDao dao(db);
@@ -179,6 +200,11 @@ void SettingsController::regenerateRestToken() {
 }
 
 void SettingsController::rebootSystem() {
+    if (!AuthService::authorize(Permission::ConfigureSystem)) {
+        emit messageSent(QStringLiteral("Permission denied"),
+                         QStringLiteral("Only administrators can reboot the device."));
+        return;
+    }
     qInfo() << "[SettingsController] System reboot requested";
     // `systemctl reboot` routes through logind; the unprivileged kiosk user is
     // authorised by the polkit rule shipped with the package.

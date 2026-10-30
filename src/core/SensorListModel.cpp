@@ -26,6 +26,14 @@ bool thresholdVariantEnabled(const QVariant &v)
 
 IMPLEMENT_QML_SINGLETON(SensorListModel)
 
+bool SensorListModel::checkPermission(Permission permission, const QString &deniedMessage)
+{
+    if (AuthService::authorize(permission))
+        return true;
+    emit messageSent(QStringLiteral("Permission denied"), deniedMessage);
+    return false;
+}
+
 SensorListModel::SensorListModel(QObject *parent) : QAbstractListModel(parent) {
     loadFromDb();
 }
@@ -202,6 +210,9 @@ bool SensorListModel::commitSensorWrite(const QString &okMsg, const QString &fai
 }
 
 bool SensorListModel::addSensor(const QVariantMap &props) {
+    if (!checkPermission(Permission::ConfigureSensors,
+                         QStringLiteral("Only administrators can add sensors.")))
+        return false;
     Sensor s = variantToSensor(props);
     return commitSensorWrite(QStringLiteral("Sensor added."),
                              QStringLiteral("Failed to add sensor."),
@@ -216,6 +227,9 @@ bool SensorListModel::addSensor(const QVariantMap &props) {
 }
 
 bool SensorListModel::updateSensor(int id, const QVariantMap &props) {
+    if (!checkPermission(Permission::ConfigureSensors,
+                         QStringLiteral("Only administrators can edit sensors.")))
+        return false;
     Sensor s = variantToSensor(props, id);
     return commitSensorWrite(QStringLiteral("Sensor updated."),
                              QStringLiteral("Failed to update sensor."),
@@ -228,6 +242,9 @@ bool SensorListModel::updateSensor(int id, const QVariantMap &props) {
 }
 
 bool SensorListModel::removeSensor(int id) {
+    if (!checkPermission(Permission::ConfigureSensors,
+                         QStringLiteral("Only administrators can delete sensors.")))
+        return false;
     return commitSensorWrite(QStringLiteral("Sensor deleted."),
                              QStringLiteral("Failed to delete sensor."),
                              [&](SensorDao &dao, AppConfigDao &) {
@@ -274,6 +291,9 @@ QVariantList SensorListModel::transmissionRows() const
 
 bool SensorListModel::applyTransmission(const QVariantList &rows)
 {
+    if (!checkPermission(Permission::ConfigureSensors,
+                         QStringLiteral("Only administrators can change transmission settings.")))
+        return false;
     return commitSensorWrite(QStringLiteral("Transmission settings saved."),
                              QStringLiteral("Failed to save transmission settings."),
                              [&](SensorDao &dao, AppConfigDao &) {
@@ -322,6 +342,9 @@ QString SensorListModel::validateSensorProps(const QVariantMap &props)
 
 bool SensorListModel::saveSensorForm(const QVariantMap &form, bool isAddMode, int editSensorId)
 {
+    if (!checkPermission(Permission::ConfigureSensors,
+                         QStringLiteral("Only administrators can edit sensor configuration.")))
+        return false;
     const QString fieldError = validateSensorProps(form);
     if (!fieldError.isEmpty()) {
         emit messageSent(QStringLiteral("Validation error"), fieldError);
@@ -487,6 +510,9 @@ QVariantList SensorListModel::list_do_sensors(int analogSensorId) const
 
 bool SensorListModel::attach_di(int analogSensorId, int diSensorId, const QString &diType)
 {
+    if (!checkPermission(Permission::ConfigureSensors,
+                         QStringLiteral("Only administrators can change digital links.")))
+        return false;
     AnalogDigitalLink link;
     link.analogSensorId  = analogSensorId;
     link.digitalSensorId = diSensorId;
@@ -511,6 +537,9 @@ bool SensorListModel::attach_di(int analogSensorId, int diSensorId, const QStrin
 
 bool SensorListModel::attach_do(int analogSensorId, int doSensorId, bool trigMax, bool trigMin)
 {
+    if (!checkPermission(Permission::ConfigureSensors,
+                         QStringLiteral("Only administrators can change digital links.")))
+        return false;
     AnalogDigitalLink link;
     link.analogSensorId  = analogSensorId;
     link.digitalSensorId = doSensorId;
@@ -534,6 +563,9 @@ bool SensorListModel::attach_do(int analogSensorId, int doSensorId, bool trigMax
 
 bool SensorListModel::detach_link(int linkId)
 {
+    if (!checkPermission(Permission::ConfigureSensors,
+                         QStringLiteral("Only administrators can change digital links.")))
+        return false;
     bool ok;
     {
         ScopedDbConnection db;
@@ -551,6 +583,9 @@ bool SensorListModel::detach_link(int linkId)
 
 bool SensorListModel::update_link_di_type(int linkId, const QString &diType)
 {
+    if (!checkPermission(Permission::ConfigureSensors,
+                         QStringLiteral("Only administrators can change digital links.")))
+        return false;
     bool ok = false;
     {
         ScopedDbConnection db;
@@ -574,6 +609,9 @@ bool SensorListModel::update_link_di_type(int linkId, const QString &diType)
 
 bool SensorListModel::update_link_do_triggers(int linkId, bool trigMax, bool trigMin)
 {
+    if (!checkPermission(Permission::ConfigureSensors,
+                         QStringLiteral("Only administrators can change digital links.")))
+        return false;
     bool ok = false;
     {
         ScopedDbConnection db;

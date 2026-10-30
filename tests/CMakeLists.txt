@@ -271,3 +271,18 @@ target_link_libraries(calibration_dao_test PRIVATE
     utils
 )
 add_test(NAME calibration_dao_test COMMAND calibration_dao_test)
+
+# QTest: AuthService — tạo admin đầu tiên, đăng nhập/khóa phiên, RBAC backend,
+# đổi mật khẩu bắt buộc và bảo vệ admin cuối cùng (Slice 1).
+add_executable(auth_service_test auth_service_test.cpp)
+target_include_directories(auth_service_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/src
+    ${CMAKE_SOURCE_DIR}/src/core
+)
+target_link_libraries(auth_service_test PRIVATE
+    Qt6::Core
+    Qt6::Sql
+    Qt6::Test
+    datalogger_core
+)
+add_test(NAME auth_service_test COMMAND auth_service_test)

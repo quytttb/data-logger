@@ -4,6 +4,7 @@
 #include <functional>
 #include <QtQmlIntegration/qqmlintegration.h>
 #include "data/models/Sensor.h"
+#include "AuthService.h"
 #include "utils/qml/QmlSingleton.h"
 
 class AppConfigDao;
@@ -96,6 +97,8 @@ signals:
     void linksChanged();
 
 private:
+    // Guard backend: QML chỉ ẩn nút, mọi write path vẫn kiểm tra tại đây.
+    bool checkPermission(Permission permission, const QString &deniedMessage);
     void loadFromDb();
     Sensor variantToSensor(const QVariantMap &props, int existingId = 0) const;
     QVariantMap sensorToVariant(const Sensor &s) const;

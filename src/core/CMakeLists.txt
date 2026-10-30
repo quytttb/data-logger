@@ -7,6 +7,8 @@ qt_add_qml_module(datalogger_core
     SOURCES
         AppDefaults.cpp
         AppDefaults.h
+        AuthService.cpp
+        AuthService.h
         SettingsController.cpp
         SettingsController.h
         MonitorController.cpp

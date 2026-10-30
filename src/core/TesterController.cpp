@@ -1,4 +1,5 @@
 #include "TesterController.h"
+#include "AuthService.h"
 #include "network/workers/TesterWorker.h"
 #include "MonitorController.h"
 #include <QSerialPortInfo>
@@ -132,6 +133,11 @@ void TesterController::refresh_ports()
 
 void TesterController::connectSerial(const QString &port, int baudrate,
                                       int bytesize, const QString &parity, int stopbits) {
+    if (!AuthService::authorize(Permission::RunTester)) {
+        emit messageSent(QStringLiteral("Permission denied"),
+                         QStringLiteral("You do not have permission to use the Modbus tester."));
+        return;
+    }
     setConnecting(true);
     QMetaObject::invokeMethod(m_worker, "doConnect", Qt::QueuedConnection,
                               Q_ARG(QString, port), Q_ARG(int, baudrate),
@@ -143,6 +149,11 @@ void TesterController::connectWithMonitorPause(MonitorController *monitor,
                                                const QString &port, int baudrate,
                                                int bytesize, const QString &parity,
                                                int stopbits) {
+    if (!AuthService::authorize(Permission::RunTester)) {
+        emit messageSent(QStringLiteral("Permission denied"),
+                         QStringLiteral("You do not have permission to use the Modbus tester."));
+        return;
+    }
     // Dọn kết nối của lần bấm Connect trước (bấm 2 lần liên tiếp) để không
     // duplicate slot khi monitor đã stopping từ lần trước.
     if (m_monitor)
@@ -221,6 +232,11 @@ void TesterController::readRegister(int slaveId, int address,
                                      const QString &registerType,
                                      const QString &dataType,
                                      const QString &dataFormat) {
+    if (!AuthService::authorize(Permission::RunTester)) {
+        emit messageSent(QStringLiteral("Permission denied"),
+                         QStringLiteral("You do not have permission to use the Modbus tester."));
+        return;
+    }
     QMetaObject::invokeMethod(m_worker, "doReadRegister", Qt::QueuedConnection,
                               Q_ARG(int, slaveId), Q_ARG(int, address),
                               Q_ARG(QString, registerType), Q_ARG(QString, dataType),
@@ -232,6 +248,11 @@ void TesterController::writeRegister(int slaveId, int address,
                                       const QString &dataType,
                                       const QString &dataFormat,
                                       double value) {
+    if (!AuthService::authorize(Permission::RunTester)) {
+        emit messageSent(QStringLiteral("Permission denied"),
+                         QStringLiteral("You do not have permission to write Modbus registers."));
+        return;
+    }
     QMetaObject::invokeMethod(m_worker, "doWriteRegister", Qt::QueuedConnection,
                               Q_ARG(int, slaveId), Q_ARG(int, address),
                               Q_ARG(QString, registerType), Q_ARG(QString, dataType),
@@ -241,6 +262,11 @@ void TesterController::writeRegister(int slaveId, int address,
 void TesterController::write_single(const QString &registerType, int address,
                                     const QString &valueStr, int slaveId,
                                     const QString &dataType) {
+    if (!AuthService::authorize(Permission::RunTester)) {
+        emit messageSent(QStringLiteral("Permission denied"),
+                         QStringLiteral("You do not have permission to write Modbus registers."));
+        return;
+    }
     QMetaObject::invokeMethod(m_worker, "doWriteSingle", Qt::QueuedConnection,
                               Q_ARG(QString, registerType), Q_ARG(int, address),
                               Q_ARG(QString, valueStr), Q_ARG(int, slaveId),
@@ -248,12 +274,22 @@ void TesterController::write_single(const QString &registerType, int address,
 }
 
 void TesterController::writeCoil(int slaveId, int address, bool value) {
+    if (!AuthService::authorize(Permission::RunTester)) {
+        emit messageSent(QStringLiteral("Permission denied"),
+                         QStringLiteral("You do not have permission to write Modbus coils."));
+        return;
+    }
     QMetaObject::invokeMethod(m_worker, "doWriteCoil", Qt::QueuedConnection,
                               Q_ARG(int, slaveId), Q_ARG(int, address),
                               Q_ARG(bool, value));
 }
 
 void TesterController::scanSlaves(int startId, int endId) {
+    if (!AuthService::authorize(Permission::RunTester)) {
+        emit messageSent(QStringLiteral("Permission denied"),
+                         QStringLiteral("You do not have permission to scan Modbus slaves."));
+        return;
+    }
     if (!m_connected) {
         emit messageSent(QStringLiteral("Error"), QStringLiteral("Not connected."));
         return;
@@ -266,6 +302,11 @@ void TesterController::scanSlaves(int startId, int endId) {
 void TesterController::scanSlaves(int startAddr, int endAddr, int registersPerRead,
                                    const QString &registerType, const QString &dataType,
                                    int slaveId, const QString &dataFormat) {
+    if (!AuthService::authorize(Permission::RunTester)) {
+        emit messageSent(QStringLiteral("Permission denied"),
+                         QStringLiteral("You do not have permission to scan Modbus slaves."));
+        return;
+    }
     if (!m_connected) {
         emit messageSent(QStringLiteral("Error"), QStringLiteral("Not connected."));
         return;

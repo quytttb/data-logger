@@ -57,6 +57,10 @@ Rectangle {
                     required property int index
                     readonly property int tabIdx: index
                     readonly property bool isActive: sideBarRoot.currentTab === tabIdx
+                    // RBAC: ẩn tab theo quyền. Tester (4) chỉ operator/admin;
+                    // Settings (3) chỉ admin. Chặn thật vẫn nằm ở backend.
+                    visible: (tabIdx !== 3 || AuthService.canConfigureSensors)
+                             && (tabIdx !== 4 || AuthService.canRunTester)
                     padding: 4
 
                     background: Item {}
@@ -112,6 +116,7 @@ Rectangle {
         AppButton {
             Layout.alignment: Qt.AlignHCenter
             Layout.bottomMargin: AppTheme.spacingM
+            visible: AuthService.canConfigureSystem
             iconName: "restart_alt"
             iconOnly: true
             kind: AppButton.Primary
