@@ -20,6 +20,10 @@ InputPanel {
         // qmllint disable unqualified
         VirtualKeyboardSettings.activeLocales = ["en_GB"]
         VirtualKeyboardSettings.locale = "en_GB"
+        // Tắt spelling check / gợi ý từ: không dùng từ điển hunspell mặc
+        // định và ép ImhNoPredictiveText cho mọi input trong app.
+        VirtualKeyboardSettings.defaultDictionaryDisabled = true
+        VirtualKeyboardSettings.inputMethodHints = Qt.ImhNoPredictiveText
         // qmllint enable unqualified
     }
 

@@ -110,10 +110,12 @@ import LoggerKit.Components
                            ? AppColors.withAlpha(AppColors.primaryColor, 0.16)
                            : "transparent"
                     // Left accent bar đánh dấu dòng đang chọn (đồng bộ bảng Attach).
+                    // Chỉ hiện ở cột đầu để mỗi hàng có đúng 1 vạch — hiện ở mọi
+                    // ô sẽ thành dải đậm lặp lại trong hàng được chọn.
                     Rectangle {
                         anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
                         width: 3
-                        visible: root.currentRow === cell.row
+                        visible: root.currentRow === cell.row && cell.column === 0
                         color: AppColors.primaryColor
                     }
                 }

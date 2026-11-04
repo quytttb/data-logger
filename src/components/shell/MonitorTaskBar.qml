@@ -108,26 +108,28 @@ Item {
             Layout.alignment: Qt.AlignVCenter
             spacing: AppTheme.spacingS
 
-            // Đo mẫu rộng nhất 1 lần để fix cứng width — text thay đổi mỗi
-            // giây (font proportional) không làm pill co dãn, không đẩy
-            // pill FTP chạy qua lại. Mẫu: "8" là chữ số rộng nhất, "MM"
-            // phủ "AM"/"PM", date 10 ký tự mọi format trong Settings.
+            // Đo mẫu rộng nhất theo format đang chọn để fix cứng width — text thay
+            // đổi mỗi giây (font mono, chữ số rộng bằng nhau) không làm pill
+            // co dãn, không đẩy pill FTP chạy qua lại. Căn trái để đầu chuỗi
+            // đứng yên; width 24h gọn hơn 12h (không chừa chỗ "AM"/"PM").
             TextMetrics {
                 id: clockDateMetrics
+                font.family: AppTypography.monoFamily
                 font.pixelSize: AppTypography.titleLarge.pixelSize
                 font.bold: true
                 text: "8888-88-88"
             }
             TextMetrics {
                 id: clockTimeMetrics
+                font.family: AppTypography.monoFamily
                 font.pixelSize: AppTypography.headlineSmall.pixelSize
                 font.bold: true
-                text: "88:88:88 MM"
+                text: SettingsController.timeFormat.indexOf("AP") >= 0 ? "88:88:88 MM" : "88:88:88"
             }
 
             Rectangle {
                 Layout.preferredHeight: 44
-                Layout.preferredWidth: Math.ceil(clockDateMetrics.advanceWidth) + 28
+                Layout.preferredWidth: Math.ceil(clockDateMetrics.advanceWidth) + AppTheme.spacingS * 2
                 radius: AppTheme.listItemRadius
                 color: AppColors.surfaceContainerHigh
                 border.width: 1
@@ -135,8 +137,11 @@ Item {
 
                 Text {
                     id: clockDate
-                    anchors.centerIn: parent
+                    anchors.left: parent.left
+                    anchors.leftMargin: AppTheme.spacingS
+                    anchors.verticalCenter: parent.verticalCenter
                     text: Qt.formatDateTime(new Date(), SettingsController.dateFormat)
+                    font.family: AppTypography.monoFamily
                     font.pixelSize: AppTypography.titleLarge.pixelSize
                     font.bold: true
                     color: AppColors.primaryText
@@ -145,7 +150,7 @@ Item {
 
             Rectangle {
                 Layout.preferredHeight: 44
-                Layout.preferredWidth: Math.ceil(clockTimeMetrics.advanceWidth) + 28
+                Layout.preferredWidth: Math.ceil(clockTimeMetrics.advanceWidth) + AppTheme.spacingS * 2
                 radius: AppTheme.listItemRadius
                 color: AppColors.surfaceContainerHigh
                 border.width: 1
@@ -153,8 +158,11 @@ Item {
 
                 Text {
                     id: clockTime
-                    anchors.centerIn: parent
+                    anchors.left: parent.left
+                    anchors.leftMargin: AppTheme.spacingS
+                    anchors.verticalCenter: parent.verticalCenter
                     text: Qt.formatDateTime(new Date(), SettingsController.timeFormat)
+                    font.family: AppTypography.monoFamily
                     font.pixelSize: AppTypography.headlineSmall.pixelSize
                     font.bold: true
                     color: AppColors.primaryText

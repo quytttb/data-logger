@@ -454,11 +454,12 @@ ElevatedPane {
                         color: root.dioListRow === linkCell.row
                                ? AppColors.withAlpha(AppColors.primaryColor, 0.16)
                                : "transparent"
-                        // Left accent bar đánh dấu dòng đang chọn
+                        // Left accent bar đánh dấu dòng đang chọn — chỉ cột đầu để
+                        // mỗi hàng có đúng 1 vạch.
                         Rectangle {
                             anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
                             width: 3
-                            visible: root.dioListRow === linkCell.row
+                            visible: root.dioListRow === linkCell.row && linkCell.column === 0
                             color: AppColors.primaryColor
                         }
                     }
