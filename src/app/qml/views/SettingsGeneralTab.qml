@@ -87,7 +87,24 @@ Item {
                         }
                     }
 
-                    Text { text: qsTr("Monitor layout:"); color: AppColors.onSurfaceVariant; font.pixelSize: AppTypography.bodyMedium.pixelSize }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 4
+                        Text {
+                            text: qsTr("Monitor layout:")
+                            color: AppColors.onSurfaceVariant
+                            font.pixelSize: AppTypography.bodyMedium.pixelSize
+                            Layout.fillWidth: true
+                        }
+                        Switch {
+                            text: qsTr("Show DI/DO sensors:")
+                            checked: SettingsController ? SettingsController.monitorShowDigitalIO : true
+                            onToggled: {
+                                SettingsController.monitorShowDigitalIO = checked
+                                root.configChanged = true
+                            }
+                        }
+                    }
                     ComboBox {
                         Layout.fillWidth: true
                         model: ["Grid", "List"]
@@ -98,24 +115,6 @@ Item {
                         onActivated: {
                             SettingsController.monitorViewMode = (currentIndex === 1 ? "list" : "grid")
                             root.configChanged = true
-                        }
-                    }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 4
-                        Text { 
-                            text: qsTr("Show DI/DO sensors:") 
-                            color: AppColors.onSurfaceVariant 
-                            font.pixelSize: AppTypography.bodyMedium.pixelSize
-                            Layout.fillWidth: true
-                        }
-                        Switch {
-                            checked: SettingsController ? SettingsController.monitorShowDigitalIO : true
-                            onToggled: {
-                                SettingsController.monitorShowDigitalIO = checked
-                                root.configChanged = true
-                            }
                         }
                     }
 

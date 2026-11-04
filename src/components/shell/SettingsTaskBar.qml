@@ -61,16 +61,16 @@ Item {
                     root.tabSelected(currentIndex)
             }
             background: Rectangle { color: "transparent" }
-            ThemedTabButton { text: qsTr("General");    iconName: "cog";  iconOnly: true; width: AppTheme.buttonHeight }
-            ThemedTabButton { text: qsTr("Connection"); iconName: "link"; iconOnly: true; width: AppTheme.buttonHeight }
+            ThemedTabButton { text: qsTr("General");    iconName: "cog";  iconOnly: true; width: AppTheme.buttonHeight + 24 }
+            ThemedTabButton { text: qsTr("Connection"); iconName: "link"; iconOnly: true; width: AppTheme.buttonHeight + 24 }
             // Material Symbols: upload (E2C6), group (E7EF). Không sửa API kit dùng chung.
-            ThemedTabButton { text: qsTr("Server");  iconGlyph: "\uE2C6"; iconOnly: true; width: AppTheme.buttonHeight }
-            ThemedTabButton { text: qsTr("Sensors"); iconName: "chip"; iconOnly: true; width: AppTheme.buttonHeight }
+            ThemedTabButton { text: qsTr("Server");  iconGlyph: "\uE2C6"; iconOnly: true; width: AppTheme.buttonHeight + 24 }
+            ThemedTabButton { text: qsTr("Sensors"); iconName: "chip"; iconOnly: true; width: AppTheme.buttonHeight + 24 }
             ThemedTabButton {
                 text: qsTr("Users")
                 iconGlyph: "\uE7EF"
                 iconOnly: true
-                width: AppTheme.buttonHeight
+                width: AppTheme.buttonHeight + 24
                 visible: AuthService.canManageUsers || AuthService.canViewAudit
             }
         }

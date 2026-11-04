@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Mở rộng vùng chạm các tab icon trong Settings; đưa Show DI/DO lên cùng hàng với nhãn Monitor layout.
+
 ### Tài khoản, audit và hiệu chuẩn đa điểm
 - Thu gọn tab Settings thành icon; chuyển Audit vào tab con của Users. Bảng
   Users dùng Add/Edit/Delete như Sensors, màn sửa quản lý vai trò, trạng thái
