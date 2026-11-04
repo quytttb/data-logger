@@ -39,7 +39,7 @@ Build layers (CMake): `utils → data → network → core → theme → compone
 ---
 
 - **Phần cứng**: Raspberry Pi (ARM64), màn hình cảm ứng 7", USB-RS485 Dongle.
-- **OS**: Raspberry Pi OS 64-bit (Bookworm trở lên)
+- **OS**: Raspberry Pi OS 64-bit (Trixie trở lên)
 - **Qt**: 6.11+ từ [Qt Online Installer](https://www.qt.io/download), hoặc Qt 6.10+ từ apt (Ubuntu 25.04+)
 - **Compiler**: GCC 15+ (`g++-15`)
 
@@ -47,7 +47,7 @@ Build layers (CMake): `utils → data → network → core → theme → compone
 
 ## Build
 
-### Cài dependencies (Ubuntu / Raspberry Pi OS Bookworm)
+### Cài dependencies (Ubuntu / Raspberry Pi OS Trixie)
 
 ```bash
 sudo apt-get install -y \
