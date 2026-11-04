@@ -202,6 +202,7 @@ void TesterController::onConnectTimeout()
     emit messageSent(QStringLiteral("Error"),
         QStringLiteral("Serial port is busy. Try Connect again."));
     qWarning() << "TesterController: pollingFullyStopped did not arrive within timeout";
+    resumeMonitorIfNeeded();
 }
 
 void TesterController::tryPendingConnect()
@@ -220,11 +221,27 @@ void TesterController::resumeMonitorIfNeeded()
 {
     if (!m_monitorWasRunning || !m_monitor)
         return;
+    if (m_monitor->isStopping()) {
+        // Không mở lại cổng khi worker giám sát cũ chưa dừng hoàn toàn.
+        connect(m_monitor, &MonitorController::pollingFullyStopped,
+                this, &TesterController::resumeMonitorIfNeeded,
+                Qt::ConnectionType(Qt::QueuedConnection | Qt::SingleShotConnection));
+        return;
+    }
     m_monitorWasRunning = false;
     m_monitor->startPolling();
 }
 
 void TesterController::disconnectSerial() {
+    // Hủy cả lần connect đang đợi nhường cổng; worker chưa có client nên sẽ
+    // không phát connectionResult để tự khôi phục giám sát trong trường hợp này.
+    if (m_waitingConnect) {
+        m_waitingConnect = false;
+        if (m_connectTimeout) m_connectTimeout->stop();
+        setConnecting(false);
+        resumeMonitorIfNeeded();
+        return;
+    }
     QMetaObject::invokeMethod(m_worker, "doDisconnect", Qt::QueuedConnection);
 }
 

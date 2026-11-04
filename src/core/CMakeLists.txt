@@ -15,6 +15,8 @@ qt_add_qml_module(datalogger_core
         CalibrationController.h
         AuthService.cpp
         AuthService.h
+        KioskAccessController.cpp
+        KioskAccessController.h
         SettingsController.cpp
         SettingsController.h
         MonitorController.cpp

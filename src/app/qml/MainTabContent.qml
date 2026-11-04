@@ -14,6 +14,11 @@ Item {
 
     signal testerNavigateToAddSensor(var data)
     signal settingsRequestMainTabChange(int tabIndex)
+    signal calibrationRequested(int sensorId, string sensorName, string sensorUnit)
+
+    function openCalibration(sensorId, sensorName, sensorUnit) {
+        monitorView.openCalibration(sensorId, sensorName, sensorUnit)
+    }
 
     Layout.fillWidth: true
     Layout.fillHeight: true
@@ -70,6 +75,9 @@ Item {
         id: monitorView
         anchors.fill: parent
         visible: tabContentRoot.currentTab === 0
+        onCalibrationRequested: function(sensorId, sensorName, sensorUnit) {
+            tabContentRoot.calibrationRequested(sensorId, sensorName, sensorUnit)
+        }
     }
 
     HistoryView {

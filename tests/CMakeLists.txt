@@ -287,6 +287,46 @@ target_link_libraries(auth_service_test PRIVATE
 )
 add_test(NAME auth_service_test COMMAND auth_service_test)
 
+# QTest: quyền điều hướng kiosk, hết phiên không che màn giám sát.
+add_executable(kiosk_access_test kiosk_access_test.cpp)
+target_include_directories(kiosk_access_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/src
+    ${CMAKE_SOURCE_DIR}/src/core
+)
+target_link_libraries(kiosk_access_test PRIVATE
+    Qt6::Core
+    Qt6::Sql
+    Qt6::Test
+    datalogger_core
+)
+add_test(NAME kiosk_access_test COMMAND kiosk_access_test)
+
+# QTest: bố cục và thao tác tạo admin đầu tiên trên kiosk 1024×600.
+add_executable(login_screen_test login_screen_test.cpp)
+target_include_directories(login_screen_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/src
+    ${CMAKE_SOURCE_DIR}/src/core
+)
+target_compile_definitions(login_screen_test PRIVATE
+    LOGIN_SCREEN_QML_PATH="${CMAKE_SOURCE_DIR}/src/app/qml/LoginScreen.qml"
+    LOGIN_SCREEN_FONT_PATH="${CMAKE_SOURCE_DIR}/resources/fonts/Inter/Inter-Regular.otf"
+)
+target_link_libraries(login_screen_test PRIVATE
+    Qt6::Quick
+    Qt6::QuickControls2
+    Qt6::Sql
+    Qt6::Test
+    datalogger_coreplugin
+    datalogger_core
+    logger_ui_kit_themeplugin
+    logger_ui_kit_componentsplugin
+    LoggerKit::theme_setup
+)
+add_test(NAME login_screen_test COMMAND login_screen_test)
+set_tests_properties(login_screen_test PROPERTIES
+    ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software"
+)
+
 # QTest: audit log — transaction nghiệp vụ, chặn quyền xem, không lộ secret.
 add_executable(audit_test audit_test.cpp)
 target_include_directories(audit_test PRIVATE

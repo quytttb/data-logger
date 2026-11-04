@@ -11,9 +11,24 @@ import LoggerKit.Components
 Rectangle {
     id: monitorRoot
     color: "transparent"
+    signal calibrationRequested(int sensorId, string sensorName, string sensorUnit)
+
+    function openCalibration(sensorId, sensorName, sensorUnit) {
+        if (AuthService.canCalibrate)
+            calibrationDialog.open(sensorId, sensorName, sensorUnit)
+    }
+
     onVisibleChanged: {
         if (!visible)
             calibrationDialog.closePanel()
+    }
+
+    Connections {
+        target: AuthService
+        function onSessionChanged() {
+            if (!AuthService.canCalibrate)
+                calibrationDialog.closePanel()
+        }
     }
 
     // ── Local readability scale (kiosk 7" 1024×600) ──
@@ -260,15 +275,15 @@ Rectangle {
 
                             Item { Layout.fillWidth: true }
 
-                            // Hiệu chuẩn đa điểm: chỉ operator/admin, và chỉ analog.
+                            // Hiệu chuẩn analog yêu cầu operator/admin qua access gate.
                             AppButton {
-                                visible: card.isAnalog && AuthService.canCalibrate
+                                visible: card.isAnalog
                                 text: qsTr("Calibrate")
                                 kind: AppButton.Neutral
                                 font.pixelSize: 16
-                                onClicked: calibrationDialog.open(card.sensorId,
-                                                                  card.displayName,
-                                                                  card.unit)
+                                onClicked: monitorRoot.calibrationRequested(card.sensorId,
+                                                                            card.displayName,
+                                                                            card.unit)
                             }
 
                             // MAX/MIN alarm badge — màu khớp dạng List: nền error trong suốt + text error
@@ -376,7 +391,7 @@ Rectangle {
                     }
                     Label {
                         width: Math.max(0, parent.width - (monCell.isAnalog ? 0 : 48)
-                                        - (monCell.isAnalog && AuthService.canCalibrate ? 56 : 0) - 24)
+                                        - (monCell.isAnalog ? 56 : 0) - 24)
                         anchors.verticalCenter: parent.verticalCenter
                         text: monCell.displayName
                         color: AppColors.primaryText
@@ -386,15 +401,15 @@ Rectangle {
                         elide: Text.ElideRight
                     }
                     AppButton {
-                        visible: monCell.isAnalog && AuthService.canCalibrate
+                        visible: monCell.isAnalog
                         iconName: "pencil"
                         iconOnly: true
                         tooltipText: qsTr("Calibrate")
                         Accessible.name: qsTr("Calibrate %1").arg(monCell.displayName)
                         anchors.verticalCenter: parent.verticalCenter
-                        onClicked: calibrationDialog.open(monCell.sensorId,
-                                                          monCell.displayName,
-                                                          monCell.unit)
+                        onClicked: monitorRoot.calibrationRequested(monCell.sensorId,
+                                                                    monCell.displayName,
+                                                                    monCell.unit)
                     }
                 }
 

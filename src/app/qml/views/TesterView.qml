@@ -10,6 +10,7 @@ import LoggerKit.Components
 Item {
     id: testerRoot
     anchors.fill: parent
+    onVisibleChanged: if (!visible) errorDialog.close()
 
     property bool narrow: width < 700
     property bool hideZeros: false

@@ -24,11 +24,13 @@ ApplicationWindow {
     }
 
     function handleNavigateToAddSensor(data) {
-        root.currentTab = 3  // Switch to Settings tab
-        Qt.callLater(function() {
-            tabContent.setSettingsReturnMainTab(4)  // Return to Tester tab
-            tabContent.openSettingsAddSensorWithData(data)
-        })
+        root.pendingAddSensorData = data
+        access.request(KioskAccessController.Settings)
+    }
+
+    function handleCalibrationRequest(sensorId, sensorName, sensorUnit) {
+        root.pendingCalibration = { id: sensorId, name: sensorName, unit: sensorUnit }
+        access.request(KioskAccessController.Calibration)
     }
     // Kích thước fallback cho màn hình 7" (1024x600) khi không chạy fullscreen
     width: 1024
@@ -39,9 +41,47 @@ ApplicationWindow {
     visibility: Window.FullScreen
 
     // ── Navigation state ─────────────────────────────────────────────────
-    property int currentTab: 0
+    readonly property int currentTab: access.currentTab
+    property var pendingAddSensorData: null
+    property var pendingCalibration: null
+    property int previousTab: KioskAccessController.Monitor
     property int scanProgCur: 0
     property int scanProgTot: 0
+
+    KioskAccessController {
+        id: access
+    }
+
+    Connections {
+        target: access
+        function onCurrentTabChanged() {
+            // Tester tạm giữ RS-485; rời tab phải nhả cổng để polling tiếp tục.
+            if (root.previousTab === KioskAccessController.Tester
+                    && access.currentTab !== KioskAccessController.Tester) {
+                TesterController.stopScan()
+                TesterController.disconnectSerial()
+            }
+            root.previousTab = access.currentTab
+        }
+        function onActionAuthorized(target) {
+            if (target === KioskAccessController.Settings && root.pendingAddSensorData !== null) {
+                const data = root.pendingAddSensorData
+                root.pendingAddSensorData = null
+                Qt.callLater(function() {
+                    if (root.currentTab !== KioskAccessController.Settings
+                            || !AuthService.canConfigureSensors)
+                        return
+                    tabContent.setSettingsReturnMainTab(KioskAccessController.Tester)
+                    tabContent.openSettingsAddSensorWithData(data)
+                })
+            } else if (target === KioskAccessController.Calibration
+                       && root.pendingCalibration !== null) {
+                const sensor = root.pendingCalibration
+                root.pendingCalibration = null
+                tabContent.openCalibration(sensor.id, sensor.name, sensor.unit)
+            }
+        }
+    }
 
     // Kiosk shell. The whole layout shrinks when the on-screen keyboard is
     // visible (Qt VirtualKeyboard official pattern: bind content bottom to the
@@ -68,13 +108,15 @@ ApplicationWindow {
                 Layout.fillHeight: true
                 currentTab: root.currentTab
                 onSelectTab: function (i) {
+                    root.pendingAddSensorData = null
+                    root.pendingCalibration = null
                     // If leaving Settings while Add/Edit form is open, cancel it
                     if (root.currentTab === 3 && i !== 3) {
                         if (tabContent.settingsTabIndex() === 6) {
                             tabContent.closeSettingsSensorForm()
                         }
                     }
-                    root.currentTab = i
+                    access.request(i)
                 }
                 onRestartRequested: rebootConfirm.showConfirm(
                     qsTr("Confirm reboot"),
@@ -152,7 +194,10 @@ ApplicationWindow {
             root.handleNavigateToAddSensor(data)
         }
         function onSettingsRequestMainTabChange(tabIndex) {
-            root.currentTab = tabIndex
+            access.request(tabIndex)
+        }
+        function onCalibrationRequested(sensorId, sensorName, sensorUnit) {
+            root.handleCalibrationRequest(sensorId, sensorName, sensorUnit)
         }
     }
 
@@ -210,6 +255,14 @@ ApplicationWindow {
     }
 
     Connections {
+        target: AuthService
+        function onSessionChanged() {
+            if (!AuthService.canConfigureSystem)
+                rebootConfirm.close()
+        }
+    }
+
+    Connections {
         target: AppNotifier
         function onDetailRequested(title, body, contextId) {
             messageDetailDialog.showMessage(title, body)
@@ -249,32 +302,18 @@ ApplicationWindow {
         function onMessageSent(t, m) { root.notifyMessage(t, m) }
     }
 
-    // Đổi người dùng/role: đưa về tab mà role hiện tại được phép xem. Nếu để
-    // nguyên tab cũ, viewer có thể rơi vào Settings sau khi admin đăng xuất.
-    Connections {
-        target: AuthService
-        function onSessionChanged() {
-            if (!AuthService.authenticated) {
-                root.currentTab = 0
-                return
-            }
-            // Khóa phiên chỉ phủ overlay, không đổi tab đang xem.
-            if (AuthService.locked)
-                return
-            if (!AuthService.canRunTester && root.currentTab === 4)
-                root.currentTab = 0
-            if (!AuthService.canConfigureSensors && root.currentTab === 3)
-                root.currentTab = 0
-        }
-    }
-
-    // Login/lock overlay. z 900: trên nội dung kiosk, dưới bàn phím ảo (999)
-    // và splash khởi động (1000).
+    // Xác thực chỉ hiện theo yêu cầu; hết phiên không che màn giám sát.
     LoginScreen {
         id: loginScreen
         anchors.fill: parent
         z: 900
+        requested: access.authenticationRequested
         keyboardHeight: inputPanel && inputPanel.active ? inputPanel.height : 0
+        onCancelRequested: {
+            root.pendingAddSensorData = null
+            root.pendingCalibration = null
+            access.cancelAuthentication()
+        }
     }
 
     Connections {

@@ -7,13 +7,14 @@ import DataLogger.Core
 import LoggerKit.Theme
 import LoggerKit.Components
 
-// Lớp phủ đăng nhập/khóa phiên của kiosk.
+// Lớp phủ xác thực chỉ mở khi người dùng yêu cầu thao tác được bảo vệ.
 //
-// Bốn trạng thái, suy ra từ AuthService (không lưu cờ riêng trong QML):
+// Năm trạng thái, suy ra từ AuthService (không lưu cờ riêng trong QML):
 //   setup  — DB chưa có tài khoản: bắt buộc tạo admin đầu tiên.
 //   login  — chưa đăng nhập.
 //   unlock — phiên bị khóa do không hoạt động: chỉ cần nhập lại mật khẩu.
 //   change — tài khoản phải đổi mật khẩu (admin tạo/reset) trước khi dùng.
+//   denied — tài khoản hiện tại không có quyền; có thể đổi tài khoản.
 //
 // Keyboard: lớp phủ nằm dưới bàn phím ảo (z 999), nên đẩy vùng cuộn lên bằng
 // keyboardHeight để không bị che; nội dung cao hơn màn hình vẫn cuộn được.
@@ -22,16 +23,18 @@ Item {
 
     // Chiều cao bàn phím ảo đang hiện (0 khi ẩn), do Main truyền vào.
     property int keyboardHeight: 0
+    property bool requested: false
 
     // Chuyển message của AuthService ra Main khi lớp phủ đang ẩn (quản lý tài
     // khoản ở Settings). Khi đang hiện, lỗi được hiển thị ngay trong form.
     signal messageForwarded(string title, string body)
+    signal cancelRequested()
 
     readonly property string mode: AuthService.firstRun ? "setup"
         : !AuthService.authenticated ? "login"
         : AuthService.locked ? "unlock"
         : AuthService.mustChangePassword ? "change"
-        : "done"
+        : "denied"
 
     readonly property string headline: {
         if (mode === "setup")
@@ -40,6 +43,8 @@ Item {
             return qsTr("Session locked")
         if (mode === "change")
             return qsTr("Change password")
+        if (mode === "denied")
+            return qsTr("Permission required")
         return qsTr("Sign in")
     }
 
@@ -52,13 +57,15 @@ Item {
                                                : AuthService.currentUsername)
         if (mode === "change")
             return qsTr("This account must set a new password before it can be used.")
+        if (mode === "denied")
+            return qsTr("This account does not have permission. Sign in with another account.")
         return qsTr("Sign in to use the data logger.")
     }
 
     property string messageText: ""
     property bool messageIsError: true
 
-    visible: mode !== "done"
+    visible: requested
 
     function clearMessage() {
         messageText = ""
@@ -135,6 +142,7 @@ Item {
 
     // Xóa mật khẩu đang gõ khi đổi trạng thái (đăng nhập xong, khóa phiên...).
     onModeChanged: clearInputs()
+    onVisibleChanged: if (!visible) clearInputs()
 
     Connections {
         target: AuthService
@@ -154,6 +162,7 @@ Item {
 
     Flickable {
         id: flick
+        objectName: "loginFlick"
         anchors.fill: parent
         anchors.bottomMargin: root.keyboardHeight
         contentWidth: flick.width
@@ -166,7 +175,9 @@ Item {
 
         ElevatedPane {
             id: card
-            width: Math.min(flick.width - 2 * AppTheme.spacingL, 420)
+            objectName: "loginCard"
+            width: Math.min(Math.max(0, flick.width - 2 * AppTheme.spacingL),
+                            root.mode === "setup" ? AppTheme.dialogFormWideBreakpoint : 420)
             x: (flick.width - width) / 2
             y: Math.max(AppTheme.spacingM, (flick.height - height) / 2)
             height: body.implicitHeight + 2 * AppTheme.cardPadding
@@ -208,60 +219,84 @@ Item {
                     Layout.fillWidth: true
                     spacing: AppTheme.spacingS
 
-                    Text {
-                        text: qsTr("Username")
-                        color: AppColors.onSurfaceVariant
-                        font: AppTypography.bodyMedium
-                    }
-                    TextField {
-                        id: setupUsername
+                    RowLayout {
                         Layout.fillWidth: true
-                        inputMethodHints: Qt.ImhNoAutoUppercase | Qt.ImhNoPredictiveText
-                        onTextEdited: root.clearMessage()
-                        onAccepted: setupDisplayName.forceActiveFocus()
-                    }
+                        spacing: AppTheme.spacingL
 
-                    Text {
-                        text: qsTr("Display name (optional)")
-                        color: AppColors.onSurfaceVariant
-                        font: AppTypography.bodyMedium
-                    }
-                    TextField {
-                        id: setupDisplayName
-                        Layout.fillWidth: true
-                        inputMethodHints: Qt.ImhNoPredictiveText
-                        onTextEdited: root.clearMessage()
-                        onAccepted: setupPassword.forceActiveFocus()
-                    }
+                        // Chia hai cột như các form Settings trên kiosk 1024×600.
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            Layout.preferredWidth: 1
+                            Layout.alignment: Qt.AlignTop
+                            spacing: AppTheme.spacingS
 
-                    Text {
-                        text: qsTr("Password")
-                        color: AppColors.onSurfaceVariant
-                        font: AppTypography.bodyMedium
-                    }
-                    TextField {
-                        id: setupPassword
-                        Layout.fillWidth: true
-                        echoMode: TextInput.Password
-                        inputMethodHints: Qt.ImhSensitiveData | Qt.ImhNoPredictiveText
-                                     | Qt.ImhNoAutoUppercase
-                        onTextEdited: root.clearMessage()
-                        onAccepted: setupConfirm.forceActiveFocus()
-                    }
+                            Text {
+                                text: qsTr("Username")
+                                color: AppColors.onSurfaceVariant
+                                font: AppTypography.bodyMedium
+                            }
+                            TextField {
+                                id: setupUsername
+                                objectName: "setupUsername"
+                                Layout.fillWidth: true
+                                inputMethodHints: Qt.ImhNoAutoUppercase | Qt.ImhNoPredictiveText
+                                onTextEdited: root.clearMessage()
+                                onAccepted: setupDisplayName.forceActiveFocus()
+                            }
 
-                    Text {
-                        text: qsTr("Confirm password")
-                        color: AppColors.onSurfaceVariant
-                        font: AppTypography.bodyMedium
-                    }
-                    TextField {
-                        id: setupConfirm
-                        Layout.fillWidth: true
-                        echoMode: TextInput.Password
-                        inputMethodHints: Qt.ImhSensitiveData | Qt.ImhNoPredictiveText
-                                     | Qt.ImhNoAutoUppercase
-                        onTextEdited: root.clearMessage()
-                        onAccepted: root.submitSetup()
+                            Text {
+                                text: qsTr("Display name (optional)")
+                                color: AppColors.onSurfaceVariant
+                                font: AppTypography.bodyMedium
+                            }
+                            TextField {
+                                id: setupDisplayName
+                                objectName: "setupDisplayName"
+                                Layout.fillWidth: true
+                                inputMethodHints: Qt.ImhNoPredictiveText
+                                onTextEdited: root.clearMessage()
+                                onAccepted: setupPassword.forceActiveFocus()
+                            }
+                        }
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            Layout.preferredWidth: 1
+                            Layout.alignment: Qt.AlignTop
+                            spacing: AppTheme.spacingS
+
+                            Text {
+                                text: qsTr("Password")
+                                color: AppColors.onSurfaceVariant
+                                font: AppTypography.bodyMedium
+                            }
+                            TextField {
+                                id: setupPassword
+                                objectName: "setupPassword"
+                                Layout.fillWidth: true
+                                echoMode: TextInput.Password
+                                inputMethodHints: Qt.ImhSensitiveData | Qt.ImhNoPredictiveText
+                                             | Qt.ImhNoAutoUppercase
+                                onTextEdited: root.clearMessage()
+                                onAccepted: setupConfirm.forceActiveFocus()
+                            }
+
+                            Text {
+                                text: qsTr("Confirm password")
+                                color: AppColors.onSurfaceVariant
+                                font: AppTypography.bodyMedium
+                            }
+                            TextField {
+                                id: setupConfirm
+                                objectName: "setupConfirm"
+                                Layout.fillWidth: true
+                                echoMode: TextInput.Password
+                                inputMethodHints: Qt.ImhSensitiveData | Qt.ImhNoPredictiveText
+                                             | Qt.ImhNoAutoUppercase
+                                onTextEdited: root.clearMessage()
+                                onAccepted: root.submitSetup()
+                            }
+                        }
                     }
 
                     Text {
@@ -272,13 +307,28 @@ Item {
                         wrapMode: Text.WordWrap
                     }
 
-                    AppButton {
+                    RowLayout {
                         Layout.fillWidth: true
                         Layout.topMargin: AppTheme.spacingXS
-                        kind: AppButton.Primary
-                        text: AuthService.busy ? qsTr("Please wait…") : qsTr("Create account")
-                        enabled: !AuthService.busy
-                        onClicked: root.submitSetup()
+                        spacing: AppTheme.spacingS
+
+                        AppButton {
+                            objectName: "setupCancelButton"
+                            Layout.fillWidth: true
+                            kind: AppButton.Neutral
+                            text: qsTr("Cancel")
+                            enabled: !AuthService.busy
+                            onClicked: root.cancelRequested()
+                        }
+
+                        AppButton {
+                            objectName: "setupCreateButton"
+                            Layout.fillWidth: true
+                            kind: AppButton.Primary
+                            text: AuthService.busy ? qsTr("Please wait…") : qsTr("Create account")
+                            enabled: !AuthService.busy
+                            onClicked: root.submitSetup()
+                        }
                     }
                 }
 
@@ -316,13 +366,26 @@ Item {
                         onAccepted: root.submitLogin()
                     }
 
-                    AppButton {
+                    RowLayout {
                         Layout.fillWidth: true
                         Layout.topMargin: AppTheme.spacingXS
-                        kind: AppButton.Primary
-                        text: AuthService.busy ? qsTr("Please wait…") : qsTr("Sign in")
-                        enabled: !AuthService.busy
-                        onClicked: root.submitLogin()
+                        spacing: AppTheme.spacingS
+
+                        AppButton {
+                            Layout.fillWidth: true
+                            kind: AppButton.Neutral
+                            text: qsTr("Cancel")
+                            enabled: !AuthService.busy
+                            onClicked: root.cancelRequested()
+                        }
+
+                        AppButton {
+                            Layout.fillWidth: true
+                            kind: AppButton.Primary
+                            text: AuthService.busy ? qsTr("Please wait…") : qsTr("Sign in")
+                            enabled: !AuthService.busy
+                            onClicked: root.submitLogin()
+                        }
                     }
                 }
 
@@ -355,6 +418,14 @@ Item {
                         AppButton {
                             Layout.fillWidth: true
                             kind: AppButton.Neutral
+                            text: qsTr("Cancel")
+                            enabled: !AuthService.busy
+                            onClicked: root.cancelRequested()
+                        }
+
+                        AppButton {
+                            Layout.fillWidth: true
+                            kind: AppButton.Secondary
                             text: qsTr("Sign out")
                             enabled: !AuthService.busy
                             onClicked: AuthService.logout()
@@ -437,6 +508,14 @@ Item {
                         AppButton {
                             Layout.fillWidth: true
                             kind: AppButton.Neutral
+                            text: qsTr("Cancel")
+                            enabled: !AuthService.busy
+                            onClicked: root.cancelRequested()
+                        }
+
+                        AppButton {
+                            Layout.fillWidth: true
+                            kind: AppButton.Secondary
                             text: qsTr("Sign out")
                             enabled: !AuthService.busy
                             onClicked: AuthService.logout()
@@ -449,6 +528,28 @@ Item {
                             enabled: !AuthService.busy
                             onClicked: root.submitPasswordChange()
                         }
+                    }
+                }
+
+                RowLayout {
+                    visible: root.mode === "denied"
+                    Layout.fillWidth: true
+                    spacing: AppTheme.spacingS
+
+                    AppButton {
+                        Layout.fillWidth: true
+                        kind: AppButton.Neutral
+                        text: qsTr("Cancel")
+                        enabled: !AuthService.busy
+                        onClicked: root.cancelRequested()
+                    }
+
+                    AppButton {
+                        Layout.fillWidth: true
+                        kind: AppButton.Primary
+                        text: qsTr("Switch account")
+                        enabled: !AuthService.busy
+                        onClicked: AuthService.logout()
                     }
                 }
 

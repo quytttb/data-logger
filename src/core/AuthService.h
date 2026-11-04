@@ -33,8 +33,6 @@ enum class Permission {
 // - Danh tính ở đây là người dùng kiosk, KHÔNG phải token thiết bị của REST.
 class AuthService : public QObject {
     Q_OBJECT
-    QML_ELEMENT
-    QML_SINGLETON
 
     Q_PROPERTY(bool authenticated READ authenticated NOTIFY sessionChanged)
     Q_PROPERTY(bool locked READ locked NOTIFY sessionChanged)
@@ -160,4 +158,19 @@ private:
     bool m_firstRun = false;
     bool m_busy = false;
     int m_userCount = 0;
+};
+
+// Qt ưu tiên constructor mặc định hơn create() khi đăng ký singleton trực
+// tiếp. Dùng wrapper để QML và backend luôn dùng cùng phiên do main tạo.
+struct AuthServiceQml {
+    Q_GADGET
+    QML_FOREIGN(AuthService)
+    QML_NAMED_ELEMENT(AuthService)
+    QML_SINGLETON
+
+public:
+    static AuthService *create(QQmlEngine *engine, QJSEngine *jsEngine)
+    {
+        return AuthService::create(engine, jsEngine);
+    }
 };

@@ -17,6 +17,16 @@ Item {
     MessagePopup { id: tokenRegenPopup }
 
     Connections {
+        target: AuthService
+        function onSessionChanged() {
+            if (!AuthService.canConfigureSystem) {
+                tokenRegenPopup.close()
+                provisionQrPopup.close()
+            }
+        }
+    }
+
+    Connections {
         target: SettingsController
         function onConfigLoaded() {
             if (provisionQrPopup.visible)

@@ -147,8 +147,10 @@ Rectangle {
         function onSessionChanged() {
             // Khóa phiên/đăng xuất: đóng form đang mở để không giữ mật khẩu
             // trong các ô nhập, rồi làm mới danh sách theo quyền hiện tại.
-            if (!AuthService.authenticated || AuthService.locked)
+            if (!AuthService.canManageUsers) {
                 editor.close()
+                confirmPopup.close()
+            }
             root.rebuildRows()
         }
     }

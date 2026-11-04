@@ -3,6 +3,12 @@
 ## Unreleased
 
 ### Tài khoản, audit và hiệu chuẩn đa điểm
+- Bố trí hai cột cho bước tạo admin đầu tiên để thấy nút tạo tài khoản trên
+  màn hình kiosk 1024×600.
+- Cho phép xem Monitoring, History, Trending và bộ lọc không cần đăng nhập;
+  chỉ yêu cầu xác thực khi vào Settings/Tester hoặc hiệu chuẩn. Hết phiên sau
+  5 phút không che màn hình, rời Tester thì nhả cổng để giám sát tiếp tục.
+- Đồng bộ phiên `AuthService` QML và backend để kiểm tra quyền dùng cùng tài khoản.
 - Thêm tài khoản kiosk viewer/operator/admin, khởi tạo admin lần đầu, PBKDF2
   có salt riêng, đổi/reset mật khẩu, khóa tạm sau nhiều lần sai và tự khóa phiên.
 - Thêm audit có lọc/phân trang, retention 365 ngày và ghi nguyên tử cùng thay

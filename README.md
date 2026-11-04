@@ -212,10 +212,14 @@ Khóa join với dữ liệu Modbus của edge:
 
 ### Đăng nhập và quyền
 
-- Lần đầu với DB chưa có tài khoản, màn hình yêu cầu tạo **admin**; không có
-  mật khẩu mặc định. Đây là màn đăng nhập kiosk, tách biệt màn khóa thiết bị
-  theo license. Sau khởi động lại phải đăng nhập lại; polling nền vẫn tự chạy.
-- **Viewer** xem dữ liệu; **operator** xem, dùng Modbus Tester và hiệu chuẩn;
+- Sau khởi động, **Monitoring, History, Trending và các bộ lọc** dùng được ngay,
+  không cần đăng nhập. Polling nền tiếp tục chạy; màn xác thực chỉ mở khi người
+  dùng chọn chức năng được bảo vệ và có thể hủy để trở lại màn đang xem.
+- Nếu DB chưa có tài khoản, lần đầu mở chức năng được bảo vệ sẽ yêu cầu tạo
+  **admin**; không có mật khẩu mặc định. Xác thực kiosk tách biệt màn khóa thiết
+  bị theo license. Sau khởi động lại, thao tác được bảo vệ yêu cầu đăng nhập lại.
+- Xem dữ liệu không cần tài khoản; **viewer** chỉ có quyền xem; **operator**
+  dùng Modbus Tester và hiệu chuẩn;
   **admin** có thêm quyền cấu hình cảm biến/hệ thống, quản lý tài khoản và xem
   audit. Quyền áp dụng ở backend, không chỉ ẩn nút.
 - Admin quản lý tài khoản tại **Settings → Users**; có thể tạo, đổi vai trò,
@@ -225,7 +229,10 @@ Khóa join với dữ liệu Modbus của edge:
 - Mật khẩu 8–128 ký tự, có ít nhất một chữ và một chữ số, khác username; lưu
   bằng PBKDF2-HMAC-SHA256, 600.000 vòng và salt riêng, không lưu plaintext.
   Sau 5 lần sai liên tiếp tài khoản tạm khóa 60 giây; các đợt sai tiếp theo
-  tăng dần, tối đa 15 phút. Kiosk tự khóa sau 5 phút không thao tác.
+  tăng dần, tối đa 15 phút. Sau 5 phút không thao tác, chỉ phiên có quyền bị
+  khóa: Monitoring/History/Trending vẫn hiển thị và sử dụng bình thường; nếu
+  đang ở Settings/Tester thì quay về Monitoring. Khi chọn lại chức năng được
+  bảo vệ, nhập mật khẩu để mở khóa hoặc chuyển tài khoản.
 - Không có cơ chế khôi phục admin qua mạng. Với thiết bị thử nghiệm, việc tạo
   lại DB là thao tác **mất toàn bộ dữ liệu và cấu hình**; chỉ làm khi đã được
   cho phép. Với thiết bị vận hành cần quy trình khôi phục riêng được phê duyệt.

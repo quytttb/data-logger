@@ -9,6 +9,7 @@ Rectangle {
     id: settingsRoot
     color: "transparent"
     anchors.fill: parent
+    onVisibleChanged: if (!visible) settingsPopup.close()
 
     property int settingsTabIndex: 0
     property bool isConfigChanged: false
