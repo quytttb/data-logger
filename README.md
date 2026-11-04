@@ -212,6 +212,9 @@ Khóa join với dữ liệu Modbus của edge:
 
 ### Đăng nhập và quyền
 
+- Thanh tab chính của Settings chỉ hiện biểu tượng: bánh răng **General**, mắt
+  xích **Connection**, mũi tên lên **Server**, chip **Sensors** và nhóm người
+  **Users**. Tên tab vẫn có trong tooltip và thông tin trợ năng.
 - Sau khởi động, **Monitoring, History, Trending và các bộ lọc** dùng được ngay,
   không cần đăng nhập. Polling nền tiếp tục chạy; màn xác thực chỉ mở khi người
   dùng chọn chức năng được bảo vệ và có thể hủy để trở lại màn đang xem.
@@ -222,10 +225,13 @@ Khóa join với dữ liệu Modbus của edge:
   dùng Modbus Tester và hiệu chuẩn;
   **admin** có thêm quyền cấu hình cảm biến/hệ thống, quản lý tài khoản và xem
   audit. Quyền áp dụng ở backend, không chỉ ẩn nút.
-- Admin quản lý tài khoản tại **Settings → Users**; có thể tạo, đổi vai trò,
-  tắt/bật và đặt lại mật khẩu. Tài khoản mới hoặc vừa reset phải tự đổi mật
-  khẩu khi đăng nhập. Không thể tự tắt/giáng quyền tài khoản đang dùng hoặc
-  vô hiệu hóa admin cuối cùng.
+- Admin quản lý tài khoản tại **Settings → Users → Users**; chọn một dòng rồi
+  dùng nút sửa/xóa, hoặc bỏ chọn để thêm tài khoản. Màn sửa cho phép đổi tên
+  hiển thị, vai trò, tắt/bật và đặt lại mật khẩu; chọn tài khoản của mình để
+  đổi mật khẩu cá nhân. Tài khoản mới hoặc vừa reset phải tự đổi mật khẩu khi
+  đăng nhập. Không thể tự xóa/tắt/giáng quyền tài khoản đang dùng hoặc xóa,
+  vô hiệu hóa hay giáng quyền admin cuối cùng. Xóa tài khoản giữ lịch sử audit
+  và hiệu chuẩn, gồm snapshot tên người dùng.
 - Mật khẩu 8–128 ký tự, có ít nhất một chữ và một chữ số, khác username; lưu
   bằng PBKDF2-HMAC-SHA256, 600.000 vòng và salt riêng, không lưu plaintext.
   Sau 5 lần sai liên tiếp tài khoản tạm khóa 60 giây; các đợt sai tiếp theo
@@ -239,7 +245,7 @@ Khóa join với dữ liệu Modbus của edge:
 
 ### Audit
 
-- **Settings → Audit** chỉ dành cho admin, có bộ lọc và phân trang; log gồm
+- **Settings → Users → Audit log** chỉ dành cho admin, có bộ lọc và phân trang; log gồm
   đăng nhập, quản lý tài khoản, cấu hình và áp dụng hiệu chuẩn. Ghi cấu hình từ
   REST dùng actor `remote_device` và địa chỉ nguồn, **không** giả làm người dùng
   kiosk. Bearer token vẫn là credential thiết bị như contract v1.

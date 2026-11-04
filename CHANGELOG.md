@@ -3,6 +3,10 @@
 ## Unreleased
 
 ### Tài khoản, audit và hiệu chuẩn đa điểm
+- Thu gọn tab Settings thành icon; chuyển Audit vào tab con của Users. Bảng
+  Users dùng Add/Edit/Delete như Sensors, màn sửa quản lý vai trò, trạng thái
+  và mật khẩu; xóa tài khoản có xác nhận, RBAC và audit cùng transaction,
+  bảo vệ admin cuối và giữ lịch sử audit/hiệu chuẩn.
 - Bố trí hai cột cho bước tạo admin đầu tiên để thấy nút tạo tài khoản trên
   màn hình kiosk 1024×600.
 - Cho phép xem Monitoring, History, Trending và bộ lọc không cần đăng nhập;

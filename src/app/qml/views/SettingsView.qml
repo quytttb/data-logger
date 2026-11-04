@@ -14,6 +14,10 @@ Rectangle {
     property int settingsTabIndex: 0
     property bool isConfigChanged: false
     property bool hasSelectedSensor: sensorsTab.currentRow >= 0
+    property bool userListActive: usersTab.listActive
+    property bool userFormActive: usersTab.formActive
+    property bool hasSelectedUser: usersTab.selectedUser !== null
+    property bool selfSelectedUser: usersTab.selfSelected
     property bool isAddMode: true
     property int editSensorId: -1
     property int sensorSubTabIndex: 0
@@ -148,6 +152,12 @@ Rectangle {
         _navigateBack()
     }
 
+    function openAddUser() { usersTab.openAdd() }
+    function editSelectedUser() { usersTab.openEdit() }
+    function deleteSelectedUser() { usersTab.deleteSelected() }
+    function saveUserForm() { usersTab.saveForm() }
+    function closeUserForm() { usersTab.closeForm() }
+
     function deleteSelectedDio() {
         sensorForm.deleteSelectedDio()
     }
@@ -209,15 +219,14 @@ Rectangle {
                 Layout.fillWidth: true; Layout.fillHeight: true
             }
 
-            // ── Tab 4: User Accounts (admin) ──
+            // ── Tab 4: User Accounts + Audit log ──
             SettingsUsersTab {
+                id: usersTab
                 Layout.fillWidth: true; Layout.fillHeight: true
             }
 
-            // ── Tab 5: Audit log (admin) ──
-            SettingsAuditTab {
-                Layout.fillWidth: true; Layout.fillHeight: true
-            }
+            // Giữ nguyên chỉ số 6 của form Sensors cho đường dẫn từ Tester.
+            Item { }
 
             // ── Tab 6: Add/Edit Sensor Form ──
             SensorConfigForm {

@@ -13,9 +13,14 @@ import LoggerKit.Components
 TabButton {
     id: root
     property string iconName: ""
+    property string iconGlyph: ""
+    property bool iconOnly: false
     property int iconSize: 20
 
     Material.foreground: AppColors.primaryText
+    Accessible.name: root.text
+    ToolTip.visible: root.iconOnly && root.hovered
+    ToolTip.text: root.text
 
     topInset: 0
     bottomInset: 0
@@ -39,15 +44,16 @@ TabButton {
         Layout.alignment: Qt.AlignHCenter
 
         UiIcon {
-            visible: root.iconName !== ""
+            visible: root.iconName !== "" || root.iconGlyph !== ""
             name: root.iconName
+            text: root.iconGlyph !== "" ? root.iconGlyph : MaterialIcons.glyph(root.iconName)
             size: root.iconSize
             iconColor: root.checked ? AppColors.accentContainerFg : AppColors.onSurfaceVariant
             Layout.alignment: Qt.AlignVCenter
         }
 
         Text {
-            visible: root.text !== ""
+            visible: !root.iconOnly && root.text !== ""
             text: root.text
             font: root.font
             color: root.checked ? AppColors.accentContainerFg : AppColors.onSurfaceVariant

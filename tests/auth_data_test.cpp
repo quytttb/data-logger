@@ -184,6 +184,28 @@ private slots:
         QCOMPARE(dao.countActiveAdmins(), 0);
     }
 
+    void updateDetailsAndRemove()
+    {
+        ScopedDbConnection db;
+        UserAccountDao dao(db);
+        UserAccount user = makeUser(QStringLiteral("operator"), UserRole::Viewer);
+        QVERIFY(dao.insert(user));
+        QVERIFY(dao.updateLoginState(user.id, 3, QDateTime::currentDateTimeUtc().addSecs(60)));
+        QVERIFY(dao.updateDetails(user.id, QStringLiteral(" New name "), UserRole::Operator, false));
+        const auto stored = dao.findById(user.id);
+        QVERIFY(stored.has_value());
+        QCOMPARE(stored->displayName, QStringLiteral("New name"));
+        QCOMPARE(stored->role, UserRole::Operator);
+        QVERIFY(!stored->active);
+        QCOMPARE(stored->passwordHash, user.passwordHash);
+        QCOMPARE(stored->failedAttempts, 3);
+        QVERIFY(stored->lockedUntil.isValid());
+        QVERIFY(!dao.updateDetails(user.id, QStringLiteral("  "), UserRole::Viewer, true));
+        QVERIFY(dao.remove(user.id));
+        QVERIFY(!dao.findById(user.id).has_value());
+        QVERIFY(!dao.remove(user.id));
+    }
+
     void auditAppendQueryAndPurge()
     {
         ScopedDbConnection db;

@@ -110,6 +110,9 @@ public:
                                    const QString &confirm);
     Q_INVOKABLE bool setUserActive(int userId, bool active);
     Q_INVOKABLE bool setUserRole(int userId, const QString &role);
+    Q_INVOKABLE bool updateUser(int userId, const QString &displayName,
+                                const QString &role, bool active);
+    Q_INVOKABLE bool deleteUser(int userId);
     Q_INVOKABLE QVariantList users();
     Q_INVOKABLE void refreshUsers();
 

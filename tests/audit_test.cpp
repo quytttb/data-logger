@@ -18,6 +18,7 @@
 #include <QJsonDocument>
 #include <QSignalSpy>
 #include <QSqlDatabase>
+#include <QSqlQuery>
 #include <QTemporaryDir>
 #include <QtTest>
 
@@ -255,6 +256,73 @@ private slots:
         QVERIFY(!detail.contains(QStringLiteral("initial123")));
         QVERIFY(!detail.contains(QStringLiteral("pbkdf2"), Qt::CaseInsensitive));
         QVERIFY(!detail.contains(QStringLiteral("passwordHash")));
+    }
+
+    void deletingAccountPreservesAuditHistory()
+    {
+        UserAccount admin = makeUser(QStringLiteral("admin"), UserRole::Admin);
+        UserAccount target = makeUser(QStringLiteral("operator"), UserRole::Operator);
+        QVERIFY(insertUser(admin) > 0);
+        QVERIFY(insertUser(target) > 0);
+        {
+            ScopedDbConnection db;
+            QSqlQuery sensor(db);
+            QVERIFY(sensor.exec(QStringLiteral(
+                "INSERT INTO sensor (name, slave_id, register_address) VALUES ('S1', 1, 0)")));
+            const int sensorId = sensor.lastInsertId().toInt();
+            QSqlQuery calibration(db);
+            calibration.prepare(QStringLiteral(
+                "INSERT INTO calibration_session (sensor_id, point_count, a, b, created_by, "
+                "created_by_username) VALUES (:sensor, 2, 1, 0, :user, :username)"));
+            calibration.bindValue(QStringLiteral(":sensor"), sensorId);
+            calibration.bindValue(QStringLiteral(":user"), target.id);
+            calibration.bindValue(QStringLiteral(":username"), target.username);
+            QVERIFY(calibration.exec());
+        }
+
+        AuthService auth;
+        AuthService::setInstance(&auth);
+        QVERIFY(login(auth, QStringLiteral("operator"), QStringLiteral("test-password")));
+        QVERIFY(auth.authenticated());
+        auth.logout();
+        QVERIFY(login(auth, QStringLiteral("admin"), QStringLiteral("test-password")));
+        QVERIFY(auth.authenticated());
+        QVERIFY(auth.updateUser(target.id, QStringLiteral("New display name"),
+                                QStringLiteral("viewer"), false));
+        const auto updates = auditEntries(QStringLiteral("user.update"));
+        QCOMPARE(updates.size(), 1);
+        QCOMPARE(updates.first().entityId, QString::number(target.id));
+        QVERIFY(updates.first().detailJson.contains(QStringLiteral("New display name")));
+        QVERIFY(updates.first().detailJson.contains(QStringLiteral("role")));
+        QVERIFY(updates.first().detailJson.contains(QStringLiteral("active")));
+        QVERIFY(!updates.first().detailJson.contains(QStringLiteral("password"), Qt::CaseInsensitive));
+        QVERIFY(auth.deleteUser(target.id));
+
+        const auto deletions = auditEntries(QStringLiteral("user.delete"));
+        QCOMPARE(deletions.size(), 1);
+        QCOMPARE(deletions.first().entityId, QString::number(target.id));
+        QCOMPARE(deletions.first().actorUsername, QStringLiteral("admin"));
+        QVERIFY(deletions.first().detailJson.contains(QStringLiteral("operator")));
+        QVERIFY(!deletions.first().detailJson.contains(QStringLiteral("password"), Qt::CaseInsensitive));
+
+        const auto logins = auditEntries(QStringLiteral("auth.login"));
+        bool foundTarget = false;
+        for (const auto &entry : logins) {
+            if (entry.actorUsername == QStringLiteral("operator")) {
+                foundTarget = true;
+                QCOMPARE(entry.actorUserId, 0);
+            }
+        }
+        QVERIFY(foundTarget);
+        {
+            ScopedDbConnection db;
+            QSqlQuery calibration(db);
+            QVERIFY(calibration.exec(QStringLiteral(
+                "SELECT created_by, created_by_username FROM calibration_session")));
+            QVERIFY(calibration.next());
+            QVERIFY(calibration.value(0).isNull());
+            QCOMPARE(calibration.value(1).toString(), QStringLiteral("operator"));
+        }
     }
 
     void auditViewerIsDenied()

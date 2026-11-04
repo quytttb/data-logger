@@ -6,6 +6,7 @@
 #include <QFile>
 #include <QSignalSpy>
 #include <QSqlDatabase>
+#include <QSqlQuery>
 #include <QTemporaryDir>
 #include <QtTest>
 
@@ -203,6 +204,9 @@ private slots:
                         QStringLiteral("other1234"), QStringLiteral("other1234"));
         QCOMPARE(int(messages.count()), 1);
         QCOMPARE(messages.first().at(0).toString(), QStringLiteral("Permission denied"));
+        QVERIFY(!auth.updateUser(operatorUser.id, QStringLiteral("Changed"),
+                                 QStringLiteral("admin"), true));
+        QVERIFY(!auth.deleteUser(operatorUser.id));
 
         ScopedDbConnection db;
         UserAccountDao dao(db);
@@ -314,6 +318,9 @@ private slots:
 
         QVERIFY(!auth.setUserActive(admin.id, false));
         QVERIFY(!auth.setUserRole(admin.id, QStringLiteral("viewer")));
+        QVERIFY(!auth.updateUser(admin.id, QStringLiteral("Admin"), QStringLiteral("viewer"), true));
+        QVERIFY(!auth.updateUser(admin.id, QStringLiteral("Admin"), QStringLiteral("admin"), false));
+        QVERIFY(!auth.deleteUser(admin.id));
 
         ScopedDbConnection db;
         UserAccountDao dao(db);
@@ -369,6 +376,108 @@ private slots:
             UserAccountDao dao(db);
             const auto stored = dao.findById(target.id);
             QVERIFY(stored.has_value());
+            QVERIFY(stored->active);
+        }
+    }
+
+    void editAndDeleteAccounts()
+    {
+        UserAccount admin = makeUser(QStringLiteral("admin"), UserRole::Admin);
+        UserAccount target = makeUser(QStringLiteral("target"), UserRole::Viewer);
+        QVERIFY(insertUser(admin) > 0);
+        QVERIFY(insertUser(target) > 0);
+
+        AuthService auth;
+        AuthService::setInstance(&auth);
+        auth.login(QStringLiteral("admin"), QStringLiteral("test-password"));
+        QVERIFY(waitIdle(auth));
+        QVERIFY(auth.authenticated());
+
+        QVERIFY(auth.updateUser(target.id, QStringLiteral("Renamed"),
+                                QStringLiteral("operator"), false));
+        {
+            ScopedDbConnection db;
+            const auto stored = UserAccountDao(db).findById(target.id);
+            QVERIFY(stored.has_value());
+            QCOMPARE(stored->displayName, QStringLiteral("Renamed"));
+            QCOMPARE(stored->role, UserRole::Operator);
+            QVERIFY(!stored->active);
+            QCOMPARE(stored->passwordHash, target.passwordHash);
+        }
+        QVERIFY(auth.updateUser(admin.id, QStringLiteral("Admin name"),
+                                QStringLiteral("admin"), true));
+        QCOMPARE(auth.currentDisplayName(), QStringLiteral("Admin name"));
+        QVERIFY(!auth.updateUser(target.id, QString(), QStringLiteral("invalid"), true));
+        QVERIFY(auth.deleteUser(target.id));
+        QCOMPARE(auth.userCount(), 1);
+        QVERIFY(!auth.firstRun());
+        QVERIFY(!auth.deleteUser(target.id));
+        {
+            ScopedDbConnection db;
+            QVERIFY(!UserAccountDao(db).findById(target.id).has_value());
+        }
+    }
+
+    void lastActiveAdminCannotBeRemovedOrDemoted()
+    {
+        UserAccount admin = makeUser(QStringLiteral("admin"), UserRole::Admin);
+        UserAccount other = makeUser(QStringLiteral("other"), UserRole::Admin);
+        QVERIFY(insertUser(admin) > 0);
+        QVERIFY(insertUser(other) > 0);
+
+        AuthService auth;
+        AuthService::setInstance(&auth);
+        auth.login(QStringLiteral("admin"), QStringLiteral("test-password"));
+        QVERIFY(waitIdle(auth));
+        QVERIFY(auth.authenticated());
+        // Phiên đang giữ quyền admin nhưng DB đã thay đổi: vẫn phải chặn mất
+        // admin cuối cùng trong cùng transaction ghi tài khoản.
+        {
+            ScopedDbConnection db;
+            QVERIFY(UserAccountDao(db).setActive(admin.id, false));
+        }
+        QVERIFY(!auth.deleteUser(other.id));
+        QVERIFY(!auth.updateUser(other.id, QStringLiteral("Other"), QStringLiteral("viewer"), true));
+        QVERIFY(!auth.updateUser(other.id, QStringLiteral("Other"), QStringLiteral("admin"), false));
+        {
+            ScopedDbConnection db;
+            const auto stored = UserAccountDao(db).findById(other.id);
+            QVERIFY(stored.has_value());
+            QVERIFY(stored->active);
+            QCOMPARE(stored->role, UserRole::Admin);
+        }
+    }
+
+    void editAndDeleteRollBackWhenAuditFails()
+    {
+        UserAccount admin = makeUser(QStringLiteral("admin"), UserRole::Admin);
+        UserAccount target = makeUser(QStringLiteral("target"), UserRole::Viewer);
+        QVERIFY(insertUser(admin) > 0);
+        QVERIFY(insertUser(target) > 0);
+
+        AuthService auth;
+        AuthService::setInstance(&auth);
+        auth.login(QStringLiteral("admin"), QStringLiteral("test-password"));
+        QVERIFY(waitIdle(auth));
+        QVERIFY(auth.authenticated());
+        {
+            ScopedDbConnection db;
+            QSqlQuery query(db);
+            QVERIFY(query.exec(QStringLiteral(
+                "CREATE TRIGGER fail_user_audit BEFORE INSERT ON audit_log "
+                "WHEN NEW.action IN ('user.update', 'user.delete') "
+                "BEGIN SELECT RAISE(ABORT, 'test audit failure'); END")));
+        }
+        QVERIFY(!auth.updateUser(target.id, QStringLiteral("Changed"),
+                                 QStringLiteral("operator"), false));
+        QVERIFY(!auth.deleteUser(target.id));
+        QCOMPARE(auth.userCount(), 2);
+        {
+            ScopedDbConnection db;
+            const auto stored = UserAccountDao(db).findById(target.id);
+            QVERIFY(stored.has_value());
+            QCOMPARE(stored->displayName, QStringLiteral("target"));
+            QCOMPARE(stored->role, UserRole::Viewer);
             QVERIFY(stored->active);
         }
     }

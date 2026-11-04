@@ -33,6 +33,10 @@ Item {
         taskBar.settingsTabIndex = Qt.binding(function() { return settingsView.settingsTabIndex })
         taskBar.isConfigChanged = Qt.binding(function() { return settingsView.isConfigChanged })
         taskBar.hasSelectedSensor = Qt.binding(function() { return settingsView.hasSelectedSensor })
+        taskBar.userListActive = Qt.binding(function() { return settingsView.userListActive })
+        taskBar.userFormActive = Qt.binding(function() { return settingsView.userFormActive })
+        taskBar.hasSelectedUser = Qt.binding(function() { return settingsView.hasSelectedUser })
+        taskBar.selfSelectedUser = Qt.binding(function() { return settingsView.selfSelectedUser })
         taskBar.isAddMode = Qt.binding(function() { return settingsView.isAddMode })
         taskBar.sensorSubTabIndex = Qt.binding(function() { return settingsView.sensorSubTabIndex })
         taskBar.hasSelectedDio = Qt.binding(function() { return settingsView.hasSelectedDio })
@@ -48,6 +52,11 @@ Item {
         taskBar.saveSensorForm.connect(function() { settingsView.saveSensorForm() })
         taskBar.cancelSensorForm.connect(function() { settingsView.closeSensorForm() })
         taskBar.deleteSelectedDio.connect(function() { settingsView.deleteSelectedDio() })
+        taskBar.addUser.connect(function() { settingsView.openAddUser() })
+        taskBar.editSelectedUser.connect(function() { settingsView.editSelectedUser() })
+        taskBar.deleteSelectedUser.connect(function() { settingsView.deleteSelectedUser() })
+        taskBar.saveUserForm.connect(function() { settingsView.saveUserForm() })
+        taskBar.cancelUserForm.connect(function() { settingsView.closeUserForm() })
     }
 
     function syncModbusTaskBar(taskBar) {

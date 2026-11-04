@@ -190,12 +190,23 @@ Rectangle {
             }
 
             Item { Layout.fillWidth: true }
+        }
+
+        // Tách phân trang khỏi bộ lọc để không tràn chiều ngang kiosk 1024 px.
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 48
+            Layout.leftMargin: AppTheme.spacingSM
+            Layout.rightMargin: AppTheme.spacingSM
+            spacing: AppTheme.spacingS
 
             Text {
                 text: qsTr("%1 entries").arg(AuditController.total)
                 color: AppColors.onSurfaceVariant
                 font: AppTypography.bodyMedium
             }
+
+            Item { Layout.fillWidth: true }
 
             AppButton {
                 text: qsTr("Prev")

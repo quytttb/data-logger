@@ -24,12 +24,14 @@ public:
     bool updatePasswordHash(int id, const QString &hash, bool mustChangePassword);
     bool setActive(int id, bool active);
     bool setRole(int id, UserRole role);
+    bool updateDetails(int id, const QString &displayName, UserRole role, bool active);
+    bool remove(int id);
 
     // Ghi kết quả đăng nhập. AuthService quyết định ngưỡng/khóa, DAO chỉ lưu.
     bool updateLoginState(int id, int failedAttempts, const QDateTime &lockedUntil);
     bool recordLoginSuccess(int id);
 
-    // Bảo vệ "admin cuối cùng": AuthService gọi trước khi hạ quyền/vô hiệu hóa.
+    // Bảo vệ "admin cuối cùng": AuthService gọi trước khi hạ quyền/tắt/xóa.
     int countActiveAdmins() const;
     bool usernameExists(const QString &username, int excludeId = 0) const;
 

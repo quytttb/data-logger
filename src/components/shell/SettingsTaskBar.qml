@@ -17,6 +17,10 @@ Item {
     property int settingsTabIndex: 0
     property bool isConfigChanged: false
     property bool hasSelectedSensor: false
+    property bool userListActive: false
+    property bool userFormActive: false
+    property bool hasSelectedUser: false
+    property bool selfSelectedUser: false
     property bool isAddMode: true
     property int sensorSubTabIndex: 0
     property bool hasSelectedDio: false
@@ -32,6 +36,11 @@ Item {
     signal saveSensorForm()
     signal cancelSensorForm()
     signal deleteSelectedDio()
+    signal addUser()
+    signal editSelectedUser()
+    signal deleteSelectedUser()
+    signal saveUserForm()
+    signal cancelUserForm()
 
     RowLayout {
         anchors.left: parent.left
@@ -40,27 +49,29 @@ Item {
         spacing: 8
 
         TabBar {
-            visible: root.settingsTabIndex < 6
+            visible: root.settingsTabIndex >= 0 && root.settingsTabIndex < 5
+                     && !root.userFormActive
             Layout.alignment: Qt.AlignLeft
-            currentIndex: root.settingsTabIndex
+            currentIndex: root.settingsTabIndex >= 0 && root.settingsTabIndex < 5
+                          ? root.settingsTabIndex : -1
             onCurrentIndexChanged: {
-                if (root.settingsTabIndex !== currentIndex && currentIndex < 6)
+                if (root.settingsTabIndex >= 0 && root.settingsTabIndex < 5
+                        && root.settingsTabIndex !== currentIndex
+                        && currentIndex >= 0 && currentIndex < 5)
                     root.tabSelected(currentIndex)
             }
             background: Rectangle { color: "transparent" }
-            ThemedTabButton { text: qsTr("General");    iconName: "cog";    width: implicitWidth + 40 }
-            ThemedTabButton { text: qsTr("Connection"); iconName: "link";   width: implicitWidth + 40 }
-            ThemedTabButton { text: qsTr("Server");     iconName: "download"; width: implicitWidth + 40 }
-            ThemedTabButton { text: qsTr("Sensors");    iconName: "chip";     width: implicitWidth + 40 }
+            ThemedTabButton { text: qsTr("General");    iconName: "cog";  iconOnly: true; width: AppTheme.buttonHeight }
+            ThemedTabButton { text: qsTr("Connection"); iconName: "link"; iconOnly: true; width: AppTheme.buttonHeight }
+            // Material Symbols: upload (E2C6), group (E7EF). Không sửa API kit dùng chung.
+            ThemedTabButton { text: qsTr("Server");  iconGlyph: "\uE2C6"; iconOnly: true; width: AppTheme.buttonHeight }
+            ThemedTabButton { text: qsTr("Sensors"); iconName: "chip"; iconOnly: true; width: AppTheme.buttonHeight }
             ThemedTabButton {
                 text: qsTr("Users")
-                width: implicitWidth + 40
-                visible: AuthService.canManageUsers
-            }
-            ThemedTabButton {
-                text: qsTr("Audit")
-                width: implicitWidth + 40
-                visible: AuthService.canViewAudit
+                iconGlyph: "\uE7EF"
+                iconOnly: true
+                width: AppTheme.buttonHeight
+                visible: AuthService.canManageUsers || AuthService.canViewAudit
             }
         }
 
@@ -155,6 +166,64 @@ Item {
                 Layout.preferredHeight: 44
                 fillColor: AppColors.success
                 onClicked: root.saveSensorForm()
+            }
+        }
+
+        // Users: giống bảng Sensors, chỉ hiện Add khi chưa chọn dòng.
+        RowLayout {
+            visible: root.settingsTabIndex === 4 && root.userListActive
+            spacing: 8
+
+            AppButton {
+                visible: root.hasSelectedUser
+                enabled: !root.selfSelectedUser && !AuthService.busy
+                iconName: "trashCan"
+                iconOnly: true
+                fillColor: AppColors.error
+                Accessible.name: qsTr("Delete user")
+                onClicked: root.deleteSelectedUser()
+            }
+
+            AppButton {
+                visible: root.hasSelectedUser
+                enabled: !AuthService.busy
+                iconName: "pencil"
+                iconOnly: true
+                Accessible.name: qsTr("Edit user")
+                onClicked: root.editSelectedUser()
+            }
+
+            AppButton {
+                visible: !root.hasSelectedUser
+                enabled: !AuthService.busy
+                text: qsTr("+ Add")
+                font.pixelSize: AppTypography.labelMedium.pixelSize; font.bold: true
+                Layout.preferredHeight: 44
+                fillColor: AppColors.success
+                onClicked: root.addUser()
+            }
+        }
+
+        RowLayout {
+            visible: root.settingsTabIndex === 4 && root.userFormActive
+            spacing: 8
+
+            AppButton {
+                text: qsTr("Cancel")
+                kind: AppButton.Neutral
+                font.bold: true
+                Layout.preferredHeight: 44
+                enabled: !AuthService.busy
+                onClicked: root.cancelUserForm()
+            }
+
+            AppButton {
+                text: AuthService.busy ? qsTr("Please wait…") : qsTr("Save")
+                font.pixelSize: AppTypography.labelMedium.pixelSize; font.bold: true
+                Layout.preferredHeight: 44
+                fillColor: AppColors.success
+                enabled: !AuthService.busy
+                onClicked: root.saveUserForm()
             }
         }
     }

@@ -934,3 +934,137 @@ bool AuthService::setUserRole(int userId, const QString &role)
     emit usersChanged();
     return true;
 }
+
+bool AuthService::updateUser(int userId, const QString &displayName,
+                             const QString &role, bool active)
+{
+    if (!authorize(Permission::ManageUsers)) {
+        auditDenied(QStringLiteral("user.update"), QStringLiteral("user"),
+                    QStringLiteral("missing_permission"));
+        emit messageSent(QStringLiteral("Permission denied"),
+                         QStringLiteral("Only administrators can manage accounts."));
+        return false;
+    }
+    if (m_busy || !isKnownUserRole(role)) {
+        emit messageSent(QStringLiteral("Accounts"), QStringLiteral("Cannot update the account."));
+        return false;
+    }
+
+    QString error;
+    QString deniedReason;
+    QString savedDisplayName;
+    bool ok = false;
+    {
+        ScopedDbConnection db;
+        UserAccountDao dao(db);
+        ok = runWithAudit(db.get(), [&](AuditLogEntry &audit) {
+            const auto target = dao.findById(userId);
+            if (!target) {
+                error = QStringLiteral("Account not found.");
+                return false;
+            }
+            const UserRole newRole = userRoleFromString(role);
+            if (userId == m_currentUser.id && (!active || newRole != target->role)) {
+                deniedReason = QStringLiteral("self");
+                error = QStringLiteral("You cannot disable your own account or change its role.");
+                return false;
+            }
+            if (target->active && target->role == UserRole::Admin
+                && (!active || newRole != UserRole::Admin) && dao.countActiveAdmins() <= 1) {
+                deniedReason = QStringLiteral("last_admin");
+                error = QStringLiteral("Cannot disable or demote the last administrator.");
+                return false;
+            }
+
+            savedDisplayName = displayName.trimmed().isEmpty() ? target->username
+                                                                : displayName.trimmed();
+            if (!dao.updateDetails(userId, savedDisplayName, newRole, active))
+                return false;
+            QJsonObject detail = AuditTrail::changes({
+                {QStringLiteral("displayName"), target->displayName, savedDisplayName},
+                {QStringLiteral("role"), userRoleToString(target->role), role},
+                {QStringLiteral("active"), target->active, active},
+            });
+            detail.insert(QStringLiteral("username"), target->username);
+            audit = AuditTrail::entry(AuditTrail::localActor(), QStringLiteral("user.update"),
+                                      QStringLiteral("user"), QString::number(userId),
+                                      AuditResult::Ok, detail);
+            return true;
+        });
+        if (!ok && !deniedReason.isEmpty())
+            auditDenied(db.get(), QStringLiteral("user.update"), QStringLiteral("user"), deniedReason);
+    }
+    if (!ok) {
+        emit messageSent(QStringLiteral("Accounts"), error.isEmpty()
+                         ? QStringLiteral("Could not update the account.") : error);
+        return false;
+    }
+
+    if (userId == m_currentUser.id && m_currentUser.displayName != savedDisplayName) {
+        m_currentUser.displayName = savedDisplayName;
+        emit sessionChanged();
+    }
+    emit usersChanged();
+    return true;
+}
+
+bool AuthService::deleteUser(int userId)
+{
+    if (!authorize(Permission::ManageUsers)) {
+        auditDenied(QStringLiteral("user.delete"), QStringLiteral("user"),
+                    QStringLiteral("missing_permission"));
+        emit messageSent(QStringLiteral("Permission denied"),
+                         QStringLiteral("Only administrators can manage accounts."));
+        return false;
+    }
+    if (userId == m_currentUser.id) {
+        auditDenied(QStringLiteral("user.delete"), QStringLiteral("user"), QStringLiteral("self"));
+        emit messageSent(QStringLiteral("Accounts"),
+                         QStringLiteral("You cannot delete your own account."));
+        return false;
+    }
+    if (m_busy) {
+        emit messageSent(QStringLiteral("Accounts"), QStringLiteral("Please wait and try again."));
+        return false;
+    }
+
+    QString error;
+    QString deniedReason;
+    bool ok = false;
+    {
+        ScopedDbConnection db;
+        UserAccountDao dao(db);
+        ok = runWithAudit(db.get(), [&](AuditLogEntry &audit) {
+            const auto target = dao.findById(userId);
+            if (!target) {
+                error = QStringLiteral("Account not found.");
+                return false;
+            }
+            if (target->active && target->role == UserRole::Admin && dao.countActiveAdmins() <= 1) {
+                deniedReason = QStringLiteral("last_admin");
+                error = QStringLiteral("Cannot delete the last administrator.");
+                return false;
+            }
+            if (!dao.remove(userId))
+                return false;
+            audit = AuditTrail::entry(
+                AuditTrail::localActor(), QStringLiteral("user.delete"), QStringLiteral("user"),
+                QString::number(userId), AuditResult::Ok,
+                AuditTrail::snapshot({{QStringLiteral("username"), target->username},
+                                      {QStringLiteral("displayName"), target->displayName},
+                                      {QStringLiteral("role"), userRoleToString(target->role)},
+                                      {QStringLiteral("active"), target->active}}));
+            return true;
+        });
+        if (!ok && !deniedReason.isEmpty())
+            auditDenied(db.get(), QStringLiteral("user.delete"), QStringLiteral("user"), deniedReason);
+    }
+    if (!ok) {
+        emit messageSent(QStringLiteral("Accounts"), error.isEmpty()
+                         ? QStringLiteral("Could not delete the account.") : error);
+        return false;
+    }
+
+    refreshUsers();
+    return true;
+}

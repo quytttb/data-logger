@@ -8,32 +8,19 @@ import DataLogger.Components
 import LoggerKit.Theme
 import LoggerKit.Components
 
-// Tab quản lý tài khoản kiosk (chỉ admin). Mọi thao tác đi qua AuthService —
-// lớp này kiểm tra quyền và ghi DB; QML chỉ hiển thị/disable theo quyền.
-Rectangle {
+// Users và Audit dùng cùng một tab chính; quyền vẫn được backend kiểm tra.
+Item {
     id: root
-
-    color: AppColors.surfaceContainerLow
-    radius: AppTheme.cardRadius
-    border.color: AppColors.elevatedBorder
-    border.width: 1
 
     property var userRows: []
     property int currentRow: -1
-
-    readonly property var selectedUser: (currentRow >= 0 && currentRow < userRows.length)
+    readonly property var selectedUser: currentRow >= 0 && currentRow < userRows.length
                                         ? userRows[currentRow] : null
     readonly property bool selfSelected: selectedUser !== null
                                          && selectedUser.username === AuthService.currentUsername
-
-    function cellValue(user, column) {
-        if (column === 0) return user.username
-        if (column === 1) return user.displayName
-        if (column === 2) return capitalize(user.role)
-        if (column === 3) return user.active ? qsTr("Active") : qsTr("Disabled")
-        if (column === 4) return formatTime(user.lastLoginAt)
-        return ""
-    }
+    readonly property bool formActive: editor.mode !== ""
+    readonly property bool listActive: !formActive && accountsTabBar.currentIndex === 0
+                                       && AuthService.canManageUsers
 
     function capitalize(value) {
         const s = String(value)
@@ -44,99 +31,77 @@ Rectangle {
         if (!iso)
             return "—"
         const d = new Date(iso)
-        if (isNaN(d.getTime()))
-            return iso
-        return d.toLocaleString(Qt.locale(), Locale.ShortFormat)
+        return isNaN(d.getTime()) ? iso : d.toLocaleString(Qt.locale(), Locale.ShortFormat)
     }
 
     function rebuildRows() {
-        const list = AuthService.users()
         const keepId = selectedUser !== null ? selectedUser.id : -1
+        const list = AuthService.users()
         const rows = []
         const tableRows = []
-
         for (let i = 0; i < list.length; ++i) {
             const u = list[i]
-            const row = {
-                id: u.id,
-                username: u.username,
-                displayName: u.displayName,
-                role: u.role,
-                active: u.active,
-                lastLoginAt: u.lastLoginAt
-            }
-            rows.push(row)
-            tableRows.push([
-                cellValue(row, 0),
-                cellValue(row, 1),
-                cellValue(row, 2),
-                cellValue(row, 3),
-                cellValue(row, 4)
-            ])
+            rows.push(u)
+            tableRows.push([u.username, u.displayName, capitalize(u.role),
+                            u.active ? qsTr("Active") : qsTr("Disabled"),
+                            formatTime(u.lastLoginAt)])
         }
-
         userRows = rows
         // qmllint disable unqualified
-        userTableModel.setHeaders([
-            qsTr("User"), qsTr("Display name"), qsTr("Role"),
-            qsTr("Status"), qsTr("Last sign-in")])
+        userTableModel.setHeaders([qsTr("User"), qsTr("Display name"), qsTr("Role"),
+                                   qsTr("Status"), qsTr("Last sign-in")])
         userTableModel.setRows(tableRows)
         // qmllint enable unqualified
-
         currentRow = -1
-        if (keepId > 0) {
-            for (let i = 0; i < rows.length; ++i) {
-                if (rows[i].id === keepId) {
-                    currentRow = i
-                    break
-                }
-            }
-        }
-    }
-
-    function syncRoleCombo() {
-        const role = selectedUser !== null ? selectedUser.role : ""
-        let index = 0
-        for (let i = 0; i < roleCombo.count; ++i) {
-            if (roleCombo.model[i].value === role) {
-                index = i
+        for (let i = 0; i < rows.length; ++i) {
+            if (rows[i].id === keepId) {
+                currentRow = i
                 break
             }
         }
-        roleCombo.currentIndex = index
     }
 
-    function toggleActive() {
-        if (selectedUser === null)
+    function ensureAllowedTab() {
+        if (!AuthService.canManageUsers && AuthService.canViewAudit)
+            accountsTabBar.currentIndex = 1
+        else if (!AuthService.canViewAudit && AuthService.canManageUsers)
+            accountsTabBar.currentIndex = 0
+    }
+
+    function openAdd() {
+        if (listActive && !AuthService.busy)
+            editor.openAdd()
+    }
+
+    function openEdit() {
+        if (listActive && selectedUser !== null && !AuthService.busy)
+            editor.openEdit(selectedUser)
+    }
+
+    function deleteSelected() {
+        if (!listActive || selectedUser === null || selfSelected || AuthService.busy)
             return
         const id = selectedUser.id
         const name = selectedUser.username
-        if (selectedUser.active) {
-            confirmPopup.showConfirm(
-                qsTr("Disable account"),
-                qsTr("Disable account \"%1\"? The user will not be able to sign in.").arg(name),
-                function() { AuthService.setUserActive(id, false) },
-                qsTr("Disable"),
-                AppColors.error)
-        } else {
-            AuthService.setUserActive(id, true)
-        }
+        confirmPopup.showConfirm(
+            qsTr("Delete user"),
+            qsTr("Delete account \"%1\"? Existing audit and calibration history will be kept.").arg(name),
+            function() { AuthService.deleteUser(id) },
+            qsTr("Delete"), AppColors.error)
     }
 
-    function applyRole() {
-        if (selectedUser === null || roleCombo.currentIndex < 0)
-            return
-        const role = roleCombo.model[roleCombo.currentIndex].value
-        if (role !== selectedUser.role)
-            AuthService.setUserRole(selectedUser.id, role)
-    }
+    function saveForm() { editor.submit() }
+    function closeForm() { editor.cancel() }
 
-    onCurrentRowChanged: syncRoleCombo()
     onVisibleChanged: {
-        if (visible)
+        if (visible) {
+            ensureAllowedTab()
             AuthService.refreshUsers()
-        else
+        } else {
             editor.close()
+            confirmPopup.close()
+            currentRow = -1
+        }
     }
 
     Component.onCompleted: rebuildRows()
@@ -145,445 +110,426 @@ Rectangle {
         target: AuthService
         function onUsersChanged() { root.rebuildRows() }
         function onSessionChanged() {
-            // Khóa phiên/đăng xuất: đóng form đang mở để không giữ mật khẩu
-            // trong các ô nhập, rồi làm mới danh sách theo quyền hiện tại.
             if (!AuthService.canManageUsers) {
                 editor.close()
                 confirmPopup.close()
             }
+            root.ensureAllowedTab()
             root.rebuildRows()
         }
     }
 
-    JsonTableModel {
-        id: userTableModel
-    }
-
-    MessagePopup {
-        id: confirmPopup
-    }
+    JsonTableModel { id: userTableModel }
+    MessagePopup { id: confirmPopup }
 
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
 
-        RowLayout {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 56
-            Layout.leftMargin: AppTheme.spacingSM
-            Layout.rightMargin: AppTheme.spacingSM
-            spacing: AppTheme.spacingS
+        TabBar {
+            id: accountsTabBar
+            visible: !root.formActive
+            Layout.alignment: Qt.AlignLeft
+            Layout.bottomMargin: AppTheme.spacingS
+            background: Rectangle { color: "transparent" }
+            onCurrentIndexChanged: root.currentRow = -1
 
-            AppButton {
-                text: qsTr("+ Add user")
-                font.bold: true
-                fillColor: AppColors.success
-                onClicked: editor.openAdd()
+            ThemedTabButton {
+                text: qsTr("Users")
+                width: implicitWidth + 30
+                visible: AuthService.canManageUsers
             }
-
-            AppButton {
-                text: qsTr("Reset password")
-                kind: AppButton.Secondary
-                enabled: root.selectedUser !== null && !root.selfSelected && !AuthService.busy
-                onClicked: editor.openReset(root.selectedUser)
-            }
-
-            AppButton {
-                text: root.selectedUser !== null && root.selectedUser.active
-                      ? qsTr("Disable") : qsTr("Enable")
-                kind: AppButton.Neutral
-                enabled: root.selectedUser !== null && !root.selfSelected && !AuthService.busy
-                onClicked: root.toggleActive()
-            }
-
-            AppButton {
-                text: qsTr("My password")
-                kind: AppButton.Neutral
-                enabled: !AuthService.busy
-                onClicked: editor.openSelf()
-            }
-
-            Item { Layout.fillWidth: true }
-
-            Text {
-                text: qsTr("Role")
-                color: AppColors.onSurfaceVariant
-                font: AppTypography.bodyMedium
-            }
-
-            ComboBox {
-                id: roleCombo
-                Layout.preferredWidth: 130
-                textRole: "label"
-                model: [
-                    { value: "viewer",   label: qsTr("Viewer") },
-                    { value: "operator", label: qsTr("Operator") },
-                    { value: "admin",    label: qsTr("Admin") }
-                ]
-            }
-
-            AppButton {
-                text: qsTr("Apply")
-                font.bold: true
-                enabled: root.selectedUser !== null && !root.selfSelected && !AuthService.busy
-                         && roleCombo.currentIndex >= 0
-                         && roleCombo.model[roleCombo.currentIndex].value !== root.selectedUser.role
-                onClicked: root.applyRole()
+            ThemedTabButton {
+                text: qsTr("Audit log")
+                width: implicitWidth + 30
+                visible: AuthService.canViewAudit
             }
         }
 
-        AppTableView {
+        StackLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            // qmllint disable unqualified
-            model: userTableModel
-            // qmllint enable unqualified
-            hasData: root.userRows.length > 0
-            colWeights: [0.24, 0.28, 0.14, 0.14, 0.20]
-            colMinimums: [120, 140, 80, 80, 120]
-            headerAlignCenter: function(col) { return col === 2 || col === 3 }
-            emptyMessage: qsTr("No user accounts yet.")
-            emptyIconName: "server"
+            currentIndex: root.formActive ? 2 : accountsTabBar.currentIndex
 
-            delegate: Rectangle {
-                id: cell
-                required property int row
-                required property int column
-                required property var display
+            Rectangle {
+                color: AppColors.surfaceContainerLow
+                radius: AppTheme.cardRadius
+                border.color: AppColors.elevatedBorder
+                border.width: 1
 
-                implicitHeight: 44
-                color: "transparent"
-
-                TableCellBackground { cellHovered: false }
-
-                Rectangle {
+                AppTableView {
                     anchors.fill: parent
-                    color: root.currentRow === cell.row
-                           ? AppColors.withAlpha(AppColors.primaryColor, 0.16)
-                           : "transparent"
+                    // qmllint disable unqualified
+                    model: userTableModel
+                    // qmllint enable unqualified
+                    hasData: root.userRows.length > 0
+                    colWeights: [0.24, 0.28, 0.14, 0.14, 0.20]
+                    colMinimums: [120, 140, 80, 80, 120]
+                    headerAlignCenter: function(col) { return col === 2 || col === 3 }
+                    emptyMessage: qsTr("No user accounts yet.\nClick [+ Add] to create one.")
+                    emptyIconName: "server"
 
-                    Rectangle {
-                        anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
-                        width: 3
-                        visible: root.currentRow === cell.row && cell.column === 0
-                        color: AppColors.primaryColor
+                    delegate: Rectangle {
+                        id: cell
+                        required property int row
+                        required property int column
+                        required property var display
+                        implicitHeight: 44
+                        color: "transparent"
+
+                        TableCellBackground { cellHovered: false }
+                        Rectangle {
+                            anchors.fill: parent
+                            color: root.currentRow === cell.row
+                                   ? AppColors.withAlpha(AppColors.primaryColor, 0.16)
+                                   : "transparent"
+                            Rectangle {
+                                anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
+                                width: 3
+                                visible: root.currentRow === cell.row && cell.column === 0
+                                color: AppColors.primaryColor
+                            }
+                        }
+                        MouseArea {
+                            anchors.fill: parent
+                            onClicked: root.currentRow = root.currentRow === cell.row ? -1 : cell.row
+                        }
+                        Text {
+                            anchors {
+                                left: parent.left
+                                leftMargin: cell.column === 0 ? AppTheme.spacingM : AppTheme.spacingS
+                                right: parent.right
+                                rightMargin: AppTheme.spacingS
+                                verticalCenter: parent.verticalCenter
+                            }
+                            text: String(cell.display)
+                            color: cell.column === 3 && cell.row < root.userRows.length
+                                   && !root.userRows[cell.row].active ? AppColors.error
+                                   : cell.column === 0 ? AppColors.primaryText : AppColors.tableCellMuted
+                            font.pixelSize: AppTypography.bodyMedium.pixelSize
+                            font.weight: cell.column === 0 ? Font.DemiBold : Font.Normal
+                            horizontalAlignment: cell.column === 2 || cell.column === 3
+                                                 ? Text.AlignHCenter : Text.AlignLeft
+                            verticalAlignment: Text.AlignVCenter
+                            elide: Text.ElideRight
+                        }
+                    }
+                }
+            }
+
+            SettingsAuditTab { }
+
+            // Form nội tuyến giống Sensors: toolbar Save/Cancel nằm ở header,
+            // không dùng Popup để bàn phím ảo không bị che bởi Overlay.
+            Flickable {
+                id: editor
+                contentWidth: width
+                contentHeight: Math.max(height, editorPane.implicitHeight)
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
+
+                property string mode: "" // add | edit | reset | self
+                property int targetId: -1
+                property string targetUsername: ""
+                property bool targetSelf: false
+                property bool originalActive: true
+                property string errorText: ""
+
+                function clearPasswords() {
+                    oldPasswordField.text = ""
+                    newPasswordField.text = ""
+                    confirmPasswordField.text = ""
+                }
+
+                function openAdd() {
+                    targetId = -1
+                    targetUsername = ""
+                    targetSelf = false
+                    originalActive = true
+                    errorText = ""
+                    usernameField.text = ""
+                    displayField.text = ""
+                    roleCombo.currentIndex = 1
+                    activeSwitch.checked = true
+                    clearPasswords()
+                    mode = "add"
+                    usernameField.forceActiveFocus()
+                }
+
+                function openEdit(user) {
+                    targetId = user.id
+                    targetUsername = user.username
+                    targetSelf = user.username === AuthService.currentUsername
+                    originalActive = user.active
+                    errorText = ""
+                    usernameField.text = user.username
+                    displayField.text = user.displayName
+                    roleCombo.currentIndex = Math.max(0, ["viewer", "operator", "admin"].indexOf(user.role))
+                    activeSwitch.checked = user.active
+                    clearPasswords()
+                    mode = "edit"
+                }
+
+                function openPassword() {
+                    errorText = ""
+                    clearPasswords()
+                    mode = targetSelf ? "self" : "reset"
+                    if (targetSelf)
+                        oldPasswordField.forceActiveFocus()
+                    else
+                        newPasswordField.forceActiveFocus()
+                }
+
+                function close() {
+                    mode = ""
+                    targetId = -1
+                    targetUsername = ""
+                    errorText = ""
+                    clearPasswords()
+                }
+
+                function cancel() {
+                    if (mode === "self" || mode === "reset") {
+                        clearPasswords()
+                        errorText = ""
+                        mode = "edit"
+                    } else {
+                        close()
                     }
                 }
 
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: root.currentRow = (root.currentRow === cell.row) ? -1 : cell.row
+                function commitEdit() {
+                    if (AuthService.updateUser(targetId, displayField.text,
+                                               roleCombo.model[roleCombo.currentIndex].value,
+                                               activeSwitch.checked))
+                        close()
                 }
 
-                Text {
-                    anchors {
-                        left: parent.left
-                        leftMargin: cell.column === 0 ? AppTheme.spacingM : AppTheme.spacingS
-                        right: parent.right
-                        rightMargin: AppTheme.spacingS
-                        verticalCenter: parent.verticalCenter
+                function submit() {
+                    if (AuthService.busy || !AuthService.canManageUsers || mode === "")
+                        return
+                    errorText = ""
+                    if (mode === "edit") {
+                        if (originalActive && !activeSwitch.checked) {
+                            confirmPopup.showConfirm(
+                                qsTr("Disable account"),
+                                qsTr("Disable account \"%1\"? The user will not be able to sign in.")
+                                    .arg(targetUsername),
+                                function() { editor.commitEdit() }, qsTr("Disable"), AppColors.error)
+                        } else {
+                            commitEdit()
+                        }
+                        return
                     }
-                    text: String(cell.display)
-                    color: (cell.column === 3 && root.selectedUser !== null
-                            && root.selectedUser.active === false)
-                           ? AppColors.error
-                           : (cell.column === 0 ? AppColors.primaryText : AppColors.tableCellMuted)
-                    font.pixelSize: AppTypography.bodyMedium.pixelSize
-                    font.weight: cell.column === 0 ? Font.DemiBold : Font.Normal
-                    horizontalAlignment: (cell.column === 2 || cell.column === 3)
-                                         ? Text.AlignHCenter : Text.AlignLeft
-                    verticalAlignment: Text.AlignVCenter
-                    elide: Text.ElideRight
+                    if (mode === "add" && usernameField.text.trim().length === 0) {
+                        errorText = qsTr("Enter a username.")
+                        return
+                    }
+                    if (newPasswordField.text !== confirmPasswordField.text) {
+                        errorText = qsTr("Passwords do not match.")
+                        return
+                    }
+                    if (mode === "add") {
+                        AuthService.createUser(usernameField.text, displayField.text,
+                                               roleCombo.model[roleCombo.currentIndex].value,
+                                               newPasswordField.text, confirmPasswordField.text)
+                    } else if (mode === "reset") {
+                        AuthService.resetPassword(targetId, newPasswordField.text,
+                                                  confirmPasswordField.text)
+                    } else {
+                        AuthService.changePassword(oldPasswordField.text, newPasswordField.text,
+                                                   confirmPasswordField.text)
+                    }
                 }
-            }
-        }
-    }
 
-    // ── Form thêm tài khoản / reset / đổi mật khẩu ──────────────────────
-    // Không dùng Popup: popup nằm trong Overlay (trên bàn phím ảo), sẽ bị
-    // bàn phím che khi nhập. Panel nội tuyến z thấp hơn bàn phím (999).
-    Rectangle {
-        id: editor
-        anchors.fill: parent
-        z: 20
-        visible: false
-        color: AppColors.withAlpha("#000000", 0.55)
-
-        property string mode: "add"       // add | reset | self
-        property int targetId: -1
-        property string targetUsername: ""
-        property string errorText: ""
-
-        function openAdd() {
-            mode = "add"
-            targetId = -1
-            targetUsername = ""
-            errorText = ""
-            usernameField.text = ""
-            displayField.text = ""
-            addRoleCombo.currentIndex = 1  // operator
-            clearPasswords()
-            visible = true
-            usernameField.forceActiveFocus()
-        }
-
-        function openReset(user) {
-            if (user === null)
-                return
-            mode = "reset"
-            targetId = user.id
-            targetUsername = user.username
-            errorText = ""
-            clearPasswords()
-            visible = true
-            newPasswordField.forceActiveFocus()
-        }
-
-        function openSelf() {
-            mode = "self"
-            targetId = -1
-            targetUsername = AuthService.currentUsername
-            errorText = ""
-            clearPasswords()
-            visible = true
-            oldPasswordField.forceActiveFocus()
-        }
-
-        function close() {
-            visible = false
-            clearPasswords()
-            errorText = ""
-        }
-
-        function clearPasswords() {
-            oldPasswordField.text = ""
-            newPasswordField.text = ""
-            confirmPasswordField.text = ""
-        }
-
-        function submit() {
-            if (AuthService.busy)
-                return
-            if (mode === "add" && usernameField.text.trim().length === 0) {
-                errorText = qsTr("Enter a username.")
-                return
-            }
-            if ((mode === "self" || mode === "reset")
-                    && newPasswordField.text !== confirmPasswordField.text) {
-                errorText = qsTr("Passwords do not match.")
-                return
-            }
-            if (mode === "add" && newPasswordField.text !== confirmPasswordField.text) {
-                errorText = qsTr("Passwords do not match.")
-                return
-            }
-            errorText = ""
-            if (mode === "add") {
-                AuthService.createUser(usernameField.text, displayField.text,
-                                       addRoleCombo.model[addRoleCombo.currentIndex].value,
-                                       newPasswordField.text, confirmPasswordField.text)
-            } else if (mode === "reset") {
-                AuthService.resetPassword(targetId, newPasswordField.text,
-                                          confirmPasswordField.text)
-            } else {
-                AuthService.changePassword(oldPasswordField.text, newPasswordField.text,
-                                           confirmPasswordField.text)
-            }
-        }
-
-        Connections {
-            target: AuthService
-            function onMessageSent(title, body) {
-                if (!editor.visible)
-                    return
-                if (title === "Success") {
-                    editor.close()
-                    return
+                Connections {
+                    target: AuthService
+                    function onMessageSent(title, body) {
+                        if (!root.formActive)
+                            return
+                        if (title === "Success") {
+                            if (editor.mode === "add")
+                                editor.close()
+                            else if (editor.mode === "reset" || editor.mode === "self")
+                                editor.cancel()
+                        } else {
+                            editor.errorText = body
+                        }
+                    }
                 }
-                editor.errorText = body
-            }
-        }
 
-        MouseArea {
-            anchors.fill: parent
-        }
+                ElevatedPane {
+                    id: editorPane
+                    width: editor.width
+                    implicitHeight: editorLayout.implicitHeight + 2 * padding
+                    padding: AppTheme.cardPadding
 
-        Flickable {
-            id: editorFlick
-            anchors.fill: parent
-            contentWidth: editorFlick.width
-            contentHeight: Math.max(editorFlick.height, editorCard.height + 2 * AppTheme.spacingM)
-            clip: true
-            boundsBehavior: Flickable.StopAtBounds
-
-            ElevatedPane {
-                id: editorCard
-                width: Math.min(editorFlick.width - 2 * AppTheme.spacingL, 440)
-                x: (editorFlick.width - width) / 2
-                y: Math.max(AppTheme.spacingM, (editorFlick.height - height) / 2)
-                height: editorBody.implicitHeight + 2 * AppTheme.cardPadding
-                contentSpacing: AppTheme.spacingSM
-
-                ColumnLayout {
-                    id: editorBody
-                    Layout.fillWidth: true
-                    spacing: AppTheme.spacingS
-
-                    Text {
+                    ColumnLayout {
+                        id: editorLayout
                         Layout.fillWidth: true
-                        text: editor.mode === "add" ? qsTr("Add user")
-                            : editor.mode === "reset" ? qsTr("Reset password")
-                            : qsTr("Change my password")
-                        color: AppColors.primaryText
-                        font: AppTypography.titleMediumBold
-                        wrapMode: Text.WordWrap
-                    }
+                        spacing: AppTheme.spacingM
 
-                    Text {
-                        Layout.fillWidth: true
-                        visible: editor.mode !== "add"
-                        text: editor.mode === "reset"
-                              ? qsTr("Account: %1").arg(editor.targetUsername)
-                              : qsTr("Account: %1").arg(AuthService.currentUsername)
-                        color: AppColors.onSurfaceVariant
-                        font: AppTypography.bodyMedium
-                        wrapMode: Text.WordWrap
-                    }
-
-                    Text {
-                        visible: editor.mode === "add"
-                        text: qsTr("Username")
-                        color: AppColors.onSurfaceVariant
-                        font: AppTypography.bodyMedium
-                    }
-                    TextField {
-                        id: usernameField
-                        visible: editor.mode === "add"
-                        Layout.fillWidth: true
-                        inputMethodHints: Qt.ImhNoAutoUppercase | Qt.ImhNoPredictiveText
-                        onTextEdited: editor.errorText = ""
-                        onAccepted: displayField.forceActiveFocus()
-                    }
-
-                    Text {
-                        visible: editor.mode === "add"
-                        text: qsTr("Display name (optional)")
-                        color: AppColors.onSurfaceVariant
-                        font: AppTypography.bodyMedium
-                    }
-                    TextField {
-                        id: displayField
-                        visible: editor.mode === "add"
-                        Layout.fillWidth: true
-                        inputMethodHints: Qt.ImhNoPredictiveText
-                        onTextEdited: editor.errorText = ""
-                        onAccepted: newPasswordField.forceActiveFocus()
-                    }
-
-                    Text {
-                        visible: editor.mode === "add"
-                        text: qsTr("Role")
-                        color: AppColors.onSurfaceVariant
-                        font: AppTypography.bodyMedium
-                    }
-                    ComboBox {
-                        id: addRoleCombo
-                        visible: editor.mode === "add"
-                        Layout.fillWidth: true
-                        textRole: "label"
-                        model: [
-                            { value: "viewer",   label: qsTr("Viewer") },
-                            { value: "operator", label: qsTr("Operator") },
-                            { value: "admin",    label: qsTr("Admin") }
-                        ]
-                    }
-
-                    Text {
-                        visible: editor.mode === "self"
-                        text: qsTr("Current password")
-                        color: AppColors.onSurfaceVariant
-                        font: AppTypography.bodyMedium
-                    }
-                    TextField {
-                        id: oldPasswordField
-                        visible: editor.mode === "self"
-                        Layout.fillWidth: true
-                        echoMode: TextInput.Password
-                        inputMethodHints: Qt.ImhSensitiveData | Qt.ImhNoPredictiveText
-                                     | Qt.ImhNoAutoUppercase
-                        onTextEdited: editor.errorText = ""
-                        onAccepted: newPasswordField.forceActiveFocus()
-                    }
-
-                    Text {
-                        text: editor.mode === "add" ? qsTr("Password") : qsTr("New password")
-                        color: AppColors.onSurfaceVariant
-                        font: AppTypography.bodyMedium
-                    }
-                    TextField {
-                        id: newPasswordField
-                        Layout.fillWidth: true
-                        echoMode: TextInput.Password
-                        inputMethodHints: Qt.ImhSensitiveData | Qt.ImhNoPredictiveText
-                                     | Qt.ImhNoAutoUppercase
-                        onTextEdited: editor.errorText = ""
-                        onAccepted: confirmPasswordField.forceActiveFocus()
-                    }
-
-                    Text {
-                        text: qsTr("Confirm password")
-                        color: AppColors.onSurfaceVariant
-                        font: AppTypography.bodyMedium
-                    }
-                    TextField {
-                        id: confirmPasswordField
-                        Layout.fillWidth: true
-                        echoMode: TextInput.Password
-                        inputMethodHints: Qt.ImhSensitiveData | Qt.ImhNoPredictiveText
-                                     | Qt.ImhNoAutoUppercase
-                        onTextEdited: editor.errorText = ""
-                        onAccepted: editor.submit()
-                    }
-
-                    Text {
-                        Layout.fillWidth: true
-                        text: qsTr("At least 8 characters, including a letter and a digit.")
-                        color: AppColors.textFaint
-                        font: AppTypography.labelSmall
-                        wrapMode: Text.WordWrap
-                    }
-
-                    Text {
-                        Layout.fillWidth: true
-                        visible: editor.errorText.length > 0
-                        text: editor.errorText
-                        color: AppColors.error
-                        font: AppTypography.bodyMedium
-                        wrapMode: Text.WordWrap
-                    }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        Layout.topMargin: AppTheme.spacingXS
-                        spacing: AppTheme.spacingS
-
-                        AppButton {
+                        Text {
                             Layout.fillWidth: true
-                            kind: AppButton.Neutral
-                            text: qsTr("Cancel")
-                            enabled: !AuthService.busy
-                            onClicked: editor.close()
+                            text: editor.mode === "add" ? qsTr("Add user")
+                                  : editor.mode === "edit" ? qsTr("Edit user")
+                                  : editor.mode === "reset" ? qsTr("Reset password")
+                                  : qsTr("Change my password")
+                            color: AppColors.accentColor
+                            font: AppTypography.titleMediumBold
                         }
 
-                        AppButton {
+                        Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: AppColors.outlineVariant }
+
+                        RowLayout {
                             Layout.fillWidth: true
-                            kind: AppButton.Primary
-                            text: AuthService.busy ? qsTr("Please wait…")
-                                : editor.mode === "add" ? qsTr("Create")
-                                : editor.mode === "reset" ? qsTr("Reset")
-                                : qsTr("Save")
-                            enabled: !AuthService.busy
-                            onClicked: editor.submit()
+                            spacing: AppTheme.spacingL
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                Layout.alignment: Qt.AlignTop
+                                spacing: AppTheme.spacingS
+
+                                Text { text: qsTr("Username"); color: AppColors.onSurfaceVariant; font: AppTypography.bodyMedium }
+                                TextField {
+                                    id: usernameField
+                                    Layout.fillWidth: true
+                                    readOnly: editor.mode !== "add"
+                                    inputMethodHints: Qt.ImhNoAutoUppercase | Qt.ImhNoPredictiveText
+                                    onTextEdited: editor.errorText = ""
+                                    onAccepted: displayField.forceActiveFocus()
+                                }
+
+                                Text {
+                                    visible: editor.mode === "add" || editor.mode === "edit"
+                                    text: qsTr("Display name (optional)")
+                                    color: AppColors.onSurfaceVariant
+                                    font: AppTypography.bodyMedium
+                                }
+                                TextField {
+                                    id: displayField
+                                    visible: editor.mode === "add" || editor.mode === "edit"
+                                    Layout.fillWidth: true
+                                    inputMethodHints: Qt.ImhNoPredictiveText
+                                    onTextEdited: editor.errorText = ""
+                                    onAccepted: if (editor.mode === "add") newPasswordField.forceActiveFocus()
+                                }
+
+                                Text {
+                                    visible: editor.mode === "edit" && editor.targetSelf
+                                    Layout.fillWidth: true
+                                    text: qsTr("Your own role and active status cannot be changed.")
+                                    color: AppColors.textFaint
+                                    font: AppTypography.bodySmall
+                                    wrapMode: Text.WordWrap
+                                }
+                            }
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                Layout.alignment: Qt.AlignTop
+                                spacing: AppTheme.spacingS
+
+                                Text {
+                                    visible: editor.mode === "add" || editor.mode === "edit"
+                                    text: qsTr("Role")
+                                    color: AppColors.onSurfaceVariant
+                                    font: AppTypography.bodyMedium
+                                }
+                                ComboBox {
+                                    id: roleCombo
+                                    visible: editor.mode === "add" || editor.mode === "edit"
+                                    enabled: editor.mode === "add" || !editor.targetSelf
+                                    Layout.fillWidth: true
+                                    textRole: "label"
+                                    model: [
+                                        { value: "viewer", label: qsTr("Viewer") },
+                                        { value: "operator", label: qsTr("Operator") },
+                                        { value: "admin", label: qsTr("Admin") }
+                                    ]
+                                }
+
+                                RowLayout {
+                                    visible: editor.mode === "edit"
+                                    Layout.fillWidth: true
+                                    Text { text: qsTr("Active"); color: AppColors.onSurfaceVariant; font: AppTypography.bodyMedium; Layout.fillWidth: true }
+                                    Switch { id: activeSwitch; enabled: !editor.targetSelf }
+                                }
+                                AppButton {
+                                    visible: editor.mode === "edit"
+                                    Layout.fillWidth: true
+                                    kind: AppButton.Secondary
+                                    text: editor.targetSelf ? qsTr("Change my password") : qsTr("Reset password")
+                                    enabled: !AuthService.busy
+                                    onClicked: editor.openPassword()
+                                }
+
+                                Text {
+                                    visible: editor.mode === "self"
+                                    text: qsTr("Current password")
+                                    color: AppColors.onSurfaceVariant
+                                    font: AppTypography.bodyMedium
+                                }
+                                TextField {
+                                    id: oldPasswordField
+                                    visible: editor.mode === "self"
+                                    Layout.fillWidth: true
+                                    echoMode: TextInput.Password
+                                    inputMethodHints: Qt.ImhSensitiveData | Qt.ImhNoPredictiveText | Qt.ImhNoAutoUppercase
+                                    onTextEdited: editor.errorText = ""
+                                    onAccepted: newPasswordField.forceActiveFocus()
+                                }
+
+                                Text {
+                                    visible: editor.mode === "add" || editor.mode === "reset" || editor.mode === "self"
+                                    text: editor.mode === "add" ? qsTr("Password") : qsTr("New password")
+                                    color: AppColors.onSurfaceVariant
+                                    font: AppTypography.bodyMedium
+                                }
+                                TextField {
+                                    id: newPasswordField
+                                    visible: editor.mode === "add" || editor.mode === "reset" || editor.mode === "self"
+                                    Layout.fillWidth: true
+                                    echoMode: TextInput.Password
+                                    inputMethodHints: Qt.ImhSensitiveData | Qt.ImhNoPredictiveText | Qt.ImhNoAutoUppercase
+                                    onTextEdited: editor.errorText = ""
+                                    onAccepted: confirmPasswordField.forceActiveFocus()
+                                }
+
+                                Text {
+                                    visible: editor.mode === "add" || editor.mode === "reset" || editor.mode === "self"
+                                    text: qsTr("Confirm password")
+                                    color: AppColors.onSurfaceVariant
+                                    font: AppTypography.bodyMedium
+                                }
+                                TextField {
+                                    id: confirmPasswordField
+                                    visible: editor.mode === "add" || editor.mode === "reset" || editor.mode === "self"
+                                    Layout.fillWidth: true
+                                    echoMode: TextInput.Password
+                                    inputMethodHints: Qt.ImhSensitiveData | Qt.ImhNoPredictiveText | Qt.ImhNoAutoUppercase
+                                    onTextEdited: editor.errorText = ""
+                                    onAccepted: editor.submit()
+                                }
+
+                                Text {
+                                    visible: editor.mode === "add" || editor.mode === "reset" || editor.mode === "self"
+                                    Layout.fillWidth: true
+                                    text: qsTr("At least 8 characters, including a letter and a digit.")
+                                    color: AppColors.textFaint
+                                    font: AppTypography.bodySmall
+                                    wrapMode: Text.WordWrap
+                                }
+                            }
+                        }
+
+                        Text {
+                            Layout.fillWidth: true
+                            visible: editor.errorText.length > 0
+                            text: editor.errorText
+                            color: AppColors.error
+                            font: AppTypography.bodyMedium
+                            wrapMode: Text.WordWrap
                         }
                     }
                 }

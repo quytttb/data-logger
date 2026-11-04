@@ -220,6 +220,42 @@ bool UserAccountDao::setRole(int id, UserRole role)
     return query.numRowsAffected() > 0;
 }
 
+bool UserAccountDao::updateDetails(int id, const QString &displayName, UserRole role, bool active)
+{
+    if (id <= 0 || displayName.trimmed().isEmpty() || !isKnownUserRole(userRoleToString(role)))
+        return false;
+
+    QSqlQuery query(m_db);
+    query.prepare(QStringLiteral(
+        "UPDATE user_account SET display_name = :display_name, role = :role, "
+        "active = :active, updated_at = :updated_at WHERE id = :id"));
+    query.bindValue(QStringLiteral(":display_name"), displayName.trimmed());
+    query.bindValue(QStringLiteral(":role"), userRoleToString(role));
+    query.bindValue(QStringLiteral(":active"), active ? 1 : 0);
+    query.bindValue(QStringLiteral(":updated_at"), TimeCodec::toDb(QDateTime::currentDateTimeUtc()));
+    query.bindValue(QStringLiteral(":id"), id);
+    if (!query.exec()) {
+        qWarning() << "UserAccountDao::updateDetails:" << query.lastError().text();
+        return false;
+    }
+    return query.numRowsAffected() > 0;
+}
+
+bool UserAccountDao::remove(int id)
+{
+    if (id <= 0)
+        return false;
+
+    QSqlQuery query(m_db);
+    query.prepare(QStringLiteral("DELETE FROM user_account WHERE id = :id"));
+    query.bindValue(QStringLiteral(":id"), id);
+    if (!query.exec()) {
+        qWarning() << "UserAccountDao::remove:" << query.lastError().text();
+        return false;
+    }
+    return query.numRowsAffected() > 0;
+}
+
 bool UserAccountDao::updateLoginState(int id, int failedAttempts,
                                       const QDateTime &lockedUntil)
 {
