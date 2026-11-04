@@ -1,0 +1,61 @@
+/* Hướng dẫn sử dụng 4M: A4 nền trắng, chữ rõ, ảnh thật; tham khảo cách trình bày OSG. */
+@font-face { font-family: Inter; src: url('../catalogue/assets/fonts/Inter-Regular.otf'); font-weight: 400; }
+@font-face { font-family: Inter; src: url('../catalogue/assets/fonts/Inter-SemiBold.otf'); font-weight: 600; }
+@font-face { font-family: Inter; src: url('../catalogue/assets/fonts/Inter-Bold.otf'); font-weight: 700; }
+@page { size: A4; margin: 0; }
+* { box-sizing: border-box; }
+body { margin: 0; font-family: Inter, Arial, sans-serif; font-size: 10pt; line-height: 1.52; color: #20272e; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+.page { width: 210mm; height: 297mm; position: relative; overflow: hidden; break-after: page; background: white; }
+.page:last-child { break-after: auto; }
+.page::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1.5mm; background: #275198; }
+.inside { position: absolute; inset: 0; padding: 11mm 16mm 19mm; }
+header { height: 17mm; display: flex; align-items: center; justify-content: space-between; gap: 6mm; border-bottom: .25mm solid #bacbd8; margin-bottom: 7mm; }
+.brand { display: flex; align-items: center; gap: 3mm; font-size: 9pt; font-weight: 700; color: #163553; }
+.brand img { width: 12mm; height: 12mm; }
+.brand small { display: block; font-weight: 400; font-size: 6.5pt; letter-spacing: .04em; }
+.meta { text-align: right; font-size: 6.8pt; color: #36434f; }
+.chapter { font-size: 8pt; font-weight: 600; color: #275198; letter-spacing: .07em; text-transform: uppercase; margin-bottom: 2mm; }
+h1 { font-size: 22pt; color: #163553; line-height: 1.2; margin: 0 0 4mm; letter-spacing: -.02em; }
+h2 { font-size: 11.5pt; color: #163553; margin: 5mm 0 2mm; }
+h3 { font-size: 10pt; color: #163553; margin: 3mm 0 1mm; }
+p { margin: 0 0 3mm; }
+.intro { color: #303c47; margin-bottom: 4mm; }
+.path { background: #eef3f7; padding: 2.5mm 3mm; border-left: .8mm solid #275198; font-size: 9pt; color: #163553; margin: 3mm 0 4mm; }
+ol, ul { margin: 1mm 0 4mm; padding-left: 6mm; }
+li { padding-left: 1mm; margin-bottom: 2mm; }
+li::marker { color: #275198; font-weight: 600; }
+b, strong { font-weight: 600; }
+code { font-family: 'DejaVu Sans Mono', monospace; font-size: .87em; overflow-wrap: anywhere; }
+table { width: 100%; border-collapse: collapse; margin: 2mm 0 4mm; font-size: 9pt; line-height: 1.45; }
+th { text-align: left; color: #163553; background: #e5eef5; font-weight: 600; }
+td, th { padding: 2.4mm 2.7mm; border: .25mm solid #c0ced9; vertical-align: top; }
+td:first-child { font-weight: 600; width: 30%; background: #f5f7f9; }
+.compact td, .compact th { padding: 1.8mm 2.4mm; font-size: 8.5pt; }
+.note, .warning, .result { margin: 4mm 0; padding: 3mm 3.5mm; font-size: 9pt; line-height: 1.5; border-left: .9mm solid #275198; background: #eef3f7; }
+.warning { background: #fff5e7; border-color: #c2811e; color: #49351c; }
+.result { border-color: #187c80; background: #eef6f5; }
+figure { margin: 4mm auto; max-width: 162mm; }
+figure img { display: block; width: 100%; border: .4mm solid #253d54; }
+figcaption { font-size: 7.8pt; color: #36434f; margin: 2mm 0 3mm; }
+.columns { display: grid; grid-template-columns: 1fr 1fr; gap: 7mm; }
+.columns h2:first-child { margin-top: 0; }
+.small { font-size: 8.3pt; color: #36434f; }
+.footer { position: absolute; left: 16mm; right: 16mm; bottom: 8mm; border-top: .25mm solid #bacbd8; padding-top: 2.5mm; display: flex; justify-content: space-between; gap: 5mm; font-size: 7pt; color: #36434f; }
+.cover h1 { margin-top: 12mm; font-size: 27pt; }
+.cover .product { font-size: 20pt; font-weight: 600; color: #275198; margin-top: 3mm; }
+.cover .hero { width: 164mm; margin: 9mm auto 3mm; display: block; }
+.cover .subtitle { font-size: 11pt; color: #303c47; max-width: 155mm; }
+.cover .doc-data { border-top: .5mm solid #275198; margin-top: 5mm; padding-top: 3mm; }
+.cover .doc-data p { margin: 0 0 1mm; font-size: 9pt; }
+.toc { list-style: none; padding: 0; margin-top: 5mm; }
+.toc li { display: flex; align-items: baseline; gap: 3mm; margin: 0; padding: 1.65mm 0; border-bottom: .25mm solid #dce4eb; font-size: 9pt; }
+.toc a { text-decoration: none; color: #163553; flex: 1; }
+.toc span { color: #275198; font-weight: 600; }
+.flow { display: flex; align-items: stretch; gap: 3mm; margin: 5mm 0; }
+.flow div { flex: 1; background: #eef3f7; border-top: .8mm solid #275198; padding: 3mm; font-size: 9pt; }
+.flow b { display: block; margin-bottom: 1.5mm; color: #163553; }
+.flow em { display: block; font-size: 8pt; font-style: normal; color: #36434f; }
+.checklist { list-style: none; padding-left: 0; }
+.checklist li { padding-left: 6mm; position: relative; }
+.checklist li::before { content: ''; position: absolute; left: 0; top: 1.2mm; width: 3mm; height: 3mm; border: .3mm solid #52677b; }
+.fill { display: inline-block; min-width: 35mm; border-bottom: .25mm solid #8fa1b1; height: 5mm; }
