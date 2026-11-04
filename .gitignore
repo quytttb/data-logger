@@ -7,6 +7,9 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 assets/
+# Customer documentation keeps its own print assets under version control.
+!docs/catalogue/assets/
+!docs/catalogue/assets/**
 
 # Nuitka / PyInstaller packaging artefacts
 main.bin

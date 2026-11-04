@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>4M Data Logger — Datasheet kỹ thuật</title>
+<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="assets/editorial.css">
+</head>
+<body>
+
+<section class="page ds">
+  <div class="pad">
+    <div class="topbar">
+      <div class="brand"><img src="assets/logo.svg" alt="4M Technologies"><div>4M TECHNOLOGIES<small>ENVIRONMENTAL DATA SYSTEMS</small></div></div>
+      <div class="doc-kicker"><b>DATASHEET KỸ THUẬT</b>PHIÊN BẢN MÀN HÌNH 7" · GẮN TỦ</div>
+    </div>
+    <div class="ds-title">
+      <div>
+        <div class="eyebrow">4M DATA LOGGER</div>
+        <h1>Thông số kỹ thuật</h1>
+        <p class="sub">Thiết bị đầu cuối thu thập, lưu trữ và truyền dữ liệu cho trạm quan trắc môi trường.</p>
+      </div>
+      <div class="ds-badge"><b>PRE-PRODUCTION · REV. C</b><span>Rà soát TT10 · 10/2026<br>Cần nâng cấp trước nghiệm thu</span></div>
+    </div>
+
+    <div class="ds-intro">
+      <p><b>4M Data Logger</b> đọc dữ liệu từ cảm biến/analyser qua Modbus RTU RS-485, hiển thị và vận hành tại chỗ trên màn hình cảm ứng, lưu dữ liệu liên tục vào SQLite WAL, đồng thời xuất báo cáo TXT theo lịch và tích hợp với SCADA/Central Logger qua Modbus TCP hoặc REST API.</p>
+      <div class="ds-stats">
+        <div><strong>7″</strong><span>Màn hình cảm ứng</span></div>
+        <div><strong>≥ 60*</strong><span>Ngày theo TT10</span></div>
+        <div><strong>RS-485</strong><span>Modbus RTU master</span></div>
+        <div><strong>24/7</strong><span>Kiosk tại trạm</span></div>
+      </div>
+    </div>
+
+    <div class="spec-section">
+      <h2>1. Nền tảng &amp; giao diện</h2>
+      <table class="spec-table">
+        <tr><td>Nền tảng xử lý</td><td>ARM64 / Raspberry Pi.</td></tr>
+        <tr><td>Hệ điều hành</td><td>Raspberry Pi OS 64-bit (Bookworm trở lên).</td></tr>
+        <tr><td>Phần mềm vận hành</td><td>C++20; Qt 6.11 / QML; chạy kiosk toàn màn hình, tối ưu cảm ứng.</td></tr>
+        <tr><td>Màn hình</td><td>7 inch, cảm ứng điện dung, độ phân giải 1024 × 600.</td></tr>
+        <tr><td>Giao diện vận hành</td><td>Monitor, History, Trending, Settings và Modbus Tester; giao diện tiếng Anh ở phiên bản hiện tại.</td></tr>
+      </table>
+    </div>
+
+    <div class="spec-section">
+      <h2>2. Thu thập &amp; xử lý dữ liệu</h2>
+      <table class="spec-table">
+        <tr><td>Giao thức đầu vào</td><td>Modbus RTU qua RS-485, vai trò master.</td></tr>
+        <tr><td>Tốc độ truyền</td><td>1.200 / 2.400 / 4.800 / 9.600 / 19.200 / 38.400 / 57.600 / 115.200 bps.</td></tr>
+        <tr><td>Kiểu dữ liệu</td><td><span class="mono">int16, uint16, int32, uint32, float32</span>.</td></tr>
+        <tr><td>Thứ tự byte</td><td><span class="mono">AB, BA, ABCD, CDAB, BADC, DCBA</span>.</td></tr>
+        <tr><td>Kênh &amp; quy đổi</td><td>ANALOG, DI, DO; kiểu thanh ghi cấu hình được; hệ số tuyến tính a/b, đơn vị, số thập phân và ngưỡng min/max.</td></tr>
+        <tr><td>Cảnh báo</td><td>Ngưỡng min/max theo từng kênh; liên kết DO và còi theo cấu hình; theo dõi trạng thái DI/thiết bị đo.</td></tr>
+      </table>
+    </div>
+
+    <div class="spec-section">
+      <h2>3. Lưu trữ &amp; báo cáo</h2>
+      <table class="spec-table">
+        <tr><td>Cơ sở dữ liệu</td><td>SQLite WAL, truy cập theo luồng riêng và batch insert trong transaction.</td></tr>
+        <tr><td>Lưu giữ dữ liệu TT10*</td><td>Điều 39 khoản 1 điểm c: lưu liên tục ít nhất 60 ngày dữ liệu gần nhất, gồm thông số, kết quả, đơn vị, thời gian và trạng thái thiết bị. Phần mềm hiện đặt 30 ngày; cần nâng cấp trước nghiệm thu. Log hệ thống 14 ngày là chính sách riêng.</td></tr>
+        <tr><td>Tra cứu tại chỗ</td><td>Lọc theo khoảng thời gian và cảm biến; hiển thị giá trị đo, raw value và trạng thái mẫu.</td></tr>
+        <tr><td>Báo cáo</td><td>Tệp TXT theo định dạng Phụ lục 15 TT10/2021; tên tệp, thư mục, lịch gửi và cờ truyền báo cáo cấu hình được.</td></tr>
+      </table>
+    </div>
+
+    <div class="ds-note"><b>* Yêu cầu cấu hình, chưa phải tính năng đã nghiệm thu:</b> cần nâng mức giữ dữ liệu từ 30 lên ít nhất 60 ngày và kiểm tra dung lượng lưu trữ thực tế. Định dạng TXT, trạng thái thiết bị và truyền bù vẫn cần kiểm thử theo Điều 39/Phụ lục 15. Không tuyên bố đáp ứng toàn bộ TT10.</div>
+    <div class="footer"><span>4M Data Logger · Datasheet kỹ thuật · Rev. C · 10/2026</span><span class="pageno">01 / 02</span></div>
+  </div>
+</section>
+
+<section class="page ds">
+  <div class="pad">
+    <div class="topbar">
+      <div class="brand"><img src="assets/logo.svg" alt="4M Technologies"><div>4M TECHNOLOGIES<small>ENVIRONMENTAL DATA SYSTEMS</small></div></div>
+      <div class="doc-kicker"><b>DATASHEET KỸ THUẬT</b>TÍCH HỢP · CƠ KHÍ · GHI CHÚ PHIÊN BẢN</div>
+    </div>
+    <div class="ds-title" style="margin-top:6mm">
+      <div>
+        <div class="eyebrow">KẾT NỐI &amp; TRIỂN KHAI</div>
+        <h1>Được thiết kế để<br>tích hợp tại trạm.</h1>
+      </div>
+      <div class="ds-badge"><b>4M DATA LOGGER</b><span>Modbus RTU · Modbus TCP<br>REST API · FTP</span></div>
+    </div>
+
+    <div class="ds-diagram">
+      <h3>Sơ đồ dữ liệu</h3>
+      <div class="ds-flow">
+        <div class="node"><b>Cảm biến / analyser</b><span>RS-485 · Modbus RTU</span></div>
+        <div class="arrow">→</div>
+        <div class="node"><b>4M Data Logger</b><span>Đo · lưu · cảnh báo · báo cáo</span></div>
+        <div class="arrow">→</div>
+        <div class="node"><b>SCADA / Central / FTP</b><span>Modbus TCP · REST · tệp TXT</span></div>
+      </div>
+    </div>
+
+    <div class="ds-grid2">
+      <div class="ds-box">
+        <h3>Giao thức &amp; dịch vụ</h3>
+        <table class="spec-table" style="margin-top:2mm">
+          <tr><td>Modbus TCP Server</td><td>Cổng mặc định 5020; register map v1; unit ID cấu hình được.</td></tr>
+          <tr><td>REST API</td><td>HTTP, cổng mặc định 8080; Bearer token cho <span class="mono">/readings</span> và <span class="mono">/config</span>; <span class="mono">/health</span> không cần token.</td></tr>
+          <tr><td>Giới hạn REST</td><td>10 yêu cầu/giây theo địa chỉ IP; trả <span class="mono">429</span> khi vượt ngưỡng.</td></tr>
+          <tr><td>FTP client</td><td>Gửi báo cáo TXT theo lịch; cổng mặc định 21; FTP thường.</td></tr>
+          <tr><td>Thời gian</td><td>Đồng bộ NTP/thời gian hệ điều hành; timezone cấu hình được.</td></tr>
+        </table>
+      </div>
+      <div class="ds-box">
+        <h3>Báo cáo TXT</h3>
+        <table class="spec-table ds-report-table" style="margin-top:2mm">
+          <tr><td>Tên tệp TT10</td><td><span class="mono">TenTinh_TenCoSo_TenTram_Thoigian.txt</span>; cơ sở 4 ký tự, trạm 6 ký tự.</td></tr>
+          <tr><td>Nội dung TT10</td><td>Mỗi thông số một dòng, 5 trường cách TAB; thời gian <span class="mono">yyyyMMddHHmmss</span>; mã 00/01/02 theo Bảng 35. Bộ ghi hiện tại cần sửa/kiểm thử trước nghiệm thu.</td></tr>
+          <tr><td>Ký hiệu</td><td>Danh mục cảm biến TT10 (Bảng 34) khi được gán trong cấu hình.</td></tr>
+          <tr><td>Điều kiện gửi</td><td>Chỉ ANALOG active có <span class="mono">transmit_enabled</span>.</td></tr>
+          <tr><td>Đích gửi</td><td>Remote path FTP theo cấu hình báo cáo.</td></tr>
+        </table>
+        <p style="margin-top:3mm;font-size:6.7pt;line-height:1.5;color:#607086">Mẫu tệp và quy tắc đặt tên chi tiết: <span class="mono">docs/tt10-data-format.md</span> trong bộ tài liệu kỹ thuật.</p>
+      </div>
+    </div>
+
+    <div class="ds-grid2" style="margin-top:5mm">
+      <div class="ds-box">
+        <h3>Cơ khí &amp; điện</h3>
+        <ul>
+          <li>Kiểu lắp đặt: mặt tủ/panel, 4 điểm bắt vít.</li>
+          <li>Màn hình hướng ra ngoài; cáp nguồn và tín hiệu đi phía sau tủ.</li>
+          <li>Nguồn vào sản phẩm và công suất: xác nhận theo cấu hình nguồn/vỏ; không suy từ nguồn module xử lý.</li>
+          <li>Kích thước tổng thể, vật liệu, cấp bảo vệ IP và dải nhiệt độ: chốt theo bản vẽ vỏ/nguồn của phiên bản sản xuất.</li>
+        </ul>
+      </div>
+      <div class="ds-box">
+        <h3>Phạm vi phiên bản này</h3>
+        <ul>
+          <li>FTP thường, <b>chưa hỗ trợ SFTP</b> trong phiên bản hiện tại.</li>
+          <li>Ảnh vỏ thiết bị trong catalogue là phối cảnh minh họa; không phải ảnh sản phẩm thương mại cuối cùng.</li>
+          <li>Edge là Source of Truth cho cấu hình cảm biến; REST <span class="mono">POST /config</span> chỉ ghi app-config.</li>
+          <li>Điều 39.2: truyền chậm nhất 05 phút, GMT+7 và tự truyền bù; cần kiểm thử trên trạm, chưa công bố đã đáp ứng.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="ds-contact">
+      <div><h3>4M Data Logger</h3><p>Phiên bản màn hình 7 inch, gắn tủ. Cấu hình cảm biến, giao thức và nguồn theo dự án.</p></div>
+      <div class="right"><b>4M TECHNOLOGIES</b><span>Liên hệ đội ngũ 4M để nhận cấu hình</span></div>
+    </div>
+    <p class="ds-footer-note">Tài liệu tiền sản xuất. Các giá trị về cơ khí, vật liệu, cấp bảo vệ và môi trường chỉ có hiệu lực sau khi được xác nhận trong bản vẽ sản xuất/đơn hàng.</p>
+    <div class="footer"><span>4M Data Logger · Datasheet kỹ thuật · Rev. C · 10/2026</span><span class="pageno">02 / 02</span></div>
+  </div>
+</section>
+
+</body>
+</html>

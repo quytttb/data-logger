@@ -1,0 +1,208 @@
+/* Bản trình bày kỹ thuật: tham khảo bố cục EV-24, KDES và NAHACO.
+   Chỉ dùng ngôn ngữ thị giác; không sử dụng ảnh, logo hay thông số của họ. */
+:root {
+  --paper: #fff;
+  --ink: #20272e;
+  --navy: #163553;
+  --blue: #275198;
+  --muted: #36434f;
+  --line: #cbd5dd;
+  --teal: #187c80;
+  --teal-soft: #eef6f6;
+}
+
+.page, .page.dark, .cover { background: #fff; color: var(--ink); }
+.page::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2mm;
+  background: linear-gradient(90deg, #275198 0 72%, #187c80 72% 88%, #dfe9ef 88%);
+}
+.pad { padding-top: 11mm; }
+.topbar {
+  min-height: 13mm;
+  padding-bottom: 3mm;
+  border-bottom: 0.3mm solid var(--line);
+}
+.brand { font-size: 8.5pt; letter-spacing: .04em; }
+.brand img { width: 11mm; height: 11mm; border-radius: 0; }
+.brand small { font-size: 6pt; letter-spacing: .09em; color: #465560; }
+.doc-kicker { font-size: 6.5pt; letter-spacing: .06em; color: #36434f; }
+.eyebrow { font-size: 7.5pt; letter-spacing: .09em; }
+.eyebrow .num { color: #187c80; }
+h2 { font-size: 19pt; line-height: 1.16; letter-spacing: -.025em; }
+h3 { color: #163553; }
+.lead { font-size: 9.5pt; line-height: 1.55; color: #303c47; }
+.footer {
+  padding-top: 2.5mm;
+  border-top: .25mm solid var(--line);
+  font-size: 6.4pt;
+  letter-spacing: .025em;
+  color: #36434f;
+}
+
+/* Bìa nền trắng, ảnh sản phẩm riêng biệt và tên sản phẩm vừa phải. */
+.cover .band { display: none; }
+.cover .brand, .cover h1 { color: #163553; }
+.cover .brand small, .cover .doc-kicker { color: #36434f; }
+.cover .doc-kicker b, .cover-head .eyebrow { color: #275198; }
+.cover-head { margin-top: 11mm; width: 100%; }
+.cover h1 { font-size: 34pt; line-height: 1.15; letter-spacing: -.025em; margin-top: 4mm; }
+.cover .cover-lead { width: 153mm; font-size: 10pt; color: #303c47; margin-top: 4mm; }
+.cover-chips { gap: 0; margin-top: 5mm; width: 100%; }
+.cover-chips span {
+  border: none;
+  border-right: .25mm solid var(--line);
+  border-radius: 0;
+  background: none;
+  color: #163553;
+  font-size: 7.5pt;
+  padding: 1mm 2.5mm;
+  margin-bottom: 1.5mm;
+  letter-spacing: 0;
+}
+.cover-chips span:first-child { padding-left: 0; }
+.cover-chips span:last-child { border: 0; }
+.cover-device { width: 190mm; bottom: 52mm; filter: none; }
+.cover-facts { bottom: 23mm; background: #f0f5f8; }
+.cover-facts b { font-size: 12pt; }
+.cover-facts span { font-size: 7pt; color: #303c47; }
+.release-note { bottom: 14mm; font-size: 6.6pt; }
+
+/* Cột nội dung mở và đường phân cách, thay các thẻ trang trí. */
+.card {
+  background: #fff;
+  border: 0;
+  border-top: .6mm solid #275198;
+  border-radius: 0;
+  padding: 4mm 3mm 3mm 0;
+  box-shadow: none;
+}
+.card .icon, .feature .dot, .flow-node .icon,
+.value-strip .icon { border-radius: 0; background: #eef3f7; color: #275198; }
+.card .icon { width: 8mm; height: 8mm; }
+.card h3 { font-size: 10.5pt; }
+.card p { font-size: 9pt; color: #303c47; }
+.tag { border-radius: 0; font-size: 7pt; color: #163553; background: #eef3f7; }
+.grid-2 { column-gap: 8mm; row-gap: 4mm; }
+.apps .card { min-height: 44mm; }
+.apps-head { grid-template-columns: 1.05fr .95fr; gap: 10mm; }
+.flow-node, .flow-node.core {
+  background: #f1f5f8;
+  border: .25mm solid #b9cbd9;
+  border-radius: 0;
+  padding: 3mm;
+}
+.flow-node.core { border-top: 1mm solid #275198; }
+.flow-node.core b { color: #163553; }
+.flow-node.core small { color: #36434f; }
+.flow-node.core .icon { background: #dce8f1; color: #275198; }
+.flow-title h3 { letter-spacing: .06em; }
+.flow-node small { color: #36434f; }
+.value-strip { background: #f3f6f8; }
+.value-strip > div { padding: 3mm; }
+.value-strip b { font-size: 8.2pt; }
+.value-strip span { color: #303c47; font-size: 7.4pt; }
+
+/* Giữ ảnh chụp thật, chú thích gọn theo cách trình bày tài liệu kỹ thuật. */
+.shot-frame { padding: 1mm; border-radius: 0; box-shadow: none; background: #1b2938; }
+.shot-frame img { border-radius: 0; }
+.shot-caption { color: #36434f; font-size: 7pt; }
+.pin { box-shadow: none; border-width: .6mm; color: #fff; background: #275198; }
+.legend .n { background: #275198; color: #fff; }
+.legend div { color: #303c47; }
+.monitor-top { grid-template-columns: 1fr 1fr; gap: 10mm; }
+.feature span { color: #303c47; font-size: 8pt; }
+.feature b { font-size: 8.8pt; }
+.feature-list { gap: 3mm; }
+.report { background: #eef3f7; color: #20272e; border-radius: 0; border: .25mm solid #c3d0db; font-size: 7pt; }
+.report .head { color: #163553; }
+.report .dim { color: #36434f; }
+.report .row span:nth-child(n) { color: #20272e; }
+.report-side { border-radius: 0; background: #f3f6f8; padding: 4mm; }
+.report-side .big { font-size: 19pt; }
+.report-side .big span { color: #187c80; }
+.report-side p { font-size: 8pt; color: #303c47; }
+.pill { border-radius: 0; background: #fff; color: #163553; font-size: 7pt; }
+.notice, .ds-note { border-radius: 0; background: #fff8ed; color: #4f391b; }
+.data-features .data-block p { font-size: 8pt; color: #303c47; }
+.data-stats { background: #f1f5f8; }
+.data-stats span { font-size: 7pt; color: #303c47; }
+.data-stats strong { font-size: 13.5pt; }
+.data-top h2 { font-size: 19pt; }
+.lifecycle span { color: #303c47; font-size: 7.4pt; }
+.config-grid { grid-template-columns: 116mm 1fr; gap: 7mm; }
+.config-block p { font-size: 8pt; color: #303c47; }
+.configuration-summary { margin-top: 6mm; }
+.configuration-summary h3 { font-size: 9pt; padding-bottom: 2mm; border-bottom: .5mm solid #275198; }
+.configuration-summary dl { display: grid; grid-template-columns: 22mm 1fr; margin: 0; font-size: 8pt; }
+.configuration-summary dt, .configuration-summary dd { padding: 2.2mm 2mm; margin: 0; border-bottom: .25mm solid #cbd5dd; }
+.configuration-summary dt { font-weight: 600; color: #163553; background: #f1f5f8; }
+.configuration-summary dd { color: #303c47; }
+.connect-cards { gap: 7mm; margin-top: 5mm; }
+.connect-cards .card { padding: 3mm 0; }
+.connect-cards .card p { font-size: 8pt; }
+.integration { background: #eef3f7; border-radius: 0; color: #20272e; border-top: .5mm solid #275198; margin-top: 4mm; }
+.integration .left { border-color: #c3d0db; }
+.integration h3 { color: #275198; font-size: 8pt; letter-spacing: .04em; }
+.integration p { color: #303c47; font-size: 8pt; }
+
+/* Trang cuối nền trắng: lắp đặt và các bước đưa vào vận hành. */
+.dark .topbar .brand, .dark h2, .dark h3 { color: #163553; }
+.dark .lead, .install-points .feature span { color: #303c47; }
+.dark .topbar .brand small, .dark .doc-kicker, .dark .footer { color: #36434f; }
+.dark .eyebrow, .dark .doc-kicker b, .dark .footer .pageno { color: #275198; }
+.install-grid { grid-template-columns: 98mm 1fr; gap: 9mm; }
+.install-visual { background: #f0f4f7; border: .25mm solid #c3d0db; border-radius: 0; padding: 4mm; }
+.install-visual svg { background: #163553; }
+.install-cap { color: #36434f; font-size: 7pt; }
+.install-points .feature b { color: #163553; }
+.install-points .feature .dot { background: #eef3f7; color: #275198; }
+.spec-mini div { border-color: #cbd5dd; }
+.spec-mini b { color: #163553; }
+.spec-mini span { color: #36434f; font-size: 7pt; }
+.process > div { border-color: #cbd5dd; }
+.process b { color: #275198; }
+.process strong { color: #163553; }
+.process span { color: #303c47; font-size: 7.5pt; }
+.closing-quote { border-color: #cbd5dd; }
+.closing-quote h3 { font-size: 14pt; color: #163553; }
+.closing-quote h3 span { color: #275198; }
+.closing-quote p { color: #36434f; font-size: 7.5pt; }
+.cta { border-radius: 0; background: #eef3f7; border-top: .7mm solid #275198; }
+.cta h3 { font-size: 13pt; color: #163553; }
+.cta p, .cta .contact { color: #303c47; }
+.cta .contact span { opacity: 1; font-size: 7pt; }
+
+/* Datasheet: thanh tiêu đề nhóm và bảng kỹ thuật tham khảo từ tài liệu mẫu. */
+.ds .pad { padding-top: 11mm; }
+.ds-title h1 { font-size: 22pt; line-height: 1.15; letter-spacing: -.02em; }
+.ds-title .sub { font-size: 9pt; color: #303c47; }
+.ds-badge { border-radius: 0; border: 0; border-left: .6mm solid #275198; background: #f1f5f8; }
+.ds-intro { border-radius: 0; border: 0; border-top: .25mm solid #cbd5dd; border-bottom: .25mm solid #cbd5dd; padding: 3mm 0; }
+.ds-intro p { color: #303c47; font-size: 8.5pt; }
+.ds-stats span { color: #303c47; font-size: 6.8pt; }
+.spec-section { margin-top: 4mm; }
+.spec-section h2 { padding: 2mm; background: #e5eef5; border: .25mm solid #b9cbd9; font-size: 9pt; letter-spacing: .04em; }
+.spec-table { margin-top: 0; }
+.spec-table td { border: .25mm solid #cbd5dd; padding: 1.8mm 2mm; font-size: 7.6pt; }
+.spec-table td:first-child { background: #f1f5f8; padding-right: 2mm; color: #20272e; }
+.spec-table td:last-child { color: #20272e; }
+.spec-table tr:last-child td { border-bottom: .25mm solid #cbd5dd; }
+.ds-grid2 { gap: 6mm; margin-top: 4mm; }
+.ds-box { border-radius: 0; border: 0; padding: 0; }
+.ds-box h3 { background: #e5eef5; padding: 2.4mm; border: .25mm solid #b9cbd9; letter-spacing: .04em; }
+.ds-box ul { padding: 2mm 2mm 0 5mm; }
+.ds-box li { font-size: 7.8pt; color: #20272e; }
+.ds-box p { color: #303c47; }
+.ds-diagram { background: #f1f5f8; border: .25mm solid #cbd5dd; border-radius: 0; color: #163553; padding: 3.5mm; }
+.ds-diagram h3 { color: #275198; }
+.ds-flow .node { background: #fff; border: .25mm solid #b9cbd9; border-radius: 0; }
+.ds-flow .node span { color: #303c47; font-size: 6.8pt; }
+.ds-flow .arrow { color: #275198; }
+.ds-contact { background: #eef3f7; border-radius: 0; border-top: .6mm solid #275198; padding: 4mm; }
+.ds-contact h3 { color: #163553; }
+.ds-contact p, .ds-contact .right span { color: #303c47; }
+.ds-contact .right b { color: #275198; }
+.ds-footer-note { color: #36434f; }
